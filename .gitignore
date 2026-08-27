@@ -1,0 +1,12 @@
+/loom
+/.env
+/data/
+/dist/
+/.idea/
+/.vscode/
+*.log
+coverage.out
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log

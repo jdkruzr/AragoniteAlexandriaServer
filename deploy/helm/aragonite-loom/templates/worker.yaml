@@ -1,0 +1,52 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "loom.name" . }}-worker
+  labels:
+    {{- include "loom.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      {{- include "loom.selector" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "loom.selector" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: loom
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - { name: LOOM_ROLE, value: worker }
+            - name: LOOM_WORKER_ID
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: LOOM_DATABASE_URL
+              valueFrom: { secretKeyRef: { name: {{ include "loom.secretName" . }}, key: database-url } }
+            - { name: LOOM_OBJECT_ENDPOINT, value: {{ .Values.objectStore.endpoint | quote }} }
+            - { name: LOOM_OBJECT_REGION, value: {{ .Values.objectStore.region | quote }} }
+            - { name: LOOM_OBJECT_BUCKET, value: {{ .Values.objectStore.bucket | quote }} }
+            - name: LOOM_OBJECT_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "loom.secretName" . }}, key: object-access-key } }
+            - name: LOOM_OBJECT_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "loom.secretName" . }}, key: object-secret-key } }
+            - { name: LOOM_OBJECT_PATH_STYLE, value: {{ .Values.objectStore.pathStyle | quote }} }
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: scratch, mountPath: /tmp }
+      volumes:
+        - name: scratch
+          emptyDir: { sizeLimit: 4Gi }
+{{- end }}

@@ -1,0 +1,9 @@
+.git
+.env
+data
+dist
+loom
+coverage.out
+.terraform
+*.tfstate
+*.tfstate.*

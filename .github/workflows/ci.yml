@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.25.x", cache: true }
+      - run: go vet ./...
+      - run: go test -race -coverprofile=coverage.out ./...
+      - run: go build ./cmd/loom
+
+  packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: docker compose -f deploy/compose/compose.yml config --quiet
+      - run: helm lint deploy/helm/aragonite-loom --set database.url=postgres://example
+      - run: terraform -chdir=deploy/terraform/aws fmt -check
+      - run: terraform -chdir=deploy/terraform/aws init -backend=false
+      - run: terraform -chdir=deploy/terraform/aws validate

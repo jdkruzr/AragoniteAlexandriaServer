@@ -1,0 +1,52 @@
+image:
+  repository: ghcr.io/jdkruzr/aragonite-loom
+  tag: latest
+  pullPolicy: IfNotPresent
+
+gateway:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
+worker:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "2", memory: 2Gi }
+
+service:
+  mainPort: 8443
+  spcPort: 8089
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  mainHost: loom.example.com
+  spcHost: supernote.example.com
+  tlsSecretName: loom-tls
+
+database:
+  url: ""
+
+secrets:
+  # Prefer a SealedSecret/ExternalSecret-managed Secret in real clusters. It
+  # must contain database-url, object-access-key, and object-secret-key.
+  existingSecret: ""
+
+objectStore:
+  endpoint: ""
+  region: us-east-1
+  bucket: aragonite-loom
+  accessKey: ""
+  secretKey: ""
+  pathStyle: false
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true

@@ -1,0 +1,68 @@
+name: aragonite-loom
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: loom
+      POSTGRES_USER: loom
+      POSTGRES_PASSWORD: ${LOOM_POSTGRES_PASSWORD:-loom-local-only}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loom -d loom"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${LOOM_POSTGRES_PORT:-15432}:5432"
+    restart: unless-stopped
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.85
+    command: server -s3 -dir=/data -ip=seaweedfs -volume.max=1 -volume.minFreeSpace=0 -master.volumePreallocate=false
+    ports:
+      - "8333:8333"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/ || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+      start_period: 20s
+    volumes:
+      - object-data:/data
+    restart: unless-stopped
+
+  loom:
+    build:
+      context: ../..
+    image: aragonite-loom:local
+    environment:
+      LOOM_ROLE: all
+      LOOM_DATABASE_URL: postgres://loom:${LOOM_POSTGRES_PASSWORD:-loom-local-only}@postgres:5432/loom?sslmode=disable
+      LOOM_OBJECT_ENDPOINT: http://seaweedfs:8333
+      LOOM_OBJECT_REGION: us-east-1
+      LOOM_OBJECT_BUCKET: aragonite-loom
+      LOOM_OBJECT_ACCESS_KEY: loom-local
+      LOOM_OBJECT_SECRET_KEY: loom-local-secret
+      LOOM_OBJECT_PATH_STYLE: "true"
+      LOOM_LISTEN_ADDR: :8443
+      LOOM_SPC_LISTEN_ADDR: :8089
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    ports:
+      - "${LOOM_MAIN_PORT:-18443}:8443"
+      - "${LOOM_SPC_PORT:-18089}:8089"
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  object-data:

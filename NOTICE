@@ -1,0 +1,10 @@
+Aragonite Loom
+Copyright 2026 jdkruzr
+
+This product selectively incorporates behavior and, where noted in source
+headers, code from UltraBridge, also licensed under Apache License 2.0.
+
+Ported behavioral surfaces:
+- UltraBridge task field and synchronization semantics (initial Loom task store)
+- ForestNote URI helpers
+- Device source sync-model descriptors

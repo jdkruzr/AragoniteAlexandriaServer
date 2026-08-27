@@ -1,0 +1,6 @@
+apiVersion: v2
+name: aragonite-loom
+description: Portable gateway and workers for e-ink notes, tasks, and search
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
