@@ -70,6 +70,11 @@ func (s *S3Store) EnsureBucket(ctx context.Context) error {
 	return nil
 }
 
+func (s *S3Store) CheckBucket(ctx context.Context) error {
+	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(s.bucket)})
+	return err
+}
+
 func (s *S3Store) Put(ctx context.Context, key, contentType string, body io.Reader, size int64) (Info, error) {
 	input := &s3.PutObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(key), Body: body, ContentType: aws.String(contentType)}
 	if size >= 0 {

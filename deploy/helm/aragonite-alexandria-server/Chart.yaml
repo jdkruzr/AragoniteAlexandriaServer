@@ -1,5 +1,5 @@
 apiVersion: v2
-name: aragonite-loom
+name: aragonite-alexandria-server
 description: Portable gateway and workers for e-ink notes, tasks, and search
 type: application
 version: 0.1.0

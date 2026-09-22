@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "loom.name" . }}
+  name: {{ include "alexandria.name" . }}
   annotations: {{- toYaml .Values.ingress.annotations | nindent 4 }}
 spec:
   {{- with .Values.ingress.className }}
@@ -17,11 +17,11 @@ spec:
         paths:
           - path: /
             pathType: Prefix
-            backend: { service: { name: {{ include "loom.name" . }}, port: { name: main } } }
+            backend: { service: { name: {{ include "alexandria.name" . }}, port: { name: main } } }
     - host: {{ .Values.ingress.spcHost }}
       http:
         paths:
           - path: /
             pathType: Prefix
-            backend: { service: { name: {{ include "loom.name" . }}, port: { name: spc } } }
+            backend: { service: { name: {{ include "alexandria.name" . }}, port: { name: spc } } }
 {{- end }}

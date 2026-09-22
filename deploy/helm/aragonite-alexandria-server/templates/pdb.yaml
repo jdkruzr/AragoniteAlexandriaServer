@@ -2,11 +2,11 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "loom.name" . }}-gateway
+  name: {{ include "alexandria.name" . }}-gateway
 spec:
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   selector:
     matchLabels:
-      {{- include "loom.selector" . | nindent 6 }}
+      {{- include "alexandria.selector" . | nindent 6 }}
       app.kubernetes.io/component: gateway
 {{- end }}

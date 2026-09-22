@@ -1,4 +1,4 @@
-// Package blob defines Loom's only durable binary-storage contract. Domain
+// Package blob defines Alexandria's only durable binary-storage contract. Domain
 // packages deal in keys and streams; they never depend on host paths.
 package blob
 

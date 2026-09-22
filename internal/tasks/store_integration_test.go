@@ -8,13 +8,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jdkruzr/aragonite-loom/internal/database"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/database"
 )
 
 func TestStoreIntegration(t *testing.T) {
-	url := os.Getenv("LOOM_TEST_DATABASE_URL")
+	url := os.Getenv("ALEXANDRIA_TEST_DATABASE_URL")
 	if url == "" {
-		t.Skip("LOOM_TEST_DATABASE_URL not set")
+		if os.Getenv("ALEXANDRIA_REQUIRE_INTEGRATION") == "1" {
+			t.Fatal("database is required")
+		}
+		t.Skip("ALEXANDRIA_TEST_DATABASE_URL not set")
 	}
 	db, err := database.Open(context.Background(), url)
 	if err != nil {
@@ -26,7 +29,7 @@ func TestStoreIntegration(t *testing.T) {
 	store := NewStore(db)
 	id := "test-" + uuid.NewString()
 	t.Cleanup(func() {
-		_, _ = db.Exec(`DELETE FROM loom_tasks WHERE task_id=$1`, id)
+		_, _ = db.Exec(`DELETE FROM alexandria_tasks WHERE task_id=$1`, id)
 		_ = db.Close()
 	})
 	title := "Weave this"

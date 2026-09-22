@@ -1,4 +1,4 @@
-module github.com/jdkruzr/aragonite-loom
+module github.com/jdkruzr/AragoniteAlexandriaServer
 
 go 1.25.0
 

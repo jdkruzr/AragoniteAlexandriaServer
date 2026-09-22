@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/jdkruzr/aragonite-loom
+  repository: ghcr.io/jdkruzr/aragonite-alexandria-server
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -24,9 +24,9 @@ ingress:
   enabled: false
   className: ""
   annotations: {}
-  mainHost: loom.example.com
+  mainHost: alexandria.example.com
   spcHost: supernote.example.com
-  tlsSecretName: loom-tls
+  tlsSecretName: alexandria-tls
 
 database:
   url: ""
@@ -39,7 +39,7 @@ secrets:
 objectStore:
   endpoint: ""
   region: us-east-1
-  bucket: aragonite-loom
+  bucket: aragonite-alexandria-server
   accessKey: ""
   secretKey: ""
   pathStyle: false

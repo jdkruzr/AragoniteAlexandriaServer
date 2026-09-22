@@ -15,9 +15,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Store struct{ db *sql.DB }
+type DB interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
 
-func NewStore(db *sql.DB) *Store { return &Store{db: db} }
+type Store struct{ db DB }
+
+func NewStore(db DB) *Store { return &Store{db: db} }
 
 func (s *Store) SetUser(ctx context.Context, username, password string) error {
 	username = strings.TrimSpace(username)
@@ -28,7 +33,7 @@ func (s *Store) SetUser(ctx context.Context, username, password string) error {
 	if err != nil {
 		return err
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO loom_users(username,password_hash) VALUES($1,$2)
+	_, err = s.db.ExecContext(ctx, `INSERT INTO alexandria_users(username,password_hash) VALUES($1,$2)
 		ON CONFLICT(username) DO UPDATE SET password_hash=EXCLUDED.password_hash,updated_at=now()`, username, string(hash))
 	return err
 }
@@ -42,8 +47,8 @@ func (s *Store) CreateToken(ctx context.Context, label string) (string, error) {
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
 	}
-	token := "loom_" + base64.RawURLEncoding.EncodeToString(raw)
-	_, err := s.db.ExecContext(ctx, `INSERT INTO loom_api_tokens(token_hash,label) VALUES($1,$2)`, tokenHash(token), label)
+	token := "alexandria_" + base64.RawURLEncoding.EncodeToString(raw)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO alexandria_api_tokens(token_hash,label) VALUES($1,$2)`, tokenHash(token), label)
 	if err != nil {
 		return "", err
 	}
@@ -52,7 +57,7 @@ func (s *Store) CreateToken(ctx context.Context, label string) (string, error) {
 
 func (s *Store) Authenticate(ctx context.Context, username, password, bearer string) (string, error) {
 	if bearer != "" {
-		result, err := s.db.ExecContext(ctx, `UPDATE loom_api_tokens SET last_used_at=now()
+		result, err := s.db.ExecContext(ctx, `UPDATE alexandria_api_tokens SET last_used_at=now()
 			WHERE token_hash=$1 AND revoked_at IS NULL`, tokenHash(bearer))
 		if err != nil {
 			return "", err
@@ -63,7 +68,7 @@ func (s *Store) Authenticate(ctx context.Context, username, password, bearer str
 		return "", errors.New("invalid bearer token")
 	}
 	var hash string
-	if err := s.db.QueryRowContext(ctx, `SELECT password_hash FROM loom_users WHERE username=$1`, username).Scan(&hash); err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT password_hash FROM alexandria_users WHERE username=$1`, username).Scan(&hash); err != nil {
 		return "", errors.New("invalid credentials")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
@@ -82,7 +87,7 @@ func (s *Store) Middleware(next http.Handler) http.Handler {
 		}
 		identity, err := s.Authenticate(r.Context(), username, password, bearer)
 		if err != nil {
-			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Loom"`)
+			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}

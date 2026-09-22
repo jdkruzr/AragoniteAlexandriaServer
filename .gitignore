@@ -1,4 +1,4 @@
-/loom
+/alexandria-server
 /.env
 /data/
 /dist/
@@ -9,4 +9,7 @@ coverage.out
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
 crash.log
+AGENTS.md
+CLAUDE.md

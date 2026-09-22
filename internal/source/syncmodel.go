@@ -54,13 +54,13 @@ type SyncModel struct {
 func SyncModelFor(sourceType string) SyncModel {
 	switch sourceType {
 	case "supernote":
-		return SyncModel{"Two-way sync", TwoWay, "Shared (Loom-hosted)", true, "Files sync both ways with your Supernote. Deleting a note moves it to a recoverable recycle bin."}
+		return SyncModel{"Two-way sync", TwoWay, "Shared (Alexandria-hosted)", true, "Files sync both ways with your Supernote. Deleting a note moves it to a recoverable recycle bin."}
 	case "boox":
-		return SyncModel{"Receive-only", OneWayIn, "Device", false, "Boox exports notes to Loom one way. Device deletes and renames do not propagate; remove notes here manually."}
+		return SyncModel{"Receive-only", OneWayIn, "Device", false, "Boox exports notes to Alexandria one way. Device deletes and renames do not propagate; remove notes here manually."}
 	case "forestnote":
 		return SyncModel{"Live mirror", TwoWay, "Shared (row-level LWW)", true, "ForestNote mirrors notes two ways in real time. Recoverable tombstones converge across devices."}
 	case "remarkable":
-		return SyncModel{"Two-way sync", TwoWay, "Shared (reMarkable protocol)", true, "reMarkable devices sync through Loom's protocol surface and converge through the vendor sync model."}
+		return SyncModel{"Two-way sync", TwoWay, "Shared (reMarkable protocol)", true, "reMarkable devices sync through Alexandria's protocol surface and converge through the vendor sync model."}
 	default:
 		return Unmanaged
 	}

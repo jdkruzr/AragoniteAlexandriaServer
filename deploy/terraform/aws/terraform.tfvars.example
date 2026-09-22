@@ -1,9 +1,9 @@
 region             = "us-east-1"
-image_uri          = "123456789012.dkr.ecr.us-east-1.amazonaws.com/aragonite-loom:sha-..."
+image_uri          = "123456789012.dkr.ecr.us-east-1.amazonaws.com/aragonite-alexandria-server:sha-..."
 vpc_id             = "vpc-..."
 public_subnet_ids  = ["subnet-public-a", "subnet-public-b"]
 private_subnet_ids = ["subnet-private-a", "subnet-private-b"]
-main_hostname      = "loom.example.com"
+main_hostname      = "alexandria.example.com"
 spc_hostname       = "supernote.example.com"
 certificate_arn    = "arn:aws:acm:us-east-1:123456789012:certificate/..."
 ha                 = false

@@ -1,4 +1,4 @@
-// Package migrations owns Loom's forward-only PostgreSQL schema history.
+// Package migrations owns Alexandria's forward-only PostgreSQL schema history.
 package migrations
 
 import "embed"

@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jdkruzr/aragonite-loom/internal/tasks"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks"
 )
 
 type ImportResult struct {
@@ -34,7 +34,7 @@ func ImportTasks(ctx context.Context, target *sql.DB, sourcePath string) (result
 	result.Fingerprint = fingerprint
 	var existingID uuid.UUID
 	var existingStatus string
-	err = target.QueryRowContext(ctx, `SELECT id,status FROM loom_import_runs WHERE source_fingerprint=$1`, fingerprint).Scan(&existingID, &existingStatus)
+	err = target.QueryRowContext(ctx, `SELECT id,status FROM alexandria_import_runs WHERE source_fingerprint=$1`, fingerprint).Scan(&existingID, &existingStatus)
 	if err == nil && existingStatus == "complete" {
 		result.RunID, result.Skipped = existingID, true
 		return result, nil
@@ -44,7 +44,7 @@ func ImportTasks(ctx context.Context, target *sql.DB, sourcePath string) (result
 	}
 	result.RunID = uuid.New()
 	manifest, _ := json.Marshal(map[string]any{"kind": "ultrabridge-tasks", "format_version": 1})
-	if _, err := target.ExecContext(ctx, `INSERT INTO loom_import_runs(id,source_fingerprint,status,manifest)
+	if _, err := target.ExecContext(ctx, `INSERT INTO alexandria_import_runs(id,source_fingerprint,status,manifest)
 		VALUES($1,$2,'running',$3)
 		ON CONFLICT(source_fingerprint) DO UPDATE SET id=EXCLUDED.id,status='running',manifest=EXCLUDED.manifest,
 		started_at=now(),finished_at=NULL,last_error=''`, result.RunID, fingerprint, manifest); err != nil {
@@ -52,7 +52,7 @@ func ImportTasks(ctx context.Context, target *sql.DB, sourcePath string) (result
 	}
 	defer func() {
 		if err != nil {
-			_, _ = target.ExecContext(context.Background(), `UPDATE loom_import_runs SET status='failed',finished_at=now(),last_error=$2 WHERE id=$1`, result.RunID, err.Error())
+			_, _ = target.ExecContext(context.Background(), `UPDATE alexandria_import_runs SET status='failed',finished_at=now(),last_error=$2 WHERE id=$1`, result.RunID, err.Error())
 		}
 	}()
 
@@ -111,7 +111,7 @@ func ImportTasks(ctx context.Context, target *sql.DB, sourcePath string) (result
 	if err := tx.Commit(); err != nil {
 		return result, fmt.Errorf("commit task import: %w", err)
 	}
-	if _, err := target.ExecContext(ctx, `UPDATE loom_import_runs SET status='complete',finished_at=now(),
+	if _, err := target.ExecContext(ctx, `UPDATE alexandria_import_runs SET status='complete',finished_at=now(),
 		manifest=manifest || jsonb_build_object('tasks',$2::bigint) WHERE id=$1`, result.RunID, result.Tasks); err != nil {
 		return result, fmt.Errorf("complete import run: %w", err)
 	}

@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/aragonite-loom-mark.png" width="240" alt="Aragonite Loom woven-page mark">
+  <img src="assets/aragonite-alexandria-server-mark.png" width="240" alt="Aragonite Alexandria Server woven-page mark">
 </p>
 
-# Aragonite Loom
+# Aragonite Alexandria Server
 
-Aragonite Loom is the cloud-native successor to UltraBridge: a portable bridge
+Aragonite Alexandria Server is the cloud-native successor to UltraBridge: a portable bridge
 for e-ink notes, tasks, search, and processing. It is being built in a separate
 repository so the existing UltraBridge installation can remain boring,
 dependable, and entirely uninvolved in architectural experiments.
@@ -37,29 +37,29 @@ docker compose --env-file deploy/compose/.env \
   -f deploy/compose/compose.yml up --build
 ```
 
-Then open `http://localhost:18443/health`. Loom intentionally uses host ports
+Then open `http://localhost:18443/health`. Alexandria Server intentionally uses host ports
 `18443` and `18089` so a live UltraBridge instance can retain `8443/8089`. The
 SPC listener deliberately returns `501` until its protocol port is ready.
 
 ## Commands
 
 ```bash
-go build ./cmd/loom
+go build ./cmd/alexandria-server
 
 # Run the configured role (gateway, worker, maintenance, or all).
-LOOM_DATABASE_URL='postgres://...' LOOM_ROLE=all ./loom serve
+ALEXANDRIA_DATABASE_URL='postgres://...' ALEXANDRIA_ROLE=all ./alexandria-server serve
 
 # Apply embedded PostgreSQL migrations.
-LOOM_DATABASE_URL='postgres://...' ./loom migrate
+ALEXANDRIA_DATABASE_URL='postgres://...' ./alexandria-server migrate
 
 # Create/update the single local administrator without exposing a password in
 # process arguments, then mint a revocable API token (shown exactly once).
-LOOM_DATABASE_URL='postgres://...' ./loom seed-user \
-  --username admin --password-file /run/secrets/loom_admin_password
-LOOM_DATABASE_URL='postgres://...' ./loom create-token --label laptop
+ALEXANDRIA_DATABASE_URL='postgres://...' ./alexandria-server seed-user \
+  --username admin --password-file /run/secrets/alexandria_admin_password
+ALEXANDRIA_DATABASE_URL='postgres://...' ./alexandria-server create-token --label laptop
 
 # Produce a content-free inventory of UltraBridge snapshots.
-./loom ub-preflight \
+./alexandria-server legacy-preflight \
   --notes-db /snapshot/ultrabridge.db \
   --task-db /snapshot/ultrabridge-tasks.db \
   --root /snapshot/supernote \
@@ -77,7 +77,7 @@ vertical slice, not an assertion of UltraBridge feature parity.
 ## Deployment Profiles
 
 - `deploy/compose`: small on-prem stack with PostgreSQL/pgvector and SeaweedFS.
-- `deploy/helm/aragonite-loom`: Kubernetes deployment against external
+- `deploy/helm/aragonite-alexandria-server`: Kubernetes deployment against external
   PostgreSQL and S3-compatible endpoints.
 - `deploy/terraform/aws`: AWS economy or HA profile using ECS/Fargate, Aurora
   Serverless v2, S3, and AWS Batch/Fargate.

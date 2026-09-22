@@ -22,9 +22,15 @@ type Job struct {
 	MaxAttempts    int
 }
 
-type Store struct{ db *sql.DB }
+type DB interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
 
-func NewStore(db *sql.DB) *Store { return &Store{db: db} }
+type Store struct{ db DB }
+
+func NewStore(db DB) *Store { return &Store{db: db} }
 
 func (s *Store) Enqueue(ctx context.Context, jobType, idempotencyKey string, payload any, maxAttempts int) (uuid.UUID, bool, error) {
 	if maxAttempts <= 0 {
@@ -37,7 +43,7 @@ func (s *Store) Enqueue(ctx context.Context, jobType, idempotencyKey string, pay
 	id := uuid.New()
 	var stored uuid.UUID
 	err = s.db.QueryRowContext(ctx, `
-		INSERT INTO loom_jobs(id, job_type, payload, idempotency_key, max_attempts)
+		INSERT INTO alexandria_jobs(id, job_type, payload, idempotency_key, max_attempts)
 		VALUES($1,$2,$3,$4,$5)
 		ON CONFLICT(idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key
 		RETURNING id`, id, jobType, body, idempotencyKey, maxAttempts).Scan(&stored)
@@ -50,12 +56,12 @@ func (s *Store) Enqueue(ctx context.Context, jobType, idempotencyKey string, pay
 func (s *Store) Claim(ctx context.Context, owner string, lease time.Duration) (*Job, error) {
 	row := s.db.QueryRowContext(ctx, `
 		WITH candidate AS (
-			SELECT id FROM loom_jobs
+			SELECT id FROM alexandria_jobs
 			WHERE status='pending' AND available_at <= now() AND attempts < max_attempts
 			ORDER BY available_at, created_at
 			FOR UPDATE SKIP LOCKED LIMIT 1
 		)
-		UPDATE loom_jobs j SET
+		UPDATE alexandria_jobs j SET
 			status='leased', lease_owner=$1, lease_until=now()+$2::interval,
 			attempts=j.attempts+1, started_at=COALESCE(j.started_at, now())
 		FROM candidate WHERE j.id=candidate.id
@@ -74,7 +80,7 @@ func (s *Store) Claim(ctx context.Context, owner string, lease time.Duration) (*
 // delivers the same job more than once: only one invocation can take the lease.
 func (s *Store) ClaimID(ctx context.Context, id uuid.UUID, owner string, lease time.Duration) (*Job, error) {
 	row := s.db.QueryRowContext(ctx, `
-		UPDATE loom_jobs SET status='leased', lease_owner=$2, lease_until=now()+$3::interval,
+		UPDATE alexandria_jobs SET status='leased', lease_owner=$2, lease_until=now()+$3::interval,
 			attempts=attempts+1, started_at=COALESCE(started_at, now())
 		WHERE id=$1 AND status='pending' AND available_at <= now() AND attempts < max_attempts
 		RETURNING id,job_type,payload,idempotency_key,attempts,max_attempts`, id, owner, interval(lease))
@@ -89,7 +95,7 @@ func (s *Store) ClaimID(ctx context.Context, id uuid.UUID, owner string, lease t
 }
 
 func (s *Store) Complete(ctx context.Context, id uuid.UUID, owner string) error {
-	result, err := s.db.ExecContext(ctx, `UPDATE loom_jobs SET status='done',finished_at=now(),lease_owner=NULL,lease_until=NULL
+	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_jobs SET status='done',finished_at=now(),lease_owner=NULL,lease_until=NULL
 		WHERE id=$1 AND status='leased' AND lease_owner=$2`, id, owner)
 	return leaseResult(result, err)
 }
@@ -100,7 +106,7 @@ func (s *Store) Fail(ctx context.Context, job Job, owner string, cause error) er
 	if job.Attempts >= job.MaxAttempts {
 		status = "failed"
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE loom_jobs SET status=$3::loom_job_status,last_error=$4,
+	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_jobs SET status=$3::alexandria_job_status,last_error=$4,
 		available_at=CASE WHEN $3='pending' THEN now()+$5::interval ELSE available_at END,
 		finished_at=CASE WHEN $3='failed' THEN now() ELSE NULL END,lease_owner=NULL,lease_until=NULL
 		WHERE id=$1 AND status='leased' AND lease_owner=$2`, job.ID, owner, status, cause.Error(), interval(delay))
@@ -108,7 +114,7 @@ func (s *Store) Fail(ctx context.Context, job Job, owner string, cause error) er
 }
 
 func (s *Store) RequeueExpired(ctx context.Context) (int64, error) {
-	result, err := s.db.ExecContext(ctx, `UPDATE loom_jobs SET status=CASE WHEN attempts>=max_attempts THEN 'failed'::loom_job_status ELSE 'pending'::loom_job_status END,
+	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_jobs SET status=CASE WHEN attempts>=max_attempts THEN 'failed'::alexandria_job_status ELSE 'pending'::alexandria_job_status END,
 		lease_owner=NULL,lease_until=NULL,last_error='worker lease expired',
 		finished_at=CASE WHEN attempts>=max_attempts THEN now() ELSE NULL END
 		WHERE status='leased' AND lease_until < now()`)

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jdkruzr/aragonite-loom/internal/tasks"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks"
 )
 
 type Tasks struct{ Store *tasks.Store }

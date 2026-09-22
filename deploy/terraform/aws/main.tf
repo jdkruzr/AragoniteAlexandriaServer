@@ -1,5 +1,5 @@
 locals {
-  tags               = { Application = "Aragonite Loom", ManagedBy = "Terraform" }
+  tags               = { Application = "Aragonite Alexandria Server", ManagedBy = "Terraform" }
   gateway_count      = var.ha ? 2 : 1
   database_min_acu   = var.ha ? 0.5 : 0
   database_instances = var.ha ? 2 : 1
@@ -38,7 +38,7 @@ resource "aws_s3_bucket_public_access_block" "objects" {
   restrict_public_buckets = true
 }
 
-resource "aws_db_subnet_group" "loom" {
+resource "aws_db_subnet_group" "alexandria" {
   name       = var.name
   subnet_ids = var.private_subnet_ids
   tags       = local.tags
@@ -50,14 +50,14 @@ resource "aws_security_group" "database" {
   tags        = local.tags
 }
 
-resource "aws_rds_cluster" "loom" {
+resource "aws_rds_cluster" "alexandria" {
   cluster_identifier        = var.name
   engine                    = "aurora-postgresql"
   engine_mode               = "provisioned"
-  database_name             = "loom"
-  master_username           = "loom"
+  database_name             = var.database_name
+  master_username           = var.database_username
   master_password           = random_password.database.result
-  db_subnet_group_name      = aws_db_subnet_group.loom.name
+  db_subnet_group_name      = aws_db_subnet_group.alexandria.name
   vpc_security_group_ids    = [aws_security_group.database.id]
   storage_encrypted         = true
   backup_retention_period   = 7
@@ -72,13 +72,13 @@ resource "aws_rds_cluster" "loom" {
   tags = local.tags
 }
 
-resource "aws_rds_cluster_instance" "loom" {
+resource "aws_rds_cluster_instance" "alexandria" {
   count               = local.database_instances
   identifier          = "${var.name}-${count.index}"
-  cluster_identifier  = aws_rds_cluster.loom.id
+  cluster_identifier  = aws_rds_cluster.alexandria.id
   instance_class      = "db.serverless"
-  engine              = aws_rds_cluster.loom.engine
-  engine_version      = aws_rds_cluster.loom.engine_version
+  engine              = aws_rds_cluster.alexandria.engine
+  engine_version      = aws_rds_cluster.alexandria.engine_version
   publicly_accessible = false
   tags                = local.tags
 }
@@ -91,11 +91,11 @@ resource "aws_secretsmanager_secret" "runtime" {
 resource "aws_secretsmanager_secret_version" "runtime" {
   secret_id = aws_secretsmanager_secret.runtime.id
   secret_string = jsonencode({
-    database_url = "postgres://loom:${urlencode(random_password.database.result)}@${aws_rds_cluster.loom.endpoint}:5432/loom?sslmode=require"
+    database_url = "postgres://${urlencode(var.database_username)}:${urlencode(random_password.database.result)}@${aws_rds_cluster.alexandria.endpoint}:5432/${var.database_name}?sslmode=require"
   })
 }
 
-resource "aws_ecs_cluster" "loom" {
+resource "aws_ecs_cluster" "alexandria" {
   name = var.name
   setting {
     name  = "containerInsights"
@@ -104,7 +104,7 @@ resource "aws_ecs_cluster" "loom" {
   tags = local.tags
 }
 
-resource "aws_cloudwatch_log_group" "loom" {
+resource "aws_cloudwatch_log_group" "alexandria" {
   name              = "/ecs/${var.name}"
   retention_in_days = 30
   tags              = local.tags
@@ -199,7 +199,7 @@ resource "aws_security_group" "alb" {
   tags = local.tags
 }
 
-resource "aws_lb" "loom" {
+resource "aws_lb" "alexandria" {
   name               = substr(var.name, 0, 32)
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -208,7 +208,7 @@ resource "aws_lb" "loom" {
 }
 
 resource "aws_lb_target_group" "main" {
-  name_prefix = "loom-m"
+  name_prefix = var.main_target_prefix
   port        = 8443
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -220,7 +220,7 @@ resource "aws_lb_target_group" "main" {
 }
 
 resource "aws_lb_target_group" "spc" {
-  name_prefix = "loom-s"
+  name_prefix = var.spc_target_prefix
   port        = 8089
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -232,7 +232,7 @@ resource "aws_lb_target_group" "spc" {
 }
 
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.loom.arn
+  load_balancer_arn = aws_lb.alexandria.arn
   port              = 80
   protocol          = "HTTP"
   default_action {
@@ -246,7 +246,7 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.loom.arn
+  load_balancer_arn = aws_lb.alexandria.arn
   port              = 443
   protocol          = "HTTPS"
   certificate_arn   = var.certificate_arn
@@ -279,21 +279,21 @@ resource "aws_ecs_task_definition" "gateway" {
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.task.arn
   container_definitions = jsonencode([{
-    name                   = "loom", image = var.image_uri, essential = true,
+    name                   = "alexandria", image = var.image_uri, essential = true,
     readonlyRootFilesystem = true,
     portMappings           = [{ containerPort = 8443, protocol = "tcp" }, { containerPort = 8089, protocol = "tcp" }],
     environment = [
-      { name = "LOOM_ROLE", value = "gateway" },
-      { name = "LOOM_OBJECT_REGION", value = var.region },
-      { name = "LOOM_OBJECT_BUCKET", value = aws_s3_bucket.objects.id },
-      { name = "LOOM_JOB_LAUNCHER", value = "aws-batch" },
-      { name = "LOOM_AWS_BATCH_QUEUE", value = aws_batch_job_queue.loom.arn },
-      { name = "LOOM_AWS_BATCH_JOB_DEFINITION", value = aws_batch_job_definition.worker.arn }
+      { name = "ALEXANDRIA_ROLE", value = "gateway" },
+      { name = "ALEXANDRIA_OBJECT_REGION", value = var.region },
+      { name = "ALEXANDRIA_OBJECT_BUCKET", value = aws_s3_bucket.objects.id },
+      { name = "ALEXANDRIA_JOB_LAUNCHER", value = "aws-batch" },
+      { name = "ALEXANDRIA_AWS_BATCH_QUEUE", value = aws_batch_job_queue.alexandria.arn },
+      { name = "ALEXANDRIA_AWS_BATCH_JOB_DEFINITION", value = aws_batch_job_definition.worker.arn }
     ],
-    secrets          = [{ name = "LOOM_DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.runtime.arn}:database_url::" }],
+    secrets          = [{ name = "ALEXANDRIA_DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.runtime.arn}:database_url::" }],
     mountPoints      = [], volumesFrom = [],
     linuxParameters  = { capabilities = { drop = ["ALL"] }, initProcessEnabled = true },
-    logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.loom.name, awslogs-region = var.region, awslogs-stream-prefix = "gateway" } }
+    logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.alexandria.name, awslogs-region = var.region, awslogs-stream-prefix = "gateway" } }
   }])
   runtime_platform {
     operating_system_family = "LINUX"
@@ -305,7 +305,7 @@ resource "aws_ecs_task_definition" "gateway" {
 
 resource "aws_ecs_service" "gateway" {
   name                               = "${var.name}-gateway"
-  cluster                            = aws_ecs_cluster.loom.id
+  cluster                            = aws_ecs_cluster.alexandria.id
   task_definition                    = aws_ecs_task_definition.gateway.arn
   desired_count                      = local.gateway_count
   launch_type                        = "FARGATE"
@@ -319,19 +319,19 @@ resource "aws_ecs_service" "gateway" {
   }
   load_balancer {
     target_group_arn = aws_lb_target_group.main.arn
-    container_name   = "loom"
+    container_name   = "alexandria"
     container_port   = 8443
   }
   load_balancer {
     target_group_arn = aws_lb_target_group.spc.arn
-    container_name   = "loom"
+    container_name   = "alexandria"
     container_port   = 8089
   }
   depends_on = [aws_lb_listener.https, aws_lb_listener_rule.spc]
   tags       = local.tags
 }
 
-resource "aws_batch_compute_environment" "loom" {
+resource "aws_batch_compute_environment" "alexandria" {
   name = var.name
   type = "MANAGED"
   compute_resources {
@@ -343,13 +343,13 @@ resource "aws_batch_compute_environment" "loom" {
   tags = local.tags
 }
 
-resource "aws_batch_job_queue" "loom" {
+resource "aws_batch_job_queue" "alexandria" {
   name     = var.name
   state    = "ENABLED"
   priority = 1
   compute_environment_order {
     order               = 1
-    compute_environment = aws_batch_compute_environment.loom.arn
+    compute_environment = aws_batch_compute_environment.alexandria.arn
   }
   tags = local.tags
 }
@@ -365,15 +365,15 @@ resource "aws_batch_job_definition" "worker" {
     jobRoleArn           = aws_iam_role.task.arn,
     resourceRequirements = [{ type = "VCPU", value = var.worker_cpu }, { type = "MEMORY", value = var.worker_memory }],
     environment = [
-      { name = "LOOM_ROLE", value = "worker" },
-      { name = "LOOM_OBJECT_REGION", value = var.region },
-      { name = "LOOM_OBJECT_BUCKET", value = aws_s3_bucket.objects.id }
+      { name = "ALEXANDRIA_ROLE", value = "worker" },
+      { name = "ALEXANDRIA_OBJECT_REGION", value = var.region },
+      { name = "ALEXANDRIA_OBJECT_BUCKET", value = aws_s3_bucket.objects.id }
     ],
-    secrets                      = [{ name = "LOOM_DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.runtime.arn}:database_url::" }],
+    secrets                      = [{ name = "ALEXANDRIA_DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.runtime.arn}:database_url::" }],
     readonlyRootFilesystem       = true,
     networkConfiguration         = { assignPublicIp = var.assign_public_ip ? "ENABLED" : "DISABLED" },
     fargatePlatformConfiguration = { platformVersion = "LATEST" },
-    logConfiguration             = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.loom.name, awslogs-region = var.region, awslogs-stream-prefix = "worker" } }
+    logConfiguration             = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.alexandria.name, awslogs-region = var.region, awslogs-stream-prefix = "worker" } }
   })
   retry_strategy { attempts = 1 }
   timeout { attempt_duration_seconds = 3600 }

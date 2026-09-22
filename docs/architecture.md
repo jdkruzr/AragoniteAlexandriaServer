@@ -41,10 +41,10 @@ controlled reindex rather than silently mixing incompatible vectors.
 
 ## The WebSocket containment vessel
 
-Ratta and reMarkable clients use sockets to ask a device to pull. Loom does not
+Ratta and reMarkable clients use sockets to ask a device to pull. Alexandria Server does not
 put authoritative changes only in a socket frame. Connection registries stay
 in gateway memory, HA gateways fan hints through a replaceable event adapter,
 and reconnecting clients always recover from PostgreSQL/object storage.
 
-ForestNote's Rhizome protocol remains request/response and offline-first. Loom
+ForestNote's Rhizome protocol remains request/response and offline-first. Alexandria Server
 will not add a WebSocket merely because an empty socket looks lonely.

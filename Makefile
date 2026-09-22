@@ -1,7 +1,7 @@
 .PHONY: build test check compose-up compose-down
 
 build:
-	go build ./cmd/loom
+	go build ./cmd/alexandria-server
 
 test:
 	go test ./...

@@ -10,13 +10,35 @@ permissions:
 jobs:
   go:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: alexandria-ci-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      ALEXANDRIA_TEST_DATABASE_URL: postgres://postgres:alexandria-ci-only@127.0.0.1:5432/postgres?sslmode=disable
+      ALEXANDRIA_TEST_S3_ENDPOINT: http://127.0.0.1:8333
+      ALEXANDRIA_REQUIRE_INTEGRATION: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with: { go-version: "1.25.x", cache: true }
+      - name: Start disposable object storage
+        run: docker run -d --name alexandria-ci-s3 -p 127.0.0.1:8333:8333 chrislusf/seaweedfs:3.85 server -s3 -dir=/data -ip=localhost -ip.bind=0.0.0.0 -volume.max=1 -volume.minFreeSpace=0 -master.volumePreallocate=false
+      - name: Wait for object storage
+        run: |
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8333/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
       - run: go vet ./...
       - run: go test -race -coverprofile=coverage.out ./...
-      - run: go build ./cmd/loom
+      - run: go build ./cmd/alexandria-server
 
   packaging:
     runs-on: ubuntu-latest
@@ -25,7 +47,7 @@ jobs:
       - uses: azure/setup-helm@v5
       - uses: hashicorp/setup-terraform@v4
       - run: docker compose -f deploy/compose/compose.yml config --quiet
-      - run: helm lint deploy/helm/aragonite-loom --set database.url=postgres://example
+      - run: helm lint deploy/helm/aragonite-alexandria-server --set database.url=postgres://example
       - run: terraform -chdir=deploy/terraform/aws fmt -check
       - run: terraform -chdir=deploy/terraform/aws init -backend=false
       - run: terraform -chdir=deploy/terraform/aws validate

@@ -9,13 +9,13 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jdkruzr/aragonite-loom/internal/database"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/database"
 )
 
 func TestImportTasksIntegration(t *testing.T) {
-	url := os.Getenv("LOOM_TEST_DATABASE_URL")
+	url := os.Getenv("ALEXANDRIA_TEST_DATABASE_URL")
 	if url == "" {
-		t.Skip("LOOM_TEST_DATABASE_URL not set")
+		t.Skip("ALEXANDRIA_TEST_DATABASE_URL not set")
 	}
 	sourcePath := filepath.Join(t.TempDir(), "tasks.db")
 	source, err := sql.Open("sqlite", sourcePath)
@@ -51,6 +51,6 @@ func TestImportTasksIntegration(t *testing.T) {
 	if err != nil || !second.Skipped || second.RunID != result.RunID {
 		t.Fatalf("second ImportTasks() = %+v, %v", second, err)
 	}
-	_, _ = target.Exec(`DELETE FROM loom_tasks WHERE title='Synthetic task'`)
-	_, _ = target.Exec(`DELETE FROM loom_import_runs WHERE id=$1`, result.RunID)
+	_, _ = target.Exec(`DELETE FROM alexandria_tasks WHERE title='Synthetic task'`)
+	_, _ = target.Exec(`DELETE FROM alexandria_import_runs WHERE id=$1`, result.RunID)
 }

@@ -41,11 +41,11 @@ func NewAWSBatchLauncher(client *batch.Client, queue, jobDefinition string) (*AW
 
 func (l *AWSBatchLauncher) Launch(ctx context.Context, id uuid.UUID) error {
 	_, err := l.client.SubmitJob(ctx, &batch.SubmitJobInput{
-		JobName:       aws.String("loom-" + id.String()),
+		JobName:       aws.String("alexandria-" + id.String()),
 		JobQueue:      aws.String(l.queue),
 		JobDefinition: aws.String(l.jobDefinition),
 		ContainerOverrides: &types.ContainerOverrides{
-			Environment: []types.KeyValuePair{{Name: aws.String("LOOM_JOB_ID"), Value: aws.String(id.String())}},
+			Environment: []types.KeyValuePair{{Name: aws.String("ALEXANDRIA_JOB_ID"), Value: aws.String(id.String())}},
 		},
 	})
 	if err != nil {

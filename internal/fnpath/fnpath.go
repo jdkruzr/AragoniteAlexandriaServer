@@ -1,4 +1,4 @@
-// Package fnpath defines the opaque ForestNote URI scheme used by Loom.
+// Package fnpath defines the opaque ForestNote URI scheme used by Alexandria.
 // Selectively ported from UltraBridge under Apache-2.0.
 package fnpath
 

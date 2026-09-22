@@ -26,7 +26,7 @@ type Store struct{ db dbtx }
 func NewStore(db dbtx) *Store { return &Store{db: db} }
 
 func (s *Store) List(ctx context.Context, includeDeleted bool) ([]Task, error) {
-	query := `SELECT ` + columns + ` FROM loom_tasks`
+	query := `SELECT ` + columns + ` FROM alexandria_tasks`
 	if !includeDeleted {
 		query += ` WHERE deleted=false`
 	}
@@ -48,7 +48,7 @@ func (s *Store) List(ctx context.Context, includeDeleted bool) ([]Task, error) {
 }
 
 func (s *Store) Get(ctx context.Context, id string) (Task, error) {
-	task, err := scan(s.db.QueryRowContext(ctx, `SELECT `+columns+` FROM loom_tasks WHERE task_id=$1 AND deleted=false`, id))
+	task, err := scan(s.db.QueryRowContext(ctx, `SELECT `+columns+` FROM alexandria_tasks WHERE task_id=$1 AND deleted=false`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Task{}, ErrNotFound
 	}
@@ -72,7 +72,7 @@ func (s *Store) Upsert(ctx context.Context, task Task) error {
 	if task.LastModified == 0 {
 		task.LastModified = task.UpdatedAt
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO loom_tasks (`+columns+`)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO alexandria_tasks (`+columns+`)
 		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
 		ON CONFLICT(task_id) DO UPDATE SET
 		title=EXCLUDED.title,detail=EXCLUDED.detail,status=EXCLUDED.status,
@@ -99,7 +99,7 @@ func (s *Store) Upsert(ctx context.Context, task Task) error {
 
 func (s *Store) Delete(ctx context.Context, id string) error {
 	now := time.Now().UnixMilli()
-	result, err := s.db.ExecContext(ctx, `UPDATE loom_tasks SET deleted=true,updated_at=$2,last_modified=$2 WHERE task_id=$1 AND deleted=false`, id, now)
+	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_tasks SET deleted=true,updated_at=$2,last_modified=$2 WHERE task_id=$1 AND deleted=false`, id, now)
 	if err != nil {
 		return fmt.Errorf("delete task %s: %w", id, err)
 	}

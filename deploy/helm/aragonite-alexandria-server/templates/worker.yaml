@@ -1,0 +1,52 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alexandria.name" . }}-worker
+  labels:
+    {{- include "alexandria.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      {{- include "alexandria.selector" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "alexandria.selector" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: alexandria
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - { name: ALEXANDRIA_ROLE, value: worker }
+            - name: ALEXANDRIA_WORKER_ID
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: ALEXANDRIA_DATABASE_URL
+              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: database-url } }
+            - { name: ALEXANDRIA_OBJECT_ENDPOINT, value: {{ .Values.objectStore.endpoint | quote }} }
+            - { name: ALEXANDRIA_OBJECT_REGION, value: {{ .Values.objectStore.region | quote }} }
+            - { name: ALEXANDRIA_OBJECT_BUCKET, value: {{ .Values.objectStore.bucket | quote }} }
+            - name: ALEXANDRIA_OBJECT_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: object-access-key } }
+            - name: ALEXANDRIA_OBJECT_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: object-secret-key } }
+            - { name: ALEXANDRIA_OBJECT_PATH_STYLE, value: {{ .Values.objectStore.pathStyle | quote }} }
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: scratch, mountPath: /tmp }
+      volumes:
+        - name: scratch
+          emptyDir: { sizeLimit: 4Gi }
+{{- end }}

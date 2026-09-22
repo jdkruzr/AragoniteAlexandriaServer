@@ -1,11 +1,31 @@
 variable "name" {
   type    = string
-  default = "aragonite-loom"
+  default = "aragonite-alexandria-server"
 }
 
 variable "region" {
   type    = string
   default = "us-east-1"
+}
+
+variable "database_name" {
+  type    = string
+  default = "alexandria"
+}
+
+variable "database_username" {
+  type    = string
+  default = "alexandria"
+}
+
+variable "main_target_prefix" {
+  type    = string
+  default = "axa-m"
+}
+
+variable "spc_target_prefix" {
+  type    = string
+  default = "axa-s"
 }
 
 variable "image_uri" { type = string }

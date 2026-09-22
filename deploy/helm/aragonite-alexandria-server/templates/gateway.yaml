@@ -1,41 +1,41 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "loom.name" . }}-gateway
+  name: {{ include "alexandria.name" . }}-gateway
   labels:
-    {{- include "loom.labels" . | nindent 4 }}
+    {{- include "alexandria.labels" . | nindent 4 }}
     app.kubernetes.io/component: gateway
 spec:
   replicas: {{ .Values.gateway.replicas }}
   selector:
     matchLabels:
-      {{- include "loom.selector" . | nindent 6 }}
+      {{- include "alexandria.selector" . | nindent 6 }}
       app.kubernetes.io/component: gateway
   template:
     metadata:
       labels:
-        {{- include "loom.selector" . | nindent 8 }}
+        {{- include "alexandria.selector" . | nindent 8 }}
         app.kubernetes.io/component: gateway
     spec:
       securityContext:
         runAsNonRoot: true
         seccompProfile: { type: RuntimeDefault }
       containers:
-        - name: loom
+        - name: alexandria
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - { name: LOOM_ROLE, value: gateway }
-            - name: LOOM_DATABASE_URL
-              valueFrom: { secretKeyRef: { name: {{ include "loom.secretName" . }}, key: database-url } }
-            - { name: LOOM_OBJECT_ENDPOINT, value: {{ .Values.objectStore.endpoint | quote }} }
-            - { name: LOOM_OBJECT_REGION, value: {{ .Values.objectStore.region | quote }} }
-            - { name: LOOM_OBJECT_BUCKET, value: {{ .Values.objectStore.bucket | quote }} }
-            - name: LOOM_OBJECT_ACCESS_KEY
-              valueFrom: { secretKeyRef: { name: {{ include "loom.secretName" . }}, key: object-access-key } }
-            - name: LOOM_OBJECT_SECRET_KEY
-              valueFrom: { secretKeyRef: { name: {{ include "loom.secretName" . }}, key: object-secret-key } }
-            - { name: LOOM_OBJECT_PATH_STYLE, value: {{ .Values.objectStore.pathStyle | quote }} }
+            - { name: ALEXANDRIA_ROLE, value: gateway }
+            - name: ALEXANDRIA_DATABASE_URL
+              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: database-url } }
+            - { name: ALEXANDRIA_OBJECT_ENDPOINT, value: {{ .Values.objectStore.endpoint | quote }} }
+            - { name: ALEXANDRIA_OBJECT_REGION, value: {{ .Values.objectStore.region | quote }} }
+            - { name: ALEXANDRIA_OBJECT_BUCKET, value: {{ .Values.objectStore.bucket | quote }} }
+            - name: ALEXANDRIA_OBJECT_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: object-access-key } }
+            - name: ALEXANDRIA_OBJECT_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: object-secret-key } }
+            - { name: ALEXANDRIA_OBJECT_PATH_STYLE, value: {{ .Values.objectStore.pathStyle | quote }} }
           ports:
             - { name: main, containerPort: 8443 }
             - { name: spc, containerPort: 8089 }
@@ -55,12 +55,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "loom.name" . }}
+  name: {{ include "alexandria.name" . }}
   labels:
-    {{- include "loom.labels" . | nindent 4 }}
+    {{- include "alexandria.labels" . | nindent 4 }}
 spec:
   selector:
-    {{- include "loom.selector" . | nindent 4 }}
+    {{- include "alexandria.selector" . | nindent 4 }}
     app.kubernetes.io/component: gateway
   ports:
     - { name: main, port: {{ .Values.service.mainPort }}, targetPort: main }

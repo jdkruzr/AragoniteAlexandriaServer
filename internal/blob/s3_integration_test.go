@@ -10,14 +10,17 @@ import (
 )
 
 func TestS3ContractIntegration(t *testing.T) {
-	endpoint := os.Getenv("LOOM_TEST_S3_ENDPOINT")
+	endpoint := os.Getenv("ALEXANDRIA_TEST_S3_ENDPOINT")
 	if endpoint == "" {
-		t.Skip("LOOM_TEST_S3_ENDPOINT not set")
+		if os.Getenv("ALEXANDRIA_REQUIRE_INTEGRATION") == "1" {
+			t.Fatal("object storage is required")
+		}
+		t.Skip("ALEXANDRIA_TEST_S3_ENDPOINT not set")
 	}
 	ctx := context.Background()
 	store, err := NewS3(ctx, S3Config{
-		Endpoint: endpoint, Region: "us-east-1", Bucket: "aragonite-loom",
-		AccessKey: "loom-local", SecretKey: "loom-local-secret", PathStyle: true,
+		Endpoint: endpoint, Region: "us-east-1", Bucket: "aragonite-alexandria-server",
+		AccessKey: "alexandria-local", SecretKey: "alexandria-local-secret", PathStyle: true,
 	})
 	if err != nil {
 		t.Fatal(err)

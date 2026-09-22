@@ -9,13 +9,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jdkruzr/aragonite-loom/internal/database"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/database"
 )
 
 func TestConcurrentClaimsIntegration(t *testing.T) {
-	databaseURL := os.Getenv("LOOM_TEST_DATABASE_URL")
+	databaseURL := os.Getenv("ALEXANDRIA_TEST_DATABASE_URL")
 	if databaseURL == "" {
-		t.Skip("LOOM_TEST_DATABASE_URL not set")
+		if os.Getenv("ALEXANDRIA_REQUIRE_INTEGRATION") == "1" {
+			t.Fatal("database is required")
+		}
+		t.Skip("ALEXANDRIA_TEST_DATABASE_URL not set")
 	}
 	ctx := context.Background()
 	db, err := database.Open(ctx, databaseURL)
@@ -36,7 +39,7 @@ func TestConcurrentClaimsIntegration(t *testing.T) {
 		ids = append(ids, id)
 	}
 	t.Cleanup(func() {
-		_, _ = db.ExecContext(context.Background(), `DELETE FROM loom_jobs WHERE idempotency_key LIKE $1`, prefix+"%")
+		_, _ = db.ExecContext(context.Background(), `DELETE FROM alexandria_jobs WHERE idempotency_key LIKE $1`, prefix+"%")
 		_ = db.Close()
 	})
 

@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jdkruzr/aragonite-loom/internal/api"
-	"github.com/jdkruzr/aragonite-loom/internal/auth"
-	"github.com/jdkruzr/aragonite-loom/internal/database"
-	"github.com/jdkruzr/aragonite-loom/internal/tasks"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/database"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -28,6 +28,14 @@ type Gateway struct {
 }
 
 func NewGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Duration, jobEnqueuer api.JobEnqueuer, logger *slog.Logger) *Gateway {
+	return newGateway(db, mainAddr, spcAddr, shutdownTimeout, jobEnqueuer, logger, nil)
+}
+
+func NewRuntimeGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Duration, handler http.Handler, logger *slog.Logger) *Gateway {
+	return newGateway(db, mainAddr, spcAddr, shutdownTimeout, nil, logger, handler)
+}
+
+func newGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Duration, jobEnqueuer api.JobEnqueuer, logger *slog.Logger, libraryHandler http.Handler) *Gateway {
 	registry := prometheus.NewRegistry()
 	metrics := NewMetrics(registry)
 	mainMux := http.NewServeMux()
@@ -36,9 +44,12 @@ func NewGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Durat
 	protected := http.NewServeMux()
 	api.Tasks{Store: tasks.NewStore(db)}.Register(protected)
 	api.Jobs{Service: jobEnqueuer}.Register(protected)
-	mainMux.Handle("/api/", auth.NewStore(db).Middleware(protected))
+	if libraryHandler == nil {
+		libraryHandler = auth.NewStore(db).Middleware(protected)
+	}
+	mainMux.Handle("/api/", libraryHandler)
 	mainMux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"name": "Aragonite Loom", "status": "foundation"})
+		writeJSON(w, http.StatusOK, map[string]string{"name": "Aragonite Alexandria Server", "status": "foundation"})
 	})
 	spcMux := http.NewServeMux()
 	registerProbes(spcMux, db)
@@ -89,7 +100,7 @@ func registerProbes(mux *http.ServeMux, db *sql.DB) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		if err := database.Ready(ctx, db); err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready", "error": err.Error()})
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
