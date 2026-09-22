@@ -1,11 +1,16 @@
 locals {
   tags               = { Application = "Aragonite Alexandria Server", ManagedBy = "Terraform" }
-  gateway_count      = var.ha ? 2 : 1
+  gateway_count      = var.gateway_enabled ? (var.ha ? 2 : 1) : 0
   database_min_acu   = var.ha ? 0.5 : 0
   database_instances = var.ha ? 2 : 1
 }
 
 resource "random_password" "database" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "runtime" {
   length  = 32
   special = false
 }
@@ -91,8 +96,57 @@ resource "aws_secretsmanager_secret" "runtime" {
 resource "aws_secretsmanager_secret_version" "runtime" {
   secret_id = aws_secretsmanager_secret.runtime.id
   secret_string = jsonencode({
-    database_url = "postgres://${urlencode(var.database_username)}:${urlencode(random_password.database.result)}@${aws_rds_cluster.alexandria.endpoint}:5432/${var.database_name}?sslmode=require"
+    database_url = "postgres://alexandria_runtime:${urlencode(random_password.runtime.result)}@${aws_rds_cluster.alexandria.endpoint}:5432/${var.database_name}?sslmode=require"
   })
+}
+
+resource "aws_secretsmanager_secret" "management" {
+  name_prefix = "${var.name}-management-"
+  tags        = local.tags
+}
+
+resource "aws_secretsmanager_secret_version" "management" {
+  secret_id = aws_secretsmanager_secret.management.id
+  secret_string = jsonencode({
+    database_url     = "postgres://${urlencode(var.database_username)}:${urlencode(random_password.database.result)}@${aws_rds_cluster.alexandria.endpoint}:5432/${var.database_name}?sslmode=require"
+    runtime_password = random_password.runtime.result
+  })
+}
+
+resource "aws_iam_role" "management_execution" {
+  name_prefix        = "${var.name}-management-exec-"
+  assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = ["ecs-tasks.amazonaws.com"] }, Action = "sts:AssumeRole" }] })
+}
+
+resource "aws_iam_role_policy_attachment" "management_execution" {
+  role       = aws_iam_role.management_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy" "management_secret" {
+  role   = aws_iam_role.management_execution.id
+  policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = aws_secretsmanager_secret.management.arn }] })
+}
+
+resource "aws_ecs_task_definition" "management" {
+  family                   = "${var.name}-management"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.management_execution.arn
+  container_definitions = jsonencode([{
+    name        = "alexandria", image = var.image_uri, essential = true,
+    command     = ["migrate"], readonlyRootFilesystem = true,
+    environment = [{ name = "ALEXANDRIA_OBJECT_REGION", value = var.region }],
+    secrets = [
+      { name = "ALEXANDRIA_DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.management.arn}:database_url::" },
+      { name = "ALEXANDRIA_RUNTIME_PASSWORD", valueFrom = "${aws_secretsmanager_secret.management.arn}:runtime_password::" }
+    ],
+    linuxParameters  = { capabilities = { drop = ["ALL"] }, initProcessEnabled = true },
+    logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.alexandria.name, awslogs-region = var.region, awslogs-stream-prefix = "management" } }
+  }])
+  tags = local.tags
 }
 
 resource "aws_ecs_cluster" "alexandria" {

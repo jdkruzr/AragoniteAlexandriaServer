@@ -50,6 +50,8 @@ func run(args []string, logger *slog.Logger) error {
 			return runTaskImport(args[1:], logger)
 		case "migrate":
 			return runMigrate(logger)
+		case "bootstrap-runtime":
+			return runBootstrapRuntime(logger)
 		case "init-storage":
 			cfg, err := config.Load()
 			if err != nil {

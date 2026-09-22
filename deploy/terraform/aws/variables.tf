@@ -46,6 +46,12 @@ variable "ha" {
   default = false
 }
 
+variable "gateway_enabled" {
+  description = "Enable only after the one-shot migrate and bootstrap-runtime tasks succeed."
+  type        = bool
+  default     = false
+}
+
 variable "gateway_cpu" {
   type    = number
   default = 512

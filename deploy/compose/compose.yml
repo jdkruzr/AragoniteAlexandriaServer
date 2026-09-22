@@ -20,7 +20,7 @@ services:
 
   seaweedfs:
     image: chrislusf/seaweedfs:3.85
-    command: server -s3 -dir=/data -ip=seaweedfs -volume.max=1 -volume.minFreeSpace=0 -master.volumePreallocate=false
+    command: server -s3 -dir=/data -ip=seaweedfs -ip.bind=0.0.0.0 -volume.max=1 -volume.minFreeSpace=0 -master.volumePreallocate=false
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/ || exit 1"]
       interval: 3s
@@ -37,7 +37,7 @@ services:
     image: aragonite-alexandria-server:local
     environment: &server-environment
       ALEXANDRIA_ROLE: all
-      ALEXANDRIA_DATABASE_URL: postgres://alexandria:${ALEXANDRIA_POSTGRES_PASSWORD:-alexandria-local-only}@postgres:5432/alexandria?sslmode=disable
+      ALEXANDRIA_DATABASE_URL: postgres://alexandria_runtime:${ALEXANDRIA_RUNTIME_PASSWORD:?Set a random hexadecimal runtime password of at least 24 characters}@postgres:5432/alexandria?sslmode=disable
       ALEXANDRIA_OBJECT_ENDPOINT: http://seaweedfs:8333
       ALEXANDRIA_OBJECT_REGION: us-east-1
       ALEXANDRIA_OBJECT_BUCKET: aragonite-alexandria-server
@@ -53,11 +53,13 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      bootstrap-runtime:
+        condition: service_completed_successfully
       init-storage:
         condition: service_completed_successfully
     ports:
-      - "${ALEXANDRIA_MAIN_PORT:-18443}:8443"
-      - "${ALEXANDRIA_SPC_PORT:-18089}:8089"
+      - "127.0.0.1:${ALEXANDRIA_MAIN_PORT:-18443}:8443"
+      - "127.0.0.1:${ALEXANDRIA_SPC_PORT:-18089}:8089"
     read_only: true
     tmpfs:
       - /tmp:size=1g,mode=1777
@@ -70,10 +72,24 @@ services:
       context: ../..
     image: aragonite-alexandria-server:local
     command: ["migrate"]
-    environment: *server-environment
+    environment:
+      <<: *server-environment
+      ALEXANDRIA_DATABASE_URL: postgres://alexandria:${ALEXANDRIA_POSTGRES_PASSWORD:-alexandria-local-only}@postgres:5432/alexandria?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
+    restart: "no"
+
+  bootstrap-runtime:
+    image: aragonite-alexandria-server:local
+    command: ["bootstrap-runtime"]
+    environment:
+      <<: *server-environment
+      ALEXANDRIA_DATABASE_URL: postgres://alexandria:${ALEXANDRIA_POSTGRES_PASSWORD:-alexandria-local-only}@postgres:5432/alexandria?sslmode=disable
+      ALEXANDRIA_RUNTIME_PASSWORD: ${ALEXANDRIA_RUNTIME_PASSWORD:?Set the runtime password}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: "no"
 
   init-storage:

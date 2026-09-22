@@ -53,3 +53,28 @@ The runtime API and identity migration have local PostgreSQL tests. Deployment
 hardening, automatic first-run setup, hosted provisioning/onboarding, hosted
 upgrade campaigns, and live cloud verification are still under implementation.
 Do not treat this checkpoint as a release candidate.
+# Standalone setup privilege boundary
+
+Compose now requires `ALEXANDRIA_RUNTIME_PASSWORD` (use a random hexadecimal
+value of at least 24 characters). Management and runtime passwords are separate.
+The setup dependency chain runs `migrate`, `bootstrap-runtime`, and `init-storage`
+before starting the server. Setup is repeatable and does not silently rotate an
+existing runtime password. HTTP ports bind to loopback; put the existing trusted
+TLS reverse proxy in front before remote use. Administrator creation remains the
+explicit `seed-user --username ... --password-file ...` management command.
+
+For a fresh personal AWS deployment, leave `gateway_enabled=false`, apply the
+infrastructure, and run the `management_task_definition` as a one-shot Fargate
+task in the private subnets using `management_security_group`. Run its default
+`migrate` command first; after exit 0, run again with the container command
+override `["bootstrap-runtime"]`. Only after both exit successfully, set
+`gateway_enabled=true` and apply. Seed the administrator through the management
+path before use. AWS creates the object bucket through Terraform, not the runtime.
+No Hosting directory, Stripe secret, subscription or commercial account is needed.
+
+Existing installations must schedule the credential cutover: the runtime secret
+now names `alexandria_runtime`, while the owner credential moves into the separate
+management secret. Do not enable the gateway until bootstrap verifies that role.
+Terraform state contains generated credentials and needs restricted encrypted
+storage. These manifests have been validated, not yet qualified in a live personal
+AWS installation. Browser-first setup and the deployment wrapper remain pending.

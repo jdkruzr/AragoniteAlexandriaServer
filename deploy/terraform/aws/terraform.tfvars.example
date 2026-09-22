@@ -7,3 +7,4 @@ main_hostname      = "alexandria.example.com"
 spc_hostname       = "supernote.example.com"
 certificate_arn    = "arn:aws:acm:us-east-1:123456789012:certificate/..."
 ha                 = false
+gateway_enabled    = false # Set true only after migrate and bootstrap-runtime succeed.
