@@ -33,6 +33,8 @@ and [UltraBridge migration safety](docs/ultrabridge-migration.md).
 
 ```bash
 cp deploy/compose/.env.example deploy/compose/.env
+# Set separate random hexadecimal database and runtime passwords in that file.
+# Do not use the example placeholders for a real installation.
 docker compose --env-file deploy/compose/.env \
   -f deploy/compose/compose.yml up --build
 ```
@@ -84,6 +86,9 @@ vertical slice, not an assertion of UltraBridge feature parity.
 
 The AWS module expects an existing VPC, subnets, DNS management, and ACM
 certificate. It does not create a surprise network architecture on your behalf.
+First-run management tasks and credential cutover are described in
+[deployment setup](docs/deployment-identity-upgrade.md). Neither standalone
+deployment requires the separate Hosting repository or subscriptions.
 
 Brand usage and the reproducible generation brief for the project mark are in
 [the brand note](docs/brand.md).

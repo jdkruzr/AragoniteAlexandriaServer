@@ -2,8 +2,13 @@
 .env
 data
 dist
-loom
+alexandria-server
 coverage.out
 .terraform
 *.tfstate
 *.tfstate.*
+*.tfvars
+*.tfplan
+**/.env
+AGENTS.md
+CLAUDE.md

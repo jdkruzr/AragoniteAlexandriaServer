@@ -11,7 +11,7 @@
 ```bash
 go test ./...
 go test -race ./...
-docker compose -f deploy/compose/compose.yml config --quiet
+ALEXANDRIA_RUNTIME_PASSWORD=ci-only-not-a-deployment-secret docker compose -f deploy/compose/compose.yml config --quiet
 helm lint deploy/helm/aragonite-alexandria-server --set database.url=postgres://example
 terraform -chdir=deploy/terraform/aws fmt -check
 terraform -chdir=deploy/terraform/aws validate
