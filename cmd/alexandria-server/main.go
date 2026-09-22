@@ -79,6 +79,16 @@ func run(args []string, logger *slog.Logger) error {
 			return runSeedUser(args[1:], logger)
 		case "create-token":
 			return runCreateToken(args[1:], logger)
+		case "grant-runtime":
+			if len(args) != 2 {
+				return errors.New("grant-runtime requires a pre-created restricted PostgreSQL role name")
+			}
+			db, ctx, closeDB, err := openAdminDB(logger)
+			if err != nil {
+				return err
+			}
+			defer closeDB()
+			return library.GrantRuntime(ctx, db, args[1])
 		case "serve":
 			args = args[1:]
 		default:
