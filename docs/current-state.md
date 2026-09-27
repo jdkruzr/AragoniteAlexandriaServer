@@ -4,6 +4,9 @@ Context split: 2026-09-27 UTC. Repository `/home/jtd/AragoniteAlexandriaServer`,
 branch `integration/alexandria-foundation`; implementation HEAD `83e6b0e`.
 Worktree was clean before these documentation additions.
 
+Forward checklist: [remaining steps](remaining-steps.md), including standalone
+setup, the paused sync port and coordinated release gates.
+
 ## What exists and what does not
 
 This is the cloud-native successor to UltraBridge, not feature parity with it.
