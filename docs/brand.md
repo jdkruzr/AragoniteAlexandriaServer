@@ -4,13 +4,14 @@ Aragonite Alexandria is the client; Aragonite Alexandria Server is the server.
 Aragonite Alexandria Hosting is the separate commercial hosting control plane.
 The existing artwork and its original generation brief are retained below.
 
-![Aragonite Loom woven-page mark](../assets/aragonite-alexandria-server-mark.png)
+![Aragonite Alexandria woven-page mark](../assets/aragonite-alexandria-server-mark.png)
 
 The canonical raster mark is `assets/aragonite-alexandria-server-mark.png`. Keeping it in
 the repository makes it viewable anywhere the repository or generated docs are
 published, without depending on a private UltraBridge service.
 
-It was generated with OpenAI's built-in image generation tool using this brief:
+It was generated with OpenAI's built-in image generation tool using this brief,
+quoted verbatim; it predates the rename from the working name Loom to Alexandria:
 
 > A single polished app icon/logo mark for “Aragonite Loom”: an abstract woven
 > sheet of paper merging with a crystalline aragonite form. Minimal geometric

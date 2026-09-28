@@ -46,8 +46,9 @@ assumption that this checkout's HEAD was deployed. Later local Server commits
 cover standalone setup/manifests/docs; their presence is not a live personal-cloud
 acceptance result.
 
-The AWS deployment workstation is `sysop@192.168.9.52`; the sibling checkout there
-is `~/src/AragoniteAlexandriaServer`. Recheck its branch/worktree before use.
+Deployment workstations and Hosting infrastructure details are operator records,
+kept in the Hosting operator's private ops directory rather than in this public
+repository. Recheck any remote checkout's branch/worktree before use.
 Hosting's reused-host stack is separate from this repository's personal-cloud
 Terraform profile. Never apply one state as though it owned the other deployment.
 No remote change is part of this context split.
