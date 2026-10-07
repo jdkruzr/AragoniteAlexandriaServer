@@ -192,3 +192,32 @@ func TestTwoDevicesSyncThroughRuntime(t *testing.T) {
 		t.Fatalf("pull: %d %s", got.Code, got.Body)
 	}
 }
+
+func TestReaderRowsMaterializeThroughWorkerStep(t *testing.T) {
+	r, db, _ := fixture(t)
+	site := wire.NewULID()
+	token, hash := deviceKey("reader")
+	if got := enroll(r, `{"site_id":"`+site+`","token_hash":"`+hash+`"}`, nil); got.Code != 204 {
+		t.Fatal(got.Code)
+	}
+	book := `{"table":"reader_book","pk":"` + strings.Repeat("a", 64) + `","site_id":"` + site + `","op_seq":1,"op_ts":1,"cols":{"asset_id":"` + strings.Repeat("a", 64) + `","byte_length":9007199254740993,"media_type":"application/epub+zip","metadata_json":"{\"version\":1,\"title\":\"Shelf\"}"}}`
+	body := `{"protocol_version":1,"schema_hash":"55c37f7f1d386ce37ab57c976bccae8d4efed385f852db6d807dff549ad77a54","site_id":"` + site + `","cursor":0,"ops":[` + book + `]}`
+	req := httptest.NewRequest("POST", "/sync/v1", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-Rhizome-Bounded-Rows", "1")
+	out := httptest.NewRecorder()
+	r.ServeHTTP(out, req)
+	if out.Code != 200 || !strings.Contains(out.Body.String(), `"accepted_through":1`) {
+		t.Fatal(out.Code, out.Body)
+	}
+	if n, err := r.MaterializeReader(context.Background()); err != nil || n != 1 {
+		t.Fatal(n, err)
+	}
+	var length int64
+	if err := db.QueryRow(`SELECT byte_length FROM fn_reader_book`).Scan(&length); err != nil || length != 9007199254740993 {
+		t.Fatal(length, err)
+	}
+	if n, err := r.MaterializeReader(context.Background()); err != nil || n != 0 {
+		t.Fatal("idle step did work", n, err)
+	}
+}

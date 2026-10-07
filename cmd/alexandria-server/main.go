@@ -277,6 +277,9 @@ func runService(logger *slog.Logger) error {
 			case <-timer.C:
 				_, err := runtime.Reconcile(ctx)
 				if err == nil {
+					_, err = runtime.MaterializeReader(ctx)
+				}
+				if err == nil {
 					_, err = runtime.WorkOnce(ctx, cfg.WorkerID)
 				}
 				if err == nil && time.Since(collected) > time.Hour {

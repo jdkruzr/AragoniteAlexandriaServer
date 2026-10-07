@@ -33,6 +33,10 @@ const (
 	// IdentityLock serializes device enrollment so two connections cannot both
 	// observe a free site or token hash and claim it.
 	IdentityLock int64 = 0x416C657869640001 // "Alexid" + 1
+	// ReaderLock serializes reader materialization (drain) and journal
+	// completion across gateway and worker processes. Lock order: generation
+	// row, then sync_seq, then ReaderLock.
+	ReaderLock int64 = 0x416C657869640002
 )
 
 // XactLock takes a transaction-scoped exclusive advisory lock.
