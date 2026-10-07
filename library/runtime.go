@@ -223,7 +223,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	defer done()
 	if host.Owns(req.URL.Path) {
-		r.sync.Serve(conn, r.account(conn), w, req)
+		r.sync.Serve(host.Library{DB: conn, Objects: r.objects, Account: r.account(conn)}, w, req)
 		return
 	}
 	mux := http.NewServeMux()
@@ -337,6 +337,20 @@ func (r *Runtime) Reconcile(ctx context.Context) (int64, error) {
 	}
 	defer done()
 	return jobs.NewStore(conn).RequeueExpired(ctx)
+}
+
+// AssetGrace is how long an unreferenced chunk object survives. It must
+// exceed any plausible gap between a chunk PUT and its row commit.
+const AssetGrace = 7 * 24 * time.Hour
+
+// CollectAssets removes up to limit orphaned asset chunk objects.
+func (r *Runtime) CollectAssets(ctx context.Context, limit int) (int, error) {
+	conn, done, err := r.admit(ctx, Process)
+	if err != nil {
+		return 0, err
+	}
+	defer done()
+	return host.Assets(host.Library{DB: conn, Objects: r.objects}).CollectGarbage(ctx, AssetGrace, limit)
 }
 
 func (r *admittedReader) Close() error {

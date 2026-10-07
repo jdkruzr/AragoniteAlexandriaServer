@@ -101,8 +101,8 @@ func TestDeviceEnrollmentAndCapabilities(t *testing.T) {
 	if !strings.Contains(got.Body.String(), "55c37f7f1d386ce37ab57c976bccae8d4efed385f852db6d807dff549ad77a54") || !strings.Contains(got.Body.String(), "bounded-rows-v1") {
 		t.Fatalf("capabilities body: %s", got.Body)
 	}
-	if strings.Contains(got.Body.String(), "assets-v1") {
-		t.Fatal("assets-v1 advertised before the asset store exists")
+	if !strings.Contains(got.Body.String(), "assets-v1") {
+		t.Fatal("assets-v1 not advertised")
 	}
 	if got := device(r, "/sync/nope", token); got.Code != 404 {
 		t.Fatalf("unknown path: %d", got.Code)

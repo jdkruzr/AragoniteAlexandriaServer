@@ -269,6 +269,7 @@ func runService(logger *slog.Logger) error {
 	work := func(ctx context.Context) error {
 		timer := time.NewTimer(0)
 		defer timer.Stop()
+		var collected time.Time
 		for {
 			select {
 			case <-ctx.Done():
@@ -277,6 +278,11 @@ func runService(logger *slog.Logger) error {
 				_, err := runtime.Reconcile(ctx)
 				if err == nil {
 					_, err = runtime.WorkOnce(ctx, cfg.WorkerID)
+				}
+				if err == nil && time.Since(collected) > time.Hour {
+					if _, err = runtime.CollectAssets(ctx, 500); err == nil {
+						collected = time.Now()
+					}
 				}
 				if err != nil && ctx.Err() == nil {
 					logger.Warn("library worker deferred", "error_code", "work_unavailable")
@@ -299,7 +305,10 @@ func runService(logger *slog.Logger) error {
 		}
 		return work(ctx)
 	case config.RoleMaintenance:
-		_, err := runtime.Reconcile(ctx)
+		if _, err := runtime.Reconcile(ctx); err != nil {
+			return err
+		}
+		_, err := runtime.CollectAssets(ctx, 10000)
 		return err
 	case config.RoleAll:
 		return runComponents(ctx, cancel, gateway.Run, work)
