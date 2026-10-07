@@ -43,3 +43,6 @@ Ported behavioral surfaces:
   (internal/alexandria/mcptools/tasks.go)
 - Books view of the library (internal/alexandria/books, from the
   alexandria-naming-and-books branch internal/service/library.go with tests)
+- Web UI (internal/alexandria/web) and OAuth for MCP clients
+  (internal/alexandria/oauth), following UltraBridge's ForestNote, Books,
+  devices, settings and OAuth handlers

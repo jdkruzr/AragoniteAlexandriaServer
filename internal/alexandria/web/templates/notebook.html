@@ -1,0 +1,22 @@
+{{define "content"}}{{$d := .Data}}
+<p class="crumbs"><a href="/files/forestnote">All notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{query .ID}}">{{.Name}}</a>{{end}}</p>
+<h1>{{if $d.Name}}{{$d.Name}}{{else}}Untitled notebook{{end}}</h1>
+<div class="actions">
+  <a class="button" href="/files/forestnote/export?notebook={{query $d.ID}}">Download PDF</a>
+  <form method="post" action="/files/forestnote/reprocess"><input type="hidden" name="notebook" value="{{$d.ID}}"><button>Recognize Again</button></form>
+  <details class="danger"><summary>Delete Notebook</summary>
+    <form method="post" action="/files/forestnote/delete"><input type="hidden" name="notebook" value="{{$d.ID}}">
+      <p>Devices delete this notebook on their next sync. An edit made on a device afterwards brings it back.</p>
+      <button class="destructive">Delete Notebook</button></form>
+  </details>
+</div>
+{{if not $d.Pages}}<p class="empty">This notebook has no pages.</p>{{end}}
+<div class="pages">
+{{range $d.Pages}}
+<figure id="page-{{.ID}}" {{if eq .ID $d.Focus}}class="focus"{{end}}>
+  <img loading="lazy" src="/files/forestnote/render?path={{query .Key}}" alt="Page {{.Number}}">
+  <figcaption><strong>Page {{.Number}}</strong>{{if .BodyText}}<pre>{{.BodyText}}</pre>{{else}}<span class="muted">No recognized text yet.</span>{{end}}</figcaption>
+</figure>
+{{end}}
+</div>
+{{end}}

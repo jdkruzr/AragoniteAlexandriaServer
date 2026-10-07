@@ -1,0 +1,39 @@
+{{define "content"}}{{$d := .Data}}
+<h1>Settings</h1>
+<section>
+  <h2>Handwriting Recognition</h2>
+  {{if $d.Status.OCR}}<p>On, using <code>{{$d.Status.OCR}}</code>. Recognized text is searchable here and syncs back to devices.</p>
+  {{else}}<p>Off. To turn it on, set <code>ALEXANDRIA_OCR_URL</code>, <code>ALEXANDRIA_OCR_API_KEY</code> and <code>ALEXANDRIA_OCR_MODEL</code> in the server's <code>.env</code> and restart it.</p>{{end}}
+  <p>{{if $d.Status.Embedding}}Search by meaning is on, using <code>{{$d.Status.Embedding}}</code>.{{else}}Search by meaning is off. Set <code>ALEXANDRIA_EMBED_URL</code> to an Ollama server to turn it on.{{end}}</p>
+</section>
+<section>
+  <h2>Tasks Over CalDAV</h2>
+  <p>CalDAV address: <code>{{.Base}}{{$d.CalDAV}}</code></p>
+  <form method="post" action="/settings/caldav" class="stack">
+    <label>Task list name <input name="collection" value="{{$d.Collection}}" maxlength="200"></label>
+    <label>Due dates
+      <select name="due_mode">
+        <option value="preserve" {{if eq $d.DueMode "preserve"}}selected{{end}}>Keep the time of day</option>
+        <option value="date_only" {{if eq $d.DueMode "date_only"}}selected{{end}}>Date only</option>
+      </select></label>
+    <button>Save</button>
+  </form>
+</section>
+<section>
+  <h2>API and MCP Access</h2>
+  <p>MCP address: <code>{{.Base}}/mcp</code>. Claude on the web connects with this address and asks you to approve access here. Other clients use a token.</p>
+  <form method="post" action="/settings/tokens/create" class="inline">
+    <input name="label" placeholder="What is this token for?" maxlength="100"><button>Create Token</button>
+  </form>
+  {{if $d.Tokens}}
+  <table>
+    <thead><tr><th>Token</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+    <tbody>{{range $d.Tokens}}
+      <tr><td>{{if eq .Label $d.OAuthLabel}}Claude (approved here){{else}}{{.Label}}{{end}}</td><td>{{.Created.Local.Format "2006-01-02"}}</td>
+      <td>{{if .LastUsed}}{{.LastUsed.Local.Format "2006-01-02 15:04"}}{{else}}Never{{end}}</td>
+      <td><form method="post" action="/settings/tokens/revoke"><input type="hidden" name="token_hash" value="{{.Hash}}"><button class="quiet">Revoke</button></form></td></tr>
+    {{end}}</tbody>
+  </table>
+  {{end}}
+</section>
+{{end}}

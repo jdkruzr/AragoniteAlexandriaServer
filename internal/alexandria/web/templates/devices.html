@@ -1,0 +1,37 @@
+{{define "content"}}{{$d := .Data}}
+<h1>Devices</h1>
+<section class="help">
+  <h2>Add a Device</h2>
+  <p>In Alexandria, open Settings → Sync, enter <code>{{.Base}}</code> as the server address, and sign in with this server's account. The device then appears here.</p>
+  <p>For tasks in other apps, use the CalDAV address <code>{{.Base}}/caldav/user/calendars/tasks/</code> with the same account.</p>
+</section>
+{{if not $d.Devices}}<p class="empty">No devices have enrolled yet.</p>{{else}}
+<table>
+<thead><tr><th>Device</th><th>Last sync</th><th>Waiting</th><th>State</th><th></th></tr></thead>
+<tbody>
+{{range $d.Devices}}
+<tr>
+  <td><strong>{{.DisplayName}}</strong><div class="muted small">{{.SiteID}}{{if .FirstSeenMs}} · since {{ms .FirstSeenMs}}{{end}}</div></td>
+  <td>{{if .LastSeenMs}}{{ms .LastSeenMs}}{{else}}Never{{end}}</td>
+  <td>{{.PendingOps}} changes</td>
+  <td>{{if .Revoked}}<span class="badge blank">Revoked</span>{{else if .NeedsAdoption}}<span class="badge partial">Needs restore</span>{{else if .Enrolled}}<span class="badge indexed">Active</span>{{else}}<span class="badge blank">Not enrolled</span>{{end}}</td>
+  <td>
+    <details><summary>Manage</summary>
+      <form method="post" action="/settings/devices/rename"><input type="hidden" name="site_id" value="{{.SiteID}}">
+        <input name="label" value="{{.Label}}" placeholder="{{.Name}}" maxlength="128" aria-label="Device name"><button>Rename</button></form>
+      {{if and .Enrolled (not .Revoked)}}
+      <form method="post" action="/settings/devices/revoke"><input type="hidden" name="site_id" value="{{.SiteID}}">
+        <p class="small">Revoking stops this device syncing. Its notes stay in the library.</p><button class="destructive">Revoke Device</button></form>
+      {{end}}
+      {{if .LastSeenMs}}
+      <form method="post" action="/settings/devices/prune"><input type="hidden" name="site_id" value="{{.SiteID}}">
+        <p class="small">Clears the sync position. A device still in use picks up where it left off.</p><button class="quiet">Clear Sync Position</button></form>
+      {{end}}
+    </details>
+  </td>
+</tr>
+{{end}}
+</tbody>
+</table>
+{{end}}
+{{end}}

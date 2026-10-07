@@ -1,0 +1,10 @@
+{{define "content"}}{{$d := .Data}}
+<h1>Allow Access?</h1>
+<p><strong>{{if $d.Request.ClientName}}{{$d.Request.ClientName}}{{else}}An app{{end}}</strong> wants to use this library: search and read your notebooks and books, edit text boxes, and manage tasks.</p>
+<p class="muted small">You'll be sent back to <code>{{$d.Request.RedirectURI}}</code>. You can revoke access later in Settings.</p>
+<form method="post" action="/authorize" class="inline">
+  <input type="hidden" name="query" value="{{$d.Query}}">
+  <button name="decision" value="allow">Allow</button>
+  <button name="decision" value="deny" class="quiet">Don't Allow</button>
+</form>
+{{end}}

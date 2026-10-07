@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,12 +19,14 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
@@ -247,6 +250,15 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	taskDeps := taskhost.Deps{DB: conn, Objects: r.objects, Secret: r.attachSecret, PublicURL: r.cfg.PublicURL}
+	if oauth.Public(req.URL.Path) {
+		oauth.PublicHandler(conn, r.cfg.PublicURL).ServeHTTP(w, req)
+		return
+	}
+	if (req.URL.Path == "/mcp" || strings.HasPrefix(req.URL.Path, "/mcp/")) && req.Header.Get("Authorization") == "" {
+		// Lets an MCP client discover how to obtain a token (OAuth).
+		oauth.Challenge(r.cfg.PublicURL, w, req)
+		return
+	}
 	if taskhost.Owns(req.URL.Path) {
 		// Public by design: CalDAV clients fetch ATTACH URLs without
 		// credentials; each URL carries its own signature.
@@ -263,6 +275,14 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mux.Handle(taskhost.Prefix+"/", taskhost.CalDAV(taskDeps))
 	mux.Handle("/.well-known/caldav", taskhost.WellKnown())
 	mux.Handle("/.well-known/caldav/", taskhost.WellKnown())
+	status := web.Status{}
+	if r.cfg.Pages.OCR != nil {
+		status.OCR = r.cfg.Pages.OCR.Model()
+	}
+	if r.cfg.Pages.Embedder != nil {
+		status.Embedding = r.cfg.Pages.Embedder.Model()
+	}
+	mux.Handle("/", web.Handler(web.Deps{DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {

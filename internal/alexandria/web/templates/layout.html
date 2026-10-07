@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · Alexandria</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="/">Alexandria</a>
+  <nav>
+    <a href="/files/forestnote" {{if eq .Section "notebooks"}}aria-current="page"{{end}}>Notebooks</a>
+    <a href="/files/forestnote/books" {{if eq .Section "books"}}aria-current="page"{{end}}>Books</a>
+    <a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>Search</a>
+    <a href="/tasks" {{if eq .Section "tasks"}}aria-current="page"{{end}}>Tasks</a>
+    <a href="/settings/devices" {{if eq .Section "devices"}}aria-current="page"{{end}}>Devices</a>
+    <a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>Settings</a>
+  </nav>
+</header>
+<main>
+{{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+{{template "content" .}}
+</main>
+</body>
+</html>

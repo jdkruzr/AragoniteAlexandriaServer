@@ -1,0 +1,33 @@
+{{define "content"}}{{$d := .Data}}
+<h1>Tasks</h1>
+{{if not $d.Trash}}
+<form class="inline" method="post" action="/tasks">
+  <input name="title" placeholder="New task" required maxlength="500">
+  <input type="date" name="due" aria-label="Due date">
+  <button>Add Task</button>
+</form>
+{{end}}
+<p><a href="/tasks{{if not $d.Trash}}?show=deleted{{end}}">{{if $d.Trash}}Back to tasks{{else}}Deleted tasks{{end}}</a></p>
+<h2>{{if $d.Trash}}Deleted{{else}}To Do{{end}}</h2>
+{{if not $d.Open}}<p class="empty">Nothing to do.</p>{{else}}<ul class="tasks">{{range $d.Open}}{{template "task" .}}{{end}}</ul>{{end}}
+{{if $d.Done}}
+<h2>Done</h2>
+<ul class="tasks done">{{range $d.Done}}{{template "task" .}}{{end}}</ul>
+{{if not $d.Trash}}<form method="post" action="/tasks/purge-completed"><button class="quiet">Clear Completed Tasks</button></form>{{end}}
+{{end}}
+{{end}}
+
+{{define "task"}}
+<li>
+  <span class="title">{{.Title}}</span>
+  {{if .DueAt}}<span class="muted">due {{time .DueAt}}</span>{{end}}
+  {{if .ForestNote}}<a class="small" href="/files/forestnote?notebook={{query .ForestNote.NotebookID}}&page={{query .ForestNote.PageID}}#page-{{.ForestNote.PageID}}">{{if .ForestNote.NotebookName}}{{.ForestNote.NotebookName}}{{else}}Notebook page{{end}}</a>{{end}}
+  {{if .Detail}}<div class="muted small">{{deref .Detail}}</div>{{end}}
+  {{if not .Deleted}}
+  <span class="row-actions">
+    {{if ne .Status "completed"}}<form method="post" action="/tasks/{{query .ID}}/complete"><button>Done</button></form>{{end}}
+    <form method="post" action="/tasks/{{query .ID}}/delete"><button class="quiet">Delete</button></form>
+  </span>
+  {{end}}
+</li>
+{{end}}
