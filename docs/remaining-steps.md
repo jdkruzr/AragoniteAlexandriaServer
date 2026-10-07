@@ -85,8 +85,28 @@ Alexandria client's pinned revision (`21a77ad`) as a Go pseudo-version, not a fo
 - P8: CalDAV at `/caldav/` with UltraBridge's backend and stubs unchanged
   (its CalDAV, task store and task service suites pass on PostgreSQL), signed
   public attachment URLs backed by object storage.
-- Not yet: OAuth for Claude Web on `/mcp` (operator bearer tokens and Basic
-  work today), and the web UI (P9).
+- P9 (2026-10-07): web UI (notebooks with page images, PDF export, delete,
+  recognize again; Books with annotations, ink and downloads; search; tasks;
+  devices with rename/revoke; settings and API tokens) with a strict CSP and
+  same-origin form posts, and OAuth 2.1 consent for Claude Web on `/mcp`.
+  Checked in a browser against a seeded library.
+- P10 (2026-10-07): `deploy/compose/install.sh`, `backup.sh`, `restore.sh`
+  and `docs/deployment-compose.md`.
+
+### Open before calling S2 done
+
+- Run `install.sh` end to end on a host with Docker Compose or Podman Compose
+  (the development host has neither, and its root disk is full, so even
+  `podman build` of the image has not completed here yet).
+- On-device qualification with the Ocean (productionLab) and a second tablet
+  through a TLS proxy: enroll, offline merge, book upload resumed after a kill,
+  `page_text_from_server` arriving, search, restore publish and adoption,
+  server restart mid-upload, backup and restore.
+- `alexandria-lab` lacks `--reader-inspect/-backup/-inventory/-restore`, so
+  the shared-library e2e runner (`shared-library-e2e.mjs`) cannot target this
+  server yet; `run.mjs --server alexandria` is not wired.
+- Not ported on purpose: UltraBridge's sources other than Alexandria
+  (Supernote, Boox, reMarkable), its chat page, and relay compaction.
 - PostgreSQL text cannot hold U+0000. Writer and reader mirror text replaces it
   with U+FFFD; relay payloads stay byte-exact, so devices still converge.
 
