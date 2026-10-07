@@ -9,7 +9,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/batch v1.51.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.78.1
 	github.com/aws/smithy-go v1.22.2
+	github.com/emersion/go-ical v0.0.0-20250609112844-439c63cef608
+	github.com/emersion/go-webdav v0.7.0
 	github.com/fogleman/gg v1.2.0
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
@@ -38,8 +41,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/emersion/go-ical v0.0.0-20250609112844-439c63cef608 // indirect
-	github.com/emersion/go-webdav v0.7.0 // indirect
 	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
