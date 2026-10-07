@@ -13,3 +13,5 @@ coverage.out
 crash.log
 AGENTS.md
 CLAUDE.md
+/deploy/compose/.env
+/deploy/compose/backups/
