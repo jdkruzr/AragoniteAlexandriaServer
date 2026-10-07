@@ -21,6 +21,7 @@ import (
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath"
 )
 
@@ -30,6 +31,8 @@ type Deps struct {
 	Search notes.Searcher
 	// PublicURL is the externally reachable base URL, for result links ("" = none).
 	PublicURL string
+	// Tasks is nil when this library has no task service.
+	Tasks tasksvc.TaskService
 }
 
 var schemas = mcp.NewSchemaCache()
@@ -43,6 +46,7 @@ func Handler(d Deps) http.Handler {
 func NewServer(d Deps) *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: "aragonite-alexandria", Version: "1"}, &mcp.ServerOptions{SchemaCache: schemas})
 	registerNoteTools(s, d)
+	registerTaskTools(s, d)
 	return s
 }
 

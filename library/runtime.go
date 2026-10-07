@@ -21,7 +21,9 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
@@ -254,7 +256,8 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mux := http.NewServeMux()
 	searcher := notes.Searcher{DB: conn, Embedder: r.cfg.Pages.Embedder}
 	mux.Handle("GET /api/v1/search", searcher.Handler())
-	mcp := mcptools.Handler(mcptools.Deps{DB: conn, Search: searcher, PublicURL: r.cfg.PublicURL})
+	mcp := mcptools.Handler(mcptools.Deps{DB: conn, Search: searcher, PublicURL: r.cfg.PublicURL,
+		Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil)})
 	mux.Handle("/mcp", mcp)
 	mux.Handle("/mcp/", mcp)
 	mux.Handle(taskhost.Prefix+"/", taskhost.CalDAV(taskDeps))
