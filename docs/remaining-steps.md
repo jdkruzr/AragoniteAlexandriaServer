@@ -72,6 +72,21 @@ Alexandria client's pinned revision (`21a77ad`) as a Go pseudo-version, not a fo
   `recognitionSearchRoundTripsAndInvalidatesAfterInkChanges`. The shared-library e2e runner
   needs `--reader-inspect/-backup/-inventory/-restore`, which read a SQLite file
   and are not implemented in the lab yet (P10).
+### 2026-10-07 results (P6-P8: pages, search, MCP, tasks)
+
+- P6: notebook pages are rendered, recognized (opt-in `ALEXANDRIA_OCR_*`),
+  authored back to devices as `page_text_from_server`, indexed and embedded
+  (opt-in `ALEXANDRIA_EMBED_*`) from a durable queue written in the sync
+  transaction. Recognition is cached by exact OCR input, so a restore
+  re-indexes without OCR. `GET /api/v1/search` fuses tsvector and pgvector.
+- P7: annotation search at `/reader/search` (device keys); the Kotlin
+  `recognitionSearchRoundTripsAndInvalidatesAfterInkChanges` passes.
+  `/mcp` serves UltraBridge's thirteen tools with the same names and schemas.
+- P8: CalDAV at `/caldav/` with UltraBridge's backend and stubs unchanged
+  (its CalDAV, task store and task service suites pass on PostgreSQL), signed
+  public attachment URLs backed by object storage.
+- Not yet: OAuth for Claude Web on `/mcp` (operator bearer tokens and Basic
+  work today), and the web UI (P9).
 - PostgreSQL text cannot hold U+0000. Writer and reader mirror text replaces it
   with U+FFFD; relay payloads stay byte-exact, so devices still converge.
 
