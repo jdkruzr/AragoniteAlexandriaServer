@@ -41,3 +41,5 @@ Ported behavioral surfaces:
 - Task service (internal/alexandria/tasksvc, from internal/service task.go and
   the /api/v1/tasks list filter) and MCP task tools
   (internal/alexandria/mcptools/tasks.go)
+- Books view of the library (internal/alexandria/books, from the
+  alexandria-naming-and-books branch internal/service/library.go with tests)

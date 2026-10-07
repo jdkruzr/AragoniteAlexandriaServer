@@ -1,12 +1,13 @@
 // Package render renders ForestNote strokes to an image for the OCR / search
 // pipeline. ForestNote points are a little-endian int32 array (5 ints per
 // point [x, y, pressure, tsHi, tsLo]) with per-stroke color and
-// pen_width_min/max. Copied from UltraBridge (internal/forestrender) under
-// Apache-2.0.
+// pen_width_min/max. Copied from UltraBridge (internal/forestrender, with
+// RenderRegionAtScale from alexandria-naming-and-books) under Apache-2.0.
 package render
 
 import (
 	"encoding/binary"
+	"fmt"
 	"image"
 	"image/color"
 	"math"
@@ -124,16 +125,27 @@ func DecodePoints(b []byte) []Point {
 // boxes (z==0), then ink (in Z order), then above-ink boxes (z==1). A page with no
 // strokes and no boxes yields a small blank white image and no error.
 func RenderPage(strokes []Stroke, boxes []TextBox) (image.Image, error) {
-	return renderPage(strokes, boxes, 0, 0)
+	return renderPage(strokes, boxes, 0, 0, renderScale)
 }
 
 // RenderPageSized preserves the creator device's exact page rectangle. Off-page legacy content is
 // clipped rather than expanding the canvas and reintroducing a letterbox-shaped bounding box.
 func RenderPageSized(strokes []Stroke, boxes []TextBox, pageWidth, pageHeight int64) (image.Image, error) {
-	return renderPage(strokes, boxes, pageWidth, pageHeight)
+	return renderPage(strokes, boxes, pageWidth, pageHeight, renderScale)
 }
 
-func renderPage(strokes []Stroke, boxes []TextBox, pageWidth, pageHeight int64) (image.Image, error) {
+// RenderRegionAtScale renders an exact virtual-unit rectangle (for example an
+// Alexandria reader annotation canvas) at an explicit output scale, so a caller
+// can bound the output size for display instead of using the OCR render scale.
+// scale must be positive; dimensions are clamped like every other render.
+func RenderRegionAtScale(strokes []Stroke, width, height int64, scale float64) (image.Image, error) {
+	if width <= 0 || height <= 0 || !(scale > 0) {
+		return nil, fmt.Errorf("invalid render region %dx%d at scale %v", width, height, scale)
+	}
+	return renderPage(strokes, nil, width, height, scale)
+}
+
+func renderPage(strokes []Stroke, boxes []TextBox, pageWidth, pageHeight int64, sizedScale float64) (image.Image, error) {
 	type decoded struct {
 		pts      []Point
 		min, max int64
@@ -206,7 +218,7 @@ func renderPage(strokes []Stroke, boxes []TextBox, pageWidth, pageHeight int64) 
 	offX, offY := float64(margin-int(minX)), float64(margin-int(minY))
 	coordScale := 1.0
 	if sized {
-		coordScale = renderScale
+		coordScale = sizedScale
 		w, h = clampCanvas(int(float64(pageWidth)*coordScale)), clampCanvas(int(float64(pageHeight)*coordScale))
 		offX, offY = 0, 0
 	}
