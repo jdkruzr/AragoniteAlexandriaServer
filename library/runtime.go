@@ -16,6 +16,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
@@ -337,6 +338,21 @@ func (r *Runtime) Reconcile(ctx context.Context) (int64, error) {
 	}
 	defer done()
 	return jobs.NewStore(conn).RequeueExpired(ctx)
+}
+
+// MaterializeReader drains pending reader rows into the reader mirrors: one
+// bounded sweep (it repeats only while rows keep resolving dependencies).
+func (r *Runtime) MaterializeReader(ctx context.Context) (int, error) {
+	conn, done, err := r.admit(ctx, Process)
+	if err != nil {
+		return 0, err
+	}
+	defer done()
+	store := reader.Store{DB: conn}
+	if pending, err := store.HasPending(ctx); err != nil || !pending {
+		return 0, err
+	}
+	return store.Sweep(ctx, 32, 64)
 }
 
 // AssetGrace is how long an unreferenced chunk object survives. It must

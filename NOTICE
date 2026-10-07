@@ -15,7 +15,8 @@ Ported behavioral surfaces:
 - Alexandria shared-library protocol host assembly (internal/alexandria/host)
 - Alexandria relay: op log, LWW merge, bounded exchange, server authoring
   (internal/alexandria/relay, with ported tests)
-- Alexandria reader inbox (internal/alexandria/reader)
+- Alexandria reader inbox, materialization, change journal and snapshots
+  (internal/alexandria/reader, with ported tests)
 - Alexandria assets-v1 store over PostgreSQL and S3, following Rhizome's
   assets.SQLStore state machine (internal/alexandria/assetstore, with tests
   ported from UltraBridge internal/syncassets)
