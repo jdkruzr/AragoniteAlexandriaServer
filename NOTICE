@@ -8,3 +8,8 @@ Ported behavioral surfaces:
 - UltraBridge task field and synchronization semantics (initial task store)
 - ForestNote URI helpers
 - Device source sync-model descriptors
+- Alexandria device identity and enrollment (internal/alexandria/identity)
+- Alexandria library generation fence (internal/alexandria/generation)
+- Alexandria reader contract: registry, validation, projections
+  (internal/alexandria/contract, copied with tests)
+- Alexandria shared-library protocol host assembly (internal/alexandria/host)

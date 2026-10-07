@@ -13,6 +13,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
@@ -45,19 +48,24 @@ var ErrReadOnly = errors.New("library is read-only")
 type Authenticator func(context.Context, *http.Request, string) error
 type Policy func(context.Context, string, Action) error
 type Config struct {
-	ID             string
-	DatabaseURL    string
-	Objects        BlobStore
-	Authenticate   Authenticator
-	Authorize      Policy
-	Launcher       Launcher
-	MaxConnections int
+	ID           string
+	DatabaseURL  string
+	Objects      BlobStore
+	Authenticate Authenticator
+	// AuthenticateAccount approves device enrollment with the library owner's
+	// account. Without it the local account (HTTP Basic) is used, unless a
+	// custom Authenticate is set, in which case enrollment fails closed.
+	AuthenticateAccount Authenticator
+	Authorize           Policy
+	Launcher            Launcher
+	MaxConnections      int
 }
 
 type Runtime struct {
 	cfg     Config
 	db      *sql.DB
 	objects BlobStore
+	sync    *host.Host
 	mu      sync.Mutex
 	closed  bool
 	active  sync.WaitGroup
@@ -126,8 +134,20 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if cfg.Launcher == nil {
 		cfg.Launcher = jobs.LocalLauncher{}
 	}
+	// The server's authoring site and first library generation are plain DML,
+	// idempotent, and survive restarts.
+	if err := identity.EnsureSite(ctx, db); err != nil {
+		return nil, err
+	}
+	if err := generation.Ensure(ctx, db); err != nil {
+		return nil, err
+	}
+	protocol, err := host.New()
+	if err != nil {
+		return nil, err
+	}
 	failed = false
-	return &Runtime{cfg: cfg, db: db, objects: objects}, nil
+	return &Runtime{cfg: cfg, db: db, objects: objects, sync: protocol}, nil
 }
 
 func (r *Runtime) Close() error {
@@ -202,6 +222,10 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer done()
+	if host.Owns(req.URL.Path) {
+		r.sync.Serve(conn, r.account(conn), w, req)
+		return
+	}
 	mux := http.NewServeMux()
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
@@ -214,6 +238,27 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	auth.NewStore(conn).Middleware(mux).ServeHTTP(w, req)
+}
+
+// account approves enrollment only. Bearer tokens (operator API or device
+// keys) are never enrollment authority.
+func (r *Runtime) account(conn *sql.Conn) identity.AccountCheck {
+	return func(req *http.Request) error {
+		if r.cfg.AuthenticateAccount != nil {
+			return r.cfg.AuthenticateAccount(req.Context(), req, r.cfg.ID)
+		}
+		if r.cfg.Authenticate != nil {
+			return identity.ErrAccount
+		}
+		username, password, ok := req.BasicAuth()
+		if !ok || username == "" {
+			return identity.ErrAccount
+		}
+		if _, err := auth.NewStore(conn).Authenticate(req.Context(), username, password, ""); err != nil {
+			return identity.ErrAccount
+		}
+		return nil
+	}
 }
 
 func (r *Runtime) RunJob(ctx context.Context, id uuid.UUID, owner string) error {
