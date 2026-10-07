@@ -28,3 +28,17 @@ func TestLoadEconomicalDefaults(t *testing.T) {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 }
+
+func TestMaxConnectionsDefaultsAndRejectsNonsense(t *testing.T) {
+	t.Setenv("ALEXANDRIA_DATABASE_URL", "postgres://alexandria:test@db/alexandria")
+	cfg, err := Load()
+	if err != nil || cfg.MaxConnections != 16 {
+		t.Fatalf("default pool: %+v %v", cfg.MaxConnections, err)
+	}
+	for _, bad := range []string{"0", "65", "many"} {
+		t.Setenv("ALEXANDRIA_MAX_CONNECTIONS", bad)
+		if _, err := Load(); err == nil {
+			t.Fatalf("accepted ALEXANDRIA_MAX_CONNECTIONS=%s", bad)
+		}
+	}
+}
