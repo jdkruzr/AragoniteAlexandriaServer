@@ -101,10 +101,42 @@ Alexandria client's pinned revision (`21a77ad`) as a Go pseudo-version, not a fo
   /sync/v1 push, a two-chunk book upload read back byte-identical, CalDAV
   PROPFIND, the /mcp OAuth challenge). It found and fixed five deployment
   bugs (commit 77add2d). Not yet tried with Docker Compose.
-- On-device qualification with the Ocean (productionLab) and a second tablet
-  through a TLS proxy: enroll, offline merge, book upload resumed after a kill,
-  `page_text_from_server` arriving, search, restore publish and adoption,
-  server restart mid-upload, backup and restore.
+- On-device qualification, partly done 2026-10-07. The Musnap Ocean and a phone (T951K,
+  Android 15), both on productionLab, synced through a Cloudflare quick tunnel to the Compose stack.
+  - **Passed:**
+    - Both devices enrolled.
+    - The Ocean uploaded a seeded library: 4 EPUBs, 21 annotations with tags and stars.
+      Server asset hashes match the device files, and a web download gives the same bytes.
+    - The phone received the books (offline) and the annotations; device search finds them.
+    - A notebook created on the phone (2 pages) reached the Ocean.
+    - A notebook deleted in the web UI disappeared from the Ocean.
+    - Web book pages and annotation search show the synced data.
+  - **Not yet:**
+    - Ink: injected input doesn't draw on either device.
+    - `page_text_from_server`: OCR is not configured.
+    - Restore publish and adoption.
+    - Server restart mid-upload.
+    - Book upload resumed after a kill.
+- [ ] **Server backup restore loses later device changes silently** (found 2026-10-07).
+  - **Repro:**
+    1. `backup.sh` at seq 152.
+    2. The Ocean creates a notebook (seq 153-154), and the phone pulls it.
+    3. `restore.sh`.
+  - **What happens:**
+    - The server is back at 152, but both devices keep the notebook. The Ocean believes the
+      server acknowledged it, so it never re-sends it.
+    - The web UI, MCP and any new device never see it, and no device shows an error.
+    - Devices report pull positions past the server's newest seq (the phone's was 154 at
+      max 152). A later op from another device that reused 153/154 would be skipped by that
+      device. Here the reused numbers were the phone's own, so the effect wasn't visible.
+  - **Fix direction (needs a decision):**
+    - Make a restore start a new sync epoch: bump the library generation, or add a Rhizome
+      "server rewound" signal.
+    - Devices then re-send ops past the server's `acked_op_seq` for them, and pull from the
+      restored seq.
+    - Alternatively, route through the existing replace/adopt flow so a device with the
+      newer copy can republish.
+  - **Docs:** `docs/deployment-compose.md` now warns about this.
 - `alexandria-lab` lacks `--reader-inspect/-backup/-inventory/-restore`, so
   the shared-library e2e runner (`shared-library-e2e.mjs`) cannot target this
   server yet; `run.mjs --server alexandria` is not wired.
