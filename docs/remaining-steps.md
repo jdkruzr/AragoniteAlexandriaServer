@@ -117,26 +117,25 @@ Alexandria client's pinned revision (`1a5461a`, server rewind support) as a Go p
     - Restore publish and adoption.
     - Server restart mid-upload.
     - Book upload resumed after a kill.
-- [ ] **Server backup restore loses later device changes silently** (found 2026-10-07).
-  - **Repro:**
-    1. `backup.sh` at seq 152.
-    2. The Ocean creates a notebook (seq 153-154), and the phone pulls it.
-    3. `restore.sh`.
-  - **What happens:**
-    - The server is back at 152, but both devices keep the notebook. The Ocean believes the
-      server acknowledged it, so it never re-sends it.
-    - The web UI, MCP and any new device never see it, and no device shows an error.
-    - Devices report pull positions past the server's newest seq (the phone's was 154 at
-      max 152). A later op from another device that reused 153/154 would be skipped by that
-      device. Here the reused numbers were the phone's own, so the effect wasn't visible.
-  - **Fix direction (needs a decision):**
-    - Make a restore start a new sync epoch: bump the library generation, or add a Rhizome
-      "server rewound" signal.
-    - Devices then re-send ops past the server's `acked_op_seq` for them, and pull from the
-      restored seq.
-    - Alternatively, route through the existing replace/adopt flow so a device with the
-      newer copy can republish.
-  - **Docs:** `docs/deployment-compose.md` now warns about this.
+- [x] **Server backup restore lost later device changes silently** (found and fixed 2026-10-07).
+  - **The bug:**
+    - A restored server forgot each device's ops after the backup, which the devices had already
+      pruned as acknowledged.
+    - A device's next op left a gap that `accepted_through` never crossed, so the bounded client
+      resent it forever.
+  - **The fix:** a sync epoch (Rhizome `1a5461a`, spec "Server rewind"; migration 0014;
+    `restore.sh` rotates it).
+    - A device that sees a new epoch re-sends the rows it authored after the server's
+      acknowledgement point, keeping their original stamps.
+    - It then re-pulls from cursor 0.
+    - The client also stops instead of looping when no op is acknowledged.
+  - **Qualified on the Ocean and the phone:**
+    - Backup, then a new notebook on each device, then `restore.sh`.
+    - Both notebooks came back, plus the notebook lost by the first, pre-fix restore.
+    - Both devices and the server converged on 5 notebooks, 4 books and 21 annotations, with
+      empty outboxes.
+  - **Still lost:** a device that never syncs again can't return its own post-backup changes.
+    Devices on builds before the fix can't detect a restore.
 - `alexandria-lab` lacks `--reader-inspect/-backup/-inventory/-restore`, so
   the shared-library e2e runner (`shared-library-e2e.mjs`) cannot target this
   server yet; `run.mjs --server alexandria` is not wired.
