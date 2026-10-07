@@ -1,7 +1,7 @@
 #!/bin/sh
 # Restore the library from ALEXANDRIA_BACKUP_DIR (default ./backups), made by
-# backup.sh. This REPLACES the current library's database. Devices keep their
-# own copies and re-sync afterwards.
+# backup.sh. This REPLACES the current library. Devices keep their own copies
+# and re-sync afterwards.
 set -eu
 cd "$(dirname "$0")"
 compose() {
@@ -21,8 +21,8 @@ printf 'This replaces the current library with the backup in %s. Type "restore" 
 read -r answer
 [ "$answer" = "restore" ] || { echo "Cancelled." >&2; exit 1; }
 compose stop alexandria
-compose --profile restore run --rm restore-objects
-compose --profile restore run --rm restore-database
-# Starting again re-applies migrations and the runtime role's grants.
-compose up -d
+# Objects first: the restored database must never reference a missing one.
+compose --profile restore run --rm --no-deps -T restore-objects
+compose exec -T postgres pg_restore -U alexandria -d alexandria --clean --if-exists --no-owner --exit-on-error < "$dir/alexandria.dump"
+compose start alexandria
 echo "Restored. Devices sync again on their own."

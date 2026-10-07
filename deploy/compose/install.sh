@@ -52,8 +52,12 @@ ENV
 	echo "Wrote .env with new random secrets."
 fi
 
-echo "Building and starting the server (this takes a few minutes the first time)..."
-compose up -d --build
+echo "Building the server image (this takes a few minutes the first time)..."
+compose build alexandria
+echo "Starting the server..."
+# Recreate every container so all of them run the image just built (some
+# Compose implementations otherwise keep a container on the previous image).
+compose up -d --force-recreate
 
 port=$(sed -n 's/^ALEXANDRIA_MAIN_PORT=//p' .env)
 port=${port:-18443}
@@ -79,7 +83,7 @@ if $first_run; then
 		if [ "$pw1" = "$pw2" ] && [ "${#pw1}" -ge 12 ]; then break; fi
 		echo "The passwords differ or are shorter than 12 characters. Try again." >&2
 	done
-	printf '%s' "$pw1" | compose --profile setup run --rm -T seed-admin
+	printf '%s' "$pw1" | compose --profile setup run --rm --no-deps -T seed-admin
 	unset pw1 pw2
 fi
 
