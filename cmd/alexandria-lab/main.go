@@ -133,6 +133,9 @@ func main() {
 			if _, err := runtime.MaterializeReader(work); err != nil && work.Err() == nil {
 				log.Printf("reader worker: %v", err)
 			}
+			if _, err := runtime.IndexReader(work, 16); err != nil && work.Err() == nil {
+				log.Printf("reader search: %v", err)
+			}
 			select {
 			case <-work.Done():
 			case <-time.After(100 * time.Millisecond):
