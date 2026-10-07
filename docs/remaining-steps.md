@@ -49,7 +49,8 @@ Alexandria client's pinned revision (`21a77ad`) as a Go pseudo-version, not a fo
 - [ ] Port deterministic reader materialization, correction/recognition search
   and restart-safe jobs. Reuse Kotlin/Go parity vectors, not a second interpretation.
   (2026-10-06, P4: materialization, journal and snapshots done in
-  `internal/alexandria/reader`; recognition search is P7.)
+  `internal/alexandria/reader`. 2026-10-07, P7: annotation search in
+  `internal/alexandria/readersearch`, served at `/reader/search`.)
 - [x] Port whole-library snapshot publication/adoption and generation fences;
   stop stale workers/writers before replacement and preserve retry receipts.
   (2026-10-06, P5: `internal/alexandria/restore`. The generation row lock
@@ -67,7 +68,8 @@ Alexandria client's pinned revision (`21a77ad`) as a Go pseudo-version, not a fo
   of `RestorePublicationTest` (publish with crash after commit, lost replies,
   offline peer adoption, PDF bytes). Not applicable by design: legacy
   writer-only sync (`reader=false`) and the test that opens the server's SQLite
-  file. `/reader/search` interop waits for P7. The shared-library e2e runner
+  file. 2026-10-07: with annotation search ported, 9/9 pass, adding
+  `recognitionSearchRoundTripsAndInvalidatesAfterInkChanges`. The shared-library e2e runner
   needs `--reader-inspect/-backup/-inventory/-restore`, which read a SQLite file
   and are not implemented in the lab yet (P10).
 - PostgreSQL text cannot hold U+0000. Writer and reader mirror text replaces it

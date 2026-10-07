@@ -20,6 +20,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
@@ -49,7 +50,15 @@ func New() (*Host, error) {
 
 // Owns reports whether a path belongs to the protocol, which authenticates
 // itself and must bypass the generic API middleware.
-func Owns(path string) bool { return strings.HasPrefix(path, "/sync/") }
+func Owns(path string) bool { return strings.HasPrefix(path, "/sync/") || path == "/reader/search" }
+
+// ReplaceDerived rebuilds every derived index inside an authoritative restore.
+func ReplaceDerived(ctx context.Context, tx *sql.Tx) error {
+	if err := notes.ReplaceDerived(ctx, tx); err != nil {
+		return err
+	}
+	return readersearch.ReplaceDerived(ctx, tx)
+}
 
 // Assets returns the asset store for an admitted library. Every mutation runs
 // the generation fence first, inside its own transaction.
@@ -76,7 +85,7 @@ func (h *Host) Serve(lib Library, w http.ResponseWriter, r *http.Request) {
 	// Restore authenticates for itself: an OLD device key may discover and
 	// adopt a replacement it is fenced out of.
 	if strings.HasPrefix(r.URL.Path, "/sync/restore/v1/") {
-		restore.Service{DB: lib.DB, Objects: lib.Objects, ReplaceDerived: notes.ReplaceDerived}.Handler(lib.Account).ServeHTTP(w, r)
+		restore.Service{DB: lib.DB, Objects: lib.Objects, ReplaceDerived: ReplaceDerived}.Handler(lib.Account).ServeHTTP(w, r)
 		return
 	}
 	store.Bind(func(site string, w http.ResponseWriter, r *http.Request) {
@@ -85,6 +94,8 @@ func (h *Host) Serve(lib Library, w http.ResponseWriter, r *http.Request) {
 			h.caps.ServeHTTP(w, r)
 		case r.URL.Path == "/sync/v1":
 			relay.Store{DB: lib.DB}.Handler(site, nil).ServeHTTP(w, r)
+		case r.URL.Path == "/reader/search":
+			readersearch.New(lib.DB).Handler().ServeHTTP(w, r)
 		case strings.HasPrefix(r.URL.Path, "/sync/assets/v1/"):
 			assets.NewHandler(Assets(lib)).ServeHTTP(w, r)
 		default:

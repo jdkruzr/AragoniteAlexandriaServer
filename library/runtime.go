@@ -18,6 +18,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
@@ -358,6 +359,33 @@ func (r *Runtime) MaterializeReader(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	return store.Sweep(ctx, 32, 64)
+}
+
+// IndexReader hands reader journal changes to annotation search and indexes
+// up to max jobs (each bounded to a page of annotations).
+func (r *Runtime) IndexReader(ctx context.Context, max int) (int, error) {
+	conn, done, err := r.admit(ctx, Process)
+	if err != nil {
+		return 0, err
+	}
+	defer done()
+	search := readersearch.New(conn)
+	if _, err := search.Pump(ctx); err != nil {
+		return 0, err
+	}
+	n := 0
+	for n < max && ctx.Err() == nil {
+		more, err := search.Step(ctx, 32)
+		if err != nil {
+			// A failed job is durable and retried later; keep the step bounded.
+			return n, err
+		}
+		if !more {
+			break
+		}
+		n++
+	}
+	return n, nil
 }
 
 // ProcessPages runs the page pipeline for up to max due pages.

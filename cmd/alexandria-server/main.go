@@ -290,6 +290,9 @@ func runService(logger *slog.Logger) error {
 					_, err = runtime.MaterializeReader(ctx)
 				}
 				if err == nil {
+					_, err = runtime.IndexReader(ctx, 16)
+				}
+				if err == nil {
 					_, err = runtime.ProcessPages(ctx, 8)
 				}
 				if err == nil {

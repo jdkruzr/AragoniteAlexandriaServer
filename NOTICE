@@ -29,3 +29,5 @@ Ported behavioral surfaces:
   chunking and Ollama embeddings (internal/alexandria/embed, from internal/rag),
   and the page pipeline and hybrid note search behavior (internal/alexandria/notes,
   from internal/syncbridge and internal/rag)
+- Alexandria annotation search (internal/alexandria/readersearch, with tests
+  ported from UltraBridge internal/readersearch)
