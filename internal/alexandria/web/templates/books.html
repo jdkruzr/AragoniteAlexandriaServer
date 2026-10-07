@@ -1,0 +1,17 @@
+{{define "content"}}
+<h1>Books</h1>
+{{if not .Data}}<p class="empty">No books yet. Books appear after a device imports one and syncs.</p>{{else}}
+<table>
+<thead><tr><th>Title</th><th>Author</th><th>Format</th><th>Annotations</th><th>File</th></tr></thead>
+<tbody>
+{{range .Data}}
+<tr>
+  <td><a href="/files/forestnote/books?book={{query .ID}}">{{.Title}}</a></td>
+  <td>{{.Authors}}</td><td>{{.Format}}</td><td>{{.AnnotationCount}}</td>
+  <td>{{if eq .FileState "ready"}}<a href="/files/forestnote/books/file?book={{query .ID}}">Download</a> ({{bytes .ByteLength}}){{else if eq .FileState "uploading"}}Uploading{{else if eq .FileState "invalid"}}Upload failed{{else}}Not uploaded{{end}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+{{end}}
+{{end}}

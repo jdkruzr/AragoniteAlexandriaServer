@@ -1,0 +1,16 @@
+{{define "content"}}{{$d := .Data}}
+<p class="crumbs"><a href="/files/forestnote/books">Books</a></p>
+<h1>{{$d.Book.Title}}</h1>
+<p class="muted">{{if $d.Book.Authors}}{{$d.Book.Authors}} · {{end}}{{$d.Book.Format}}{{if eq $d.Book.FileState "ready"}} · <a href="/files/forestnote/books/file?book={{query $d.Book.ID}}">Download</a>{{end}}</p>
+{{if not $d.Annotations}}<p class="empty">No annotations in this book.</p>{{end}}
+{{range $d.Annotations}}
+<article class="annotation">
+  <h2>{{.Location}}{{if .Sticky}} · Sticky note{{end}}</h2>
+  {{if .Status}}<p class="muted">{{.Status}}</p>{{end}}
+  {{if .Passage}}<blockquote {{if .Highlighted}}class="highlight"{{end}}>{{.Passage}}</blockquote>{{end}}
+  {{if .InkStrokes}}<img loading="lazy" src="/files/forestnote/books/ink?annotation={{query .ID}}" alt="Handwritten note">{{end}}
+  {{if .RecognizedText}}<p class="recognized">{{.RecognizedText}}</p><p class="muted small">{{.TextSource}}</p>{{end}}
+</article>
+{{end}}
+{{if $d.Truncated}}<p class="muted">Only the first 500 annotations are shown.</p>{{end}}
+{{end}}

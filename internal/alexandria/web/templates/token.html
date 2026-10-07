@@ -1,0 +1,6 @@
+{{define "content"}}{{$d := .Data}}
+<h1>New API Token</h1>
+<p>Copy this token for <strong>{{$d.Label}}</strong> now. It won't be shown again.</p>
+<p><code class="secret">{{$d.Token}}</code></p>
+<p><a href="/settings">Done</a></p>
+{{end}}
