@@ -508,3 +508,47 @@ func TestAuthorOpsSortAfterSkewedDeviceAndRelay(t *testing.T) {
 		t.Fatal("malformed authored op accepted")
 	}
 }
+
+func TestDeviceListingRenamePruneAndStates(t *testing.T) {
+	db := library(t, siteA, siteB, "0000000000000000000000000C")
+	r := request(siteA, notebook(siteA, 1))
+	r.DeviceName = "Ocean"
+	post(t, db, siteA, r, nil, 200)
+	post(t, db, siteB, request(siteB), nil, 200)
+	post(t, db, siteA, request(siteA, notebook(siteA, 2)), nil, 200) // B has not pulled this
+	s := Store{DB: db}
+	if ok, err := s.SetDeviceLabel(ctx, siteB, "Kitchen tablet"); err != nil || !ok {
+		t.Fatal(ok, err)
+	}
+	if ok, _ := s.SetDeviceLabel(ctx, "0000000000000000000000000C", "never synced"); ok {
+		t.Fatal("label conjured a cursor row")
+	}
+	if err := (identity.Store{DB: db}).Revoke(ctx, siteB); err != nil {
+		t.Fatal(err)
+	}
+	exec(t, db, `UPDATE sync_device_generation SET generation='`+strings.Repeat("e", 64)+`' WHERE site_id='`+siteA+`'`)
+	devices, err := s.ListDevices(ctx)
+	if err != nil || len(devices) != 3 {
+		t.Fatal(devices, err)
+	}
+	byID := map[string]Device{}
+	for _, d := range devices {
+		byID[d.SiteID] = d
+	}
+	a, b, c := byID[siteA], byID[siteB], byID["0000000000000000000000000C"]
+	if a.DisplayName() != "Ocean" || !a.Enrolled || !a.NeedsAdoption || a.AckedOpSeq != 2 || a.LastSeenMs == 0 {
+		t.Fatalf("A: %+v", a)
+	}
+	if b.DisplayName() != "Kitchen tablet" || !b.Revoked || b.PendingOps != 1 {
+		t.Fatalf("B: %+v", b)
+	}
+	if c.LastSeenMs != 0 || !c.Enrolled || c.DisplayName() != "Unnamed device" {
+		t.Fatalf("C: %+v", c)
+	}
+	if ok, err := s.PruneDevice(ctx, siteB); err != nil || !ok {
+		t.Fatal(ok, err)
+	}
+	if devices, _ = s.ListDevices(ctx); len(devices) != 3 {
+		t.Fatal("pruning a cursor dropped an enrolled device from the list")
+	}
+}
