@@ -42,7 +42,6 @@ var funcs = template.FuncMap{
 		}
 		return t.Local().Format("2006-01-02 15:04")
 	},
-	"query": url.QueryEscape,
 	"bytes": func(n int64) string {
 		switch {
 		case n >= 1<<20:
