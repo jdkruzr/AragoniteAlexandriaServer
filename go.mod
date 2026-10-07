@@ -16,7 +16,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
-	github.com/jdkruzr/rhizome/server-go v0.0.0-20260927043601-21a77ad24981
+	github.com/jdkruzr/rhizome/server-go v0.0.0-20261007050732-1a5461ab1925
 	github.com/modelcontextprotocol/go-sdk v1.4.0
 	github.com/prometheus/client_golang v1.21.1
 	golang.org/x/crypto v0.31.0

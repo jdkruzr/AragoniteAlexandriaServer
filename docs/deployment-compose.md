@@ -145,11 +145,12 @@ To restore, put the backup in `deploy/compose/backups` and run
 `./restore.sh`. It asks for confirmation, then stops the server, restores
 files and database, and starts again. Tablets reconnect on their own.
 
-**Known limitation:** changes that tablets synced after the backup was taken
-stay on those tablets but do not return to the server. The tablets don't warn
-about this. Until this is fixed, if tablets hold newer work than the backup,
-restore the server and then restore a tablet's own Alexandria backup and
-choose Replace Synced Library, as described below.
+Tablets keep everything they synced after the backup was taken. On their next
+sync they notice the server was restored, send back the changes they made, and
+download the library again, so nothing a connected tablet holds is lost. Each
+tablet re-sends only its own changes, so a tablet that is gone for good cannot
+restore its post-backup work. Tablets need an Alexandria version from October
+2026 or later for this.
 
 If a tablet holds a better copy of your library than the server, restore
 that copy on the tablet from an Alexandria backup. When it reconnects,
