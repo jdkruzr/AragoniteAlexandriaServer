@@ -45,12 +45,15 @@ func newGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Durat
 	api.Tasks{Store: tasks.NewStore(db)}.Register(protected)
 	api.Jobs{Service: jobEnqueuer}.Register(protected)
 	if libraryHandler == nil {
-		libraryHandler = auth.NewStore(db).Middleware(protected)
+		mainMux.Handle("/api/", auth.NewStore(db).Middleware(protected))
+		mainMux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, http.StatusOK, map[string]string{"name": "Aragonite Alexandria Server", "status": "foundation"})
+		})
+	} else {
+		// The library runtime owns every other path: the API, device sync,
+		// CalDAV, MCP, OAuth and the web UI. Probes and metrics stay above.
+		mainMux.Handle("/", libraryHandler)
 	}
-	mainMux.Handle("/api/", libraryHandler)
-	mainMux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"name": "Aragonite Alexandria Server", "status": "foundation"})
-	})
 	spcMux := http.NewServeMux()
 	registerProbes(spcMux, db)
 	spcMux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {

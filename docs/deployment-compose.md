@@ -20,8 +20,13 @@ and `aragonite-alexandria-server-object-data`.
 
 ## Install
 
-You need Docker with Compose v2 (or Podman with `podman compose`), about 2 GB
-of RAM, and disk space for your books.
+You need a container engine with Compose, about 2 GB of RAM, and disk space
+for your books. The Compose file is the supported deployment; it is tested
+with rootless Podman and `podman-compose`, and works with Docker Compose v2
+unchanged. `install.sh` uses whichever it finds (or set `COMPOSE`).
+
+To add Compose to Podman: `pipx install podman-compose` (or install your
+distribution's `podman-compose` package).
 
 ```sh
 git clone <this repository> alexandria-server
