@@ -38,3 +38,6 @@ Ported behavioral surfaces:
   (internal/alexandria/taskdb), CalDAV backend and stubs (internal/alexandria/caldav),
   signed attachments (internal/alexandria/taskattach) and their assembly
   (internal/alexandria/taskhost), with tests ported from UltraBridge
+- Task service (internal/alexandria/tasksvc, from internal/service task.go and
+  the /api/v1/tasks list filter) and MCP task tools
+  (internal/alexandria/mcptools/tasks.go)

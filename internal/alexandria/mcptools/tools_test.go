@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
 )
 
@@ -59,7 +62,8 @@ func setup(t *testing.T) (*sql.DB, *mcp.ClientSession) {
 	if _, err := (notes.Pipeline{OCR: ocr{}}).Step(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	server := NewServer(Deps{DB: db, Search: notes.Searcher{DB: db}, PublicURL: "https://library.example"})
+	server := NewServer(Deps{DB: db, Search: notes.Searcher{DB: db}, PublicURL: "https://library.example",
+		Tasks: tasksvc.NewTaskService(taskdb.NewStore(db), nil)})
 	st, ct := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(ctx, st, nil); err != nil {
 		t.Fatal(err)
@@ -101,7 +105,8 @@ func TestToolsMatchUltraBridgeSurface(t *testing.T) {
 	for _, tool := range tools.Tools {
 		names = append(names, tool.Name)
 	}
-	for _, want := range []string{"search_notes", "get_note_pages", "get_note_image", "list_text_boxes", "edit_text_box"} {
+	for _, want := range []string{"search_notes", "get_note_pages", "get_note_image", "list_text_boxes", "edit_text_box",
+		"list_tasks", "get_task", "create_task", "update_task", "complete_task", "delete_task", "purge_completed_tasks", "purge_deleted_tasks"} {
 		if !strings.Contains(strings.Join(names, ","), want) {
 			t.Fatalf("missing %s in %v", want, names)
 		}
@@ -151,5 +156,57 @@ func TestSearchPagesImageAndTextBoxEdit(t *testing.T) {
 	}
 	if r = call(t, s, "get_note_pages", map[string]any{"note_path": "/not/forestnote"}); !r.IsError {
 		t.Fatal("non-ForestNote path accepted")
+	}
+}
+
+func TestTaskToolsLifecycle(t *testing.T) {
+	db, s := setup(t)
+	r := call(t, s, "create_task", map[string]any{"title": "Prune the figs", "due_at": "2026-11-01T09:00:00Z", "priority": "1",
+		"categories": []string{"garden"}, "comment": "before frost"})
+	if r.IsError || !strings.Contains(textOf(r), "Created:") {
+		t.Fatalf("create: %s", textOf(r))
+	}
+	var id string
+	if err := db.QueryRow(`SELECT task_id FROM alexandria_tasks`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	r = call(t, s, "get_task", map[string]any{"id": id})
+	if text := textOf(r); r.IsError || !strings.Contains(text, "Categories: garden") || !strings.Contains(text, "Comment: before frost") || !strings.Contains(text, "Priority: 1") {
+		t.Fatalf("get: %s", text)
+	}
+	for args, want := range map[string]string{
+		`{"status":"needs_action","category":"garden"}`:       "1 task(s)",
+		`{"due_before":"2026-10-01T00:00:00Z"}`:               "No tasks match",
+		`{"priority":"1","due_after":"2026-10-15T00:00:00Z"}`: "1 task(s)",
+	} {
+		var m map[string]any
+		_ = json.Unmarshal([]byte(args), &m)
+		if r = call(t, s, "list_tasks", m); !strings.Contains(textOf(r), want) {
+			t.Fatalf("list %s: %s", args, textOf(r))
+		}
+	}
+	if r = call(t, s, "list_tasks", map[string]any{"status": "someday"}); !r.IsError {
+		t.Fatal("bad status accepted")
+	}
+	if r = call(t, s, "update_task", map[string]any{"id": id, "title": "Prune the old figs", "clear_priority": true}); r.IsError || !strings.Contains(textOf(r), "Prune the old figs") {
+		t.Fatalf("update: %s", textOf(r))
+	}
+	if r = call(t, s, "update_task", map[string]any{"id": id}); !r.IsError {
+		t.Fatal("empty update accepted")
+	}
+	if r = call(t, s, "complete_task", map[string]any{"id": id}); r.IsError {
+		t.Fatalf("complete: %s", textOf(r))
+	}
+	if r = call(t, s, "purge_completed_tasks", map[string]any{}); !strings.Contains(textOf(r), "Soft-deleted 1 completed") {
+		t.Fatalf("purge completed: %s", textOf(r))
+	}
+	if r = call(t, s, "list_tasks", map[string]any{"include_deleted": true}); !strings.Contains(textOf(r), "(deleted") {
+		t.Fatalf("trash: %s", textOf(r))
+	}
+	if r = call(t, s, "purge_deleted_tasks", map[string]any{}); !strings.Contains(textOf(r), "0 task(s); 1 skipped") {
+		t.Fatalf("purge deleted: %s", textOf(r))
+	}
+	if r = call(t, s, "get_task", map[string]any{"id": "missing"}); !r.IsError {
+		t.Fatal("missing task found")
 	}
 }
