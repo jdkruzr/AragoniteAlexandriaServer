@@ -22,3 +22,5 @@ Ported behavioral surfaces:
   ported from UltraBridge internal/syncassets)
 - Alexandria authoritative restore and adoption (internal/alexandria/restore,
   with tests ported from UltraBridge internal/libraryrestore)
+- Alexandria interop fixture following UltraBridge cmd/assetlab's command-line
+  contract (cmd/alexandria-lab)

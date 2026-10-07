@@ -39,15 +39,39 @@ Alexandria client's pinned revision (`21a77ad`) as a Go pseudo-version, not a fo
 - [ ] Inventory the actual legacy adapter and its dirty PDF/correction changes;
   record a source checkpoint and explicit feature/route parity matrix. Identify
   each required release surface versus an intentional deferral before porting.
-- [ ] Port enrollment/identity and row sync through Server's library-scoped
+- [x] Port enrollment/identity and row sync through Server's library-scoped
   runtime with PostgreSQL transaction/admission semantics. Preserve pull-first
   merge, provenance, ACK/cursor atomicity and compatibility refusal.
-- [ ] Adapt bounded immutable assets to S3-compatible storage, reusing Rhizome's
+  (2026-10-06, P1-P2: `internal/alexandria/{identity,generation,relay}`.)
+- [x] Adapt bounded immutable assets to S3-compatible storage, reusing Rhizome's
   contract; validate resumable transfer, references and original-byte hashes.
+  (2026-10-06, P3: `internal/alexandria/assetstore`, served by Rhizome's handler.)
 - [ ] Port deterministic reader materialization, correction/recognition search
   and restart-safe jobs. Reuse Kotlin/Go parity vectors, not a second interpretation.
-- [ ] Port whole-library snapshot publication/adoption and generation fences;
+  (2026-10-06, P4: materialization, journal and snapshots done in
+  `internal/alexandria/reader`; recognition search is P7.)
+- [x] Port whole-library snapshot publication/adoption and generation fences;
   stop stale workers/writers before replacement and preserve retry receipts.
+  (2026-10-06, P5: `internal/alexandria/restore`. The generation row lock
+  replaces UltraBridge's worker barrier; see the package doc.)
+
+### 2026-10-06 results (core sync, P1-P5)
+
+- `go test -race ./...` passes against PostgreSQL 17 and SeaweedFS with
+  `ALEXANDRIA_REQUIRE_INTEGRATION=1`, including the Kotlin contract, projection
+  and storage vectors (`FORESTREAD_CONTRACT_VECTORS`/`_PROJECTION_VECTORS`).
+- `cmd/alexandria-lab` implements UltraBridge assetlab's CLI contract over the
+  real runtime. Against it, the Alexandria client's Kotlin suites pass 8/8:
+  `ReaderHttpInteropTest` (PDF sticky + assets + restart, additive replay,
+  round trip + server projection agreement, local commit failure retry) and all
+  of `RestorePublicationTest` (publish with crash after commit, lost replies,
+  offline peer adoption, PDF bytes). Not applicable by design: legacy
+  writer-only sync (`reader=false`) and the test that opens the server's SQLite
+  file. `/reader/search` interop waits for P7. The shared-library e2e runner
+  needs `--reader-inspect/-backup/-inventory/-restore`, which read a SQLite file
+  and are not implemented in the lab yet (P10).
+- PostgreSQL text cannot hold U+0000. Writer and reader mirror text replaces it
+  with U+FFFD; relay payloads stay byte-exact, so devices still converge.
 
 Coordinate generic changes with [Rhizome](../../rhizome/docs/remaining-steps.md),
 not reader-specific logic inside the transport library. Refer to the client's
