@@ -7,14 +7,21 @@
 package host
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
+	"github.com/jdkruzr/rhizome/server-go/assets"
 	"github.com/jdkruzr/rhizome/server-go/bounded"
 )
 
@@ -23,9 +30,15 @@ type Host struct {
 	caps http.Handler
 }
 
+// Library is what one admitted request may touch.
+type Library struct {
+	DB      pg.DB      // the admitted connection
+	Objects blob.Store // scoped to this library
+	Account identity.AccountCheck
+}
+
 func New() (*Host, error) {
-	// assets-v1 is advertised only once the S3 asset store is mounted (P3).
-	caps, err := bounded.CapabilityHandler(bounded.Defaults(), []string{contract.CandidateCombined().SchemaHash()}, false)
+	caps, err := bounded.CapabilityHandler(bounded.Defaults(), []string{contract.CandidateCombined().SchemaHash()}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -36,22 +49,36 @@ func New() (*Host, error) {
 // itself and must bypass the generic API middleware.
 func Owns(path string) bool { return strings.HasPrefix(path, "/sync/") }
 
-// Serve answers one protocol request over the admitted connection db. Patterns
-// are exact, so nothing on /sync/* is ever redirected.
-func (h *Host) Serve(db pg.DB, account identity.AccountCheck, w http.ResponseWriter, r *http.Request) {
+// Assets returns the asset store for an admitted library. Every mutation runs
+// the generation fence first, inside its own transaction.
+func Assets(lib Library) assetstore.Store {
+	return assetstore.Store{DB: lib.DB, Objects: lib.Objects, BeforeWrite: func(ctx context.Context, tx *sql.Tx) error {
+		err := generation.CheckRequestTx(ctx, tx)
+		if errors.Is(err, generation.ErrReplaced) {
+			return assets.Fail(409, "library_replaced")
+		}
+		return err
+	}}
+}
+
+// Serve answers one protocol request. Patterns are exact, so nothing on
+// /sync/* is ever redirected.
+func (h *Host) Serve(lib Library, w http.ResponseWriter, r *http.Request) {
 	// Context cancellation alone does not interrupt a blocked body read.
 	_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(30 * time.Second))
-	store := identity.Store{DB: db}
+	store := identity.Store{DB: lib.DB}
 	if strings.HasPrefix(r.URL.Path, "/sync/devices/v1/") {
-		store.AdminHandler(account).ServeHTTP(w, r)
+		store.AdminHandler(lib.Account).ServeHTTP(w, r)
 		return
 	}
 	store.Bind(func(site string, w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/sync/capabilities":
+		switch {
+		case r.URL.Path == "/sync/capabilities":
 			h.caps.ServeHTTP(w, r)
-		case "/sync/v1":
-			relay.Store{DB: db}.Handler(site, nil).ServeHTTP(w, r)
+		case r.URL.Path == "/sync/v1":
+			relay.Store{DB: lib.DB}.Handler(site, nil).ServeHTTP(w, r)
+		case strings.HasPrefix(r.URL.Path, "/sync/assets/v1/"):
+			assets.NewHandler(Assets(lib)).ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
