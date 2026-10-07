@@ -32,7 +32,7 @@ services:
         printf '{"identities":[{"name":"alexandria","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
         "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json &&
         exec weed server -s3 -s3.config=/tmp/s3.json -dir=/data -ip=seaweedfs -ip.bind=0.0.0.0
-        -volume.max=1 -volume.minFreeSpace=0 -master.volumePreallocate=false
+        -volume.max=0 -volume.minFreeSpace=5 -master.volumeSizeLimitMB=1024 -master.volumePreallocate=false
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/ || exit 1"]
       interval: 3s
@@ -135,6 +135,71 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    restart: "no"
+
+  # Backups (backup.sh runs these in order): a consistent database dump, then
+  # a mirror of every stored object. Objects are immutable and only garbage
+  # collected after seven days unreferenced, so every object the dump names is
+  # present in the mirror.
+  backup-database:
+    image: pgvector/pgvector:pg17
+    profiles: ["backup"]
+    environment:
+      PGPASSWORD: ${ALEXANDRIA_POSTGRES_PASSWORD:-alexandria-local-only}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        umask 077 &&
+        pg_dump -h postgres -U alexandria -d alexandria -Fc -f /backup/alexandria.dump.partial &&
+        mv /backup/alexandria.dump.partial /backup/alexandria.dump
+    volumes:
+      - ${ALEXANDRIA_BACKUP_DIR:-./backups}:/backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backup-objects:
+    image: rclone/rclone:1.68
+    profiles: ["backup"]
+    environment: &rclone-environment
+      RCLONE_CONFIG_STORE_TYPE: s3
+      RCLONE_CONFIG_STORE_PROVIDER: SeaweedFS
+      RCLONE_CONFIG_STORE_ENDPOINT: http://seaweedfs:8333
+      RCLONE_CONFIG_STORE_ACCESS_KEY_ID: ${ALEXANDRIA_OBJECT_ACCESS_KEY:-}
+      RCLONE_CONFIG_STORE_SECRET_ACCESS_KEY: ${ALEXANDRIA_OBJECT_SECRET_KEY:-}
+      RCLONE_CONFIG_STORE_FORCE_PATH_STYLE: "true"
+    command: ["sync", "store:aragonite-alexandria-server", "/backup/objects", "--checksum"]
+    volumes:
+      - ${ALEXANDRIA_BACKUP_DIR:-./backups}:/backup
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    restart: "no"
+
+  restore-database:
+    image: pgvector/pgvector:pg17
+    profiles: ["restore"]
+    environment:
+      PGPASSWORD: ${ALEXANDRIA_POSTGRES_PASSWORD:-alexandria-local-only}
+    command: ["pg_restore", "-h", "postgres", "-U", "alexandria", "-d", "alexandria", "--clean", "--if-exists", "--no-owner", "--exit-on-error", "/backup/alexandria.dump"]
+    volumes:
+      - ${ALEXANDRIA_BACKUP_DIR:-./backups}:/backup:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  restore-objects:
+    image: rclone/rclone:1.68
+    profiles: ["restore"]
+    environment: *rclone-environment
+    command: ["copy", "/backup/objects", "store:aragonite-alexandria-server", "--checksum"]
+    volumes:
+      - ${ALEXANDRIA_BACKUP_DIR:-./backups}:/backup:ro
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
     restart: "no"
 
 volumes:
