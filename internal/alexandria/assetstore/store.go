@@ -239,7 +239,7 @@ func (s Store) WriteChunk(ctx context.Context, id string, index int64, b []byte,
 	if len(b) != length {
 		return assets.Fail(400, "invalid_chunk_length")
 	}
-	if err := s.putObject(ctx, digest, b); err != nil {
+	if err := s.PutObject(ctx, digest, b); err != nil {
 		return err
 	}
 	return s.mutate(ctx, func(tx *sql.Tx) error {
@@ -276,9 +276,10 @@ func (s Store) WriteChunk(ctx context.Context, id string, index int64, b []byte,
 	})
 }
 
-// putObject records the upload intent (blocking while GC deletes the same
-// object), then writes the content-addressed bytes.
-func (s Store) putObject(ctx context.Context, digest string, b []byte) error {
+// PutObject records the upload intent (blocking while GC deletes the same
+// object), then writes the content-addressed bytes. It acknowledges nothing:
+// only a chunk row does.
+func (s Store) PutObject(ctx context.Context, digest string, b []byte) error {
 	if _, err := s.DB.ExecContext(ctx, `INSERT INTO rhizome_asset_object(sha256) VALUES($1)
 		ON CONFLICT (sha256) DO UPDATE SET touched_at = now()`, digest); err != nil {
 		return storageError(err)
@@ -473,4 +474,102 @@ func (s Store) collect(ctx context.Context, digest string, grace time.Duration) 
 		return false, err
 	}
 	return true, tx.Commit()
+}
+
+// ReadyChunks returns a ready asset's descriptor and its chunk digests in
+// index order, so the bytes can later be read from objects alone.
+func (s Store) ReadyChunks(ctx context.Context, id string) (assets.Info, []string, error) {
+	i, err := s.Describe(ctx, id)
+	if err != nil {
+		return assets.Info{}, nil, err
+	}
+	if i.State != "ready" {
+		return assets.Info{}, nil, assets.Fail(409, "asset_not_ready")
+	}
+	rows, err := s.DB.QueryContext(ctx, `SELECT chunk_index, sha256 FROM rhizome_asset_chunk WHERE asset_id=$1 ORDER BY chunk_index`, id)
+	if err != nil {
+		return assets.Info{}, nil, err
+	}
+	defer rows.Close()
+	digests := make([]string, 0, i.ChunkCount())
+	for rows.Next() {
+		var index int64
+		var digest string
+		if err := rows.Scan(&index, &digest); err != nil {
+			return assets.Info{}, nil, err
+		}
+		if index != int64(len(digests)) {
+			return assets.Info{}, nil, assets.Fail(409, "missing_chunks")
+		}
+		digests = append(digests, digest)
+	}
+	if err := rows.Err(); err != nil {
+		return assets.Info{}, nil, err
+	}
+	if int64(len(digests)) != i.ChunkCount() {
+		return assets.Info{}, nil, assets.Fail(409, "missing_chunks")
+	}
+	return i, digests, nil
+}
+
+// Reader reads a ready asset's bytes from objects only, verifying each chunk.
+// It holds no database handle, so it works inside another transaction.
+type Reader struct {
+	ctx     context.Context
+	objects blob.Store
+	digests []string
+	length  int64
+	index   int64
+	chunk   []byte
+}
+
+func NewReader(ctx context.Context, objects blob.Store, info assets.Info, digests []string) *Reader {
+	return &Reader{ctx: ctx, objects: objects, digests: digests, length: info.ByteLength, index: -1}
+}
+
+func (r *Reader) Size() int64 { return r.length }
+
+func (r *Reader) load(index int64) error {
+	if index == r.index {
+		return nil
+	}
+	key, err := ObjectKey(r.digests[index])
+	if err != nil {
+		return err
+	}
+	body, _, err := r.objects.Get(r.ctx, key)
+	if err != nil {
+		return err
+	}
+	b, err := io.ReadAll(io.LimitReader(body, assets.ChunkBytes+1))
+	body.Close()
+	if err != nil {
+		return err
+	}
+	if assets.Digest(b) != r.digests[index] {
+		return errors.New("asset chunk corrupt")
+	}
+	r.index, r.chunk = index, b
+	return nil
+}
+
+// ReadAt satisfies io.ReaderAt (archive/zip reads the directory, then each
+// entry mostly sequentially; the last chunk is cached).
+func (r *Reader) ReadAt(p []byte, off int64) (int, error) {
+	if off < 0 {
+		return 0, errors.New("negative offset")
+	}
+	n := 0
+	for n < len(p) {
+		pos := off + int64(n)
+		if pos >= r.length {
+			return n, io.EOF
+		}
+		index := pos / assets.ChunkBytes
+		if err := r.load(index); err != nil {
+			return n, err
+		}
+		n += copy(p[n:], r.chunk[pos-index*assets.ChunkBytes:])
+	}
+	return n, nil
 }

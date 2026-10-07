@@ -58,17 +58,60 @@ type queued struct {
 // Drain processes one bounded keyset page. Resume at Next; when zero, end the
 // sweep. Begin a fresh sweep at zero after dependencies arrive.
 func (s Store) Drain(ctx context.Context, after int64, limit int) (DrainResult, error) {
-	var result DrainResult
 	if after < 0 || limit < 1 || limit > 128 {
-		return result, ErrBudget
+		return DrainResult{}, ErrBudget
 	}
-	rows, err := s.DB.QueryContext(ctx, `SELECT seq, octet_length(payload), CASE WHEN octet_length(payload) <= $1 THEN payload END
+	// Read and decode the page before taking the drain locks.
+	queue, next, err := pendingPage(ctx, s.DB, after, limit)
+	if err != nil {
+		return DrainResult{}, err
+	}
+	tx, err := s.writer(ctx)
+	if err != nil {
+		return DrainResult{}, err
+	}
+	defer tx.Rollback()
+	result, err := apply(ctx, tx, queue)
+	if err != nil {
+		return DrainResult{}, err
+	}
+	result.Next = next
+	return result, tx.Commit()
+}
+
+// DrainTx is Drain inside a caller's transaction that already excludes every
+// other writer (a restore publication holding the generation FOR UPDATE).
+func DrainTx(ctx context.Context, tx *sql.Tx, after int64, limit int) (DrainResult, error) {
+	if after < 0 || limit < 1 || limit > 128 {
+		return DrainResult{}, ErrBudget
+	}
+	queue, next, err := pendingPage(ctx, tx, after, limit)
+	if err != nil {
+		return DrainResult{}, err
+	}
+	result, err := apply(ctx, tx, queue)
+	result.Next = next
+	return result, err
+}
+
+type decoded struct {
+	seq int64
+	op  contract.WireOp
+	row contract.Record
+}
+
+func pendingPage(ctx context.Context, q pg.Querier, after int64, limit int) ([]decoded, int64, error) {
+	rows, err := q.QueryContext(ctx, `SELECT seq, octet_length(payload), CASE WHEN octet_length(payload) <= $1 THEN payload END
 		FROM reader_store_incoming WHERE state='pending' AND seq>$2 ORDER BY seq LIMIT $3`, MaxRowBytes, after, limit+1)
 	if err != nil {
-		return result, err
+		return nil, 0, err
+	}
+	type queued struct {
+		seq     int64
+		payload []byte
 	}
 	queue := []queued{}
-	size := int64(0)
+	var next, size int64
 	for rows.Next() {
 		var seq, n int64
 		var payload []byte
@@ -79,7 +122,7 @@ func (s Store) Drain(ctx context.Context, after int64, limit int) (DrainResult, 
 			if len(queue) == 0 {
 				err = ErrBudget
 			} else {
-				result.Next = queue[len(queue)-1].seq
+				next = queue[len(queue)-1].seq
 			}
 			break
 		}
@@ -95,26 +138,21 @@ func (s Store) Drain(ctx context.Context, after int64, limit int) (DrainResult, 
 	}
 	rows.Close()
 	if err != nil {
-		return DrainResult{}, err
+		return nil, 0, err
 	}
-	type decoded struct {
-		q   queued
-		op  contract.WireOp
-		row contract.Record
-	}
-	prepared := make([]decoded, 0, len(queue))
+	out := make([]decoded, 0, len(queue))
 	for _, q := range queue {
 		op, r, e := contract.DecodeJSON(q.payload)
 		if e != nil {
-			return DrainResult{}, fmt.Errorf("corrupt pending row: %w", e)
+			return nil, 0, fmt.Errorf("corrupt pending row: %w", e)
 		}
-		prepared = append(prepared, decoded{q, op, r})
+		out = append(out, decoded{q.seq, op, r})
 	}
-	tx, err := s.writer(ctx)
-	if err != nil {
-		return DrainResult{}, err
-	}
-	defer tx.Rollback()
+	return out, next, nil
+}
+
+func apply(ctx context.Context, tx *sql.Tx, prepared []decoded) (DrainResult, error) {
+	var result DrainResult
 	b := budget{rows: 1024, bytes: MaxBatchBytes}
 	cache := map[Key]*contract.Record{}
 	var lookupErr error
@@ -132,7 +170,7 @@ func (s Store) Drain(ctx context.Context, after int64, limit int) (DrainResult, 
 	}
 	for _, p := range prepared {
 		var state string
-		if err = tx.QueryRowContext(ctx, `SELECT state FROM reader_store_incoming WHERE seq=$1`, p.q.seq).Scan(&state); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT state FROM reader_store_incoming WHERE seq=$1`, p.seq).Scan(&state); err != nil {
 			return DrainResult{}, err
 		}
 		if state != "pending" {
@@ -151,25 +189,22 @@ func (s Store) Drain(ctx context.Context, after int64, limit int) (DrainResult, 
 				return merge.Op{SiteID: v.SiteID, OpSeq: v.OpSeq, OpTs: v.OpTS}
 			}
 			if old == nil || old.Version == nil || merge.Less(version(old.Version), version(p.row.Version)) {
-				if err = upsert(ctx, tx, p.op.Table, p.row); err != nil {
+				if err := upsert(ctx, tx, p.op.Table, p.row); err != nil {
 					return DrainResult{}, err
 				}
 				key := Key{p.op.Table, p.op.PK}
 				r := p.row
 				cache[key] = &r
 				result.Changed = append(result.Changed, key)
-				if _, err = tx.ExecContext(ctx, `INSERT INTO reader_store_changes(table_name,pk) VALUES($1,$2)`, key.Table, key.ID); err != nil {
+				if _, err := tx.ExecContext(ctx, `INSERT INTO reader_store_changes(table_name,pk) VALUES($1,$2)`, key.Table, key.ID); err != nil {
 					return DrainResult{}, err
 				}
 			}
 		}
-		if _, err = tx.ExecContext(ctx, `UPDATE reader_store_incoming SET state=$1, reason=$2 WHERE seq=$3`, decision.State, decision.Reason, p.q.seq); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE reader_store_incoming SET state=$1, reason=$2 WHERE seq=$3`, decision.State, decision.Reason, p.seq); err != nil {
 			return DrainResult{}, err
 		}
-		result.Records = append(result.Records, Receipt{p.q.seq, decision.State, decision.Reason})
-	}
-	if err = tx.Commit(); err != nil {
-		return DrainResult{}, err
+		result.Records = append(result.Records, Receipt{p.seq, decision.State, decision.Reason})
 	}
 	return result, nil
 }
