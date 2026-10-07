@@ -34,3 +34,7 @@ Ported behavioral surfaces:
 - MCP note tools with UltraBridge's names and schemas (internal/alexandria/mcptools,
   from cmd/ultrabridge/mcptools.go) and notebook text-box editing
   (internal/alexandria/notes/library.go, from internal/syncstore inventory.go)
+- Tasks over CalDAV: the task model (internal/alexandria/taskstore), store
+  (internal/alexandria/taskdb), CalDAV backend and stubs (internal/alexandria/caldav),
+  signed attachments (internal/alexandria/taskattach) and their assembly
+  (internal/alexandria/taskhost), with tests ported from UltraBridge

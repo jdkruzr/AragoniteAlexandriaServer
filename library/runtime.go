@@ -20,6 +20,8 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
@@ -75,9 +77,11 @@ type Runtime struct {
 	db      *sql.DB
 	objects BlobStore
 	sync    *host.Host
-	mu      sync.Mutex
-	closed  bool
-	active  sync.WaitGroup
+	// attachSecret signs public task-attachment URLs; stable across restarts.
+	attachSecret string
+	mu           sync.Mutex
+	closed       bool
+	active       sync.WaitGroup
 }
 
 func NewS3(ctx context.Context, cfg S3Config) (BlobStore, error) { return blob.NewS3(ctx, cfg) }
@@ -155,8 +159,12 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	secret, err := settings.EnsureSecret(ctx, db, settings.TaskAttachSecret)
+	if err != nil {
+		return nil, err
+	}
 	failed = false
-	return &Runtime{cfg: cfg, db: db, objects: objects, sync: protocol}, nil
+	return &Runtime{cfg: cfg, db: db, objects: objects, sync: protocol, attachSecret: secret}, nil
 }
 
 func (r *Runtime) Close() error {
@@ -216,7 +224,8 @@ func (r *Runtime) admit(ctx context.Context, action Action) (*sql.Conn, func(), 
 
 func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	action := Write
-	if req.Method == http.MethodGet || req.Method == http.MethodHead {
+	switch req.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, "PROPFIND", "REPORT":
 		action = Read
 	}
 	conn, done, err := r.admit(req.Context(), action)
@@ -235,12 +244,22 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.sync.Serve(host.Library{DB: conn, Objects: r.objects, Account: r.account(conn)}, w, req)
 		return
 	}
+	taskDeps := taskhost.Deps{DB: conn, Objects: r.objects, Secret: r.attachSecret, PublicURL: r.cfg.PublicURL}
+	if taskhost.Owns(req.URL.Path) {
+		// Public by design: CalDAV clients fetch ATTACH URLs without
+		// credentials; each URL carries its own signature.
+		taskhost.Attachments(taskDeps).ServeHTTP(w, req)
+		return
+	}
 	mux := http.NewServeMux()
 	searcher := notes.Searcher{DB: conn, Embedder: r.cfg.Pages.Embedder}
 	mux.Handle("GET /api/v1/search", searcher.Handler())
 	mcp := mcptools.Handler(mcptools.Deps{DB: conn, Search: searcher, PublicURL: r.cfg.PublicURL})
 	mux.Handle("/mcp", mcp)
 	mux.Handle("/mcp/", mcp)
+	mux.Handle(taskhost.Prefix+"/", taskhost.CalDAV(taskDeps))
+	mux.Handle("/.well-known/caldav", taskhost.WellKnown())
+	mux.Handle("/.well-known/caldav/", taskhost.WellKnown())
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {

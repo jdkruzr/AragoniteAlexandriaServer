@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire"
 )
 
@@ -257,5 +258,66 @@ func TestMCPOverHTTPRequiresAPIAuthentication(t *testing.T) {
 	}
 	if got := send(true); got.Code != 200 || !strings.Contains(got.Body.String(), "aragonite-alexandria") {
 		t.Fatalf("MCP initialize: %d %s", got.Code, got.Body)
+	}
+}
+
+func TestCalDAVTasksRoundTripThroughRuntime(t *testing.T) {
+	r, db, _ := fixture(t)
+	call := func(method, path, body string, auth bool, headers map[string]string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		if auth {
+			req.SetBasicAuth("author", "a-long-test-password")
+		}
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		out := httptest.NewRecorder()
+		r.ServeHTTP(out, req)
+		return out
+	}
+	vtodo := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nBEGIN:VTODO\r\nUID:task-1\r\nSUMMARY:Water the figs\r\n" +
+		"DTSTAMP:20261001T000000Z\r\nSTATUS:NEEDS-ACTION\r\nX-FORESTNOTE-NOTEBOOK-ID:00000000000000000000000NB1\r\n" +
+		"X-FORESTNOTE-PAGE-ID:00000000000000000000000PG1\r\nEND:VTODO\r\nEND:VCALENDAR\r\n"
+	if got := call("PUT", "/caldav/user/calendars/tasks/task-1.ics", vtodo, false, nil); got.Code != 401 {
+		t.Fatalf("anonymous PUT: %d", got.Code)
+	}
+	if got := call("PUT", "/caldav/user/calendars/tasks/task-1.ics", vtodo, true, map[string]string{"Content-Type": "text/calendar"}); got.Code/100 != 2 {
+		t.Fatalf("PUT: %d %s", got.Code, got.Body)
+	}
+	var title, notebook string
+	if err := db.QueryRow(`SELECT title, forestnote_notebook_id FROM alexandria_tasks WHERE task_id='task-1'`).Scan(&title, &notebook); err != nil || title != "Water the figs" || notebook != "00000000000000000000000NB1" {
+		t.Fatal(title, notebook, err)
+	}
+	if got := call("GET", "/caldav/user/calendars/tasks/task-1.ics", "", true, nil); got.Code != 200 || !strings.Contains(got.Body.String(), "SUMMARY:Water the figs") {
+		t.Fatalf("GET: %d %s", got.Code, got.Body)
+	}
+	propfind := `<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:sync-token/></d:prop></d:propfind>`
+	if got := call("PROPFIND", "/caldav/user/calendars/tasks/", propfind, true, map[string]string{"Depth": "0", "Content-Type": "application/xml"}); got.Code != 207 || !strings.Contains(got.Body.String(), "Tasks") {
+		t.Fatalf("PROPFIND: %d %s", got.Code, got.Body)
+	}
+	if got := call("GET", "/.well-known/caldav", "", true, nil); got.Code != 301 || got.Header().Get("Location") != "/caldav/" {
+		t.Fatalf("well-known: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	// Signed public attachment URLs: no credentials, signature required.
+	sha := strings.Repeat("a", 64)
+	if got := call("GET", "/api/v1/attachments/"+sha+"?sig=forged", "", false, nil); got.Code != 403 {
+		t.Fatalf("forged signature: %d", got.Code)
+	}
+	secret := r.attachSecret
+	signed := (taskattach.Signer{Secret: secret}).SignedAttachmentPath(sha)
+	if got := call("GET", signed, "", false, nil); got.Code != 200 || got.Body.String() != "hello" {
+		t.Fatalf("signed download: %d %s", got.Code, got.Body)
+	}
+	if got := call("GET", (taskattach.Signer{Secret: secret}).SignedFNRenderPath("forestnote://nb/missing"), "", false, nil); got.Code != 404 {
+		t.Fatalf("render of a missing page: %d", got.Code)
+	}
+	// The secret is stable across restarts.
+	again, err := Open(context.Background(), Config{ID: r.cfg.ID, DatabaseURL: r.cfg.DatabaseURL, Objects: emptyObjects{}, MaxConnections: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Close()
+	if again.attachSecret != secret || len(secret) != 64 {
+		t.Fatal("attachment secret changed on reopen")
 	}
 }
