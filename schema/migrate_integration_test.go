@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"sync"
@@ -80,8 +81,12 @@ func TestFreshIdentityAndConcurrentMigration(t *testing.T) {
 	if !current || old {
 		t.Fatal("identity migration not applied")
 	}
+	embedded, err := fs.Glob(migrations.Files, "*.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
 	var count int
-	if err := db.QueryRow(`SELECT count(*) FROM alexandria_schema_migrations`).Scan(&count); err != nil || count != 5 {
+	if err := db.QueryRow(`SELECT count(*) FROM alexandria_schema_migrations`).Scan(&count); err != nil || count != len(embedded) {
 		t.Fatalf("ledger: %d %v", count, err)
 	}
 	if err := db.QueryRow(`SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`).Scan(&count); err != nil || count != 0 {
