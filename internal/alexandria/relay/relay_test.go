@@ -552,3 +552,47 @@ func TestDeviceListingRenamePruneAndStates(t *testing.T) {
 		t.Fatal("pruning a cursor dropped an enrolled device from the list")
 	}
 }
+
+func TestEpochIsStampedAndARewoundServerIgnoresStaleOps(t *testing.T) {
+	db := library(t, siteA, siteB)
+	first := post(t, db, siteA, request(siteA, notebook(siteA, 1), notebook(siteA, 2)), nil, 200)
+	if first.Epoch == "" || first.AcceptedThrough != 2 {
+		t.Fatalf("epoch %q accepted %d", first.Epoch, first.AcceptedThrough)
+	}
+	// A device that already holds this epoch syncs normally.
+	req := request(siteA, notebook(siteA, 3))
+	req.Epoch = first.Epoch
+	if r := post(t, db, siteA, req, nil, 200); r.Epoch != first.Epoch || r.AcceptedThrough != 3 {
+		t.Fatalf("same epoch: %+v", r)
+	}
+	post(t, db, siteB, request(siteB, notebook(siteB, 1)), nil, 200)
+
+	var rotated string
+	if err := db.QueryRow(`SELECT alexandria_rewind_sync_epoch()`).Scan(&rotated); err != nil || rotated == first.Epoch {
+		t.Fatalf("rewind %q %v", rotated, err)
+	}
+	before := state(t, db)
+	// A stale device's ops are numbered past what a restored server holds: none
+	// are applied, and the device is told to re-queue from accepted_through and
+	// re-pull from 0.
+	stale := request(siteA, notebook(siteA, 9))
+	stale.Epoch, stale.Cursor = first.Epoch, 50
+	r := post(t, db, siteA, stale, nil, 200)
+	if r.Epoch != rotated || r.AcceptedThrough != 3 || r.Cursor != 0 || !r.HasMore || len(r.Ops) != 0 {
+		t.Fatalf("rewound response %+v", r)
+	}
+	if after := state(t, db); fmt.Sprint(after) != fmt.Sprint(before) {
+		t.Fatalf("stale request changed state: %v -> %v", before, after)
+	}
+	// The re-queued ops continue contiguously, and the full re-pull includes B.
+	req = request(siteA, notebook(siteA, 4))
+	req.Epoch = rotated
+	r = post(t, db, siteA, req, nil, 200)
+	if r.AcceptedThrough != 4 || r.Epoch != rotated || len(r.Ops) != 1 {
+		t.Fatalf("after rewind %+v", r)
+	}
+	// A device without an epoch (older client) is served normally.
+	if r := post(t, db, siteB, request(siteB, notebook(siteB, 2)), nil, 200); r.AcceptedThrough != 2 || r.Epoch != rotated {
+		t.Fatalf("epochless %+v", r)
+	}
+}

@@ -77,6 +77,8 @@ github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/jdkruzr/rhizome/server-go v0.0.0-20260927043601-21a77ad24981 h1:f8FHVIygvESxBal4NDc2WDvN5FV6Qy9FnhxWiaxJakE=
 github.com/jdkruzr/rhizome/server-go v0.0.0-20260927043601-21a77ad24981/go.mod h1:ZvyQ0KEdFfMol09RZrKjF1LW+v6kp8m+sCtqIXGmpRc=
+github.com/jdkruzr/rhizome/server-go v0.0.0-20261007050732-1a5461ab1925 h1:EUE57s/C+Mk2f3u2e6xVAbr6ynzuo1B/TSOwvvq3T84=
+github.com/jdkruzr/rhizome/server-go v0.0.0-20261007050732-1a5461ab1925/go.mod h1:ZvyQ0KEdFfMol09RZrKjF1LW+v6kp8m+sCtqIXGmpRc=
 github.com/klauspost/compress v1.17.11 h1:In6xLpyWOi1+C7tXUUWv2ot1QvBjxevKAaI6IXrJmUc=
 github.com/klauspost/compress v1.17.11/go.mod h1:pMDklpSncoRMuLFrf1W9Ss9KT+0rH90U12bZKk7uwG0=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
