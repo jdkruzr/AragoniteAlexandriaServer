@@ -16,6 +16,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
@@ -57,9 +58,12 @@ type Config struct {
 	// account. Without it the local account (HTTP Basic) is used, unless a
 	// custom Authenticate is set, in which case enrollment fails closed.
 	AuthenticateAccount Authenticator
-	Authorize           Policy
-	Launcher            Launcher
-	MaxConnections      int
+	// Pages configures the notebook page pipeline (recognition, embeddings).
+	// The zero value indexes text boxes and device text only.
+	Pages          notes.Pipeline
+	Authorize      Policy
+	Launcher       Launcher
+	MaxConnections int
 }
 
 type Runtime struct {
@@ -228,6 +232,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	mux := http.NewServeMux()
+	mux.Handle("GET /api/v1/search", notes.Searcher{DB: conn, Embedder: r.cfg.Pages.Embedder}.Handler())
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {
@@ -353,6 +358,24 @@ func (r *Runtime) MaterializeReader(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	return store.Sweep(ctx, 32, 64)
+}
+
+// ProcessPages runs the page pipeline for up to max due pages.
+func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
+	conn, done, err := r.admit(ctx, Process)
+	if err != nil {
+		return 0, err
+	}
+	defer done()
+	n := 0
+	for n < max && ctx.Err() == nil {
+		found, err := r.cfg.Pages.Step(ctx, conn)
+		if err != nil || !found {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
 }
 
 // AssetGrace is how long an unreferenced chunk object survives. It must

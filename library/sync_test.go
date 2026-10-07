@@ -221,3 +221,19 @@ func TestReaderRowsMaterializeThroughWorkerStep(t *testing.T) {
 		t.Fatal("idle step did work", n, err)
 	}
 }
+
+func TestNoteSearchRouteUsesAPIAuthentication(t *testing.T) {
+	r, _, _ := fixture(t)
+	if got := request(r, "GET", "/api/v1/search?q=anything", "", ""); got.Code != 200 || !strings.Contains(got.Body.String(), `"results":[]`) {
+		t.Fatalf("search: %d %s", got.Code, got.Body)
+	}
+	req := httptest.NewRequest("GET", "/api/v1/search?q=anything", nil)
+	out := httptest.NewRecorder()
+	r.ServeHTTP(out, req)
+	if out.Code != 401 {
+		t.Fatalf("anonymous search: %d", out.Code)
+	}
+	if n, err := r.ProcessPages(context.Background(), 4); err != nil || n != 0 {
+		t.Fatal("idle page step did work", n, err)
+	}
+}

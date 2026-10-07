@@ -18,6 +18,9 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/batch"
 	"github.com/google/uuid"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/config"
@@ -259,8 +262,15 @@ func runService(logger *slog.Logger) error {
 	if err := db.QueryRowContext(ctx, `SELECT library_id::text FROM alexandria_library_runtime WHERE singleton`).Scan(&libraryID); err != nil {
 		return err
 	}
+	pages := notes.Pipeline{Prompt: cfg.OCRPrompt, Debounce: cfg.PageDebounce, Logger: logger}
+	if cfg.OCRURL != "" {
+		pages.OCR = ocr.NewOCRClient(cfg.OCRURL, cfg.OCRAPIKey, cfg.OCRModel, cfg.OCRFormat)
+	}
+	if cfg.EmbedURL != "" {
+		pages.Embedder = embed.NewOllama(cfg.EmbedURL, cfg.EmbedModel)
+	}
 	runtime, err := library.Open(ctx, library.Config{ID: libraryID, DatabaseURL: cfg.DatabaseURL, Objects: objectStore, Launcher: launcher,
-		MaxConnections: cfg.MaxConnections})
+		MaxConnections: cfg.MaxConnections, Pages: pages})
 	if err != nil {
 		return err
 	}
@@ -278,6 +288,9 @@ func runService(logger *slog.Logger) error {
 				_, err := runtime.Reconcile(ctx)
 				if err == nil {
 					_, err = runtime.MaterializeReader(ctx)
+				}
+				if err == nil {
+					_, err = runtime.ProcessPages(ctx, 8)
 				}
 				if err == nil {
 					_, err = runtime.WorkOnce(ctx, cfg.WorkerID)

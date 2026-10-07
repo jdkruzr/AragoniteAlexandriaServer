@@ -24,3 +24,8 @@ Ported behavioral surfaces:
   with tests ported from UltraBridge internal/libraryrestore)
 - Alexandria interop fixture following UltraBridge cmd/assetlab's command-line
   contract (cmd/alexandria-lab)
+- Notebook page renderer (internal/alexandria/render, from internal/forestrender),
+  recognition client (internal/alexandria/ocr, from internal/processor), text
+  chunking and Ollama embeddings (internal/alexandria/embed, from internal/rag),
+  and the page pipeline and hybrid note search behavior (internal/alexandria/notes,
+  from internal/syncbridge and internal/rag)
