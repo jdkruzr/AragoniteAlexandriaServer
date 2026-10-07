@@ -73,6 +73,12 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 			t.Fatalf("%s: missing security headers", path)
 		}
 	}
+	// Links are escaped exactly once (html/template does it; %25 means twice).
+	for _, path := range []string{"/files/forestnote", "/files/forestnote?notebook=00000000000000000000000NB1", "/search?q=tomatoes"} {
+		if body := b.do("GET", path, "", nil, true).Body.String(); strings.Contains(body, "%25") {
+			t.Fatalf("%s: double-escaped link", path)
+		}
+	}
 	if got := b.do("GET", "/", "", nil, true); got.Code != 303 {
 		t.Fatalf("home: %d", got.Code)
 	}

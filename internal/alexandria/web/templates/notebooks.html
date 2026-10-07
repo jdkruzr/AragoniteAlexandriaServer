@@ -1,22 +1,22 @@
 {{define "content"}}{{$d := .Data}}
 <h1>Notebooks</h1>
-<p class="crumbs"><a href="/files/forestnote">All notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{query .ID}}">{{.Name}}</a>{{end}}</p>
+<p class="crumbs"><a href="/files/forestnote">All notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}}</p>
 <p class="muted"><a href="/files/forestnote/books">Books</a> are listed separately.</p>
 {{if not $d.Entries}}<p class="empty">Nothing here yet. Notebooks appear after a device syncs.</p>{{else}}
 <table>
 <thead><tr>
-  <th><a href="?folder={{query $d.Folder}}&sort=name&order={{if and (eq $d.Sort "name") (ne $d.Order "desc")}}desc{{else}}asc{{end}}">Name</a></th>
-  <th><a href="?folder={{query $d.Folder}}&sort=pages&order=desc">Pages</a></th>
-  <th><a href="?folder={{query $d.Folder}}&sort=modified&order=desc">Modified</a></th>
+  <th><a href="?folder={{$d.Folder}}&sort=name&order={{if and (eq $d.Sort "name") (ne $d.Order "desc")}}desc{{else}}asc{{end}}">Name</a></th>
+  <th><a href="?folder={{$d.Folder}}&sort=pages&order=desc">Pages</a></th>
+  <th><a href="?folder={{$d.Folder}}&sort=modified&order=desc">Modified</a></th>
   <th>Search</th>
 </tr></thead>
 <tbody>
 {{range $d.Entries}}
 <tr>
   {{if .IsFolder}}
-  <td><a href="/files/forestnote?folder={{query .ID}}">📁 {{.Name}}</a></td><td></td><td>{{ms .ModifiedAt}}</td><td></td>
+  <td><a href="/files/forestnote?folder={{.ID}}">📁 {{.Name}}</a></td><td></td><td>{{ms .ModifiedAt}}</td><td></td>
   {{else}}
-  <td><a href="/files/forestnote?notebook={{query .ID}}">{{if .Name}}{{.Name}}{{else}}Untitled notebook{{end}}</a></td>
+  <td><a href="/files/forestnote?notebook={{.ID}}">{{if .Name}}{{.Name}}{{else}}Untitled notebook{{end}}</a></td>
   <td>{{.PageCount}}</td><td>{{ms .ModifiedAt}}</td>
   <td><span class="badge {{.Status}}">{{if eq .Status "indexed"}}Searchable{{else if eq .Status "partial"}}Partly searchable{{else}}Empty{{end}}</span></td>
   {{end}}

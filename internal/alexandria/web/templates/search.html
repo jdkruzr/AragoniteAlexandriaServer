@@ -9,12 +9,12 @@
 <h2>Notebook pages</h2>
 {{if not $d.Pages}}<p class="empty">No notebook pages match.</p>{{end}}
 {{range $d.Pages}}
-<article class="result"><a href="/files/forestnote?notebook={{query .NotebookID}}&page={{query .PageID}}#page-{{.PageID}}">{{.NotebookName}}, page {{.PageNumber}}</a><p>{{.Snippet}}</p></article>
+<article class="result"><a href="/files/forestnote?notebook={{.NotebookID}}&page={{.PageID}}#page-{{.PageID}}">{{.NotebookName}}, page {{.PageNumber}}</a><p>{{.Snippet}}</p></article>
 {{end}}
 <h2>Book annotations</h2>
 {{if not $d.Annotations}}<p class="empty">No annotations match.</p>{{end}}
 {{range $d.Annotations}}
-<article class="result"><a href="/files/forestnote/books?book={{query .BookID}}">{{if .Title}}{{.Title}}{{else}}Untitled book{{end}}</a><p>{{.Snippet}}</p></article>
+<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}Untitled book{{end}}</a><p>{{.Snippet}}</p></article>
 {{end}}
 {{end}}
 {{end}}
