@@ -95,9 +95,12 @@ Alexandria client's pinned revision (`21a77ad`) as a Go pseudo-version, not a fo
 
 ### Open before calling S2 done
 
-- Run `install.sh` end to end on a host with Docker Compose or Podman Compose
-  (the development host has neither, and its root disk is full, so even
-  `podman build` of the image has not completed here yet).
+- ~~Run `install.sh` end to end.~~ Done 2026-10-07 with rootless Podman 5.7
+  and podman-compose 1.6: first install, two upgrades, backup while running,
+  and restore all pass a smoke test (admin web sign-in, device enrollment,
+  /sync/v1 push, a two-chunk book upload read back byte-identical, CalDAV
+  PROPFIND, the /mcp OAuth challenge). It found and fixed five deployment
+  bugs (commit 77add2d). Not yet tried with Docker Compose.
 - On-device qualification with the Ocean (productionLab) and a second tablet
   through a TLS proxy: enroll, offline merge, book upload resumed after a kill,
   `page_text_from_server` arriving, search, restore publish and adoption,
