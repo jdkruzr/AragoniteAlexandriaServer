@@ -14,6 +14,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/rhizome/server-go/bounded"
 )
 
@@ -49,6 +50,8 @@ func (h *Host) Serve(db pg.DB, account identity.AccountCheck, w http.ResponseWri
 		switch r.URL.Path {
 		case "/sync/capabilities":
 			h.caps.ServeHTTP(w, r)
+		case "/sync/v1":
+			relay.Store{DB: db}.Handler(site, nil).ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}

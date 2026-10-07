@@ -13,3 +13,6 @@ Ported behavioral surfaces:
 - Alexandria reader contract: registry, validation, projections
   (internal/alexandria/contract, copied with tests)
 - Alexandria shared-library protocol host assembly (internal/alexandria/host)
+- Alexandria relay: op log, LWW merge, bounded exchange, server authoring
+  (internal/alexandria/relay, with ported tests)
+- Alexandria reader inbox (internal/alexandria/reader)

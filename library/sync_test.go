@@ -161,3 +161,34 @@ func TestEnrollmentFailsClosedWithCustomAuthenticator(t *testing.T) {
 		t.Fatalf("enrollment without an account hook: %d", got.Code)
 	}
 }
+
+func TestTwoDevicesSyncThroughRuntime(t *testing.T) {
+	r, _, _ := fixture(t)
+	type device struct{ site, token string }
+	var devices []device
+	for _, seed := range []string{"one", "two"} {
+		site := wire.NewULID()
+		token, hash := deviceKey(seed)
+		if got := enroll(r, `{"site_id":"`+site+`","token_hash":"`+hash+`"}`, nil); got.Code != 204 {
+			t.Fatalf("enroll: %d %s", got.Code, got.Body)
+		}
+		devices = append(devices, device{site, token})
+	}
+	exchange := func(d device, ops string) *httptest.ResponseRecorder {
+		body := `{"protocol_version":1,"schema_hash":"55c37f7f1d386ce37ab57c976bccae8d4efed385f852db6d807dff549ad77a54","site_id":"` + d.site + `","cursor":0,"ops":[` + ops + `]}`
+		req := httptest.NewRequest("POST", "/sync/v1", strings.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+d.token)
+		req.Header.Set("X-Rhizome-Bounded-Rows", "1")
+		out := httptest.NewRecorder()
+		r.ServeHTTP(out, req)
+		return out
+	}
+	nb := `{"table":"notebook","pk":"00000000000000000000000NB1","site_id":"` + devices[0].site + `","op_seq":1,"op_ts":5,"cols":{"name":"Field notes","sort_order":0,"created_at":1,"deleted_at":null,"folder_id":null,"aspect_long_axis":null,"page_width":null,"page_height":null}}`
+	if got := exchange(devices[0], nb); got.Code != 200 || !strings.Contains(got.Body.String(), `"accepted_through":1`) {
+		t.Fatalf("push: %d %s", got.Code, got.Body)
+	}
+	got := exchange(devices[1], "")
+	if got.Code != 200 || !strings.Contains(got.Body.String(), "Field notes") || got.Header().Get(generation.Header) == "" {
+		t.Fatalf("pull: %d %s", got.Code, got.Body)
+	}
+}
