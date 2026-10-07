@@ -57,7 +57,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		t.Fatalf("anonymous page: %d", got.Code)
 	}
 	for path, want := range map[string]string{
-		"/files/forestnote":                                     "Seed &lt;Catalogue&gt;",
+		"/files/forestnote": "Seed &lt;Catalogue&gt;",
 		"/files/forestnote?notebook=00000000000000000000000NB1": "heirloom tomatoes",
 		"/files/forestnote/books":                               "No books yet",
 		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, page 1",

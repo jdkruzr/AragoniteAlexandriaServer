@@ -40,7 +40,7 @@ func TestDataTemplatesExecute(t *testing.T) {
 		"books":     []books.LibraryBook{{ID: "b", Title: "T", FileState: "uploading"}},
 		"notebook":  map[string]any{"ID": "n", "Name": "N", "Pages": []notes.Page{{ID: "p", Number: 1, Key: "forestnote://n/p", BodyText: "x"}}, "Crumbs": []notes.Crumb{{ID: "f", Name: "F"}}, "Focus": "p"},
 		"notebooks": map[string]any{"Crumbs": nil, "Entries": []notes.Entry{{IsFolder: true, ID: "f", Name: "F"}, {ID: "n", Name: "N", Status: "partial", PageCount: 2}}, "Folder": "", "Sort": "name", "Order": "asc"},
-		"devices": map[string]any{"Devices": []relay.Device{{SiteID: "S", Name: "Ocean", Enrolled: true, LastSeenMs: 1, FirstSeenMs: 1}, {SiteID: "R", Revoked: true, Enrolled: true}, {SiteID: "N", NeedsAdoption: true, Enrolled: true}}},
+		"devices":   map[string]any{"Devices": []relay.Device{{SiteID: "S", Name: "Ocean", Enrolled: true, LastSeenMs: 1, FirstSeenMs: 1}, {SiteID: "R", Revoked: true, Enrolled: true}, {SiteID: "N", NeedsAdoption: true, Enrolled: true}}},
 		"authorize": map[string]any{"Request": oauth.Request{ClientName: "Claude", RedirectURI: "https://claude.ai/cb"}, "Query": "a=b"},
 		"search": map[string]any{"Query": "q", "Mode": "", "Semantic": true, "Pages": []notes.Result{{NotebookID: "n", PageID: "p", NotebookName: "N", PageNumber: 1, Snippet: "s"}},
 			"Annotations": []readersearch.Result{{BookID: "b", Title: "T", Snippet: "s"}}},
