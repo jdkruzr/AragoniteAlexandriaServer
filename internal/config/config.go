@@ -40,6 +40,9 @@ type Config struct {
 	ObjectSecretKey  string
 	ObjectPathStyle  bool
 	ObjectDisableTLS bool
+	// MaxConnections bounds the library pool. Each admitted request holds one connection for its
+	// lifetime, and device sync, asset transfer and workers run concurrently.
+	MaxConnections int
 }
 
 func Load() (Config, error) {
@@ -69,6 +72,7 @@ func Load() (Config, error) {
 		ObjectSecretKey:  strings.TrimSpace(os.Getenv("ALEXANDRIA_OBJECT_SECRET_KEY")),
 		ObjectPathStyle:  boolean("ALEXANDRIA_OBJECT_PATH_STYLE", false),
 		ObjectDisableTLS: boolean("ALEXANDRIA_OBJECT_DISABLE_TLS", false),
+		MaxConnections:   integer("ALEXANDRIA_MAX_CONNECTIONS", 16),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -88,6 +92,9 @@ func (c Config) Validate() error {
 	if (c.ObjectAccessKey == "") != (c.ObjectSecretKey == "") {
 		return errors.New("ALEXANDRIA_OBJECT_ACCESS_KEY and ALEXANDRIA_OBJECT_SECRET_KEY must be set together")
 	}
+	if c.MaxConnections < 1 || c.MaxConnections > 64 {
+		return fmt.Errorf("ALEXANDRIA_MAX_CONNECTIONS must be between 1 and 64")
+	}
 	if c.JobLauncher != "local" && c.JobLauncher != "aws-batch" {
 		return fmt.Errorf("invalid ALEXANDRIA_JOB_LAUNCHER %q", c.JobLauncher)
 	}
@@ -102,6 +109,18 @@ func env(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func integer(key string, fallback int) int {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return -1 // rejected by Validate rather than silently replaced
+	}
+	return parsed
 }
 
 func duration(key string, fallback time.Duration) time.Duration {

@@ -20,7 +20,19 @@ services:
 
   seaweedfs:
     image: chrislusf/seaweedfs:3.85
-    command: server -s3 -dir=/data -ip=seaweedfs -ip.bind=0.0.0.0 -volume.max=1 -volume.minFreeSpace=0 -master.volumePreallocate=false
+    # Without an identity file SeaweedFS accepts any credentials; generate one from .env so the
+    # bucket requires the same key pair the server uses. The secret never lands in the image.
+    environment:
+      S3_ACCESS_KEY: ${ALEXANDRIA_OBJECT_ACCESS_KEY:?Set ALEXANDRIA_OBJECT_ACCESS_KEY (install.sh generates it)}
+      S3_SECRET_KEY: ${ALEXANDRIA_OBJECT_SECRET_KEY:?Set ALEXANDRIA_OBJECT_SECRET_KEY (install.sh generates it)}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        umask 077 &&
+        printf '{"identities":[{"name":"alexandria","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
+        "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json &&
+        exec weed server -s3 -s3.config=/tmp/s3.json -dir=/data -ip=seaweedfs -ip.bind=0.0.0.0
+        -volume.max=1 -volume.minFreeSpace=0 -master.volumePreallocate=false
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/ || exit 1"]
       interval: 3s
@@ -41,11 +53,12 @@ services:
       ALEXANDRIA_OBJECT_ENDPOINT: http://seaweedfs:8333
       ALEXANDRIA_OBJECT_REGION: us-east-1
       ALEXANDRIA_OBJECT_BUCKET: aragonite-alexandria-server
-      ALEXANDRIA_OBJECT_ACCESS_KEY: alexandria-local
-      ALEXANDRIA_OBJECT_SECRET_KEY: alexandria-local-secret
+      ALEXANDRIA_OBJECT_ACCESS_KEY: ${ALEXANDRIA_OBJECT_ACCESS_KEY:?Set ALEXANDRIA_OBJECT_ACCESS_KEY}
+      ALEXANDRIA_OBJECT_SECRET_KEY: ${ALEXANDRIA_OBJECT_SECRET_KEY:?Set ALEXANDRIA_OBJECT_SECRET_KEY}
       ALEXANDRIA_OBJECT_PATH_STYLE: "true"
       ALEXANDRIA_LISTEN_ADDR: :8443
       ALEXANDRIA_SPC_LISTEN_ADDR: :8089
+      ALEXANDRIA_MAX_CONNECTIONS: ${ALEXANDRIA_MAX_CONNECTIONS:-16}
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,6 +112,21 @@ services:
     depends_on:
       seaweedfs:
         condition: service_healthy
+    restart: "no"
+
+  # Run once (install.sh does): printf '%s' "$PASSWORD" | docker compose --profile setup run --rm -T seed-admin
+  # The password arrives on stdin, so it is never stored in .env or the container definition.
+  seed-admin:
+    image: aragonite-alexandria-server:local
+    profiles: ["setup"]
+    command: ["seed-user", "--username", "${ALEXANDRIA_ADMIN_USERNAME:-admin}", "--password-file", "/dev/stdin"]
+    stdin_open: true
+    environment:
+      <<: *server-environment
+      ALEXANDRIA_DATABASE_URL: postgres://alexandria:${ALEXANDRIA_POSTGRES_PASSWORD:-alexandria-local-only}@postgres:5432/alexandria?sslmode=disable
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: "no"
 
 volumes:

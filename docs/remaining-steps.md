@@ -27,7 +27,14 @@ See [deployment/identity](deployment-identity-upgrade.md) and
 [Hosting H0](../../AragoniteAlexandriaHosting/docs/remaining-steps.md), not a second
 independent state transfer here. This checklist does not authorize infrastructure changes.
 
-## S2. Alexandria/Rhizome port — PAUSED
+## S2. Alexandria/Rhizome port — RESUMED 2026-10-06
+
+Resumed by the user for a self-hosted Compose deployment (PostgreSQL+pgvector, S3/SeaweedFS),
+porting UltraBridge's qualified shared-library adapter slice by slice on branch
+`alexandria-sync-port`. Phases: P0 foundation, P1 identity/generation/capabilities, P2 relay,
+P3 assets on S3, P4 reader materialization, P5 restore, P6 OCR/search, P7 reader search/MCP,
+P8 CalDAV, P9 web UI, P10 Compose completion and qualification. Rhizome is required at the
+Alexandria client's pinned revision (`21a77ad`) as a Go pseudo-version, not a fork or a new tag.
 
 - [ ] Inventory the actual legacy adapter and its dirty PDF/correction changes;
   record a source checkpoint and explicit feature/route parity matrix. Identify

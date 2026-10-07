@@ -259,7 +259,8 @@ func runService(logger *slog.Logger) error {
 	if err := db.QueryRowContext(ctx, `SELECT library_id::text FROM alexandria_library_runtime WHERE singleton`).Scan(&libraryID); err != nil {
 		return err
 	}
-	runtime, err := library.Open(ctx, library.Config{ID: libraryID, DatabaseURL: cfg.DatabaseURL, Objects: objectStore, Launcher: launcher})
+	runtime, err := library.Open(ctx, library.Config{ID: libraryID, DatabaseURL: cfg.DatabaseURL, Objects: objectStore, Launcher: launcher,
+		MaxConnections: cfg.MaxConnections})
 	if err != nil {
 		return err
 	}
