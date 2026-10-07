@@ -202,6 +202,13 @@ func (s Store) exchange(ctx context.Context, req bounded.Request, limits bounded
 	if err := lockWriter(ctx, tx); err != nil {
 		return nil, nil, err
 	}
+	var epoch string
+	if err := tx.QueryRowContext(ctx, `SELECT epoch FROM sync_epoch WHERE id = 0`).Scan(&epoch); err != nil {
+		return nil, nil, err
+	}
+	if req.Epoch != "" && req.Epoch != epoch {
+		return rewound(ctx, tx, site, epoch, limits)
+	}
 	res, err := s.applyBatchTx(ctx, tx, site, ops, extra)
 	if err != nil {
 		return nil, nil, err
@@ -212,6 +219,9 @@ func (s Store) exchange(ctx context.Context, req bounded.Request, limits bounded
 	}
 	page, err := bounded.NewPage(req.Cursor, res.AcceptedThrough, rejected, limits)
 	if err != nil {
+		return nil, nil, err
+	}
+	if _, err := page.WithEpoch(epoch); err != nil {
 		return nil, nil, err
 	}
 	after := req.Cursor
@@ -287,4 +297,30 @@ func canonicalPayload(payload string) (string, error) {
 	}
 	b, err := json.Marshal(value)
 	return string(b), err
+}
+
+// rewound answers a device that has not seen the current epoch: this server's
+// history was rewound (restored from a backup) after the device last synced.
+// Its ops are numbered past what this server holds, so none are applied or
+// logged. The device re-queues what it authored after accepted_through and
+// re-pulls from cursor 0 (Rhizome spec/protocol.md "Server rewind").
+func rewound(ctx context.Context, tx *sql.Tx, site, epoch string, limits bounded.Limits) ([]byte, []TablePK, error) {
+	var acked int64
+	err := tx.QueryRowContext(ctx, `SELECT acked_op_seq FROM sync_cursors WHERE site_id = $1`, site).Scan(&acked)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, nil, err
+	}
+	page, err := bounded.NewPage(0, acked, nil, limits)
+	if err != nil {
+		return nil, nil, err
+	}
+	if _, err := page.WithEpoch(epoch); err != nil {
+		return nil, nil, err
+	}
+	page.Response.HasMore = true
+	body, err := page.Encode()
+	if err != nil {
+		return nil, nil, err
+	}
+	return body, nil, tx.Commit()
 }
