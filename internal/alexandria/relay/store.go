@@ -109,6 +109,9 @@ func (s Store) applyBatchTx(ctx context.Context, tx *sql.Tx, siteID string, ops 
 			res.ChangedPages = append(res.ChangedPages, TablePK{Table: "page", PK: pagePK})
 		}
 	}
+	if err := MarkDirty(ctx, tx, res.ChangedPages); err != nil {
+		return res, err
+	}
 	if res.AcceptedThrough, err = advanceAccepted(ctx, tx, siteID, acked, rejectedSeqs, now, extra); err != nil {
 		return res, err
 	}
@@ -196,6 +199,23 @@ func (s Store) LastSeq(ctx context.Context) (int64, error) {
 	return seq, err
 }
 
+// MarkDirty queues pages whose render input changed for the page pipeline, in
+// the caller's transaction (outbox): a committed change is never lost.
+func MarkDirty(ctx context.Context, tx *sql.Tx, pages []TablePK) error {
+	ids := make([]string, 0, len(pages))
+	for _, p := range pages {
+		if p.Table == "page" && p.PK != "" {
+			ids = append(ids, pgText(p.PK))
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := tx.ExecContext(ctx, `INSERT INTO alexandria_page_dirty(page_id) SELECT DISTINCT unnest($1::text[])
+		ON CONFLICT (page_id) DO UPDATE SET dirtied_at=clock_timestamp(), attempts=0, next_at=now()`, ids)
+	return err
+}
+
 // AuthorOps makes the server a first-class authoring site: each op gets the
 // server's site_id, the next op_seq and an op_ts from the durable HLC (strictly
 // greater than anything observed), then merges and appends in ONE transaction.
@@ -215,6 +235,22 @@ func (s Store) AuthorOps(ctx context.Context, ops []Op) ([]TablePK, error) {
 	var generation string
 	if err := tx.QueryRowContext(ctx, `SELECT generation FROM sync_library_generation WHERE id = 1 FOR SHARE`).Scan(&generation); err != nil {
 		return nil, err
+	}
+	changed, err := AuthorOpsTx(ctx, tx, ops)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+	return changed, nil
+}
+
+// AuthorOpsTx is AuthorOps inside a caller's transaction, which must already
+// hold the generation row FOR SHARE (lock order). It takes the writer lock.
+func AuthorOpsTx(ctx context.Context, tx *sql.Tx, ops []Op) ([]TablePK, error) {
+	if len(ops) == 0 {
+		return nil, nil
 	}
 	if err := lockWriter(ctx, tx); err != nil {
 		return nil, err
@@ -251,8 +287,8 @@ func (s Store) AuthorOps(ctx context.Context, ops []Op) ([]TablePK, error) {
 	if _, err := tx.ExecContext(ctx, `UPDATE sync_site SET last_op_seq = $1, last_hlc = $2 WHERE id = 1`, seq, clock.Last()); err != nil {
 		return nil, fmt.Errorf("persist op_seq/last_hlc: %w", err)
 	}
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit: %w", err)
+	if err := MarkDirty(ctx, tx, changedPages); err != nil {
+		return nil, err
 	}
 	return changedPages, nil
 }

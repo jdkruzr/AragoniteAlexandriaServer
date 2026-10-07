@@ -23,6 +23,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore"
@@ -149,20 +150,25 @@ func (f fixture) scalar(t *testing.T, q string) string {
 func TestPublicationReplacesOnlyLibraryAndAdoptionFencesOldWork(t *testing.T) {
 	f := setup(t)
 	s := f.service()
+	s.ReplaceDerived = notes.ReplaceDerived
 	book := bytes.Repeat([]byte("NO PANCAKES."), 100000)
 	id := assets.Digest(book)
 	rows := [][]byte{
 		row(t, "notebook", pub, peer, 7, map[string]any{"name": "restored", "page_width": int64(10000), "page_height": int64(15000)}),
+		row(t, "page", "0000000000000000000000PAGE", peer, 9, map[string]any{"notebook_id": pub}),
 		row(t, "reader_book", id, peer, 8, map[string]any{"asset_id": id, "byte_length": len(book), "media_type": "application/epub+zip", "metadata_json": `{"version":1,"title":"A book"}`}),
 	}
 	r := f.request(t, f.archive(t, rows, map[string][]byte{id: book}))
 	b, err := s.Publish(ctx, r)
 	must(t, err)
-	if b.Generation == r.Expected || b.Cursor != 2 || b.HighWater != 20 {
+	if b.Generation == r.Expected || b.Cursor != 3 || b.HighWater != 20 {
 		t.Fatalf("bad baseline: %+v", b)
 	}
 	if f.scalar(t, "SELECT name FROM fn_notebook") != "restored" || f.scalar(t, "SELECT count(*) FROM fn_notebook") != "1" || f.scalar(t, "SELECT value FROM unrelated_settings") != "keep me" {
 		t.Fatal("wrong replacement scope")
+	}
+	if f.scalar(t, "SELECT string_agg(page_id, ',') FROM alexandria_page_dirty") != "0000000000000000000000PAGE" {
+		t.Fatal("restored pages not queued for the page pipeline")
 	}
 	if f.scalar(t, "SELECT lww_wall_ts FROM fn_notebook") != "9007199254740993" || f.scalar(t, "SELECT lww_site_id FROM fn_notebook") != peer {
 		t.Fatal("provenance lost")
@@ -204,7 +210,7 @@ func TestPublicationReplacesOnlyLibraryAndAdoptionFencesOldWork(t *testing.T) {
 	must(t, err)
 	_, _, err = generation.Admit(ctx, f.db, fresh)
 	must(t, err)
-	if f.scalar(t, "SELECT acked_op_seq FROM sync_cursors WHERE site_id='"+pub+"'") != "20" || f.scalar(t, "SELECT last_pull_seq FROM sync_cursors WHERE site_id='"+fresh+"'") != "2" {
+	if f.scalar(t, "SELECT acked_op_seq FROM sync_cursors WHERE site_id='"+pub+"'") != "20" || f.scalar(t, "SELECT last_pull_seq FROM sync_cursors WHERE site_id='"+fresh+"'") != "3" {
 		t.Fatal("wrong resume checkpoint")
 	}
 	a.Site = "0000000000000000000000000D"

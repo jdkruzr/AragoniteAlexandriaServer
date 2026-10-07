@@ -43,6 +43,16 @@ type Config struct {
 	// MaxConnections bounds the library pool. Each admitted request holds one connection for its
 	// lifetime, and device sync, asset transfer and workers run concurrently.
 	MaxConnections int
+	// Page recognition (off unless OCRURL is set): Anthropic Messages or an
+	// OpenAI-compatible chat endpoint. Embeddings use an Ollama /api/embed URL.
+	OCRURL       string
+	OCRAPIKey    string
+	OCRModel     string
+	OCRFormat    string
+	OCRPrompt    string
+	EmbedURL     string
+	EmbedModel   string
+	PageDebounce time.Duration
 }
 
 func Load() (Config, error) {
@@ -73,6 +83,14 @@ func Load() (Config, error) {
 		ObjectPathStyle:  boolean("ALEXANDRIA_OBJECT_PATH_STYLE", false),
 		ObjectDisableTLS: boolean("ALEXANDRIA_OBJECT_DISABLE_TLS", false),
 		MaxConnections:   integer("ALEXANDRIA_MAX_CONNECTIONS", 16),
+		OCRURL:           strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_URL")),
+		OCRAPIKey:        strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_API_KEY")),
+		OCRModel:         strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_MODEL")),
+		OCRFormat:        env("ALEXANDRIA_OCR_FORMAT", "anthropic"),
+		OCRPrompt:        strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_PROMPT")),
+		EmbedURL:         strings.TrimSpace(os.Getenv("ALEXANDRIA_EMBED_URL")),
+		EmbedModel:       env("ALEXANDRIA_EMBED_MODEL", "nomic-embed-text:v1.5"),
+		PageDebounce:     duration("ALEXANDRIA_PAGE_DEBOUNCE", 5*time.Second),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -94,6 +112,12 @@ func (c Config) Validate() error {
 	}
 	if c.MaxConnections < 1 || c.MaxConnections > 64 {
 		return fmt.Errorf("ALEXANDRIA_MAX_CONNECTIONS must be between 1 and 64")
+	}
+	if c.OCRFormat != "anthropic" && c.OCRFormat != "openai" {
+		return fmt.Errorf("invalid ALEXANDRIA_OCR_FORMAT %q (anthropic or openai)", c.OCRFormat)
+	}
+	if c.OCRURL != "" && c.OCRModel == "" {
+		return errors.New("ALEXANDRIA_OCR_URL requires ALEXANDRIA_OCR_MODEL")
 	}
 	if c.JobLauncher != "local" && c.JobLauncher != "aws-batch" {
 		return fmt.Errorf("invalid ALEXANDRIA_JOB_LAUNCHER %q", c.JobLauncher)

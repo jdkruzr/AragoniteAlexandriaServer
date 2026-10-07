@@ -18,6 +18,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore"
@@ -75,7 +76,7 @@ func (h *Host) Serve(lib Library, w http.ResponseWriter, r *http.Request) {
 	// Restore authenticates for itself: an OLD device key may discover and
 	// adopt a replacement it is fenced out of.
 	if strings.HasPrefix(r.URL.Path, "/sync/restore/v1/") {
-		restore.Service{DB: lib.DB, Objects: lib.Objects}.Handler(lib.Account).ServeHTTP(w, r)
+		restore.Service{DB: lib.DB, Objects: lib.Objects, ReplaceDerived: notes.ReplaceDerived}.Handler(lib.Account).ServeHTTP(w, r)
 		return
 	}
 	store.Bind(func(site string, w http.ResponseWriter, r *http.Request) {

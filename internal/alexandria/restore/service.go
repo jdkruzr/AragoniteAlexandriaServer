@@ -56,8 +56,9 @@ type Manifest struct {
 type Service struct {
 	DB      pg.DB
 	Objects blob.Store
-	// ReplaceDerived clears host-owned derived state (search indexes) in the
-	// SAME transaction as the replacement. No external I/O.
+	// ReplaceDerived rebuilds host-owned derived state (search indexes, work
+	// queues) in the SAME transaction, after the new rows are in place. No
+	// external I/O.
 	ReplaceDerived func(context.Context, *sql.Tx) error
 }
 
@@ -263,11 +264,6 @@ func upload(ctx context.Context, store assetstore.Store, id string, entry *zip.F
 // replace runs inside the publication transaction holding the generation
 // FOR UPDATE. Explicit allowlist: no settings, sources, credentials or tasks.
 func (s Service) replace(ctx context.Context, tx *sql.Tx, next string, r generation.Request, m Manifest, rows *zip.File, books []book) error {
-	if s.ReplaceDerived != nil {
-		if err := s.ReplaceDerived(ctx, tx); err != nil {
-			return err
-		}
-	}
 	// The relay writer lock too, so the global lock order holds everywhere.
 	var lastSeq int64
 	if err := tx.QueryRowContext(ctx, `SELECT last_seq FROM sync_seq WHERE id=1 FOR UPDATE`).Scan(&lastSeq); err != nil {
@@ -381,6 +377,12 @@ func (s Service) replace(ctx context.Context, tx *sql.Tx, next string, r generat
 	if _, err := tx.ExecContext(ctx, `INSERT INTO sync_cursors(site_id,last_pull_seq,acked_op_seq,updated_at) VALUES($1,$2,$3,$4)`,
 		r.Publisher, in.seq, m.HighWater, time.Now().UnixMilli()); err != nil {
 		return err
+	}
+	// Derived state is rebuilt from the replaced rows, so it runs last.
+	if s.ReplaceDerived != nil {
+		if err := s.ReplaceDerived(ctx, tx); err != nil {
+			return err
+		}
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO sync_restore_baseline(id,generation,snapshot,publisher,high_water,cursor) VALUES(1,$1,$2,$3,$4,$5)
 		ON CONFLICT (id) DO UPDATE SET generation=EXCLUDED.generation, snapshot=EXCLUDED.snapshot, publisher=EXCLUDED.publisher,
