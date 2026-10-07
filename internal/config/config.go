@@ -53,6 +53,8 @@ type Config struct {
 	EmbedURL     string
 	EmbedModel   string
 	PageDebounce time.Duration
+	// PublicURL is how users reach this server (links in MCP results).
+	PublicURL string
 }
 
 func Load() (Config, error) {
@@ -91,6 +93,7 @@ func Load() (Config, error) {
 		EmbedURL:         strings.TrimSpace(os.Getenv("ALEXANDRIA_EMBED_URL")),
 		EmbedModel:       env("ALEXANDRIA_EMBED_MODEL", "nomic-embed-text:v1.5"),
 		PageDebounce:     duration("ALEXANDRIA_PAGE_DEBOUNCE", 5*time.Second),
+		PublicURL:        strings.TrimRight(strings.TrimSpace(os.Getenv("ALEXANDRIA_PUBLIC_URL")), "/"),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -115,6 +118,9 @@ func (c Config) Validate() error {
 	}
 	if c.OCRFormat != "anthropic" && c.OCRFormat != "openai" {
 		return fmt.Errorf("invalid ALEXANDRIA_OCR_FORMAT %q (anthropic or openai)", c.OCRFormat)
+	}
+	if c.PublicURL != "" && !strings.HasPrefix(c.PublicURL, "https://") && !strings.HasPrefix(c.PublicURL, "http://") {
+		return errors.New("ALEXANDRIA_PUBLIC_URL must be an http(s) URL")
 	}
 	if c.OCRURL != "" && c.OCRModel == "" {
 		return errors.New("ALEXANDRIA_OCR_URL requires ALEXANDRIA_OCR_MODEL")

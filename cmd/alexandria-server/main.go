@@ -270,7 +270,7 @@ func runService(logger *slog.Logger) error {
 		pages.Embedder = embed.NewOllama(cfg.EmbedURL, cfg.EmbedModel)
 	}
 	runtime, err := library.Open(ctx, library.Config{ID: libraryID, DatabaseURL: cfg.DatabaseURL, Objects: objectStore, Launcher: launcher,
-		MaxConnections: cfg.MaxConnections, Pages: pages})
+		MaxConnections: cfg.MaxConnections, Pages: pages, PublicURL: cfg.PublicURL})
 	if err != nil {
 		return err
 	}

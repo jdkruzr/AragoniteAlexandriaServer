@@ -16,6 +16,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
@@ -61,7 +62,9 @@ type Config struct {
 	AuthenticateAccount Authenticator
 	// Pages configures the notebook page pipeline (recognition, embeddings).
 	// The zero value indexes text boxes and device text only.
-	Pages          notes.Pipeline
+	Pages notes.Pipeline
+	// PublicURL is the externally reachable base URL ("" = relative links).
+	PublicURL      string
 	Authorize      Policy
 	Launcher       Launcher
 	MaxConnections int
@@ -233,7 +236,11 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	mux := http.NewServeMux()
-	mux.Handle("GET /api/v1/search", notes.Searcher{DB: conn, Embedder: r.cfg.Pages.Embedder}.Handler())
+	searcher := notes.Searcher{DB: conn, Embedder: r.cfg.Pages.Embedder}
+	mux.Handle("GET /api/v1/search", searcher.Handler())
+	mcp := mcptools.Handler(mcptools.Deps{DB: conn, Search: searcher, PublicURL: r.cfg.PublicURL})
+	mux.Handle("/mcp", mcp)
+	mux.Handle("/mcp/", mcp)
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {
