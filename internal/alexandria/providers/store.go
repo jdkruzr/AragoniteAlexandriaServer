@@ -24,6 +24,7 @@ import (
 type OCRConfig struct {
 	Enabled                    bool
 	URL, Model, Format, Prompt string
+	AnthropicWorkspace         string `json:",omitempty"`
 	VLLMDisableThinking        bool
 }
 type EmbedConfig struct {
@@ -188,6 +189,17 @@ func endpoint(v string) error {
 	return nil
 }
 func Validate(c Config) error {
+	if id := c.OCR.AnthropicWorkspace; id != "" {
+		if len(id) > 128 || !strings.HasPrefix(id, "wrkspc_") || len(id) <= len("wrkspc_") {
+			return errors.New("Enter a valid Anthropic workspace ID (wrkspc_…).")
+		}
+		for _, ch := range id {
+			if !(ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9' || ch == '_') {
+				return errors.New("Enter a valid Anthropic workspace ID (wrkspc_…).")
+			}
+		}
+	}
+
 	if e := endpoint(c.OCR.URL); e != nil {
 		return e
 	}
@@ -222,6 +234,7 @@ func (s Store) Candidate(ctx context.Context, revision int64, c Config, key, act
 	if v.Revision != revision {
 		return v, ErrStale
 	}
+	c.OCR.AnthropicWorkspace = strings.TrimSpace(c.OCR.AnthropicWorkspace)
 	c.OCR.URL = strings.TrimRight(strings.TrimSpace(c.OCR.URL), "/")
 	c.Embedding.URL = strings.TrimRight(strings.TrimSpace(c.Embedding.URL), "/")
 	if e = Validate(c); e != nil {
@@ -280,7 +293,7 @@ func (s Store) Save(ctx context.Context, v Snapshot) error {
 	return tx.Commit()
 }
 func (v Snapshot) OCRClient() *ocr.OCRClient {
-	var opts []ocr.Option
+	opts := []ocr.Option{ocr.WithAnthropicWorkspace(v.Config.OCR.AnthropicWorkspace)}
 	if v.Config.OCR.VLLMDisableThinking {
 		opts = append(opts, ocr.WithVLLMDisableThinking())
 	}

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,7 @@ type OCRClient struct {
 	format              string
 	client              *http.Client
 	vllmDisableThinking bool
+	anthropicWorkspace  string
 }
 
 // Option configures optional provider-specific behavior.
@@ -45,6 +47,12 @@ type Option func(*OCRClient)
 // for standard OpenAI-compatible endpoints; it never affects Anthropic requests.
 func WithVLLMDisableThinking() Option {
 	return func(c *OCRClient) { c.vllmDisableThinking = true }
+}
+
+// WithAnthropicWorkspace selects a workspace for multi-workspace Anthropic keys.
+// It is never sent to an OpenAI-format endpoint.
+func WithAnthropicWorkspace(id string) Option {
+	return func(c *OCRClient) { c.anthropicWorkspace = id }
 }
 
 // NewOCRClient creates an OCRClient.
@@ -147,6 +155,9 @@ func (c *OCRClient) recognizeAnthropic(ctx context.Context, jpegData []byte, pro
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", c.apiKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
+	if c.anthropicWorkspace != "" {
+		req.Header.Set("anthropic-workspace-id", c.anthropicWorkspace)
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -157,7 +168,7 @@ func (c *OCRClient) recognizeAnthropic(ctx context.Context, jpegData []byte, pro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		err := &HTTPError{Status: resp.StatusCode}
+		err := providerHTTPError(resp)
 		if transientHTTPStatus(resp.StatusCode) {
 			return "", Transient(err)
 		}
@@ -171,7 +182,16 @@ func (c *OCRClient) recognizeAnthropic(ctx context.Context, jpegData []byte, pro
 	if len(vResp.Content) == 0 {
 		return "", fmt.Errorf("ocrclient: empty response")
 	}
-	return vResp.Content[0].Text, nil
+	var text strings.Builder
+	for _, block := range vResp.Content {
+		if block.Type == "text" {
+			text.WriteString(block.Text)
+		}
+	}
+	if text.Len() == 0 {
+		return "", fmt.Errorf("ocrclient: response contains no text")
+	}
+	return text.String(), nil
 }
 
 // ── OpenAI Chat Completions API ───────────────────────────────────────────────
@@ -246,7 +266,7 @@ func (c *OCRClient) recognizeOpenAI(ctx context.Context, jpegData []byte, prompt
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		err := &HTTPError{Status: resp.StatusCode}
+		err := providerHTTPError(resp)
 		if transientHTTPStatus(resp.StatusCode) {
 			return "", Transient(err)
 		}
@@ -264,7 +284,27 @@ func (c *OCRClient) recognizeOpenAI(ctx context.Context, jpegData []byte, prompt
 }
 
 // HTTPError exposes status without retaining or returning sensitive provider bodies.
-type HTTPError struct{ Status int }
+type HTTPError struct {
+	Status            int
+	WorkspaceRequired bool
+}
+
+// Classify a known diagnostic without retaining arbitrary upstream text.
+func providerHTTPError(resp *http.Response) *HTTPError {
+	err := &HTTPError{Status: resp.StatusCode}
+	if resp.StatusCode == http.StatusBadRequest {
+		var body struct {
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&body) == nil {
+			message := strings.ToLower(body.Error.Message)
+			err.WorkspaceRequired = strings.Contains(message, "anthropic-workspace-id")
+		}
+	}
+	return err
+}
 
 func (e *HTTPError) Error() string {
 	return fmt.Sprintf("recognition endpoint returned HTTP %d", e.Status)

@@ -12,6 +12,8 @@
 <label>API format <select name="ocr_format"><option value="anthropic" {{if eq $p.Config.OCR.Format "anthropic"}}selected{{end}}>Anthropic Messages</option><option value="openai" {{if eq $p.Config.OCR.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option></select></label>
 <label>Base URL <input type="url" name="ocr_url" value="{{$p.Config.OCR.URL}}" maxlength="2048" placeholder="https://api.example.com"></label>
 <p class="muted">Use the base URL, without /v1 or a trailing slash. Local HTTP endpoints are supported.</p>
+<label>Anthropic workspace ID (optional) <input name="anthropic_workspace" value="{{$p.Config.OCR.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></label>
+<p class="muted">Required for Anthropic keys that can access multiple workspaces. Find the ID in Claude Console → Settings → Workspaces. Ignored for OpenAI format.</p>
 <label>Vision model <input name="ocr_model" value="{{$p.Config.OCR.Model}}" maxlength="256"></label>
 <label>API key <input type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="Never displayed after saving"></label>
 <p class="muted">{{if $p.HasKey}}A key is saved.{{else}}No key is saved.{{end}} Keys are encrypted in the database.</p>

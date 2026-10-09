@@ -48,7 +48,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			back(w, r, "/settings", "Index work queued. The previous index remains available while the replacement builds.")
 			return
 		}
-		c := providers.Config{OCR: providers.OCRConfig{Enabled: r.Form.Get("ocr_enabled") == "on", URL: strings.TrimSpace(r.Form.Get("ocr_url")), Model: strings.TrimSpace(r.Form.Get("ocr_model")), Format: r.Form.Get("ocr_format"), Prompt: r.Form.Get("ocr_prompt"), VLLMDisableThinking: r.Form.Get("vllm") == "on"}, Embedding: providers.EmbedConfig{Enabled: r.Form.Get("embed_enabled") == "on", URL: strings.TrimSpace(r.Form.Get("embed_url")), Model: strings.TrimSpace(r.Form.Get("embed_model"))}}
+		c := providers.Config{OCR: providers.OCRConfig{Enabled: r.Form.Get("ocr_enabled") == "on", URL: strings.TrimSpace(r.Form.Get("ocr_url")), Model: strings.TrimSpace(r.Form.Get("ocr_model")), Format: r.Form.Get("ocr_format"), Prompt: r.Form.Get("ocr_prompt"), AnthropicWorkspace: strings.TrimSpace(r.Form.Get("anthropic_workspace")), VLLMDisableThinking: r.Form.Get("vllm") == "on"}, Embedding: providers.EmbedConfig{Enabled: r.Form.Get("embed_enabled") == "on", URL: strings.TrimSpace(r.Form.Get("embed_url")), Model: strings.TrimSpace(r.Form.Get("embed_model"))}}
 		candidate, e := d.Providers.Candidate(r.Context(), rev, c, r.Form.Get("api_key"), r.Form.Get("key_action"))
 		if e == nil {
 			switch action {
