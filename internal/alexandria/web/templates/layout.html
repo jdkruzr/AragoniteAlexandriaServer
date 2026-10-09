@@ -8,7 +8,7 @@
 </head>
 <body>
 <header><a class="brand" href="/">Alexandria Server</a>
-<nav aria-label="Global"><a href="/" {{if eq .Section "overview"}}aria-current="page"{{end}}>Overview</a><a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>Search</a><a href="/tasks" {{if eq .Section "tasks"}}aria-current="page"{{end}}>Tasks</a><a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>Server settings</a></nav></header>
+<nav aria-label="Global"><a href="/" {{if eq .Section "overview"}}aria-current="page"{{end}}>Overview</a><a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>Search</a><a href="/tasks" {{if eq .Section "tasks"}}aria-current="page"{{end}}>Tasks</a><a href="/jobs" {{if eq .Section "jobs"}}aria-current="page"{{end}}>Jobs</a><a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>Server settings</a></nav></header>
 <div class="workspace"><aside class="source-nav"><h2>Sources</h2><nav aria-label="Sources">
 <a href="/files/forestnote" {{if .ClientSource}}aria-current="page"{{end}}>Alexandria Client</a>
 {{if .NativeBOOX}}<a href="/boox" {{if eq .Section "boox"}}aria-current="page"{{end}}>BOOX Native <small>PowerSync</small></a>{{end}}

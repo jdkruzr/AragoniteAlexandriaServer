@@ -59,3 +59,6 @@ form.stack legend { font-weight:600; padding:0 .35rem; }
 form.stack input, form.stack select, form.stack textarea { max-width:100%; min-width:0; box-sizing:border-box; }
 form.stack textarea { width:100%; font:inherit; color:inherit; background:transparent; border:1px solid var(--line); border-radius:.35rem; padding:.5rem; }
 form.stack label:has(input[type="checkbox"]) { display:flex; align-items:center; gap:.5rem; }
+
+.job-counts, .job-actions { display:flex; flex-wrap:wrap; gap:.4rem; margin:.5rem 0; }
+.job-table { min-width:58rem; } .job-table td:first-child { min-width:12rem; } .job-table td:nth-child(3) { min-width:14rem; }

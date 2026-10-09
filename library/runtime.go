@@ -24,6 +24,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost"
@@ -288,7 +289,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		return true
 	}
-	if r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || strings.HasPrefix(req.URL.Path, "/settings/providers")) {
+	if strings.HasPrefix(req.URL.Path, "/jobs") || r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || strings.HasPrefix(req.URL.Path, "/settings/providers")) {
 		if e := r.account(conn)(req); e != nil {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
 			http.Error(w, "unauthorized", 401)
@@ -371,7 +372,20 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if searcher.Embedder != nil {
 		status.Embedding = searcher.Embedder.Model()
 	}
-	mux.Handle("/", web.Handler(web.Deps{Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status}))
+	catalog := func(ctx context.Context, source, id string) (recognition.Notebook, error) {
+		if source == "client" {
+			return recognition.ClientNotebook(ctx, conn, id)
+		}
+		if source == "boox" && r.cfg.NativeBOOX != nil {
+			native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID}
+			if e := native.ResolveIdentity(ctx); e != nil {
+				return recognition.Notebook{}, e
+			}
+			return native.RecognitionNotebook(ctx, id)
+		}
+		return recognition.Notebook{}, errors.New("Unknown source")
+	}
+	mux.Handle("/", web.Handler(web.Deps{RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {
@@ -533,37 +547,40 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 		return 0, err
 	}
 	defer done()
-	n := 0
-	for n < max && ctx.Err() == nil {
+
+	n, idle := 0, 0
+	for turn := 0; n < max && idle < 3 && ctx.Err() == nil; turn++ {
 		pages, store, snapshot, err := r.pageConfiguration(ctx, conn)
 		if err != nil {
 			return n, err
 		}
-		found, err := pages.Step(ctx, conn)
+		found := false
+		switch turn % 3 {
+		case 0:
+			found, err = pages.Step(ctx, conn)
+		case 1:
+			if r.cfg.NativeBOOX != nil {
+				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil, RecognitionIdentity: pages.OCRIdentity, RecognitionRevision: pages.SettingsRevision}
+				if err = native.ResolveIdentity(ctx); err == nil {
+					found, err = native.ProcessPageIndex(ctx, pages.OCR, pages.Prompt)
+				}
+			}
+		case 2:
+			if store != nil && snapshot.Config.Embedding.Enabled {
+				found, err = store.ProcessIndex(ctx)
+			}
+		}
 		if err != nil {
 			return n, err
 		}
-		if !found && r.cfg.NativeBOOX != nil {
-			native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil, RecognitionIdentity: pages.OCRIdentity, RecognitionRevision: pages.SettingsRevision}
-			if err = native.ResolveIdentity(ctx); err != nil {
-				return n, err
-			}
-			found, err = native.ProcessPageIndex(ctx, pages.OCR, pages.Prompt)
-			if err != nil {
-				return n, err
-			}
+		if found {
+			n++
+			idle = 0
+		} else {
+			idle++
 		}
-		if !found && store != nil && snapshot.Config.Embedding.Enabled {
-			found, err = store.ProcessIndex(ctx)
-			if err != nil {
-				return n, err
-			}
-		}
-		if !found {
-			return n, nil
-		}
-		n++
 	}
+
 	return n, nil
 }
 

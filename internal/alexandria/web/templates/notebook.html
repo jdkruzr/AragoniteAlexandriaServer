@@ -3,7 +3,7 @@
 <h1>{{if $d.Name}}{{$d.Name}}{{else}}Untitled notebook{{end}}</h1>
 <div class="actions">
   <a class="button" href="/files/forestnote/export?notebook={{$d.ID}}">Download PDF</a>
-  <form method="post" action="/files/forestnote/reprocess"><input type="hidden" name="notebook" value="{{$d.ID}}"><button>Recognize Again</button></form>
+  <a class="button" href="/jobs/new?source=client&amp;notebook={{$d.ID}}">Recognize pages…</a>
   <details class="danger"><summary>Delete Notebook</summary>
     <form method="post" action="/files/forestnote/delete"><input type="hidden" name="notebook" value="{{$d.ID}}">
       <p>Devices delete this notebook on their next sync. An edit made on a device afterwards brings it back.</p>

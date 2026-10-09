@@ -1,0 +1,20 @@
+{{define "content"}}{{$d := .Data}}{{$f := $d.Filter}}
+<h1>Jobs</h1>
+<p>Track recognition progress, review failures, and manage work across your notebooks.</p>
+<div class="actions"><a class="button" href="/jobs/new">Queue recognition…</a><a class="button" href="{{$d.Refresh}}">Refresh status</a><a href="{{$d.LiveURL}}">{{if $d.Live}}Stop live updates{{else}}Live updates (every 5 seconds){{end}}</a></div>
+{{if $f.Batch}}<h2>{{$d.View.BatchTitle}}</h2><p>Batch <code>{{$f.Batch}}</code> · <a href="/jobs">All jobs</a></p>{{end}}
+<form class="inline" method="get" action="/jobs">
+{{if $d.Live}}<input type="hidden" name="live" value="1">{{end}}{{if $f.Batch}}<input type="hidden" name="batch" value="{{$f.Batch}}">{{end}}
+<label>Source <select name="source"><option value="">All sources</option><option value="boox" {{if eq $f.Source "boox"}}selected{{end}}>BOOX Native</option><option value="client" {{if eq $f.Source "client"}}selected{{end}}>Alexandria Client</option></select></label>
+<label>Status <select name="state"><option value="">All statuses</option>{{range $state := (listJobStates)}}<option value="{{$state}}" {{if eq $f.State $state}}selected{{end}}>{{$state}}</option>{{end}}</select></label><button>Filter</button></form>
+<div class="job-counts">{{range $state,$count := $d.View.Counts}}<span class="badge">{{$state}}: {{$count}}</span>{{end}}</div>
+{{if $f.Batch}}<form class="inline" method="post" action="/jobs/control"><input type="hidden" name="kind" value="batch"><input type="hidden" name="id" value="{{$f.Batch}}"><button name="action" value="pause">Pause batch</button><button name="action" value="resume">Resume batch</button><button name="action" value="retry">Retry failures</button><button class="destructive" name="action" value="cancel">Cancel unfinished</button></form>{{end}}
+<p class="muted">Pause or cancel prevents pending results from being published. An already-sent provider request may still finish and incur charges. Resume may send it again. Retry reuses unchanged successful OCR where possible.</p>
+{{if $d.View.Jobs}}<div class="table-scroll"><table class="job-table"><thead><tr><th>Page / source</th><th>Status</th><th>Details</th><th>Created / updated (UTC)</th><th>Actions</th></tr></thead><tbody>
+{{range $d.View.Jobs}}<tr><td><a href="{{.URL}}">{{.Title}}</a><br>{{if .Number}}Page {{.Number}}{{else}}<span class="small">{{.Page}}</span>{{end}} · {{if eq .Source "boox"}}BOOX Native{{else}}Alexandria Client{{end}}{{if .Batch}}<br><a href="/jobs?batch={{.Batch}}">View batch</a>{{end}}</td>
+<td><strong>{{.State}}</strong><br><span class="small">{{.Attempts}} failed attempts</span></td><td>{{.Detail}}{{if .Model}}<br><span class="small">{{.Model}}</span>{{end}}{{if eq .State "queued"}}<br><span class="small">Eligible {{.Next.UTC.Format "2006-01-02 15:04:05"}}</span>{{end}}</td>
+<td class="small">{{.Created.UTC.Format "2006-01-02 15:04:05"}}<br>{{.Updated.UTC.Format "2006-01-02 15:04:05"}}</td>
+<td><form class="job-actions" method="post" action="/jobs/control"><input type="hidden" name="id" value="{{.ID}}">{{if or (eq .State "queued") (eq .State "processing")}}<button name="action" value="pause">Pause</button>{{end}}{{if eq .State "paused"}}<button name="action" value="resume">Resume</button>{{end}}{{if or (eq .State "failed") (eq .State "blocked")}}<button name="action" value="retry">Retry</button>{{end}}{{if and (ne .State "ready") (ne .State "cancelled")}}<button class="quiet" name="action" value="cancel">Cancel</button>{{end}}</form></td></tr>{{end}}
+</tbody></table></div>{{else}}<p class="empty">No matching jobs. Queue recognition from a notebook or use the button above.</p>{{end}}
+<nav class="pagination" aria-label="Job pagination"><span>{{$d.Start}}–{{$d.End}} of {{$d.View.Total}}</span>{{if $d.Previous}}<a href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a href="{{$d.Next}}">Next</a>{{end}}</nav>
+{{end}}

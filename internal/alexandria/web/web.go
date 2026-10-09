@@ -24,6 +24,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
 )
 
@@ -31,6 +32,9 @@ import (
 var assets embed.FS
 
 var funcs = template.FuncMap{
+	"listJobStates": func() []string {
+		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled"}
+	},
 	"ms": func(ms int64) string {
 		if ms <= 0 {
 			return "—"
@@ -70,13 +74,14 @@ type Status struct {
 }
 
 type Deps struct {
-	Providers *providers.Store
-	DB        pg.DB
-	Objects   blob.Store
-	Search    notes.Searcher
-	PublicURL string
-	Status    Status
-	Logger    *slog.Logger
+	RecognitionCatalog recognition.Catalog
+	Providers          *providers.Store
+	DB                 pg.DB
+	Objects            blob.Store
+	Search             notes.Searcher
+	PublicURL          string
+	Status             Status
+	Logger             *slog.Logger
 }
 
 type page struct {
@@ -171,6 +176,7 @@ func Handler(d Deps) http.Handler {
 	d.deviceRoutes(mux)
 	d.settingsRoutes(mux)
 	d.providerRoutes(mux)
+	d.jobRoutes(mux)
 	d.authorizeRoutes(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()

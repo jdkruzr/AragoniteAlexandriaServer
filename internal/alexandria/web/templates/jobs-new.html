@@ -1,0 +1,10 @@
+{{define "content"}}{{$d := .Data}}<p><a href="/jobs">← Jobs</a></p><h1>Queue recognition</h1>
+{{if not $d.Enabled}}<p class="notice">Enable handwriting recognition in <a href="/settings">Server settings</a> before queueing pages.</p>{{end}}
+{{if $d.Notebook}}{{$n := $d.Notebook}}<h2>{{$n.Title}}</h2><p>{{$d.Count}} pages · {{if eq $d.Source "boox"}}BOOX Native{{else}}Alexandria Client{{end}}</p>
+{{if $d.Count}}<form class="stack" method="post" action="/jobs/queue"><input type="hidden" name="source" value="{{$d.Source}}"><input type="hidden" name="notebook" value="{{$n.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="token" value="{{$d.Token}}">
+<label>First page <input type="number" name="from" value="1" min="1" max="{{$d.Count}}" required></label><label>Last page <input type="number" name="to" value="{{$d.Count}}" min="1" max="{{$d.Count}}" required></label>
+<label><input type="checkbox" name="force">Recognize again even if a matching result is cached</label>
+<p>Each selected page becomes a job. Already queued, running or paused pages keep their existing jobs. BOOX pages with incomplete previews are blocked until their resources can be rendered.</p>
+<label><input type="checkbox" name="confirm" required>I agree to send these pages to my configured recognition provider. Provider charges may apply.</label><button {{if not $d.Enabled}}disabled{{end}}>Queue selected pages</button></form>{{else}}<p class="empty">No pages available.</p>{{end}}
+{{else}}<p>Choose a notebook, then review the page range before starting.</p><form class="search" method="get"><input type="search" name="q" value="{{$d.Query}}" aria-label="Notebook title" placeholder="Search notebook titles"><button>Search</button></form>
+<ul>{{range $d.Choices}}<li><a href="/jobs/new?source={{.Source}}&amp;notebook={{.ID}}">{{.Title}}</a> <span class="muted">{{if eq .Source "boox"}}BOOX Native{{else}}Alexandria Client{{end}}</span></li>{{else}}<li>No matching notebooks.</li>{{end}}</ul>{{if $d.More}}<p>Showing the first 50 matches. Narrow the title search to find another notebook.</p>{{end}}{{end}}{{end}}
