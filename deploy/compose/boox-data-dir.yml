@@ -1,0 +1,7 @@
+services:
+  couchbase:
+    volumes:
+      - type: bind
+        source: ${ALEXANDRIA_COUCHBASE_DIR:?Set Couchbase directory}
+        target: /opt/couchbase/var
+        bind: {create_host_path: false}

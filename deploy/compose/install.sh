@@ -6,14 +6,7 @@
 set -eu
 cd "$(dirname "$0")"
 
-compose() {
-	if [ -n "${COMPOSE:-}" ]; then $COMPOSE "$@"
-	elif docker compose version >/dev/null 2>&1; then docker compose "$@"
-	elif podman compose version >/dev/null 2>&1; then podman compose "$@"
-	elif command -v docker-compose >/dev/null 2>&1; then docker-compose "$@"
-	else echo "Install Docker Compose v2 or Podman Compose first (or set COMPOSE)." >&2; exit 1
-	fi
-}
+. ./common.sh
 secret() { od -An -N"$1" -tx1 /dev/urandom | tr -d ' \n'; }
 ask() { printf '%s' "$1" >&2; read -r REPLY; printf '%s' "${REPLY:-$2}"; }
 
@@ -52,6 +45,8 @@ ENV
 	echo "Wrote .env with new random secrets."
 fi
 
+. ./common.sh
+
 echo "Building the server image (this takes a few minutes the first time)..."
 compose build alexandria
 echo "Starting the server..."
@@ -63,7 +58,7 @@ port=$(sed -n 's/^ALEXANDRIA_MAIN_PORT=//p' .env)
 port=${port:-18443}
 printf 'Waiting for the server to become ready'
 i=0
-until wget -q -O /dev/null "http://127.0.0.1:$port/readyz" 2>/dev/null || curl -fs -o /dev/null "http://127.0.0.1:$port/readyz" 2>/dev/null; do
+until wget -q -O /dev/null "http://${ALEXANDRIA_MAIN_HOST:-127.0.0.1}:$port/readyz" 2>/dev/null || curl -fs -o /dev/null "http://${ALEXANDRIA_MAIN_HOST:-127.0.0.1}:$port/readyz" 2>/dev/null; do
 	i=$((i + 1))
 	if [ "$i" -gt 120 ]; then
 		echo; echo "The server did not become ready. See the logs with: docker compose logs alexandria (or podman compose logs alexandria)." >&2
@@ -90,11 +85,11 @@ fi
 url=$(sed -n 's/^ALEXANDRIA_PUBLIC_URL=//p' .env)
 cat <<DONE
 
-Alexandria Server is running on 127.0.0.1:$port (plain HTTP, local only).
+Alexandria Server is running on ${ALEXANDRIA_MAIN_HOST:-127.0.0.1}:$port (plain HTTP upstream).
 Point your TLS reverse proxy at it so it answers at $url, for example with Caddy:
 
   ${url#https://} {
-      reverse_proxy 127.0.0.1:$port {
+      reverse_proxy ${ALEXANDRIA_MAIN_HOST:-127.0.0.1}:$port {
           flush_interval -1
           transport http {
               read_timeout 20m
@@ -102,7 +97,7 @@ Point your TLS reverse proxy at it so it answers at $url, for example with Caddy
           }
       }
       request_body {
-          max_size 32MB
+          max_size 64MB
       }
   }
 

@@ -8,7 +8,7 @@ import (
 
 func TestKnownSyncModels(t *testing.T) {
 	tests := map[string]Direction{
-		"supernote": TwoWay, "boox": OneWayIn, "forestnote": TwoWay, "remarkable": TwoWay,
+		"supernote": TwoWay, "boox": OneWayIn, "boox_native_couchbase": TwoWay, "forestnote": TwoWay, "remarkable": TwoWay,
 	}
 	for sourceType, direction := range tests {
 		got := SyncModelFor(sourceType)

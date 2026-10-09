@@ -162,3 +162,24 @@ func TestDownloadHoldsCrossProcessBarrier(t *testing.T) {
 	}
 	schema.ReleaseLock(conn, false)
 }
+
+func TestNativeCapabilityGETsRespectReadOnlyAdmission(t *testing.T) {
+	r, db, id := fixture(t)
+	r.cfg.NativeBOOX = &NativeBOOXConfig{PublicURL: "https://example.test", Database: "neocloud"}
+	if err := SetMode(context.Background(), db, id, "read_only"); err != nil {
+		t.Fatal(err)
+	}
+	for _, prefix := range []string{"/api", "/api/1", "/api/v2"} {
+		for _, path := range []string{"/users/syncToken", "/config/stss", "/token/refresh"} {
+			if got := request(r, "GET", prefix+path, "", "invalid"); got.Code != 403 {
+				t.Fatalf("mutating GET bypassed read-only: %s %d", prefix+path, got.Code)
+			}
+		}
+	}
+	if got := request(r, "GET", "/boox-neocloud/_blipsync", "", "invalid"); got.Code != 403 {
+		t.Fatal("BLIP bypassed read-only", got.Code)
+	}
+	if got := request(r, "GET", "/api/1/users/me", "", "invalid"); got.Code != 401 {
+		t.Fatal("read-only identity request denied before credential check", got.Code)
+	}
+}
