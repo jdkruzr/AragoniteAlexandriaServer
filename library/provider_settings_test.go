@@ -30,7 +30,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if got := b.do("GET", "/settings", "", map[string]string{"Authorization": "Bearer " + token}, false); got.Code != 401 {
 		t.Fatal("bearer token admitted owner settings", got.Code)
 	}
-	form := url.Values{"revision": {"1"}, "action": {"save"}, "ocr_enabled": {"on"}, "ocr_format": {"openai"}, "ocr_url": {"http://localhost:9999"}, "ocr_model": {"synthetic-vision"}, "embed_model": {"synthetic"}, "api_key": {"private-secret-value"}, "key_action": {"replace"}}
+	form := url.Values{"revision": {"1"}, "action": {"save"}, "ocr_enabled": {"on"}, "ocr_format": {"openai"}, "ocr_url": {"http://localhost:9999"}, "ocr_model": {"synthetic-vision"}, "embed_model": {"synthetic"}, "api_key": {"private-secret-value"}, "key_action": {"replace"}, "anthropic_workspace": {"wrkspc_test123"}}
 	if got := b.do("POST", "/settings/providers", form.Encode(), nil, true); got.Code != 403 {
 		t.Fatal("CSRF", got.Code)
 	}
@@ -38,11 +38,11 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 		t.Fatal(got.Code, got.Body.String())
 	}
 	get = b.do("GET", "/settings", "", nil, true)
-	if get.Code != 200 || strings.Contains(get.Body.String(), "private-secret-value") || !strings.Contains(get.Body.String(), "A key is saved") {
+	if get.Code != 200 || strings.Contains(get.Body.String(), "private-secret-value") || !strings.Contains(get.Body.String(), "A key is saved") || !strings.Contains(get.Body.String(), "wrkspc_test123") {
 		t.Fatal("secret view", get.Code)
 	}
 	p, _, snap, e := r.pageConfiguration(ctx, db)
-	if e != nil || p.OCR == nil || p.OCR.Model() != "synthetic-vision" || snap.Revision != 2 {
+	if e != nil || p.OCR == nil || p.OCR.Model() != "synthetic-vision" || snap.Revision != 2 || snap.Config.OCR.AnthropicWorkspace != "wrkspc_test123" {
 		t.Fatal("runtime not refreshed", e)
 	}
 	// A separately admitted runtime configuration reads the same revision.

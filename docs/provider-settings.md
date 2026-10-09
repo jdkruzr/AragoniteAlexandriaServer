@@ -126,3 +126,37 @@ including automatic use of an entered key and HTTP status preservation without
 private response text. Deployed without a migration; public settings copy, health
 and the reference preview are verified. The reported user's original failure
 remains unconfirmed pending their endpoint/model/error details.
+
+## Anthropic workspace authentication and response blocks (2026-10-09)
+
+A live synthetic test with the saved organization-scoped Anthropic key returned
+HTTP 400 identifying the missing `anthropic-workspace-id` header. The endpoint
+and `claude-haiku-5-5` model identifier were correct. A supplied organization UUID
+was also rejected as a workspace header; workspace discovery with this key returned
+403. No real notebook pages were submitted and no credential/provider body was
+logged. Successful paid recognition remains pending a workspace selection or a
+workspace-scoped key.
+
+Settings now stores an optional **Anthropic workspace ID** in the existing JSON
+configuration and sends it only with Anthropic Messages requests. Workspace IDs
+are bounded, validated `wrkspc_…` identifiers. A workspace-scoped key can leave the
+field empty. No schema migration is needed; an empty field is omitted from JSON
+so existing OCR identities remain stable. Save/test and per-job snapshots carry
+the field through the shared runtime. Saving does not queue existing pages.
+
+HTTP 400 responses mentioning the workspace header are reduced to a fixed,
+actionable diagnostic; arbitrary upstream text remains excluded. Anthropic
+responses now collect text blocks by type, skipping thinking and other blocks;
+a thinking-only response is an error rather than successful empty OCR.
+
+References:
+- [Anthropic authentication and workspace selection](https://platform.claude.com/docs/en/manage-claude/authentication)
+- [Haiku 5.5 migration: response block selection](https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide)
+
+Validation: fresh required PostgreSQL/S3 race tests for OCR, providers, web and
+library passed; the owner form test additionally verifies workspace persistence,
+rendering and runtime refresh. Header isolation, thinking/text parsing, invalid
+workspace values and safe error classification have regression coverage. Vet
+passed. Personal-VM deployment passed public readiness, authenticated Settings,
+key redaction and a synthetic test showing the new workspace diagnostic. Private
+local logs: `/tmp/anthropic-workspace-{tests,form-tests,build,deploy}.log`.
