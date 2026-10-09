@@ -12,3 +12,6 @@ coverage.out
 **/.env
 AGENTS.md
 CLAUDE.md
+
+**/private
+**/backups

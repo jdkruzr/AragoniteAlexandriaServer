@@ -79,8 +79,8 @@ services:
       init-storage:
         condition: service_completed_successfully
     ports:
-      - "127.0.0.1:${ALEXANDRIA_MAIN_PORT:-18443}:8443"
-      - "127.0.0.1:${ALEXANDRIA_SPC_PORT:-18089}:8089"
+      - "${ALEXANDRIA_MAIN_HOST:-127.0.0.1}:${ALEXANDRIA_MAIN_PORT:-18443}:8443"
+      - "${ALEXANDRIA_SPC_HOST:-127.0.0.1}:${ALEXANDRIA_SPC_PORT:-18089}:8089"
     read_only: true
     tmpfs:
       - /tmp:size=1g,mode=1777

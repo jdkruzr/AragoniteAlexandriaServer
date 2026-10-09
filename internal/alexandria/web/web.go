@@ -63,8 +63,9 @@ var layout = template.Must(template.New("layout.html").Funcs(funcs).ParseFS(asse
 
 // Status describes optional, operator-configured features for display.
 type Status struct {
-	OCR       string // recognition model, "" when off
-	Embedding string // embedding model, "" when off
+	NativeBOOX bool
+	OCR        string // recognition model, "" when off
+	Embedding  string // embedding model, "" when off
 }
 
 type Deps struct {
@@ -77,11 +78,12 @@ type Deps struct {
 }
 
 type page struct {
-	Title   string
-	Section string // nav highlight
-	Base    string // public origin, for copyable URLs
-	Data    any
-	Notice  string
+	NativeBOOX bool
+	Title      string
+	Section    string // nav highlight
+	Base       string // public origin, for copyable URLs
+	Data       any
+	Notice     string
 }
 
 func (d Deps) render(w http.ResponseWriter, r *http.Request, name, title, section string, data any) {
@@ -89,9 +91,22 @@ func (d Deps) render(w http.ResponseWriter, r *http.Request, name, title, sectio
 	if err == nil {
 		_, err = t.ParseFS(assets, "templates/"+name+".html")
 	}
+	d.renderTemplate(w, r, t, err, title, section, data)
+}
+
+// RenderContent gives feature-owned views the same site shell as the core pages.
+func (d Deps) RenderContent(w http.ResponseWriter, r *http.Request, content *template.Template, title, section string, data any) {
+	t, err := layout.Clone()
+	if err == nil {
+		_, err = t.AddParseTree("content", content.Lookup("content").Tree)
+	}
+	d.renderTemplate(w, r, t, err, title, section, data)
+}
+
+func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template.Template, err error, title, section string, data any) {
 	var buf bytes.Buffer
 	if err == nil {
-		err = t.ExecuteTemplate(&buf, "layout.html", page{Title: title, Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
+		err = t.ExecuteTemplate(&buf, "layout.html", page{NativeBOOX: d.Status.NativeBOOX, Title: title, Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
 			Notice: r.URL.Query().Get("notice")})
 	}
 	if err != nil {

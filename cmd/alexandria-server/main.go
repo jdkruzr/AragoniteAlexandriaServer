@@ -23,6 +23,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/config"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/database"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs"
@@ -51,6 +52,25 @@ func run(args []string, logger *slog.Logger) error {
 			return runPreflight(args[1:])
 		case "legacy-import-tasks":
 			return runTaskImport(args[1:], logger)
+		case "boox-configure":
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			db, ctx, closeDB, err := openAdminDB(logger)
+			if err != nil {
+				return err
+			}
+			defer closeDB()
+			if err = database.Ready(ctx, db); err != nil {
+				return err
+			}
+			var id string
+			if err = db.QueryRowContext(ctx, `SELECT library_id::text FROM alexandria_library_runtime WHERE singleton`).Scan(&id); err != nil {
+				return err
+			}
+			native := boox.Config{PublicURL: cfg.PublicURL, GatewayPublicURL: cfg.BOOXGatewayPublicURL, GatewayAdminURL: cfg.BOOXGatewayAdminURL, GatewayUsername: cfg.BOOXGatewayUsername, GatewayPassword: cfg.BOOXGatewayPassword, Database: cfg.BOOXDatabase}
+			return native.Configure(ctx, id)
 		case "migrate":
 			return runMigrate(logger)
 		case "bootstrap-runtime":
@@ -269,7 +289,11 @@ func runService(logger *slog.Logger) error {
 	if cfg.EmbedURL != "" {
 		pages.Embedder = embed.NewOllama(cfg.EmbedURL, cfg.EmbedModel)
 	}
-	runtime, err := library.Open(ctx, library.Config{ID: libraryID, DatabaseURL: cfg.DatabaseURL, Objects: objectStore, Launcher: launcher,
+	var native *library.NativeBOOXConfig
+	if cfg.BOOXGatewayPublicURL != "" || cfg.BOOXGatewayAdminURL != "" {
+		native = &library.NativeBOOXConfig{PublicURL: cfg.PublicURL, GatewayPublicURL: cfg.BOOXGatewayPublicURL, GatewayAdminURL: cfg.BOOXGatewayAdminURL, GatewayUsername: cfg.BOOXGatewayUsername, GatewayPassword: cfg.BOOXGatewayPassword, Database: cfg.BOOXDatabase}
+	}
+	runtime, err := library.Open(ctx, library.Config{NativeBOOX: native, ID: libraryID, DatabaseURL: cfg.DatabaseURL, Objects: objectStore, Launcher: launcher,
 		MaxConnections: cfg.MaxConnections, Pages: pages, PublicURL: cfg.PublicURL})
 	if err != nil {
 		return err
@@ -286,6 +310,9 @@ func runService(logger *slog.Logger) error {
 				return nil
 			case <-timer.C:
 				_, err := runtime.Reconcile(ctx)
+				if err == nil {
+					_, err = runtime.ProcessNativeBOOX(ctx)
+				}
 				if err == nil {
 					_, err = runtime.MaterializeReader(ctx)
 				}

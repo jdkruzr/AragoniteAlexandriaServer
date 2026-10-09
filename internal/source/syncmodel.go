@@ -55,6 +55,8 @@ func SyncModelFor(sourceType string) SyncModel {
 	switch sourceType {
 	case "supernote":
 		return SyncModel{"Two-way sync", TwoWay, "Shared (Alexandria-hosted)", true, "Files sync both ways with your Supernote. Deleting a note moves it to a recoverable recycle bin."}
+	case "boox_native_couchbase":
+		return SyncModel{"Native sync", TwoWay, "Native Couchbase revisions", true, "BOOX notebooks and reading data use native replication. Observed versions are retained for recovery."}
 	case "boox":
 		return SyncModel{"Receive-only", OneWayIn, "Device", false, "Boox exports notes to Alexandria one way. Device deletes and renames do not propagate; remove notes here manually."}
 	case "forestnote":

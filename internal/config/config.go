@@ -54,7 +54,12 @@ type Config struct {
 	EmbedModel   string
 	PageDebounce time.Duration
 	// PublicURL is how users reach this server (links in MCP results).
-	PublicURL string
+	PublicURL            string
+	BOOXGatewayPublicURL string
+	BOOXGatewayAdminURL  string
+	BOOXGatewayUsername  string
+	BOOXGatewayPassword  string
+	BOOXDatabase         string
 }
 
 func Load() (Config, error) {
@@ -66,34 +71,39 @@ func Load() (Config, error) {
 	}
 	host, _ := os.Hostname()
 	cfg := Config{
-		Role:             Role(env("ALEXANDRIA_ROLE", string(RoleAll))),
-		DatabaseURL:      strings.TrimSpace(os.Getenv("ALEXANDRIA_DATABASE_URL")),
-		ListenAddr:       env("ALEXANDRIA_LISTEN_ADDR", ":8443"),
-		SPCListenAddr:    env("ALEXANDRIA_SPC_LISTEN_ADDR", ":8089"),
-		ShutdownTimeout:  duration("ALEXANDRIA_SHUTDOWN_TIMEOUT", 20*time.Second),
-		WorkerPoll:       duration("ALEXANDRIA_WORKER_POLL_INTERVAL", 5*time.Second),
-		WorkerLease:      duration("ALEXANDRIA_WORKER_LEASE", 15*time.Minute),
-		WorkerID:         env("ALEXANDRIA_WORKER_ID", host),
-		JobLauncher:      env("ALEXANDRIA_JOB_LAUNCHER", "local"),
-		AWSBatchQueue:    strings.TrimSpace(os.Getenv("ALEXANDRIA_AWS_BATCH_QUEUE")),
-		AWSBatchJob:      strings.TrimSpace(os.Getenv("ALEXANDRIA_AWS_BATCH_JOB_DEFINITION")),
-		ObjectEndpoint:   strings.TrimSpace(os.Getenv("ALEXANDRIA_OBJECT_ENDPOINT")),
-		ObjectRegion:     env("ALEXANDRIA_OBJECT_REGION", "us-east-1"),
-		ObjectBucket:     env("ALEXANDRIA_OBJECT_BUCKET", "aragonite-alexandria-server"),
-		ObjectAccessKey:  strings.TrimSpace(os.Getenv("ALEXANDRIA_OBJECT_ACCESS_KEY")),
-		ObjectSecretKey:  strings.TrimSpace(os.Getenv("ALEXANDRIA_OBJECT_SECRET_KEY")),
-		ObjectPathStyle:  boolean("ALEXANDRIA_OBJECT_PATH_STYLE", false),
-		ObjectDisableTLS: boolean("ALEXANDRIA_OBJECT_DISABLE_TLS", false),
-		MaxConnections:   integer("ALEXANDRIA_MAX_CONNECTIONS", 16),
-		OCRURL:           strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_URL")),
-		OCRAPIKey:        strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_API_KEY")),
-		OCRModel:         strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_MODEL")),
-		OCRFormat:        env("ALEXANDRIA_OCR_FORMAT", "anthropic"),
-		OCRPrompt:        strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_PROMPT")),
-		EmbedURL:         strings.TrimSpace(os.Getenv("ALEXANDRIA_EMBED_URL")),
-		EmbedModel:       env("ALEXANDRIA_EMBED_MODEL", "nomic-embed-text:v1.5"),
-		PageDebounce:     duration("ALEXANDRIA_PAGE_DEBOUNCE", 5*time.Second),
-		PublicURL:        strings.TrimRight(strings.TrimSpace(os.Getenv("ALEXANDRIA_PUBLIC_URL")), "/"),
+		BOOXGatewayPublicURL: strings.TrimSpace(os.Getenv("ALEXANDRIA_BOOX_GATEWAY_PUBLIC_URL")),
+		BOOXGatewayAdminURL:  strings.TrimSpace(os.Getenv("ALEXANDRIA_BOOX_GATEWAY_ADMIN_URL")),
+		BOOXGatewayUsername:  strings.TrimSpace(os.Getenv("ALEXANDRIA_BOOX_GATEWAY_USERNAME")),
+		BOOXGatewayPassword:  strings.TrimSpace(os.Getenv("ALEXANDRIA_BOOX_GATEWAY_PASSWORD")),
+		BOOXDatabase:         env("ALEXANDRIA_BOOX_DATABASE", "neocloud"),
+		Role:                 Role(env("ALEXANDRIA_ROLE", string(RoleAll))),
+		DatabaseURL:          strings.TrimSpace(os.Getenv("ALEXANDRIA_DATABASE_URL")),
+		ListenAddr:           env("ALEXANDRIA_LISTEN_ADDR", ":8443"),
+		SPCListenAddr:        env("ALEXANDRIA_SPC_LISTEN_ADDR", ":8089"),
+		ShutdownTimeout:      duration("ALEXANDRIA_SHUTDOWN_TIMEOUT", 20*time.Second),
+		WorkerPoll:           duration("ALEXANDRIA_WORKER_POLL_INTERVAL", 5*time.Second),
+		WorkerLease:          duration("ALEXANDRIA_WORKER_LEASE", 15*time.Minute),
+		WorkerID:             env("ALEXANDRIA_WORKER_ID", host),
+		JobLauncher:          env("ALEXANDRIA_JOB_LAUNCHER", "local"),
+		AWSBatchQueue:        strings.TrimSpace(os.Getenv("ALEXANDRIA_AWS_BATCH_QUEUE")),
+		AWSBatchJob:          strings.TrimSpace(os.Getenv("ALEXANDRIA_AWS_BATCH_JOB_DEFINITION")),
+		ObjectEndpoint:       strings.TrimSpace(os.Getenv("ALEXANDRIA_OBJECT_ENDPOINT")),
+		ObjectRegion:         env("ALEXANDRIA_OBJECT_REGION", "us-east-1"),
+		ObjectBucket:         env("ALEXANDRIA_OBJECT_BUCKET", "aragonite-alexandria-server"),
+		ObjectAccessKey:      strings.TrimSpace(os.Getenv("ALEXANDRIA_OBJECT_ACCESS_KEY")),
+		ObjectSecretKey:      strings.TrimSpace(os.Getenv("ALEXANDRIA_OBJECT_SECRET_KEY")),
+		ObjectPathStyle:      boolean("ALEXANDRIA_OBJECT_PATH_STYLE", false),
+		ObjectDisableTLS:     boolean("ALEXANDRIA_OBJECT_DISABLE_TLS", false),
+		MaxConnections:       integer("ALEXANDRIA_MAX_CONNECTIONS", 16),
+		OCRURL:               strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_URL")),
+		OCRAPIKey:            strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_API_KEY")),
+		OCRModel:             strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_MODEL")),
+		OCRFormat:            env("ALEXANDRIA_OCR_FORMAT", "anthropic"),
+		OCRPrompt:            strings.TrimSpace(os.Getenv("ALEXANDRIA_OCR_PROMPT")),
+		EmbedURL:             strings.TrimSpace(os.Getenv("ALEXANDRIA_EMBED_URL")),
+		EmbedModel:           env("ALEXANDRIA_EMBED_MODEL", "nomic-embed-text:v1.5"),
+		PageDebounce:         duration("ALEXANDRIA_PAGE_DEBOUNCE", 5*time.Second),
+		PublicURL:            strings.TrimRight(strings.TrimSpace(os.Getenv("ALEXANDRIA_PUBLIC_URL")), "/"),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err

@@ -1,9 +1,14 @@
 package server
 
 import (
+	"bufio"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -34,5 +39,38 @@ func TestRuntimeGatewayRoutesEveryLibraryPathToTheRuntime(t *testing.T) {
 	g.main.Handler.ServeHTTP(w, httptest.NewRequest("GET", "/livez", nil))
 	if w.Code != 200 {
 		t.Errorf("/livez: %d", w.Code)
+	}
+}
+
+func TestRuntimeGatewayPreservesWebSocketUpgrade(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, rw, err := http.NewResponseController(w).Hijack()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer conn.Close()
+		_, _ = rw.WriteString("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n")
+		_ = rw.Flush()
+	}))
+	defer upstream.Close()
+	target, _ := url.Parse(upstream.URL)
+	g := NewRuntimeGateway(nil, ":0", ":0", time.Second, httputil.NewSingleHostReverseProxy(target), slog.Default())
+	edge := httptest.NewServer(g.main.Handler)
+	defer edge.Close()
+	address, _ := url.Parse(edge.URL)
+	conn, err := net.DialTimeout("tcp", address.Host, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	_, _ = fmt.Fprintf(conn, "GET /boox-neocloud/_blipsync HTTP/1.1\r\nHost: native.test\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n")
+	response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != 101 {
+		t.Fatalf("upgrade status %d", response.StatusCode)
 	}
 }

@@ -1,0 +1,14 @@
+# Opt-in bind mounts; never auto-create missing host paths.
+services:
+  postgres:
+    volumes:
+      - type: bind
+        source: ${ALEXANDRIA_POSTGRES_DIR:?Set PostgreSQL directory}
+        target: /var/lib/postgresql/data
+        bind: {create_host_path: false}
+  seaweedfs:
+    volumes:
+      - type: bind
+        source: ${ALEXANDRIA_OBJECT_DIR:?Set object directory}
+        target: /data
+        bind: {create_host_path: false}

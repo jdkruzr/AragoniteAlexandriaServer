@@ -4,13 +4,11 @@
 # and re-sync afterwards.
 set -eu
 cd "$(dirname "$0")"
-compose() {
-	if [ -n "${COMPOSE:-}" ]; then $COMPOSE "$@"
-	elif docker compose version >/dev/null 2>&1; then docker compose "$@"
-	elif podman compose version >/dev/null 2>&1; then podman compose "$@"
-	else docker-compose "$@"
-	fi
-}
+. ./common.sh
+if [ "${ALEXANDRIA_BOOX_ENABLED:-false}" = true ]; then
+    echo "Native BOOX requires coordinated backup/recovery; use backup-cold.sh and the storage recovery documentation." >&2
+    exit 1
+fi
 dir=$(sed -n 's/^ALEXANDRIA_BACKUP_DIR=//p' .env 2>/dev/null)
 dir=${dir:-./backups}
 if [ ! -f "$dir/alexandria.dump" ]; then
