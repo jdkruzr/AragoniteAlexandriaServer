@@ -34,7 +34,8 @@ own deployment-managed key and initial values through the public library boundar
 
 API keys use AES-256-GCM with a fresh nonce, bound to library identity. The key
 itself is never stored in PostgreSQL. Save preserves/replaces/clears a credential
-explicitly; changing the OCR endpoint requires replacing or clearing any saved
+explicitly. A typed key is always used, including with the default key action;
+leaving it blank preserves the saved key. Changing the OCR endpoint requires replacing or clearing any saved
 key. HTML never returns stored or submitted keys. Provider test failures are
 sanitized; raw provider error bodies do not appear in the settings UI or page
 pipeline logs.
@@ -110,3 +111,18 @@ The VM's `deployment-source-receipt.json` records the exact source commit and
 verified runtime/build file hashes. Private logs/screenshots belong under ignored
 `AragonitePowerSync/artifacts/provider-settings-20261009/`. Actual provider
 credentials and model accuracy remain to be configured/qualified.
+
+## Connection-test follow-up (2026-10-09)
+
+Fixed a form trap: entering a key with the default “Keep saved key” selection used
+to ignore that input. Typed keys now take precedence, and the default label says
+so. HTTP failures expose their status and a safe troubleshooting hint; timeouts,
+DNS and connection failures are distinguished. Raw provider response bodies are
+not retained in OCR HTTP errors. Tests remain unsaved and do not retain submitted
+keys, so an earlier unsaved attempt cannot be reconstructed from the database.
+
+Fresh provider/BOOX/runtime PostgreSQL/S3 race tests and OCR regression tests pass,
+including automatic use of an entered key and HTTP status preservation without
+private response text. Deployed without a migration; public settings copy, health
+and the reference preview are verified. The reported user's original failure
+remains unconfirmed pending their endpoint/model/error details.

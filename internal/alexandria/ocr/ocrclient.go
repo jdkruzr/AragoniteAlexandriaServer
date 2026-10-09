@@ -157,8 +157,7 @@ func (c *OCRClient) recognizeAnthropic(ctx context.Context, jpegData []byte, pro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		err := fmt.Errorf("ocrclient API error %d: %s", resp.StatusCode, b)
+		err := &HTTPError{Status: resp.StatusCode}
 		if transientHTTPStatus(resp.StatusCode) {
 			return "", Transient(err)
 		}
@@ -166,7 +165,7 @@ func (c *OCRClient) recognizeAnthropic(ctx context.Context, jpegData []byte, pro
 	}
 
 	var vResp anthropicResponse
-	if err := json.NewDecoder(resp.Body).Decode(&vResp); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&vResp); err != nil {
 		return "", fmt.Errorf("ocrclient decode: %w", err)
 	}
 	if len(vResp.Content) == 0 {
@@ -247,8 +246,7 @@ func (c *OCRClient) recognizeOpenAI(ctx context.Context, jpegData []byte, prompt
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		err := fmt.Errorf("ocrclient API error %d: %s", resp.StatusCode, b)
+		err := &HTTPError{Status: resp.StatusCode}
 		if transientHTTPStatus(resp.StatusCode) {
 			return "", Transient(err)
 		}
@@ -256,11 +254,18 @@ func (c *OCRClient) recognizeOpenAI(ctx context.Context, jpegData []byte, prompt
 	}
 
 	var vResp openAIResponse
-	if err := json.NewDecoder(resp.Body).Decode(&vResp); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&vResp); err != nil {
 		return "", fmt.Errorf("ocrclient decode: %w", err)
 	}
 	if len(vResp.Choices) == 0 {
 		return "", fmt.Errorf("ocrclient: empty response")
 	}
 	return vResp.Choices[0].Message.Content, nil
+}
+
+// HTTPError exposes status without retaining or returning sensitive provider bodies.
+type HTTPError struct{ Status int }
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("recognition endpoint returned HTTP %d", e.Status)
 }

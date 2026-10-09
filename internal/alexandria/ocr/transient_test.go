@@ -86,8 +86,9 @@ func TestOCRClient_ClassifiesRealFailures(t *testing.T) {
 		if !IsTransient(err) {
 			t.Errorf("HTTP 500 not transient: %v", err)
 		}
-		if !strings.Contains(err.Error(), "failed to load") {
-			t.Errorf("error dropped the server's message: %v", err)
+		var status *HTTPError
+		if !errors.As(err, &status) || status.Status != 500 || strings.Contains(err.Error(), "failed to load") {
+			t.Errorf("HTTP status must survive without the private response body: %v", err)
 		}
 	})
 
