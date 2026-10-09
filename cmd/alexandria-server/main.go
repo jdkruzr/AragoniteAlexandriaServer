@@ -327,9 +327,6 @@ func runService(logger *slog.Logger) error {
 					_, err = runtime.IndexReader(ctx, 16)
 				}
 				if err == nil {
-					_, err = runtime.ProcessPages(ctx, 8)
-				}
-				if err == nil {
 					_, err = runtime.WorkOnce(ctx, cfg.WorkerID)
 				}
 				if err == nil && time.Since(collected) > time.Hour {
@@ -339,6 +336,23 @@ func runService(logger *slog.Logger) error {
 				}
 				if err != nil && ctx.Err() == nil {
 					logger.Warn("library worker deferred", "error_code", "work_unavailable")
+				}
+				timer.Reset(cfg.WorkerPoll)
+			}
+		}
+	}
+
+	recognitionWork := func(ctx context.Context) error {
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-timer.C:
+				_, err := runtime.ProcessPages(ctx, 8)
+				if err != nil && ctx.Err() == nil {
+					logger.Warn("recognition worker deferred", "error_code", "work_unavailable")
 				}
 				timer.Reset(cfg.WorkerPoll)
 			}
@@ -356,7 +370,7 @@ func runService(logger *slog.Logger) error {
 			}
 			return runtime.RunJob(ctx, id, cfg.WorkerID)
 		}
-		return work(ctx)
+		return runComponents(ctx, cancel, work, recognitionWork)
 	case config.RoleMaintenance:
 		if _, err := runtime.Reconcile(ctx); err != nil {
 			return err
@@ -364,7 +378,7 @@ func runService(logger *slog.Logger) error {
 		_, err := runtime.CollectAssets(ctx, 10000)
 		return err
 	case config.RoleAll:
-		return runComponents(ctx, cancel, gateway.Run, work)
+		return runComponents(ctx, cancel, gateway.Run, work, recognitionWork)
 	default:
 		return fmt.Errorf("unsupported role %q", cfg.Role)
 	}
