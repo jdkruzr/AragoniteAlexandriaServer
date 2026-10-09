@@ -144,3 +144,42 @@ func TestNativeListingNewestPaginationAndScope(t *testing.T) {
 		t.Fatal("ascending folder paging lost scope")
 	}
 }
+
+func TestFolderBrowseSeparatesNativeNoteKindsAndMissingParents(t *testing.T) {
+	s := testService(t)
+	ctx := context.Background()
+	for _, item := range []struct {
+		id, parent               string
+		kind, scene, association int
+	}{{"folder", "", 0, 0, 0}, {"handwritten", "folder", 1, 0, 0}, {"reading", "", 1, 0, 1}, {"typed", "", 1, 1, 0}, {"orphan", "missing-parent", 1, 0, 0}} {
+		raw, _ := json.Marshal(map[string]any{"uniqueId": item.id, "title": item.id, "type": item.kind, "status": 1, "parentUniqueId": item.parent, "activeScene": item.scene, "association": map[string]any{"associationType": item.association}})
+		if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body)VALUES($1,'1-a','notebook','1',$2,$3)`, item.id, s.uid(), raw); e != nil {
+			t.Fatal(e)
+		}
+	}
+	get := func(path string) string {
+		w := httptest.NewRecorder()
+		s.Admin(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 200 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		return w.Body.String()
+	}
+	root := get("/boox?view=folders")
+	if !strings.Contains(root, "1–1 of 1") || strings.Contains(root, "id=reading") || strings.Contains(root, "id=typed") || strings.Contains(root, "id=orphan") {
+		t.Fatal("native categories mixed into root")
+	}
+	all := get("/boox")
+	for _, v := range []string{"id=reading", "id=typed", "id=orphan", "Reading note", "Text note"} {
+		if !strings.Contains(all, v) {
+			t.Fatal("All notebooks lost", v)
+		}
+	}
+	typed := get("/boox?view=folders&category=text")
+	if !strings.Contains(typed, "id=typed") || strings.Contains(typed, "id=reading") || !strings.Contains(typed, "category=text") {
+		t.Fatal("text category wrong")
+	}
+	if !strings.Contains(get("/boox?folder=folder"), "id=handwritten") {
+		t.Fatal("folder child lost")
+	}
+}
