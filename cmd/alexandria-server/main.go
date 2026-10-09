@@ -284,7 +284,11 @@ func runService(logger *slog.Logger) error {
 	}
 	pages := notes.Pipeline{Prompt: cfg.OCRPrompt, Debounce: cfg.PageDebounce, Logger: logger}
 	if cfg.OCRURL != "" {
-		pages.OCR = ocr.NewOCRClient(cfg.OCRURL, cfg.OCRAPIKey, cfg.OCRModel, cfg.OCRFormat)
+		var options []ocr.Option
+		if cfg.OCRVLLMDisableThinking {
+			options = append(options, ocr.WithVLLMDisableThinking())
+		}
+		pages.OCR = ocr.NewOCRClient(cfg.OCRURL, cfg.OCRAPIKey, cfg.OCRModel, cfg.OCRFormat, options...)
 	}
 	if cfg.EmbedURL != "" {
 		pages.Embedder = embed.NewOllama(cfg.EmbedURL, cfg.EmbedModel)

@@ -9,11 +9,7 @@ import (
 	"testing"
 )
 
-// TestRecognizeOpenAI_DisablesQwenThinking confirms the OpenAI request body
-// carries chat_template_kwargs.enable_thinking=false so Qwen3-class models
-// (when served via vLLM) suppress their reasoning preamble. Strictness on
-// non-vLLM gateways varies — see the struct doc on ChatTemplateKwargs in
-// ocrclient.go for the escape hatch when a strict endpoint rejects it.
+// The vLLM-specific extension is only sent when explicitly enabled.
 func TestRecognizeOpenAI_DisablesQwenThinking(t *testing.T) {
 	var capturedBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +22,7 @@ func TestRecognizeOpenAI_DisablesQwenThinking(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewOCRClient(srv.URL, "test-key", "qwen2.5-vl-7b", OCRFormatOpenAI)
+	c := NewOCRClient(srv.URL, "test-key", "qwen2.5-vl-7b", OCRFormatOpenAI, WithVLLMDisableThinking())
 	text, err := c.Recognize(context.Background(), []byte("fake-jpeg-bytes"), "Transcribe.")
 	if err != nil {
 		t.Fatalf("Recognize: %v", err)
@@ -57,11 +53,41 @@ func TestRecognizeAnthropic_NoKwargs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewOCRClient(srv.URL, "test-key", "claude-sonnet-4-6", OCRFormatAnthropic)
+	c := NewOCRClient(srv.URL, "test-key", "claude-sonnet-4-6", OCRFormatAnthropic, WithVLLMDisableThinking())
 	if _, err := c.Recognize(context.Background(), []byte("jpg"), "go"); err != nil {
 		t.Fatalf("Recognize: %v", err)
 	}
 	if _, present := capturedBody["chat_template_kwargs"]; present {
 		t.Errorf("Anthropic request must not carry chat_template_kwargs; body: %+v", capturedBody)
+	}
+}
+
+func TestRecognizeOpenAIStrictEndpointByDefault(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/chat/completions" || r.Header.Get("Authorization") != "Bearer test-key" {
+			t.Error("wrong path or auth")
+		}
+		var body struct {
+			Model     string      `json:"model"`
+			MaxTokens int         `json:"max_tokens"`
+			Messages  []openAIMsg `json:"messages"`
+		}
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&body); err != nil {
+			http.Error(w, "unknown request field", 400)
+			return
+		}
+		if body.Model != "vision-model" || len(body.Messages) != 1 || len(body.Messages[0].Content) != 2 || body.Messages[0].Content[1].ImageURL == nil {
+			t.Error("image request lost")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"choices":[{"message":{"content":"strict endpoint accepted"}}]}`))
+	}))
+	defer srv.Close()
+	c := NewOCRClient(srv.URL, "test-key", "vision-model", OCRFormatOpenAI)
+	got, err := c.Recognize(context.Background(), []byte("jpeg"), "Transcribe.")
+	if err != nil || got != "strict endpoint accepted" {
+		t.Fatalf("strict endpoint: %q %v", got, err)
 	}
 }

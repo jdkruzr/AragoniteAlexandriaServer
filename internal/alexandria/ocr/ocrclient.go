@@ -30,28 +30,42 @@ const DefaultOCRPrompt = "Transcribe all handwritten text from this page exactly
 // OCRClient posts JPEG images to a vision API and returns transcribed text.
 // Supports both Anthropic Messages API format and OpenAI Chat Completions format.
 type OCRClient struct {
-	apiURL string
-	apiKey string
-	model  string
-	format string
-	client *http.Client
+	apiURL              string
+	apiKey              string
+	model               string
+	format              string
+	client              *http.Client
+	vllmDisableThinking bool
+}
+
+// Option configures optional provider-specific behavior.
+type Option func(*OCRClient)
+
+// WithVLLMDisableThinking sends the vLLM chat-template extension. Leave it off
+// for standard OpenAI-compatible endpoints; it never affects Anthropic requests.
+func WithVLLMDisableThinking() Option {
+	return func(c *OCRClient) { c.vllmDisableThinking = true }
 }
 
 // NewOCRClient creates an OCRClient.
 // apiURL is the API base (e.g. "https://api.anthropic.com", "https://openrouter.ai/api",
 // or "http://localhost:8000" for a local vLLM instance).
 // format is OCRFormatAnthropic or OCRFormatOpenAI.
-func NewOCRClient(apiURL, apiKey, model, format string) *OCRClient {
+func NewOCRClient(apiURL, apiKey, model, format string, options ...Option) *OCRClient {
 	if format != OCRFormatOpenAI {
 		format = OCRFormatAnthropic // default
 	}
-	return &OCRClient{
+	c := &OCRClient{
 		apiURL: apiURL,
 		apiKey: apiKey,
 		model:  model,
 		format: format,
 		client: &http.Client{Timeout: 5 * time.Minute},
 	}
+	for _, option := range options {
+		option(c)
+	}
+	return c
 }
 
 // Model returns the model name this client posts to the vision API. Used
@@ -167,26 +181,7 @@ type openAIRequest struct {
 	Model     string      `json:"model"`
 	MaxTokens int         `json:"max_tokens"`
 	Messages  []openAIMsg `json:"messages"`
-	// ChatTemplateKwargs is a vLLM extension to the OpenAI Chat Completions
-	// schema — passed through to the model's chat template at render time.
-	// We use it to suppress Qwen3's reasoning/thinking tokens for OCR
-	// (`enable_thinking: false`), which would otherwise produce hundreds of
-	// `<think>...</think>` tokens before the actual transcription.
-	//
-	// Strictness caveat: this is a vLLM-only feature. OpenAI's Chat
-	// Completions has historically ignored unknown top-level fields, but
-	// strictness varies across compatible gateways (OpenRouter, Together,
-	// LiteLLM, Groq, Fireworks, Ollama all differ; OpenAI proper has been
-	// tightening param validation in newer modes). If you point this at a
-	// strict endpoint and OCR starts 400-ing, the cheapest fix is to flip
-	// back to OCRFormatAnthropic, or remove this field — a config gate
-	// would be the principled fix once we have a second vLLM-only feature
-	// to share it.
-	//
-	// JSON encoding: omitempty elides the field when the map is nil; a
-	// non-nil empty map (`map[string]any{}`) still serializes as `{}`.
-	// Today's only writer (recognizeOpenAI) always populates one key, so
-	// the field always ships when format=openai.
+	// Explicit opt-in only: standard requests omit the vLLM extension entirely.
 	ChatTemplateKwargs map[string]any `json:"chat_template_kwargs,omitempty"`
 }
 
@@ -226,12 +221,9 @@ func (c *OCRClient) recognizeOpenAI(ctx context.Context, jpegData []byte, prompt
 				{Type: "image_url", ImageURL: &openAIImgURL{URL: dataURL}},
 			},
 		}},
-		// Disable Qwen3's thinking tokens for OCR — the recognized text is
-		// the only thing we want back, and the `<think>...</think>` preamble
-		// adds latency, eats max_tokens budget, and pollutes the body when
-		// it occasionally fails to terminate cleanly. See struct comment for
-		// non-Qwen endpoint behavior.
-		ChatTemplateKwargs: map[string]any{"enable_thinking": false},
+	}
+	if c.vllmDisableThinking {
+		reqBody.ChatTemplateKwargs = map[string]any{"enable_thinking": false}
 	}
 
 	body, err := json.Marshal(reqBody)
