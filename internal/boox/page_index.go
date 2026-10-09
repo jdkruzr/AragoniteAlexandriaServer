@@ -76,7 +76,7 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		return false, e
 	}
 	finish := func(state, text, detail, input, ocrHash, ocrText, model string) error {
-		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,text=$5,detail=$6,input_version=$7,ocr_hash=$8,ocr_text=$9,model=$10,lease_token='',lease_until=NULL,updated_at=now(),page_number=$11 WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$12`, id, page, token, state, text, detail, input, ocrHash, ocrText, model, num, version)
+		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,text=$5,detail=$6,input_version=$7,ocr_hash=$8,ocr_text=$9,model=$10,lease_token='',lease_until=NULL,updated_at=now(),page_number=$11,config_revision=$13 WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$12`, id, page, token, state, text, detail, input, ocrHash, ocrText, model, num, version, s.RecognitionRevision)
 		return e
 	}
 	deferFailure := func(detail string) (bool, error) {
@@ -121,7 +121,7 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		prompt = notes.DefaultPrompt
 	}
 	sum := sha256.New()
-	sum.Write([]byte("boox-ocr-v1\x00" + ocr.Model() + "\x00" + prompt + "\x00"))
+	sum.Write([]byte("boox-ocr-v1\x00" + s.RecognitionIdentity + "\x00" + ocr.Model() + "\x00" + prompt + "\x00"))
 	sum.Write(p.PNG)
 	inputHash := hex.EncodeToString(sum.Sum(nil))
 	text := oldOCR

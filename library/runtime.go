@@ -20,6 +20,8 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
@@ -61,12 +63,18 @@ type Authenticator func(context.Context, *http.Request, string) error
 type Policy func(context.Context, string, Action) error
 type NativeBOOXConfig = boox.Config
 
+type ProviderSettings = providers.Bootstrap
+type ProviderConfig = providers.Config
+type OCRProviderConfig = providers.OCRConfig
+type EmbeddingProviderConfig = providers.EmbedConfig
+
 type Config struct {
-	NativeBOOX   *NativeBOOXConfig
-	ID           string
-	DatabaseURL  string
-	Objects      BlobStore
-	Authenticate Authenticator
+	ProviderSettings *ProviderSettings
+	NativeBOOX       *NativeBOOXConfig
+	ID               string
+	DatabaseURL      string
+	Objects          BlobStore
+	Authenticate     Authenticator
 	// AuthenticateAccount approves device enrollment with the library owner's
 	// account. Without it the local account (HTTP Basic) is used, unless a
 	// custom Authenticate is set, in which case enrollment fails closed.
@@ -179,6 +187,11 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	if cfg.ProviderSettings != nil {
+		if err := (providers.Store{DB: db, Bootstrap: *cfg.ProviderSettings, LibraryID: cfg.ID}).Ensure(ctx); err != nil {
+			return nil, err
+		}
+	}
 	nativeContext, nativeCancel := context.WithCancel(context.Background())
 	failed = false
 	return &Runtime{nativeContext: nativeContext, nativeCancel: nativeCancel, cfg: cfg, db: db, objects: objects, sync: protocol, attachSecret: secret}, nil
@@ -263,8 +276,27 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer done()
+	pages := r.cfg.Pages
+	var providerStore *providers.Store
+	var providerSnapshot providers.Snapshot
+	loadPages := func() bool {
+		var e error
+		pages, providerStore, providerSnapshot, e = r.pageConfiguration(req.Context(), conn)
+		if e != nil {
+			http.Error(w, "Provider configuration unavailable", 503)
+			return false
+		}
+		return true
+	}
+	if r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || strings.HasPrefix(req.URL.Path, "/settings/providers")) {
+		if e := r.account(conn)(req); e != nil {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
+			http.Error(w, "unauthorized", 401)
+			return
+		}
+	}
 	if r.cfg.NativeBOOX != nil {
-		native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: r.cfg.Pages.OCR != nil}
+		native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil}
 		if err := native.ResolveIdentity(req.Context()); err != nil {
 			http.Error(w, "native identity unavailable", http.StatusServiceUnavailable)
 			return
@@ -284,6 +316,10 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				http.Error(w, "unauthorized", 401)
 				return
 			}
+			if !loadPages() {
+				return
+			}
+			native.RecognitionEnabled = pages.OCR != nil
 			native.Admin(w, req)
 			return
 		}
@@ -308,8 +344,18 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		taskhost.Attachments(taskDeps).ServeHTTP(w, req)
 		return
 	}
+	if !loadPages() {
+		return
+	}
 	mux := http.NewServeMux()
-	searcher := notes.Searcher{DB: conn, Embedder: r.cfg.Pages.Embedder}
+	searcher := notes.Searcher{DB: conn, Embedder: pages.Embedder}
+	if providerStore != nil && providerSnapshot.Config.Embedding.Enabled {
+		searcher.Embedder, searcher.Generation, err = providerStore.ActiveEmbedder(req.Context())
+		if err != nil {
+			http.Error(w, "Search configuration unavailable", 503)
+			return
+		}
+	}
 	mux.Handle("GET /api/v1/search", searcher.Handler())
 	mcp := mcptools.Handler(mcptools.Deps{DB: conn, Search: searcher, PublicURL: r.cfg.PublicURL,
 		Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil)})
@@ -319,13 +365,13 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mux.Handle("/.well-known/caldav", taskhost.WellKnown())
 	mux.Handle("/.well-known/caldav/", taskhost.WellKnown())
 	status := web.Status{NativeBOOX: r.cfg.NativeBOOX != nil}
-	if r.cfg.Pages.OCR != nil {
-		status.OCR = r.cfg.Pages.OCR.Model()
+	if pages.OCR != nil {
+		status.OCR = pages.OCR.Model()
 	}
-	if r.cfg.Pages.Embedder != nil {
-		status.Embedding = r.cfg.Pages.Embedder.Model()
+	if searcher.Embedder != nil {
+		status.Embedding = searcher.Embedder.Model()
 	}
-	mux.Handle("/", web.Handler(web.Deps{DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status}))
+	mux.Handle("/", web.Handler(web.Deps{Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {
@@ -489,16 +535,26 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 	defer done()
 	n := 0
 	for n < max && ctx.Err() == nil {
-		found, err := r.cfg.Pages.Step(ctx, conn)
+		pages, store, snapshot, err := r.pageConfiguration(ctx, conn)
+		if err != nil {
+			return n, err
+		}
+		found, err := pages.Step(ctx, conn)
 		if err != nil {
 			return n, err
 		}
 		if !found && r.cfg.NativeBOOX != nil {
-			native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: r.cfg.Pages.OCR != nil}
+			native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil, RecognitionIdentity: pages.OCRIdentity, RecognitionRevision: pages.SettingsRevision}
 			if err = native.ResolveIdentity(ctx); err != nil {
 				return n, err
 			}
-			found, err = native.ProcessPageIndex(ctx, r.cfg.Pages.OCR, r.cfg.Pages.Prompt)
+			found, err = native.ProcessPageIndex(ctx, pages.OCR, pages.Prompt)
+			if err != nil {
+				return n, err
+			}
+		}
+		if !found && store != nil && snapshot.Config.Embedding.Enabled {
+			found, err = store.ProcessIndex(ctx)
 			if err != nil {
 				return n, err
 			}
@@ -546,4 +602,26 @@ func (r *Runtime) ProcessNativeBOOX(ctx context.Context) (int, error) {
 		_, err = native.PublishOne(ctx)
 	}
 	return n, err
+}
+
+// Each request/job gets an immutable database snapshot; there is no stale local cache.
+func (r *Runtime) pageConfiguration(ctx context.Context, db pg.DB) (notes.Pipeline, *providers.Store, providers.Snapshot, error) {
+	p := r.cfg.Pages
+	if r.cfg.ProviderSettings == nil {
+		return p, nil, providers.Snapshot{}, nil
+	}
+	s := &providers.Store{DB: db, Bootstrap: *r.cfg.ProviderSettings, LibraryID: r.cfg.ID}
+	v, e := s.Load(ctx)
+	if e != nil {
+		return p, s, v, e
+	}
+	p.OCR = nil
+	p.Embedder = nil
+	p.Prompt = v.Config.OCR.Prompt
+	p.OCRIdentity = v.OCRIdentity()
+	p.SettingsRevision = v.Revision
+	if v.Config.OCR.Enabled {
+		p.OCR = v.OCRClient()
+	}
+	return p, s, v, nil
 }

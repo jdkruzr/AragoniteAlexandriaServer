@@ -36,8 +36,9 @@ type Result struct {
 }
 
 type Searcher struct {
-	DB       pg.DB
-	Embedder embed.Embedder // nil = keyword only
+	Generation string
+	DB         pg.DB
+	Embedder   embed.Embedder // nil = keyword only
 }
 
 // livePages restricts results to pages and notebooks that are not deleted.
@@ -88,11 +89,17 @@ func (s Searcher) Search(ctx context.Context, query string, limit int, hybrid bo
 	if hybrid && s.Embedder != nil {
 		vector, err := s.Embedder.Embed(ctx, query)
 		if err == nil {
-			rows, err := s.DB.QueryContext(ctx, `SELECT c.note_key, p.notebook_id, COALESCE(n.name,''), p.id, c.body_text, min(e.embedding <=> $1::vector) AS distance
-				FROM alexandria_embeddings e JOIN alexandria_note_content c ON c.note_key = e.note_key AND c.page = e.page `+livePages+`
-				WHERE e.model = $2 AND e.dimensions = $3
+			table, filter, identity := "alexandria_embeddings", "e.model = $2", s.Embedder.Model()
+			if s.Generation != "" {
+				table = "alexandria_embedding_vectors"
+				filter = "e.generation=$2 AND e.body_hash=md5(c.body_text)"
+				identity = s.Generation
+			}
+			rows, err := s.DB.QueryContext(ctx, `SELECT c.note_key, p.notebook_id, COALESCE(n.name,''), p.id, c.body_text, min(CASE WHEN e.dimensions=$3 THEN e.embedding <=> $1::vector END) AS distance
+				FROM `+table+` e JOIN alexandria_note_content c ON c.note_key = e.note_key AND c.page = e.page `+livePages+`
+				WHERE `+filter+` AND e.dimensions = $3
 				GROUP BY c.note_key, p.notebook_id, n.name, p.id, c.body_text ORDER BY distance, c.note_key LIMIT $4`,
-				vectorLiteral(vector), s.Embedder.Model(), len(vector), candidates)
+				vectorLiteral(vector), identity, len(vector), candidates)
 			if err != nil {
 				return nil, err
 			}

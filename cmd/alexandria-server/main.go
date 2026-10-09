@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -297,7 +298,9 @@ func runService(logger *slog.Logger) error {
 	if cfg.BOOXGatewayPublicURL != "" || cfg.BOOXGatewayAdminURL != "" {
 		native = &library.NativeBOOXConfig{PublicURL: cfg.PublicURL, GatewayPublicURL: cfg.BOOXGatewayPublicURL, GatewayAdminURL: cfg.BOOXGatewayAdminURL, GatewayUsername: cfg.BOOXGatewayUsername, GatewayPassword: cfg.BOOXGatewayPassword, Database: cfg.BOOXDatabase}
 	}
-	runtime, err := library.Open(ctx, library.Config{NativeBOOX: native, ID: libraryID, DatabaseURL: cfg.DatabaseURL, Objects: objectStore, Launcher: launcher,
+	settingsKey, _ := hex.DecodeString(cfg.SettingsKey)
+	providerSettings := &library.ProviderSettings{Key: settingsKey, APIKey: cfg.OCRAPIKey, Locked: cfg.ProviderSettingsLocked, Defaults: library.ProviderConfig{OCR: library.OCRProviderConfig{Enabled: cfg.OCRURL != "", URL: strings.TrimRight(cfg.OCRURL, "/"), Model: cfg.OCRModel, Format: cfg.OCRFormat, Prompt: cfg.OCRPrompt, VLLMDisableThinking: cfg.OCRVLLMDisableThinking}, Embedding: library.EmbeddingProviderConfig{Enabled: cfg.EmbedURL != "", URL: strings.TrimRight(cfg.EmbedURL, "/"), Model: cfg.EmbedModel}}}
+	runtime, err := library.Open(ctx, library.Config{ProviderSettings: providerSettings, NativeBOOX: native, ID: libraryID, DatabaseURL: cfg.DatabaseURL, Objects: objectStore, Launcher: launcher,
 		MaxConnections: cfg.MaxConnections, Pages: pages, PublicURL: cfg.PublicURL})
 	if err != nil {
 		return err

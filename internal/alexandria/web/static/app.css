@@ -52,3 +52,10 @@ table { overflow-wrap:anywhere; }
 
 .table-scroll { overflow-x:auto; max-width:100%; } .dated-list td:nth-last-child(-n+2) { white-space:nowrap; } .pagination { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; }
 @media(max-width:40rem) { .dated-list th:nth-child(3), .dated-list td:nth-child(3) { display:table-cell; } .dated-list { min-width:44rem; } }
+
+/* Provider settings share the site's form controls and remain usable on phones. */
+form.stack fieldset { display:grid; gap:.75rem; min-width:0; margin:0; padding:1rem; border:1px solid var(--line); border-radius:.5rem; }
+form.stack legend { font-weight:600; padding:0 .35rem; }
+form.stack input, form.stack select, form.stack textarea { max-width:100%; min-width:0; box-sizing:border-box; }
+form.stack textarea { width:100%; font:inherit; color:inherit; background:transparent; border:1px solid var(--line); border-radius:.35rem; padding:.5rem; }
+form.stack label:has(input[type="checkbox"]) { display:flex; align-items:center; gap:.5rem; }

@@ -47,6 +47,15 @@ ENV
 	echo "Wrote .env with new random secrets."
 fi
 
+# Preserve this key with deployment backups: database credentials are encrypted
+# with it. Never rotate it implicitly or regenerate a present value.
+if ! grep -q '^ALEXANDRIA_SETTINGS_KEY=' .env; then
+    settings_key=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')
+    printf '\nALEXANDRIA_SETTINGS_KEY=%s\n' "$settings_key" >> .env
+    chmod 600 .env
+    unset settings_key
+fi
+
 . ./common.sh
 
 echo "Building the server image (this takes a few minutes the first time)..."

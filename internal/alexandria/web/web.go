@@ -23,6 +23,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
 )
 
@@ -69,6 +70,7 @@ type Status struct {
 }
 
 type Deps struct {
+	Providers *providers.Store
 	DB        pg.DB
 	Objects   blob.Store
 	Search    notes.Searcher
@@ -168,6 +170,7 @@ func Handler(d Deps) http.Handler {
 	d.taskRoutes(mux)
 	d.deviceRoutes(mux)
 	d.settingsRoutes(mux)
+	d.providerRoutes(mux)
 	d.authorizeRoutes(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()

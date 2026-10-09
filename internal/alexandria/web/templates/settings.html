@@ -1,11 +1,45 @@
 {{define "content"}}{{$d := .Data}}
 <h1>Settings</h1>
+{{if $d.Providers}}{{$p := $d.Providers}}
 <section>
-  <h2>Handwriting Recognition</h2>
-  {{if $d.Status.OCR}}<p>On, using <code>{{$d.Status.OCR}}</code>. Recognized text is searchable here and syncs back to devices.</p>
-  {{else}}<p>Off. To turn it on, set <code>ALEXANDRIA_OCR_URL</code>, <code>ALEXANDRIA_OCR_API_KEY</code> and <code>ALEXANDRIA_OCR_MODEL</code> in the server's <code>.env</code> and restart it.</p>{{end}}
-  <p>{{if $d.Status.Embedding}}Search by meaning is on, using <code>{{$d.Status.Embedding}}</code>.{{else}}Search by meaning is off. Set <code>ALEXANDRIA_EMBED_URL</code> to an Ollama server to turn it on.{{end}}</p>
+<h2>Recognition and semantic search</h2>
+<p>Changes apply to new requests and jobs without restarting the server. In-flight jobs finish with their original settings. Saving does not reprocess existing pages.</p>
+{{if $p.Locked}}<p class="coverage">Provider settings are locked by the deployment.</p>{{else if not $p.CanSave}}<p class="coverage">The deployment needs a settings encryption key before provider credentials can be saved.</p>{{end}}
+<form method="post" action="/settings/providers" class="stack">
+<input type="hidden" name="revision" value="{{$p.Revision}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Handwriting recognition</legend>
+<label><input type="checkbox" name="ocr_enabled" {{if $p.Config.OCR.Enabled}}checked{{end}}> Enable recognition</label>
+<label>API format <select name="ocr_format"><option value="anthropic" {{if eq $p.Config.OCR.Format "anthropic"}}selected{{end}}>Anthropic Messages</option><option value="openai" {{if eq $p.Config.OCR.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option></select></label>
+<label>Base URL <input type="url" name="ocr_url" value="{{$p.Config.OCR.URL}}" maxlength="2048" placeholder="https://api.example.com"></label>
+<p class="muted">Use the base URL, without /v1 or a trailing slash. Local HTTP endpoints are supported.</p>
+<label>Vision model <input name="ocr_model" value="{{$p.Config.OCR.Model}}" maxlength="256"></label>
+<label>API key <input type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="Never displayed after saving"></label>
+<p class="muted">{{if $p.HasKey}}A key is saved.{{else}}No key is saved.{{end}} Keys are encrypted in the database.</p>
+<label>Key action <select name="key_action"><option value="keep">Keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
+<label>Recognition prompt <textarea name="ocr_prompt" rows="4" maxlength="16000" placeholder="Leave blank for the default transcription prompt">{{$p.Config.OCR.Prompt}}</textarea></label>
+<label><input type="checkbox" name="vllm" {{if $p.Config.OCR.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
+<p class="muted">Alexandria client recognition can sync text back to its devices. Native BOOX recognition stays on this server and is requested per page.</p>
+<button name="action" value="test_ocr">Test recognition connection</button>
+</fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Search by meaning</legend>
+<label><input type="checkbox" name="embed_enabled" {{if $p.Config.Embedding.Enabled}}checked{{end}}> Enable semantic search</label>
+<label>Ollama base URL <input type="url" name="embed_url" value="{{$p.Config.Embedding.URL}}" maxlength="2048" placeholder="http://ollama.example:11434"></label>
+<label>Embedding model <input name="embed_model" value="{{$p.Config.Embedding.Model}}" maxlength="256"></label>
+<button name="action" value="test_embedding">Test embedding connection</button>
+<p class="muted">Semantic indexing currently covers Alexandria client page text. BOOX recognition participates in keyword search.</p>
+</fieldset>
+<p>Connection tests send a synthetic image or sentence, never your notes. They may incur a small provider charge and do not save settings.</p>
+<button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save provider settings</button>
+</form>
+<h3>Reprocess recognition</h3>
+<p>Revisit previously recognized Alexandria client pages and previously requested BOOX pages using the saved settings. This does not enroll the rest of the library. Unchanged inputs use cached results; changing the provider, model or prompt may incur new charges.</p>
+<form method="post" action="/settings/providers" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}"><label><input type="checkbox" name="confirm" required> I want these pages reprocessed, including any provider charges.</label><button name="action" value="reprocess" {{if not $p.CanSave}}disabled{{end}}>Reprocess previously requested pages</button></form>
+<h3>Semantic index</h3>
+<p>{{if $p.ActiveModel}}Current index: <code>{{$p.ActiveModel}}</code>.{{else}}No database-managed semantic index is active.{{end}} {{if $p.IndexState}}Replacement index: {{$p.IndexState}}.{{end}} Pending pages: {{$p.Pending}}; failed: {{$p.Failed}}.</p>
+<p>Build using the saved embedding settings. This sends existing indexed page text to that endpoint, without running OCR. The previous index stays available until the replacement is ready. Refresh this page to check progress.</p>
+<form method="post" action="/settings/providers" class="inline"><input type="hidden" name="revision" value="{{$p.Revision}}"><button name="action" value="build" {{if not $p.CanSave}}disabled{{end}}>Build replacement index</button><button name="action" value="retry" {{if not $p.CanSave}}disabled{{end}}>Retry failed index work</button></form>
 </section>
+{{else}}<section><h2>Recognition and semantic search</h2><p>Provider configuration is managed by this deployment.</p></section>{{end}}
 <section>
   <h2>Tasks Over CalDAV</h2>
   <p>CalDAV address: <code>{{.Base}}{{$d.CalDAV}}</code></p>
