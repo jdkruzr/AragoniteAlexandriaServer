@@ -35,10 +35,6 @@ func run(archive, metadata, output string, page int) error {
 	if e = json.Unmarshal(raw, &m); e != nil {
 		return e
 	}
-	ids := booxpage.PageIDs(m.PageNameList)
-	if page < 1 || page > len(ids) {
-		return fmt.Errorf("page outside notebook")
-	}
 	z, e := zip.OpenReader(archive)
 	if e != nil {
 		return e
@@ -76,6 +72,14 @@ func run(archive, metadata, output string, page int) error {
 		}
 		defer r.Close()
 		return io.ReadAll(io.LimitReader(r, 32<<20))
+	}
+	m, e = booxpage.ResolvePages(m, keys, load)
+	if e != nil {
+		return e
+	}
+	ids := booxpage.PageIDs(m.PageNameList)
+	if page < 1 || page > len(ids) {
+		return fmt.Errorf("page outside notebook")
 	}
 	p, w, e := booxpage.ShapePage(m, ids[page-1], keys, load)
 	if e != nil {

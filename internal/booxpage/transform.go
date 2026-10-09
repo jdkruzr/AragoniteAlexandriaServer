@@ -1,6 +1,11 @@
 // Selectively ported from UltraBridge under Apache-2.0.
 package booxpage
 
+import (
+	"fmt"
+	"math"
+)
+
 // booxMatrix holds the affine transform parsed from Boox matrixValues.
 // matrixValues is a 9-element array: [scaleX, skewX, transX, skewY, scaleY, transY, ...]
 //
@@ -33,4 +38,36 @@ func parseMatrix(mv []float64) *booxMatrix {
 func (m *booxMatrix) transformPoint(x, y float64) (float64, float64) {
 	return m.scaleX*x + m.skewX*y + m.transX,
 		m.skewY*x + m.scaleY*y + m.transY
+}
+
+func composeAffine(a, b []float64) ([]float64, error) {
+	identity := []float64{1, 0, 0, 0, 1, 0, 0, 0, 1}
+	if len(a) == 0 {
+		a = identity
+	}
+	if len(b) == 0 {
+		b = identity
+	}
+	for _, m := range [][]float64{a, b} {
+		if len(m) != 9 || m[6] != 0 || m[7] != 0 || m[8] != 1 {
+			return nil, fmt.Errorf("Unsupported reference transform.")
+		}
+		for _, v := range m {
+			if !finite(v) || math.Abs(v) > 1e7 {
+				return nil, fmt.Errorf("Invalid reference transform.")
+			}
+		}
+	}
+	out := make([]float64, 9)
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 3; j++ {
+			for k := 0; k < 3; k++ {
+				out[i*3+j] += a[i*3+k] * b[k*3+j]
+			}
+			if math.Abs(out[i*3+j]) > 1e7 {
+				return nil, fmt.Errorf("Reference transform exceeds limits.")
+			}
+		}
+	}
+	return out, nil
 }

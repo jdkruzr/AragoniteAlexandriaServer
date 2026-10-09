@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -33,5 +34,25 @@ func (d Deps) searchBOOX(ctx context.Context, q string) ([]sourceMatch, error) {
 		}
 		out = append(out, m)
 	}
-	return out, rows.Err()
+	if e = rows.Err(); e != nil {
+		return nil, e
+	}
+	rows.Close()
+	indexed, e := d.DB.QueryContext(ctx, `SELECT p.notebook_id,p.page_number,coalesce(n.body->>'title','Untitled'),left(p.text,500) FROM boox_page_index p JOIN boox_projection n ON n.document_id=p.notebook_id WHERE p.state='ready' AND n.domain='notebook' AND n.body->>'status'='1' AND n.body->>'type'='1' AND to_tsvector('simple',p.text) @@ plainto_tsquery('simple',$1) ORDER BY p.updated_at DESC,p.notebook_id,p.page_number LIMIT 50`, q)
+	if e != nil {
+		return nil, e
+	}
+	defer indexed.Close()
+	for indexed.Next() {
+		var id string
+		var page int
+		var m sourceMatch
+		if e = indexed.Scan(&id, &page, &m.Title, &m.Snippet); e != nil {
+			return nil, e
+		}
+		m.Kind = "Recognized page"
+		m.URL = "/boox/notebook?id=" + url.QueryEscape(id) + "&page=" + strconv.Itoa(page)
+		out = append(out, m)
+	}
+	return out, indexed.Err()
 }
