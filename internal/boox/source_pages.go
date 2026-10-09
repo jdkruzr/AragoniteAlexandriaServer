@@ -3,6 +3,7 @@ package boox
 import (
 	"encoding/json"
 	"errors"
+	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -10,27 +11,35 @@ import (
 
 var booxSettings = template.Must(template.New("settings").Parse(`{{define "content"}}<h1>BOOX Native settings</h1><section class="help"><h2>Connection</h2><p>Connect devices using PowerSync and <code>{{.Base}}</code>.</p><p><a href="/boox/enroll">Enroll a device</a> · <a href="/boox/devices">Manage BOOX access</a></p></section><section class="help"><h2>Synchronization and history</h2><p>Native synchronization follows the winning Couchbase revisions. Server browsing is read-only. Observed versions and uploaded resources are retained for recovery; this does not guarantee capture of every device-local conflict.</p><p>To return a device to Onyx, use Restore in PowerSync. Revoking a device here removes its Alexandria access; it does not switch its endpoint.</p></section><section class="help"><h2>Recognition and previews</h2><p>Notebook titles and reading annotation text are searchable. Handwriting recognition is not yet enabled for this source. Previews identify missing resources and unsupported content.</p></section>{{end}}`))
 
-type readingItem struct{ ID, Title, Quote, Note, Progress, Page, Kind string }
+type readingItem struct {
+	ID, Title, Quote, Note, Progress, Page, Kind string
+	CreatedAt, ModifiedAt                        int64
+}
 type readingView struct {
+	Listing        listview.State
 	Items          []readingItem
 	Next, Previous string
 }
 
-var readingTemplate = template.Must(template.New("reading").Parse(`{{define "content"}}<h1>Reading</h1><p class="muted">Native book metadata, highlights and bookmarks. Reading positions retain the device’s meaning; book files and full-book reading are not provided by this view.</p>{{range .Data.Items}}<article class="annotation"><span class="badge">{{.Kind}}</span><h2>{{.Title}}</h2>{{if .Page}}<p class="muted">Native page value: {{.Page}}</p>{{end}}{{if .Progress}}<p>Native progress: {{.Progress}}</p>{{end}}{{if .Quote}}<blockquote>{{.Quote}}</blockquote>{{end}}{{if .Note}}<p>{{.Note}}</p>{{end}}<a class="small" href="/api/v1/boox/admin/history?documentId={{.ID}}">Observed versions</a></article>{{else}}<p class="empty">No matching reading records have arrived.</p>{{end}}<nav class="pagination">{{if .Data.Previous}}<a href="{{.Data.Previous}}">Previous</a>{{end}}{{if .Data.Next}}<a href="{{.Data.Next}}">Next</a>{{end}}</nav>{{end}}`))
+var readingTemplate = template.Must(template.New("reading").Funcs(template.FuncMap{"ms": listview.Date}).Parse(`{{define "content"}}{{$d:=.Data}}<h1>Reading</h1><p class="muted">Native book metadata, highlights and bookmarks. Native page values retain the device’s meaning; missing source dates are shown as —.</p>{{template "pagination" $d.Listing}}
+<div class="table-scroll"><table class="dated-list"><thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">Title{{$d.Listing.Indicator "name"}}</a></th><th>Kind</th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th></tr></thead><tbody>
+{{range $d.Items}}<tr><td>{{.Title}}<details><summary>Reading details</summary>{{if .Page}}<p>Native page value: {{.Page}}</p>{{end}}{{if .Progress}}<p>Native progress: {{.Progress}}</p>{{end}}{{if .Quote}}<blockquote>{{.Quote}}</blockquote>{{end}}{{if .Note}}<p>{{.Note}}</p>{{end}}<a href="/api/v1/boox/admin/history?documentId={{.ID}}">Observed versions</a></details></td><td>{{.Kind}}</td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td></tr>{{else}}<tr><td colspan="4">No matching reading records have arrived.</td></tr>{{end}}
+</tbody></table></div>{{template "pagination" $d.Listing}}{{end}}`))
 
 func (s Service) reading(w http.ResponseWriter, r *http.Request) {
-	offset := browserOffset(r)
-	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,body FROM boox_projection WHERE domain='reading' AND native_uid=$1 AND body->>'modeType' IN ('1','2','4') AND coalesce(body->>'status','1')='1' AND ($2='' OR document_id=$2) ORDER BY updated_at DESC,document_id LIMIT 61 OFFSET $3`, s.uid(), r.URL.Query().Get("record"), offset)
+	state := listview.Parse(r.URL.Query())
+	offset := state.Offset
+	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,body,count(*) OVER() FROM boox_projection WHERE domain='reading' AND native_uid=$1 AND body->>'modeType' IN ('1','2','4') AND coalesce(body->>'status','1')='1' AND ($2='' OR document_id=$2) ORDER BY `+state.NativeOrder()+` LIMIT 60 OFFSET $3`, s.uid(), r.URL.Query().Get("record"), offset)
 	if e != nil {
 		failure(w, e)
 		return
 	}
 	defer rows.Close()
-	d := readingView{}
+	d := readingView{Listing: state}
 	for rows.Next() {
 		var v readingItem
 		var b []byte
-		if rows.Scan(&v.ID, &b) != nil {
+		if rows.Scan(&v.ID, &b, &d.Listing.Total) != nil {
 			failure(w, errors.New("reading inventory failed"))
 			return
 		}
@@ -47,6 +56,8 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 			}
 			return ""
 		}
+		v.CreatedAt, _ = strconv.ParseInt(str("createdAt"), 10, 64)
+		v.ModifiedAt, _ = strconv.ParseInt(str("updatedAt"), 10, 64)
 		v.Title = str("title")
 		if v.Title == "" {
 			v.Title = str("name")
@@ -65,17 +76,12 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		failure(w, rows.Err())
 		return
 	}
-	link := func(n int) string {
+	if len(d.Items) == 0 && offset > 0 {
 		q := r.URL.Query()
-		q.Set("offset", strconv.Itoa(n))
-		return "/boox/reading?" + q.Encode()
+		q.Del("offset")
+		http.Redirect(w, r, "/boox/reading?"+q.Encode(), http.StatusSeeOther)
+		return
 	}
-	if len(d.Items) > 60 {
-		d.Items = d.Items[:60]
-		d.Next = link(offset + 60)
-	}
-	if offset > 0 {
-		d.Previous = link(max(0, offset-60))
-	}
+	d.Listing.Finish(r.URL.Query(), "/boox/reading", d.Listing.Total)
 	s.renderPage(w, r, readingTemplate, "BOOX reading", d)
 }

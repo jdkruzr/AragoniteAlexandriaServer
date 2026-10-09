@@ -406,3 +406,29 @@ func TestBookFilename(t *testing.T) {
 		}
 	}
 }
+
+func TestBookDatesIncludeTitleAndAnnotationChanges(t *testing.T) {
+	f := newLibraryFixture(t)
+	id := strings.Repeat("b", 64)
+	f.book(id, "application/pdf", `{"version":1,"title":"Synthetic dates"}`)
+	before, e := f.service().GetBook(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	f.put("reader_book_title", id, map[string]any{"title": "Renamed"})
+	after, e := f.service().GetBook(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if after.Book.AddedAt != before.Book.AddedAt || after.Book.ModifiedAt <= before.Book.ModifiedAt {
+		t.Fatal("rename changed creation or failed to update modification")
+	}
+	f.annotation(id, "dated-annotation", libInline, false)
+	final, e := f.service().GetBook(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if final.Book.ModifiedAt <= after.Book.ModifiedAt {
+		t.Fatal("annotation did not update book modification")
+	}
+}

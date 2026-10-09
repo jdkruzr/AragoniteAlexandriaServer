@@ -34,7 +34,7 @@ var funcs = template.FuncMap{
 		if ms <= 0 {
 			return "—"
 		}
-		return time.UnixMilli(ms).Local().Format("2006-01-02 15:04")
+		return time.UnixMilli(ms).UTC().Format("2006-01-02 15:04")
 	},
 	"time": func(t *time.Time) string {
 		if t == nil {

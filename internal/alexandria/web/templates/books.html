@@ -1,17 +1,17 @@
-{{define "content"}}
+{{define "content"}}{{$d:=.Data}}
 <h1>Books</h1>
-{{if not .Data}}<p class="empty">No books yet. Books appear after a device imports one and syncs.</p>{{else}}
-<table>
-<thead><tr><th>Title</th><th>Author</th><th>Format</th><th>Annotations</th><th>File</th></tr></thead>
+{{if not $d.Entries}}<p class="empty">No books yet. Books appear after a device imports one and syncs.</p>{{else}}
+{{template "pagination" $d.Listing}}<div class="table-scroll"><table class="dated-list">
+<thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">Title{{$d.Listing.Indicator "name"}}</a></th><th>Author</th><th>Format</th><th>Annotations</th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th><th>File</th></tr></thead>
 <tbody>
-{{range .Data}}
+{{range $d.Entries}}
 <tr>
   <td><a href="/files/forestnote/books?book={{.ID}}">{{.Title}}</a></td>
   <td>{{.Authors}}</td><td>{{.Format}}</td><td>{{.AnnotationCount}}</td>
-  <td>{{if eq .FileState "ready"}}<a href="/files/forestnote/books/file?book={{.ID}}">Download</a> ({{bytes .ByteLength}}){{else if eq .FileState "uploading"}}Uploading{{else if eq .FileState "invalid"}}Upload failed{{else}}Not uploaded{{end}}</td>
+  <td>{{ms .AddedAt}}</td><td>{{ms .ModifiedAt}}</td><td>{{if eq .FileState "ready"}}<a href="/files/forestnote/books/file?book={{.ID}}">Download</a> ({{bytes .ByteLength}}){{else if eq .FileState "uploading"}}Uploading{{else if eq .FileState "invalid"}}Upload failed{{else}}Not uploaded{{end}}</td>
 </tr>
 {{end}}
 </tbody>
-</table>
+</table></div>{{template "pagination" $d.Listing}}<p class="muted">Created is the client book record timestamp, not the book’s publication date. Modified includes synchronized title and annotation changes.</p>
 {{end}}
 {{end}}

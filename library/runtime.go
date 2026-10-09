@@ -278,6 +278,9 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		if req.URL.Path == "/boox" || strings.HasPrefix(req.URL.Path, "/boox/") || strings.HasPrefix(req.URL.Path, "/api/v1/boox/admin/") {
 			if err := r.account(conn)(req); err != nil {
+				if req.URL.Path == "/boox" || strings.HasPrefix(req.URL.Path, "/boox/") {
+					w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
+				}
 				http.Error(w, "unauthorized", 401)
 				return
 			}
