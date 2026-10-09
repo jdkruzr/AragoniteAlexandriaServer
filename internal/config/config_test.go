@@ -42,3 +42,22 @@ func TestMaxConnectionsDefaultsAndRejectsNonsense(t *testing.T) {
 		}
 	}
 }
+
+func TestOCRVLLMOptIn(t *testing.T) {
+	t.Setenv("ALEXANDRIA_DATABASE_URL", "postgres://alexandria:test@db/alexandria")
+	t.Setenv("ALEXANDRIA_OCR_FORMAT", "openai")
+	t.Setenv("ALEXANDRIA_OCR_VLLM_DISABLE_THINKING", "")
+	cfg, err := Load()
+	if err != nil || cfg.OCRVLLMDisableThinking {
+		t.Fatalf("default %v", err)
+	}
+	t.Setenv("ALEXANDRIA_OCR_VLLM_DISABLE_THINKING", "true")
+	cfg, err = Load()
+	if err != nil || !cfg.OCRVLLMDisableThinking {
+		t.Fatalf("opt-in %v", err)
+	}
+	t.Setenv("ALEXANDRIA_OCR_FORMAT", "anthropic")
+	if _, err = Load(); err == nil {
+		t.Fatal("vLLM-only setting accepted with Anthropic")
+	}
+}
