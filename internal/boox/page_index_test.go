@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
+	ocrapi "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
 )
 
@@ -177,5 +179,66 @@ func TestPreviewRecoversResourceWithoutNewNativeRevision(t *testing.T) {
 	after, e := s.renderPreview(ctx, n, 1)
 	if e != nil || len(after.Warnings) != 0 {
 		t.Fatal("transient coverage gap cached after recovery", e, after.Warnings)
+	}
+}
+
+func TestRecognitionCancellationFencesProviderResult(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	var id string
+	if e := s.DB.QueryRowContext(ctx, `SELECT job_id::text FROM boox_page_index`).Scan(&id); e != nil {
+		t.Fatal(e)
+	}
+	o := &testOCR{hook: func() {
+		if _, e := (recognition.Store{DB: s.DB}).Control(ctx, id, false, "cancel"); e != nil {
+			t.Fatal(e)
+		}
+	}}
+	if _, e := s.ProcessPageIndex(ctx, o, ""); e != nil {
+		t.Fatal(e)
+	}
+	var state, text string
+	if e := s.DB.QueryRowContext(ctx, `SELECT state,text FROM boox_page_index`).Scan(&state, &text); e != nil {
+		t.Fatal(e)
+	}
+	if state != "cancelled" || text != "" {
+		t.Fatalf("late result published: %s %q", state, text)
+	}
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET revision='2-b' WHERE document_id='note'`); e != nil {
+		t.Fatal(e)
+	}
+	if e := s.DB.QueryRowContext(ctx, `SELECT state FROM boox_page_index`).Scan(&state); e != nil || state != "cancelled" {
+		t.Fatal("source edit revived cancellation", state, e)
+	}
+}
+
+type rejectedOCR struct{}
+
+func (rejectedOCR) Model() string { return "synthetic" }
+func (rejectedOCR) Recognize(context.Context, []byte, string) (string, error) {
+	return "", &ocrapi.HTTPError{Status: 400}
+}
+func TestBOOXPermanentFailureAndExpiredLeaseRecovery(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state='processing',lease_token='crashed-worker',lease_until=now()-interval '1 second'`); e != nil {
+		t.Fatal(e)
+	}
+	if found, e := s.ProcessPageIndex(ctx, rejectedOCR{}, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state string
+	var attempts int
+	if e := s.DB.QueryRowContext(ctx, `SELECT state,attempts FROM boox_page_index`).Scan(&state, &attempts); e != nil || state != "failed" || attempts != 1 {
+		t.Fatal(state, attempts, e)
+	}
+	if found, e := s.ProcessPageIndex(ctx, rejectedOCR{}, ""); e != nil || found {
+		t.Fatal("permanent failure was retried", found, e)
 	}
 }

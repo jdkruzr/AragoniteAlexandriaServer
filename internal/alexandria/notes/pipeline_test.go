@@ -13,6 +13,8 @@ import (
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
+	ocrapi "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
 )
@@ -302,5 +304,41 @@ func TestHybridSearchFusesLexicalAndVectorHits(t *testing.T) {
 	author(t, db, notebookOp("Kitchen", float64(9)))
 	if results, err = s.Search(ctx, "seville", 10, true); err != nil || len(results) != 0 {
 		t.Fatal("deleted notebook surfaced", results, err)
+	}
+}
+
+func TestCancelledRecognitionCannotPublishOrReviveOnEdit(t *testing.T) {
+	db := setup(t)
+	author(t, db, notebookOp("N", nil), pageOp(nil), strokeOp(points(1, 2, 3)))
+	id := scalar(t, db, `SELECT job_id::text FROM alexandria_page_dirty`)
+	o := &fakeOCR{text: "late result", hook: func() {
+		if _, e := (recognition.Store{DB: db}).Control(ctx, id, false, "cancel"); e != nil {
+			t.Fatal(e)
+		}
+	}}
+	step(t, Pipeline{OCR: o}, db)
+	if scalar(t, db, `SELECT count(*) FROM alexandria_note_content`) != "0" || scalar(t, db, `SELECT count(*) FROM fn_page_text_from_server`) != "0" {
+		t.Fatal("cancelled result published")
+	}
+	author(t, db, strokeOp(points(4, 5, 6)))
+	if step(t, Pipeline{OCR: o}, db) {
+		t.Fatal("source edit revived cancelled work")
+	}
+	if scalar(t, db, `SELECT state FROM alexandria_recognition_job WHERE id=$1`, id) != "cancelled" {
+		t.Fatal("cancellation lost")
+	}
+}
+
+func TestPermanentOCRFailureStopsRetrying(t *testing.T) {
+	db := setup(t)
+	author(t, db, notebookOp("N", nil), pageOp(nil), strokeOp(points(1, 2, 3)))
+	o := &fakeOCR{err: &ocrapi.HTTPError{Status: 401}}
+	step(t, Pipeline{OCR: o}, db)
+	if scalar(t, db, `SELECT state FROM alexandria_page_dirty`) != "failed" {
+		t.Fatal("permanent error was retried")
+	}
+	exec(t, db, `UPDATE alexandria_page_dirty SET next_at=now()`)
+	if step(t, Pipeline{OCR: o}, db) {
+		t.Fatal("failed job claimed")
 	}
 }

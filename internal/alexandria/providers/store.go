@@ -346,7 +346,7 @@ func (s Store) Reprocess(ctx context.Context, revision int64) error {
 		return errors.New("Enable and save recognition first.")
 	}
 	for _, q := range []string{
-		`INSERT INTO alexandria_page_dirty(page_id) SELECT o.page_id FROM alexandria_page_ocr o JOIN fn_page p ON p.id=o.page_id JOIN fn_notebook n ON n.id=p.notebook_id WHERE p.deleted_at IS NULL AND n.deleted_at IS NULL ON CONFLICT(page_id) DO UPDATE SET dirtied_at=clock_timestamp(),next_at=now(),lease_until=NULL,attempts=0`,
+		`INSERT INTO alexandria_page_dirty(page_id) SELECT o.page_id FROM alexandria_page_ocr o JOIN fn_page p ON p.id=o.page_id JOIN fn_notebook n ON n.id=p.notebook_id WHERE p.deleted_at IS NULL AND n.deleted_at IS NULL ON CONFLICT(page_id) DO UPDATE SET state='queued',dirtied_at=clock_timestamp(),next_at=now(),lease_until=NULL,attempts=0`,
 		`UPDATE boox_page_index p SET state='queued',request_version=request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,text='',detail='',updated_at=now() FROM boox_projection n WHERE n.document_id=p.notebook_id AND n.body->>'status'='1'`,
 	} {
 		if _, e = tx.ExecContext(ctx, q); e != nil {

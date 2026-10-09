@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
+	ocrapi "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 )
 
@@ -79,13 +80,16 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,text=$5,detail=$6,input_version=$7,ocr_hash=$8,ocr_text=$9,model=$10,lease_token='',lease_until=NULL,updated_at=now(),page_number=$11,config_revision=$13 WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$12`, id, page, token, state, text, detail, input, ocrHash, ocrText, model, num, version, s.RecognitionRevision)
 		return e
 	}
-	deferFailure := func(detail string) (bool, error) {
+	deferFailure := func(detail string, terminal ...bool) (bool, error) {
 		delay := time.Duration(30*(1<<min(attempts, 7))) * time.Second
 		state := "queued"
-		if attempts >= 4 {
+		if attempts >= 4 || len(terminal) > 0 && terminal[0] {
 			state = "failed"
+			if len(terminal) == 0 || !terminal[0] {
+				detail = "Retry limit reached. Check the provider and page, then retry."
+			}
 		}
-		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,detail=$5,attempts=attempts+1,next_at=now()+$6::interval,lease_until=NULL,lease_token='',text='' WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$7`, id, page, token, state, detail, fmt.Sprintf("%d seconds", int(delay.Seconds())), version)
+		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,detail=$5,updated_at=now(),attempts=attempts+1,next_at=now()+$6::interval,lease_until=NULL,lease_token='',text='' WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$7`, id, page, token, state, detail, fmt.Sprintf("%d seconds", int(delay.Seconds())), version)
 		return true, e
 	}
 	n, e := s.notebookSnapshot(ctx, id)
@@ -138,7 +142,11 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		text, e = ocr.Recognize(recognitionCtx, b.Bytes(), prompt)
 		cancel()
 		if e != nil {
-			return deferFailure("OCR provider failed; retrying.")
+			retry, detail := ocrapi.Failure(e)
+			if !retry {
+				return deferFailure(detail, true)
+			}
+			return deferFailure(detail)
 		}
 		if len(text) > 1<<20 {
 			return deferFailure("OCR response exceeds text limit.")

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed"
+	ocrapi "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render"
@@ -69,48 +70,56 @@ func (p Pipeline) logger() *slog.Logger {
 }
 
 // claim leases the oldest due page. ok=false means nothing is due.
-func (p Pipeline) claim(ctx context.Context, db pg.DB) (page string, dirtied time.Time, generation string, attempts int, ok bool, err error) {
+func (p Pipeline) claim(ctx context.Context, db pg.DB) (page string, dirtied time.Time, generation string, token string, attempts int, ok bool, err error) {
 	lease := p.Lease
 	if lease <= 0 {
 		lease = 10 * time.Minute
 	}
-	err = db.QueryRowContext(ctx, `UPDATE alexandria_page_dirty d SET lease_until = now() + $1::interval
+	err = db.QueryRowContext(ctx, `UPDATE alexandria_page_dirty d SET state='processing',lease_token=gen_random_uuid(),lease_until = now() + $1::interval
 		WHERE d.page_id = (SELECT page_id FROM alexandria_page_dirty
-			WHERE next_at <= now() AND dirtied_at <= clock_timestamp() - $2::interval
+			WHERE state IN ('queued','processing') AND next_at <= now() AND dirtied_at <= clock_timestamp() - $2::interval
 			AND (lease_until IS NULL OR lease_until < now())
 			ORDER BY dirtied_at LIMIT 1 FOR UPDATE SKIP LOCKED)
-		RETURNING d.page_id, d.dirtied_at, d.attempts`, interval(lease), interval(p.Debounce)).Scan(&page, &dirtied, &attempts)
+		RETURNING d.page_id, d.dirtied_at, d.attempts, d.lease_token::text`, interval(lease), interval(p.Debounce)).Scan(&page, &dirtied, &attempts, &token)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", time.Time{}, "", 0, false, nil
+		return "", time.Time{}, "", "", 0, false, nil
 	}
 	if err != nil {
-		return "", time.Time{}, "", 0, false, err
+		return "", time.Time{}, "", "", 0, false, err
 	}
 	if err = db.QueryRowContext(ctx, `SELECT generation FROM sync_library_generation WHERE id=1`).Scan(&generation); err != nil {
-		return "", time.Time{}, "", 0, false, err
+		return "", time.Time{}, "", "", 0, false, err
 	}
-	return page, dirtied, generation, attempts, true, nil
+	return page, dirtied, generation, token, attempts, true, nil
 }
 
 func interval(d time.Duration) string { return fmt.Sprintf("%d milliseconds", d.Milliseconds()) }
 
 // Step processes at most one due page. It reports whether it found one.
 func (p Pipeline) Step(ctx context.Context, db pg.DB) (bool, error) {
-	page, dirtied, generation, attempts, ok, err := p.claim(ctx, db)
+	page, dirtied, generation, token, attempts, ok, err := p.claim(ctx, db)
 	if err != nil || !ok {
 		return false, err
 	}
-	if err := p.process(ctx, db, page, dirtied, generation); err != nil {
-		// Back off (30 s doubling, at most an hour) and release the lease.
+	if err := p.process(ctx, db, page, dirtied, generation, token); err != nil {
+		retry, detail := ocrapi.Failure(err)
+		state := "queued"
+		if !retry || attempts >= 4 {
+			state = "failed"
+			if retry {
+				detail = "Retry limit reached. Check the provider and page, then retry."
+			}
+		}
+		// Back off and release the lease; permanent failures need intervention.
 		delay := 30 * time.Second << min(attempts, 7)
 		if delay > time.Hour {
 			delay = time.Hour
 		}
-		if _, e := db.ExecContext(ctx, `UPDATE alexandria_page_dirty SET attempts=attempts+1, next_at=now()+$2::interval, lease_until=NULL
-			WHERE page_id=$1 AND dirtied_at=$3`, page, interval(delay), dirtied); e != nil {
+		if _, e := db.ExecContext(ctx, `UPDATE alexandria_page_dirty SET state=$5,detail=$6,attempts=attempts+1, next_at=now()+$2::interval, lease_until=NULL,lease_token=NULL
+			WHERE page_id=$1 AND dirtied_at=$3 AND lease_token=$4::uuid`, page, interval(delay), dirtied, token, state, detail); e != nil {
 			return true, errors.Join(err, e)
 		}
-		p.logger().Warn("page pipeline deferred", "error", err.Error(), "attempts", attempts+1)
+		p.logger().Warn("page pipeline deferred", "detail", detail, "attempts", attempts+1)
 		return true, nil
 	}
 	return true, nil
@@ -226,14 +235,14 @@ func inputHash(s pageState) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied time.Time, generation string) error {
+func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied time.Time, generation, token string) error {
 	s, err := load(ctx, db, page)
 	if err != nil {
 		return err
 	}
 	key := fnpath.Page(s.notebookID, page)
 	if !s.live || (len(s.strokes) == 0 && len(s.boxes) == 0) {
-		return finish(ctx, db, page, dirtied, generation, s, key, nil)
+		return finish(ctx, db, page, dirtied, generation, token, s, key, nil)
 	}
 	r := result{hash: inputHash(s), configRevision: p.SettingsRevision}
 	if p.OCRIdentity != "" {
@@ -262,7 +271,7 @@ func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied ti
 		}
 		text, err := p.OCR.Recognize(ctx, buf.Bytes(), prompt)
 		if err != nil {
-			return errors.New("recognition provider request failed")
+			return fmt.Errorf("recognition provider request failed: %w", err)
 		}
 		// PostgreSQL text cannot hold U+0000.
 		r.ocr, r.model, r.recognized = strings.TrimSpace(strings.ReplaceAll(text, "\x00", "\uFFFD")), p.OCR.Model(), true
@@ -279,7 +288,7 @@ func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied ti
 			r.vectors, r.embedModel = vectors, p.Embedder.Model()
 		}
 	}
-	return finish(ctx, db, page, dirtied, generation, s, key, &r)
+	return finish(ctx, db, page, dirtied, generation, token, s, key, &r)
 }
 
 type result struct {
@@ -305,7 +314,7 @@ func embedChunks(ctx context.Context, e embed.Embedder, text string) ([][]float3
 
 // finish commits every derived effect of one page atomically, or nothing if a
 // restore replaced the library meanwhile (the restore re-queued the page).
-func finish(ctx context.Context, db pg.DB, page string, dirtied time.Time, generation string, s pageState, key string, r *result) error {
+func finish(ctx context.Context, db pg.DB, page string, dirtied time.Time, generation, token string, s pageState, key string, r *result) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -316,7 +325,23 @@ func finish(ctx context.Context, db pg.DB, page string, dirtied time.Time, gener
 		return err
 	}
 	if current != generation {
-		_, err := db.ExecContext(ctx, `UPDATE alexandria_page_dirty SET lease_until=NULL WHERE page_id=$1`, page)
+		_, err := tx.ExecContext(ctx, `UPDATE alexandria_page_dirty SET lease_until=NULL,lease_token=NULL WHERE page_id=$1 AND lease_token=$2::uuid`, page, token)
+		if err != nil {
+			return err
+		}
+		return tx.Commit()
+	}
+	// Match device lock order before fencing cancellation and source edits.
+	var seq int64
+	if err := tx.QueryRowContext(ctx, `SELECT last_seq FROM sync_seq WHERE id=1 FOR UPDATE`).Scan(&seq); err != nil {
+		return err
+	}
+	var valid bool
+	err = tx.QueryRowContext(ctx, `SELECT state='processing' AND dirtied_at=$2 AND lease_token=$3::uuid FROM alexandria_page_dirty WHERE page_id=$1 FOR UPDATE`, page, dirtied, token).Scan(&valid)
+	if errors.Is(err, sql.ErrNoRows) || err == nil && !valid {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 	// A page that moved notebooks leaves its old key behind.
@@ -378,13 +403,21 @@ func finish(ctx context.Context, db pg.DB, page string, dirtied time.Time, gener
 			return err
 		}
 	}
+	if _, err := tx.ExecContext(ctx, `UPDATE alexandria_page_dirty SET state='ready',detail='Page processing complete.' WHERE page_id=$1`, page); err != nil {
+		return err
+	}
+	if r != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE alexandria_recognition_job SET model=$2 WHERE id=(SELECT job_id FROM alexandria_page_dirty WHERE page_id=$1)`, page, r.model); err != nil {
+			return err
+		}
+	}
 	result, err := tx.ExecContext(ctx, `DELETE FROM alexandria_page_dirty WHERE page_id=$1 AND dirtied_at=$2`, page, dirtied)
 	if err != nil {
 		return err
 	}
 	if n, _ := result.RowsAffected(); n == 0 {
 		// Edited meanwhile: keep the newer dirty mark, release our lease.
-		if _, err := tx.ExecContext(ctx, `UPDATE alexandria_page_dirty SET lease_until=NULL WHERE page_id=$1`, page); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE alexandria_page_dirty SET lease_until=NULL,lease_token=NULL WHERE page_id=$1 AND lease_token=$2::uuid`, page, token); err != nil {
 			return err
 		}
 	}

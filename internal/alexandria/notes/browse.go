@@ -238,12 +238,12 @@ func Reprocess(ctx context.Context, db pg.DB, notebookID string) (int, error) {
 		return 0, err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM alexandria_page_ocr WHERE page_id IN (SELECT id FROM fn_page WHERE notebook_id=$1)`, notebookID); err != nil {
+	result, err := tx.ExecContext(ctx, `INSERT INTO alexandria_page_dirty(page_id) SELECT id FROM fn_page WHERE notebook_id=$1 AND deleted_at IS NULL ORDER BY id
+		ON CONFLICT (page_id) DO UPDATE SET state='queued',dirtied_at=clock_timestamp(), attempts=0, next_at=now()`, notebookID)
+	if err != nil {
 		return 0, err
 	}
-	result, err := tx.ExecContext(ctx, `INSERT INTO alexandria_page_dirty(page_id) SELECT id FROM fn_page WHERE notebook_id=$1 AND deleted_at IS NULL
-		ON CONFLICT (page_id) DO UPDATE SET dirtied_at=clock_timestamp(), attempts=0, next_at=now()`, notebookID)
-	if err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM alexandria_page_ocr WHERE page_id IN (SELECT id FROM fn_page WHERE notebook_id=$1)`, notebookID); err != nil {
 		return 0, err
 	}
 	n, _ := result.RowsAffected()
