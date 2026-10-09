@@ -91,3 +91,43 @@ func TestRecognizeOpenAIStrictEndpointByDefault(t *testing.T) {
 		t.Fatalf("strict endpoint: %q %v", got, err)
 	}
 }
+
+func TestAnthropicWorkspaceAndThinkingBlocks(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("anthropic-workspace-id") != "wrkspc_test" {
+			t.Error("missing workspace")
+		}
+		w.Write([]byte(`{"content":[{"type":"thinking","thinking":"private reasoning"},{"type":"text","text":"Hello"},{"type":"text","text":" world"}]}`))
+	}))
+	defer srv.Close()
+	c := NewOCRClient(srv.URL, "key", "claude-haiku-5-5", OCRFormatAnthropic, WithAnthropicWorkspace("wrkspc_test"))
+	got, err := c.Recognize(context.Background(), []byte("jpg"), "read")
+	if err != nil || got != "Hello world" {
+		t.Fatalf("text %q, error %v", got, err)
+	}
+}
+
+func TestWorkspaceNeverSentToOpenAI(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("anthropic-workspace-id") != "" {
+			t.Error("workspace leaked across formats")
+		}
+		w.Write([]byte(`{"choices":[{"message":{"content":"ok"}}]}`))
+	}))
+	defer srv.Close()
+	_, err := NewOCRClient(srv.URL, "key", "model", OCRFormatOpenAI, WithAnthropicWorkspace("wrkspc_test")).Recognize(context.Background(), []byte("jpg"), "read")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAnthropicThinkingOnlyIsNotSuccessfulOCR(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"content":[{"type":"thinking","text":"must not become OCR"}]}`))
+	}))
+	defer srv.Close()
+	got, err := NewOCRClient(srv.URL, "key", "model", OCRFormatAnthropic).Recognize(context.Background(), []byte("jpg"), "read")
+	if err == nil || got != "" {
+		t.Fatalf("accepted thinking-only response: %q %v", got, err)
+	}
+}

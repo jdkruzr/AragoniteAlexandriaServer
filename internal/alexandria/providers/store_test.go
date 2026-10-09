@@ -305,3 +305,29 @@ func TestReprocessOnlyPreviouslyRecognizedClientPages(t *testing.T) {
 		t.Fatal("untouched pages queued", ids, e)
 	}
 }
+
+func TestWorkspaceDiagnosticDoesNotExposeProviderBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(400)
+		w.Write([]byte(`{"error":{"message":"Send anthropic-workspace-id header for this API key. private-secret"}}`))
+	}))
+	defer srv.Close()
+	v := Snapshot{Config: Config{OCR: OCRConfig{URL: srv.URL, Model: "model", Format: "anthropic"}}}
+	err := v.TestConnection(context.Background(), "ocr")
+	if err == nil || !strings.Contains(err.Error(), "workspace ID") || strings.Contains(err.Error(), "private-secret") {
+		t.Fatalf("unsafe or missing diagnostic: %v", err)
+	}
+}
+
+func TestWorkspaceValidation(t *testing.T) {
+	for _, id := range []string{"", "wrkspc_test123"} {
+		if err := Validate(Config{OCR: OCRConfig{Format: "anthropic", AnthropicWorkspace: id}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, id := range []string{"wrkspc_", "invalid", "wrkspc_x\r\nInjected: true"} {
+		if err := Validate(Config{OCR: OCRConfig{Format: "anthropic", AnthropicWorkspace: id}}); err == nil {
+			t.Fatalf("accepted %q", id)
+		}
+	}
+}

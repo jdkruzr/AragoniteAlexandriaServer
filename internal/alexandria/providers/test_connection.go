@@ -58,6 +58,9 @@ func (v Snapshot) TestConnection(ctx context.Context, kind string) error {
 func recognitionError(err error) error {
 	var status *ocr.HTTPError
 	if errors.As(err, &status) {
+		if status.WorkspaceRequired {
+			return errors.New("Recognition test failed (HTTP 400). Anthropic requires a workspace ID for this key. Enter it in the Anthropic workspace field (Claude Console → Settings → Workspaces), then retry.")
+		}
 		hint := "Check the endpoint, model and selected API format."
 		switch status.Status {
 		case 401, 403:
