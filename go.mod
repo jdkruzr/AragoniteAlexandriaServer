@@ -19,8 +19,12 @@ require (
 	github.com/jdkruzr/rhizome/server-go v0.0.0-20261007050732-1a5461ab1925
 	github.com/modelcontextprotocol/go-sdk v1.4.0
 	github.com/prometheus/client_golang v1.21.1
+	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
+	github.com/srwiley/rasterx v0.0.0-20210519020934-456a8d69b780
 	golang.org/x/crypto v0.31.0
 	golang.org/x/image v0.25.0
+	golang.org/x/net v0.33.0
+	google.golang.org/protobuf v1.36.1
 	modernc.org/sqlite v1.36.1
 )
 
@@ -62,7 +66,6 @@ require (
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
-	google.golang.org/protobuf v1.36.1 // indirect
 	modernc.org/libc v1.61.13 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.8.2 // indirect

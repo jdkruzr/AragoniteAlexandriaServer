@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"github.com/fogleman/gg"
+	"golang.org/x/image/draw"
+	"golang.org/x/image/math/f64"
 )
 
 // Preview always reports renderer limitations. Templates are rasterized here;
@@ -22,14 +24,15 @@ func Preview(p *Page, load Load) (image.Image, []string, error) {
 	dc.SetRGB(1, 1, 1)
 	dc.Clear()
 	var warnings []string
-	raw, err := load("template/json/" + p.PageID + ".template_json")
-	if err != nil {
-		warnings = append(warnings, "Page template is unavailable; the background may be missing.")
-	} else if err = drawTemplate(dc, raw, load); err != nil {
+	if err := drawBackground(dc, p, load); err != nil {
 		warnings = append(warnings, err.Error())
 	}
 	for _, s := range p.Shapes {
-		if s.ImagePath != "" {
+		if s.ShapeType == 6 || s.ShapeType == 16 {
+			if e := drawTextShape(dc, s); e != nil {
+				warnings = append(warnings, e.Error())
+			}
+		} else if s.ImagePath != "" {
 			if e := drawImageShape(dc, s, load); e != nil {
 				warnings = append(warnings, e.Error())
 			}
@@ -45,15 +48,20 @@ func drawTemplate(dc *gg.Context, raw []byte, load Load) error {
 		Properties       struct {
 			LayoutType                  string
 			UseFixedRatio, UnderContent bool
-			PageMargins                 struct{ Degree, PaddingBottom, PaddingLeft, PaddingRight, PaddingTop float64 }
-			ImageAttr                   struct{ RelativePath string }
+			PageMargins                 struct{ Degree, PaddingBottom, PaddingLeft, PaddingRight, PaddingTop, Spacing float64 }
+			ResourceAttr                struct{ ResName, AssetsResName string }
+			StrokeAttr                  struct {
+				Color int32
+				Width float64
+			}
+			ImageAttr struct{ RelativePath string }
 		}
 	}
 	if json.Unmarshal(raw, &t) != nil {
 		return fmt.Errorf("Template metadata is unreadable.")
 	}
 	m := t.Properties.PageMargins
-	if m.Degree != 0 || m.PaddingBottom != 0 || m.PaddingLeft != 0 || m.PaddingRight != 0 || m.PaddingTop != 0 || t.Properties.UseFixedRatio {
+	if m.Degree != 0 || t.Properties.UseFixedRatio {
 		return fmt.Errorf("This template layout is not supported yet.")
 	}
 	if t.DisplayFillColor != 0 {
@@ -64,17 +72,37 @@ func drawTemplate(dc *gg.Context, raw []byte, load Load) error {
 	}
 	path := t.Properties.ImageAttr.RelativePath
 	if path == "" {
+		if t.Properties.LayoutType == "LayoutResVector" {
+			name := t.Properties.ResourceAttr.ResName
+			if t.Properties.ResourceAttr.AssetsResName != "" {
+				name = t.Properties.ResourceAttr.AssetsResName
+			}
+			name = name[strings.LastIndex(name, "/")+1:]
+			if name == "" {
+				return nil
+			} // Native empty resource selection is plain paper.
+			if b, e := load("note/templateRes/" + name + ".svg"); e == nil {
+				return drawSVG(dc, b)
+			}
+			return drawBuiltin(dc, name)
+		}
+		if strings.HasPrefix(t.Properties.LayoutType, "LayoutFitted") {
+			return drawProcedural(dc, t.Properties.LayoutType, m.Spacing, m.PaddingLeft, m.PaddingTop, m.PaddingRight, m.PaddingBottom, t.Properties.StrokeAttr.Color, t.Properties.StrokeAttr.Width)
+		}
 		if t.Properties.LayoutType != "" && t.Properties.LayoutType != "LayoutBlank" {
 			return fmt.Errorf("This procedural template is not supported yet.")
 		}
 		return nil
+	}
+	if m.PaddingLeft != 0 || m.PaddingRight != 0 || m.PaddingTop != 0 || m.PaddingBottom != 0 {
+		return fmt.Errorf("This image template margin layout is not supported yet.")
 	}
 	b, e := load(path)
 	if e != nil {
 		return fmt.Errorf("The template image has not arrived or failed verification.")
 	}
 	if strings.HasSuffix(strings.ToLower(path), ".svg") {
-		return drawLineSVG(dc, b)
+		return drawSVG(dc, b)
 	}
 	config, _, e := image.DecodeConfig(bytes.NewReader(b))
 	if e != nil || config.Width <= 0 || config.Height <= 0 || int64(config.Width)*int64(config.Height) > 20e6 {
@@ -187,18 +215,26 @@ func drawImageShape(dc *gg.Context, s *Shape, load Load) error {
 	if e != nil {
 		return fmt.Errorf("Image is unreadable.")
 	}
+	return placeImage(dc, s, img)
+}
+func placeImage(dc *gg.Context, s *Shape, img image.Image) error {
+	b := s.BoundingRect
+	c := img.Bounds()
 	dc.Push()
 	defer dc.Pop()
+	sx, sy := (b.Right-b.Left)/float64(c.Dx()), (b.Bottom-b.Top)/float64(c.Dy())
+	mat := f64.Aff3{sx, 0, b.Left, 0, sy, b.Top}
 	if len(s.MatrixValues) > 0 {
 		m := s.MatrixValues
-		if m[1] != 0 || m[3] != 0 {
-			return fmt.Errorf("Rotated or skewed images are not rendered yet.")
+		if len(m) != 9 {
+			return fmt.Errorf("Invalid image transform.")
 		}
-		dc.Translate(m[2], m[5])
-		dc.Scale(m[0], m[4])
+		mat = f64.Aff3{m[0] * sx, m[1] * sy, m[0]*b.Left + m[1]*b.Top + m[2], m[3] * sx, m[4] * sy, m[3]*b.Left + m[4]*b.Top + m[5]}
 	}
-	dc.Translate(b.Left, b.Top)
-	dc.Scale((b.Right-b.Left)/float64(c.Width), (b.Bottom-b.Top)/float64(c.Height))
-	dc.DrawImage(img, 0, 0)
+	dst, ok := dc.Image().(draw.Image)
+	if !ok {
+		return fmt.Errorf("Image compositor unavailable.")
+	}
+	draw.BiLinear.Transform(dst, mat, img, img.Bounds(), draw.Over, nil)
 	return nil
 }
