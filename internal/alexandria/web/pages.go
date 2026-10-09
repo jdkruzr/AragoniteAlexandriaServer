@@ -13,6 +13,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
@@ -394,38 +395,7 @@ type apiToken struct {
 }
 
 func (d Deps) settingsRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /settings", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		collection, err := settings.Get(ctx, d.DB, settings.CalDAVCollectionName, "Tasks")
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		due, err := settings.Get(ctx, d.DB, settings.DueTimeMode, "preserve")
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		rows, err := d.DB.QueryContext(ctx, `SELECT token_hash, label, created_at, last_used_at FROM alexandria_api_tokens WHERE revoked_at IS NULL ORDER BY created_at DESC`)
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		var tokens []apiToken
-		for rows.Next() {
-			var t apiToken
-			if err := rows.Scan(&t.Hash, &t.Label, &t.Created, &t.LastUsed); err != nil {
-				rows.Close()
-				d.fail(w, err)
-				return
-			}
-			tokens = append(tokens, t)
-		}
-		rows.Close()
-		d.render(w, r, "settings", "Settings", "settings", map[string]any{
-			"Collection": collection, "DueMode": due, "Tokens": tokens, "NewToken": r.URL.Query().Get("new_token") != "",
-			"Status": d.Status, "CalDAV": taskhost.Prefix + "/user/calendars/tasks/", "OAuthLabel": oauth.TokenLabel})
-	})
+	mux.HandleFunc("GET /settings", func(w http.ResponseWriter, r *http.Request) { d.settingsPage(w, r, nil) })
 	mux.HandleFunc("POST /settings/caldav", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("collection"))
 		mode := r.FormValue("due_mode")
@@ -523,4 +493,51 @@ func compareTime(a, b int64, order string) int {
 		cmp = -cmp
 	}
 	return cmp
+}
+
+func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, override *providers.View) {
+	ctx := r.Context()
+	collection, err := settings.Get(ctx, d.DB, settings.CalDAVCollectionName, "Tasks")
+	if err != nil {
+		d.fail(w, err)
+		return
+	}
+	due, err := settings.Get(ctx, d.DB, settings.DueTimeMode, "preserve")
+	if err != nil {
+		d.fail(w, err)
+		return
+	}
+	rows, err := d.DB.QueryContext(ctx, `SELECT token_hash, label, created_at, last_used_at FROM alexandria_api_tokens WHERE revoked_at IS NULL ORDER BY created_at DESC`)
+	if err != nil {
+		d.fail(w, err)
+		return
+	}
+	var tokens []apiToken
+	for rows.Next() {
+		var t apiToken
+		if err := rows.Scan(&t.Hash, &t.Label, &t.Created, &t.LastUsed); err != nil {
+			rows.Close()
+			d.fail(w, err)
+			return
+		}
+		tokens = append(tokens, t)
+	}
+	rows.Close()
+	var providerView *providers.View
+	if d.Providers != nil {
+		if override != nil {
+			providerView = override
+		} else {
+			v, e := d.Providers.View(ctx)
+			if e != nil {
+				d.fail(w, e)
+				return
+			}
+			providerView = &v
+		}
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	d.render(w, r, "settings", "Settings", "settings", map[string]any{
+		"Collection": collection, "DueMode": due, "Tokens": tokens, "NewToken": r.URL.Query().Get("new_token") != "",
+		"Providers": providerView, "Status": d.Status, "CalDAV": taskhost.Prefix + "/user/calendars/tasks/", "OAuthLabel": oauth.TokenLabel})
 }

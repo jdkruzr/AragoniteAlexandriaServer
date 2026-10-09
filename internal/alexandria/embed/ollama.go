@@ -30,7 +30,7 @@ type Ollama struct {
 }
 
 func NewOllama(baseURL, model string) *Ollama {
-	return &Ollama{baseURL: strings.TrimRight(baseURL, "/"), model: model, client: &http.Client{Timeout: embedTimeout}}
+	return &Ollama{baseURL: strings.TrimRight(baseURL, "/"), model: model, client: &http.Client{Timeout: embedTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 }
 
 // Model is stored with each vector; vectors from different models never mix.

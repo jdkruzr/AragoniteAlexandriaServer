@@ -60,7 +60,7 @@ func NewOCRClient(apiURL, apiKey, model, format string, options ...Option) *OCRC
 		apiKey: apiKey,
 		model:  model,
 		format: format,
-		client: &http.Client{Timeout: 5 * time.Minute},
+		client: &http.Client{Timeout: 5 * time.Minute, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 	}
 	for _, option := range options {
 		option(c)
