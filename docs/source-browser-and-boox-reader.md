@@ -147,3 +147,46 @@ stationery, broader SVG/geometry/text handling, and explicit server-only page OC
 with stale-result invalidation and global keyword search. The detailed coverage
 report distinguishes tested decoding from approximate visual fidelity and pending
 real-provider OCR qualification.
+
+## Native folder categories (2026-10-09)
+
+A live comparison with the Go 10.3 II Notes root exposed a classification bug:
+Alexandria showed eight root entries while the native handwritten view showed
+four folders. Read-only queries on both connected devices and server metadata
+agreed that three extra records had association type 1 (reading-associated notes)
+and one had active scene 1 (rich text). Parent IDs alone do not define membership
+in the native handwritten library. No source metadata was changed.
+
+The pulled Notes source confirms this separation: `LibraryLoadRequest` filters
+status, current user, association types, parent and optional scene set;
+`NoteScribbleScene` uses scenes 0 and 3. `NoteModel.isTextScene` identifies scene 1.
+References under `~/booxreverse/decompiled/com.onyx.android.note/sources/`:
+
+- `com/onyx/android/sdk/note/p057ui/library/request/LibraryLoadRequest.java`
+- `com/onyx/android/note/note/scene/NoteScribbleScene.java`
+- `com/onyx/android/sdk/scribble/data/NoteModel.java`
+
+Folder browsing now defaults to unassociated handwritten/PDF-scribble notes
+(association 0, scenes 0/3; legacy missing values default to 0). A visible note-type
+selector exposes text, reading, other or all types without deleting/hiding them
+from the inclusive All notebooks view. Kind labels distinguish the types. The
+server view is explicit about its filter; it does not remotely read or adopt each
+device's current filter preferences.
+
+Missing-parent items no longer masquerade as root children. Root membership
+requires an empty/missing parent; orphan records remain accessible through All
+notebooks. Reading/text filters and folder navigation retain the selected
+category. Compact table metadata columns and headers no longer wrap inside words;
+long titles wrap in the name column and narrow screens scroll the table.
+
+Synthetic PG/S3 tests cover root categorization, inclusive access, folder children,
+category navigation, orphan visibility and existing sorting/pagination behavior.
+Private device/screenshots and live comparison evidence stay outside this public
+repository.
+
+Deployed qualification: fresh required BOOX and public-library PostgreSQL/S3 race
+tests passed. The public handwritten root now contains exactly the same four
+folders as the observed Lumi screen; All note types still exposes the original
+eight entries with three Reading note and one Text note labels. Desktop/mobile/
+dark table checks and a notebook-reader smoke check passed. No native records,
+device settings or recognition queues were modified.
