@@ -1,0 +1,148 @@
+// Selectively ported from UltraBridge under Apache-2.0.
+syntax = "proto3";
+
+package booxpb;
+
+option go_package = "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto";
+
+// NoteInfo — parsed from {noteId}/note/pb/note_info within the ZIP.
+// Source: NoteInfoProto.java (NoteInfo inner class)
+message NoteInfo {
+  string uniqueId = 1;
+  int64 createdAt = 2;
+  // Field 3 not observed in decompiled code
+  string parentUniqueId = 4;
+  string subPageName = 5;
+  string title = 6;
+  string extraAttributes = 7;
+  int32 type = 8;
+  float strokeWidth = 9;
+  float eraserWidth = 10;
+  string notePenInfo = 11;
+  string notePageInfo = 12;
+  string noteBackground = 13;
+  string deviceInfo = 14;
+  int32 strokeColor = 15;
+  int32 currentShapeType = 16;
+  string background = 17;
+  string lineLayoutBackground = 18;
+  int32 position = 19;
+  string pageNameList = 20;       // JSON array of page ID strings
+  string richTextPageNameList = 21;
+  float pageOriginWidth = 22;
+  float pageOriginHeight = 23;
+  string source = 24;
+  string associateDate = 25;
+  int32 asyncStatus = 26;
+  int32 encryptionType = 27;
+  string digest = 28;
+  string associationId = 29;
+  int32 associationType = 30;
+  int32 status = 31;
+  int64 cloudNoteSize = 32;
+  int64 cloudUpdatedAt = 33;
+  string commitId = 34;
+  int64 embeddedAt = 35;
+  string syncFrom = 36;
+  int32 noteSyncStatus = 37;
+  bool favorite = 38;
+  // Fields 39-40 not observed
+  string groupId = 41;
+  string thumbnailRes = 42;
+  string activeScene = 43;
+  string removePageList = 44;
+  int32 miniRequiredVersion = 45;
+}
+
+// VirtualDoc — parsed from {noteId}/virtual/doc/pb/{docId}.
+// Source: VirtualDocPageProto.java (VirtualDoc inner class)
+message VirtualDoc {
+  string uniqueId = 1;
+  int64 createdAt = 2;
+  int64 updatedAt = 3;
+  string viewportId = 4;
+  float actualScale = 5;
+  float offsetX = 6;
+  float offsetY = 7;
+  string coverPageId = 8;
+  string defaultTemplate = 9;
+  string docOptions = 10;
+}
+
+// VirtualPage — parsed from {noteId}/virtual/page/pb/{pageId}.
+// Source: VirtualDocPageProto.java (VirtualPage inner class)
+message VirtualPage {
+  string pageId = 1;
+  int64 createdAt = 2;
+  int64 updatedAt = 3;
+  float orderIndex = 4;
+  int32 status = 5;
+  string pageSize = 6;            // JSON: e.g. "1860.0x2480.0" or "{\"width\":1860,\"height\":2480}"
+  string pageSizeWithMargin = 7;
+  string contentPageSize = 8;
+  string contentType = 9;
+  string contentRelativePath = 10;
+  string contentPageId = 11;
+  string contentId = 12;
+  int32 contentStatus = 13;
+}
+
+// VirtualPageList — wrapper for repeated VirtualPage.
+// Source: VirtualDocPageProto.java (VirtualPageList inner class)
+message VirtualPageList {
+  repeated VirtualPage proto = 1;
+}
+
+// NotePageModel — parsed from {noteId}/pageModel/pb/{pageModelId}.
+// Source: NotePageModelProto.java
+message NotePageModel {
+  string uniqueId = 1;
+  string layerList = 2;           // JSON array
+  string currentLayerId = 3;
+  string title = 4;
+  int64 createdAt = 5;
+  int64 updatedAt = 6;
+  string pageSize = 7;
+}
+
+// NotePageModelList — wrapper for repeated NotePageModel.
+message NotePageModelList {
+  repeated NotePageModel proto = 1;
+}
+
+// ShapeInfoProto — stroke/shape metadata.
+// Source: NoteShapeDocProto.java, BOOX_STROKE_FORMAT.md
+message ShapeInfoProto {
+  string uniqueId = 1;
+  int64 createdAt = 2;
+  int64 updatedAt = 3;
+  int32 color = 4;                // ARGB packed int
+  float thickness = 5;
+  int32 zorder = 6;
+  string boundingRect = 7;        // JSON: {"left":f,"top":f,"right":f,"bottom":f}
+  string matrixValues = 8;        // JSON: affine transform matrix values
+  string textStyle = 9;
+  string text = 10;
+  string createArgs = 11;
+  int32 shapeType = 12;           // see ShapeType constants
+  string groupId = 13;
+  string resource = 14;
+  int32 shapeStatus = 15;
+  string revisionId = 16;
+  string lineStyle = 17;
+  string infoRevisionId = 18;
+  string tagIdList = 19;
+  string extra = 20;
+  string linkIdList = 21;
+  string richText = 22;
+  int32 fillColor = 23;           // ARGB packed int
+  bytes pointList = 24;           // inline stroke data (often empty; see point files)
+  string connectionBean = 25;
+  string optionsRepo = 26;
+}
+
+// ShapeInfoProtoList — wrapper for repeated ShapeInfoProto.
+// Serialized inside nested ZIP at shape/{pageId}#...zip
+message ShapeInfoProtoList {
+  repeated ShapeInfoProto proto = 1;
+}

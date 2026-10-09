@@ -79,7 +79,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 			t.Fatalf("%s: double-escaped link", path)
 		}
 	}
-	if got := b.do("GET", "/", "", nil, true); got.Code != 303 {
+	if got := b.do("GET", "/", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Your library") || !strings.Contains(got.Body.String(), "Alexandria Client") {
 		t.Fatalf("home: %d", got.Code)
 	}
 	if got := b.do("GET", "/files/forestnote/render?path=forestnote://00000000000000000000000NB1/00000000000000000000000PG1", "", nil, true); got.Code != 200 || got.Header().Get("Content-Type") != "image/jpeg" {

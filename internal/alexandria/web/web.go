@@ -78,12 +78,14 @@ type Deps struct {
 }
 
 type page struct {
-	NativeBOOX bool
-	Title      string
-	Section    string // nav highlight
-	Base       string // public origin, for copyable URLs
-	Data       any
-	Notice     string
+	SourceTab    string
+	ClientSource bool
+	NativeBOOX   bool
+	Title        string
+	Section      string // nav highlight
+	Base         string // public origin, for copyable URLs
+	Data         any
+	Notice       string
 }
 
 func (d Deps) render(w http.ResponseWriter, r *http.Request, name, title, section string, data any) {
@@ -106,7 +108,7 @@ func (d Deps) RenderContent(w http.ResponseWriter, r *http.Request, content *tem
 func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template.Template, err error, title, section string, data any) {
 	var buf bytes.Buffer
 	if err == nil {
-		err = t.ExecuteTemplate(&buf, "layout.html", page{NativeBOOX: d.Status.NativeBOOX, Title: title, Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
+		err = t.ExecuteTemplate(&buf, "layout.html", page{SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: title, Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
 			Notice: r.URL.Query().Get("notice")})
 	}
 	if err != nil {
@@ -153,9 +155,13 @@ func back(w http.ResponseWriter, r *http.Request, path, notice string) {
 func Handler(d Deps) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/files/forestnote", http.StatusSeeOther)
+		d.render(w, r, "overview", "Overview", "overview", nil)
 	})
 	mux.Handle("GET /static/", http.FileServerFS(assets))
+	mux.HandleFunc("GET /sources", func(w http.ResponseWriter, r *http.Request) { d.render(w, r, "sources", "Add source", "sources", nil) })
+	mux.HandleFunc("GET /sources/client", func(w http.ResponseWriter, r *http.Request) {
+		d.render(w, r, "client-settings", "Alexandria Client settings", "client-settings", nil)
+	})
 	d.notebookRoutes(mux)
 	d.bookRoutes(mux)
 	d.searchRoutes(mux)
@@ -180,10 +186,27 @@ func Handler(d Deps) http.Handler {
 // Owns reports whether the web UI serves a path (the API, sync, CalDAV and
 // MCP keep their own routes).
 func Owns(path string) bool {
-	for _, prefix := range []string{"/files/", "/search", "/tasks", "/settings", "/static/", "/authorize"} {
+	for _, prefix := range []string{"/sources", "/files/", "/search", "/tasks", "/settings", "/static/", "/authorize"} {
 		if strings.HasPrefix(path, prefix) {
 			return true
 		}
 	}
 	return path == "/"
+}
+
+func sourceTab(path, section string) string {
+	if section != "boox" {
+		return section
+	}
+	switch path {
+	case "/boox/reading":
+		return "reading"
+	case "/boox/devices", "/boox/enroll":
+		return "devices"
+	case "/boox/activity":
+		return "activity"
+	case "/boox/settings":
+		return "settings"
+	}
+	return "notebooks"
 }

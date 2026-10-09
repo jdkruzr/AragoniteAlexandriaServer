@@ -153,7 +153,7 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 		}
 		reply(w, 200, out)
 	case r.URL.Path == "/boox" && r.Method == "GET":
-		s.browse(w, r)
+		s.notebooks(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -290,7 +290,7 @@ func (s Service) preview(w http.ResponseWriter, r *http.Request) {
 }
 
 var browseTemplate = template.Must(template.New("boox").Parse(`{{define "content"}}
-<h1>Native BOOX</h1>
+<h1>BOOX activity and diagnostics</h1>
 <div class="actions"><a class="button" href="/boox/enroll">Connect a device</a><a href="/boox/devices">Manage devices</a></div>
 <p class="muted">Notebook and reading records synced from your BOOX devices.</p>
 {{if not .Data}}<p class="empty">Nothing here yet. Records appear after a BOOX device syncs.</p>{{else}}
@@ -323,7 +323,7 @@ func (s Service) browse(w http.ResponseWriter, r *http.Request) {
 		failure(w, rows.Err())
 		return
 	}
-	s.renderPage(w, r, browseTemplate, "Native BOOX", out)
+	s.renderPage(w, r, browseTemplate, "BOOX activity", out)
 }
 
 func (s Service) assetHistory(w http.ResponseWriter, r *http.Request) {

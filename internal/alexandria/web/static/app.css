@@ -43,3 +43,9 @@ code { background:var(--panel); border:1px solid var(--line); border-radius:.25r
 code.secret { display:block; padding:.75rem; font-size:1rem; user-select:all; }
 .help { background:var(--panel); border:1px solid var(--line); border-radius:.35rem; padding:0 1rem .5rem; }
 @media (max-width:40rem) { th:nth-child(3), td:nth-child(3) { display:none; } }
+
+.workspace { display:grid; grid-template-columns:14rem minmax(0,1fr); max-width:100rem; margin:auto; min-height:calc(100vh - 4rem); }
+.source-nav { padding:1rem; border-right:1px solid var(--line); } .source-nav h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); } .source-nav nav { flex-direction:column; gap:.75rem; } .source-nav small { display:block; } .workspace main { width:100%; min-width:0; padding:1.5rem; } .source-label { color:var(--muted); font-size:.9rem; margin:0; } .source-tabs { border-bottom:1px solid var(--line); padding:.5rem 0; margin-bottom:1.5rem; } .reader { overflow:auto; background:var(--panel); border:1px solid var(--line); padding:.5rem; } .reader img { display:block; max-width:100%; height:auto; margin:auto; background:white; } .reader.actual img { max-width:none; } .pagination { margin:1rem 0; } .coverage { border-left:3px solid var(--warn); padding:.5rem 1rem; }
+@media(max-width:55rem) { .workspace { display:block; } .source-nav { border-right:0; border-bottom:1px solid var(--line); } .source-nav nav { flex-direction:row; } .source-nav small { display:inline; } .workspace main { padding:1rem; } }
+/* Long native titles and IDs must wrap inside narrow source tables. */
+table { overflow-wrap:anywhere; }

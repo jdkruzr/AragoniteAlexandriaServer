@@ -7,20 +7,18 @@
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-<header>
-  <a class="brand" href="/">Alexandria</a>
-  <nav>
-    <a href="/files/forestnote" {{if eq .Section "notebooks"}}aria-current="page"{{end}}>Notebooks</a>
-    <a href="/files/forestnote/books" {{if eq .Section "books"}}aria-current="page"{{end}}>Books</a>
-    <a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>Search</a>
-    <a href="/tasks" {{if eq .Section "tasks"}}aria-current="page"{{end}}>Tasks</a>
-    <a href="/settings/devices" {{if eq .Section "devices"}}aria-current="page"{{end}}>Devices</a>
-    <a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>Settings</a>
-  {{if .NativeBOOX}}<a href="/boox" {{if eq .Section "boox"}}aria-current="page"{{end}}>Native BOOX</a>{{end}}</nav>
-</header>
+<header><a class="brand" href="/">Alexandria Server</a>
+<nav aria-label="Global"><a href="/" {{if eq .Section "overview"}}aria-current="page"{{end}}>Overview</a><a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>Search</a><a href="/tasks" {{if eq .Section "tasks"}}aria-current="page"{{end}}>Tasks</a><a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>Server settings</a></nav></header>
+<div class="workspace"><aside class="source-nav"><h2>Sources</h2><nav aria-label="Sources">
+<a href="/files/forestnote" {{if .ClientSource}}aria-current="page"{{end}}>Alexandria Client</a>
+{{if .NativeBOOX}}<a href="/boox" {{if eq .Section "boox"}}aria-current="page"{{end}}>BOOX Native <small>PowerSync</small></a>{{end}}
+<a href="/sources">Add source</a></nav></aside>
 <main>
+{{if .ClientSource}}<p class="source-label">Alexandria Client</p><nav class="source-tabs" aria-label="Alexandria Client"><a href="/files/forestnote" {{if eq .Section "notebooks"}}aria-current="page"{{end}}>Notebooks</a><a href="/files/forestnote/books" {{if eq .Section "books"}}aria-current="page"{{end}}>Books</a><a href="/settings/devices" {{if eq .Section "devices"}}aria-current="page"{{end}}>Devices</a><a href="/sources/client" {{if eq .Section "client-settings"}}aria-current="page"{{end}}>Settings</a></nav>{{end}}
+{{if eq .Section "boox"}}<p class="source-label">BOOX Native · PowerSync</p><nav class="source-tabs" aria-label="BOOX Native"><a href="/boox" {{if eq .SourceTab "notebooks"}}aria-current="page"{{end}}>Notebooks</a><a href="/boox/reading" {{if eq .SourceTab "reading"}}aria-current="page"{{end}}>Reading</a><a href="/boox/devices" {{if eq .SourceTab "devices"}}aria-current="page"{{end}}>Devices</a><a href="/boox/activity" {{if eq .SourceTab "activity"}}aria-current="page"{{end}}>Activity</a><a href="/boox/settings" {{if eq .SourceTab "settings"}}aria-current="page"{{end}}>Settings</a></nav>{{end}}
+
 {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
 {{template "content" .}}
-</main>
+</main></div>
 </body>
 </html>
