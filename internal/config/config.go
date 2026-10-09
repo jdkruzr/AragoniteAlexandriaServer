@@ -4,6 +4,7 @@
 package config
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -22,24 +23,26 @@ const (
 )
 
 type Config struct {
-	Role             Role
-	DatabaseURL      string
-	ListenAddr       string
-	SPCListenAddr    string
-	ShutdownTimeout  time.Duration
-	WorkerPoll       time.Duration
-	WorkerLease      time.Duration
-	WorkerID         string
-	JobLauncher      string
-	AWSBatchQueue    string
-	AWSBatchJob      string
-	ObjectEndpoint   string
-	ObjectRegion     string
-	ObjectBucket     string
-	ObjectAccessKey  string
-	ObjectSecretKey  string
-	ObjectPathStyle  bool
-	ObjectDisableTLS bool
+	SettingsKey            string
+	ProviderSettingsLocked bool
+	Role                   Role
+	DatabaseURL            string
+	ListenAddr             string
+	SPCListenAddr          string
+	ShutdownTimeout        time.Duration
+	WorkerPoll             time.Duration
+	WorkerLease            time.Duration
+	WorkerID               string
+	JobLauncher            string
+	AWSBatchQueue          string
+	AWSBatchJob            string
+	ObjectEndpoint         string
+	ObjectRegion           string
+	ObjectBucket           string
+	ObjectAccessKey        string
+	ObjectSecretKey        string
+	ObjectPathStyle        bool
+	ObjectDisableTLS       bool
 	// MaxConnections bounds the library pool. Each admitted request holds one connection for its
 	// lifetime, and device sync, asset transfer and workers run concurrently.
 	MaxConnections int
@@ -72,6 +75,8 @@ func Load() (Config, error) {
 	}
 	host, _ := os.Hostname()
 	cfg := Config{
+		SettingsKey:            strings.TrimSpace(os.Getenv("ALEXANDRIA_SETTINGS_KEY")),
+		ProviderSettingsLocked: boolean("ALEXANDRIA_PROVIDER_SETTINGS_LOCKED", false),
 		BOOXGatewayPublicURL:   strings.TrimSpace(os.Getenv("ALEXANDRIA_BOOX_GATEWAY_PUBLIC_URL")),
 		BOOXGatewayAdminURL:    strings.TrimSpace(os.Getenv("ALEXANDRIA_BOOX_GATEWAY_ADMIN_URL")),
 		BOOXGatewayUsername:    strings.TrimSpace(os.Getenv("ALEXANDRIA_BOOX_GATEWAY_USERNAME")),
@@ -114,6 +119,12 @@ func Load() (Config, error) {
 }
 
 func (c Config) Validate() error {
+	if c.SettingsKey != "" {
+		b, e := hex.DecodeString(c.SettingsKey)
+		if e != nil || len(b) != 32 {
+			return errors.New("ALEXANDRIA_SETTINGS_KEY must be 64 hexadecimal characters")
+		}
+	}
 	if c.DatabaseURL == "" {
 		return errors.New("ALEXANDRIA_DATABASE_URL is required")
 	}

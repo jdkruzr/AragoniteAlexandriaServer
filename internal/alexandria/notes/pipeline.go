@@ -49,9 +49,11 @@ type OCR interface {
 // page indexes its text boxes and device text only; without an embedder no
 // vectors are written.
 type Pipeline struct {
-	OCR      OCR
-	Prompt   string
-	Embedder embed.Embedder
+	OCRIdentity      string
+	SettingsRevision int64
+	OCR              OCR
+	Prompt           string
+	Embedder         embed.Embedder
 	// Debounce lets a burst of pen strokes settle before recognition.
 	Debounce time.Duration
 	// Lease bounds how long a crashed worker can hold a page.
@@ -233,7 +235,11 @@ func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied ti
 	if !s.live || (len(s.strokes) == 0 && len(s.boxes) == 0) {
 		return finish(ctx, db, page, dirtied, generation, s, key, nil)
 	}
-	r := result{hash: inputHash(s)}
+	r := result{hash: inputHash(s), configRevision: p.SettingsRevision}
+	if p.OCRIdentity != "" {
+		h := sha256.Sum256([]byte(r.hash + ":" + p.OCRIdentity))
+		r.hash = hex.EncodeToString(h[:])
+	}
 	var cached string
 	err = db.QueryRowContext(ctx, `SELECT text, model FROM alexandria_page_ocr WHERE page_id=$1 AND input_hash=$2`, page, r.hash).Scan(&cached, &r.model)
 	switch {
@@ -256,7 +262,7 @@ func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied ti
 		}
 		text, err := p.OCR.Recognize(ctx, buf.Bytes(), prompt)
 		if err != nil {
-			return fmt.Errorf("recognize: %w", err)
+			return errors.New("recognition provider request failed")
 		}
 		// PostgreSQL text cannot hold U+0000.
 		r.ocr, r.model, r.recognized = strings.TrimSpace(strings.ReplaceAll(text, "\x00", "\uFFFD")), p.OCR.Model(), true
@@ -268,7 +274,7 @@ func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied ti
 		// previous vectors rather than failing the page.
 		vectors, err := embedChunks(ctx, p.Embedder, r.index)
 		if err != nil {
-			p.logger().Warn("page embedding deferred", "error", err.Error())
+			p.logger().Warn("page embedding deferred")
 		} else {
 			r.vectors, r.embedModel = vectors, p.Embedder.Model()
 		}
@@ -277,6 +283,7 @@ func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied ti
 }
 
 type result struct {
+	configRevision     int64
 	hash, ocr, model   string
 	cached, recognized bool
 	server, index      string
@@ -352,9 +359,9 @@ func finish(ctx context.Context, db pg.DB, page string, dirtied time.Time, gener
 			}
 		}
 		if r.recognized {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO alexandria_page_ocr(page_id,input_hash,text,model) VALUES($1,$2,$3,$4)
-				ON CONFLICT (page_id) DO UPDATE SET input_hash=EXCLUDED.input_hash, text=EXCLUDED.text, model=EXCLUDED.model, recognized_at=now()`,
-				page, r.hash, r.ocr, r.model); err != nil {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO alexandria_page_ocr(page_id,input_hash,text,model,config_revision) VALUES($1,$2,$3,$4,$5)
+				ON CONFLICT (page_id) DO UPDATE SET input_hash=EXCLUDED.input_hash, text=EXCLUDED.text, model=EXCLUDED.model, config_revision=EXCLUDED.config_revision, recognized_at=now()`,
+				page, r.hash, r.ocr, r.model, r.configRevision); err != nil {
 				return err
 			}
 		}

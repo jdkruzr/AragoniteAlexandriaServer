@@ -107,21 +107,17 @@ server {
 
 Add these to `.env`, then run `./install.sh` again to apply them.
 
-- **Handwriting recognition** makes notebook pages searchable and sends the
-  recognized text back to Alexandria client tablets. Native BOOX recognition
-  remains server-only and is requested per page. Set `ALEXANDRIA_OCR_URL`,
-  `ALEXANDRIA_OCR_API_KEY` and `ALEXANDRIA_OCR_MODEL`.
-  `ALEXANDRIA_OCR_FORMAT` is `anthropic` (the default) or `openai` for any
-  image-capable OpenAI Chat Completions endpoint. Set the base URL without
-  `/v1` or a trailing slash; the client appends `/v1/messages` or
-  `/v1/chat/completions`. Standard requests omit provider-specific extensions.
-  For vLLM only, opt into suppressing thinking with
-  `ALEXANDRIA_OCR_VLLM_DISABLE_THINKING=true` and `ALEXANDRIA_OCR_FORMAT=openai`.
-  The setting defaults to false and is rejected with Anthropic format. Existing
-  vLLM deployments relying on the old automatic extension must opt in explicitly.
-  Pages are recognized once per change; an unchanged page is never sent again.
-- **Search by meaning:** set `ALEXANDRIA_EMBED_URL` to an Ollama server, and
-  optionally `ALEXANDRIA_EMBED_MODEL` (default `nomic-embed-text:v1.5`).
+- Configure **handwriting recognition** and **search by meaning** in the web
+  **Settings** page. Changes are stored in PostgreSQL and apply without restarting.
+  Recognition supports Anthropic Messages and OpenAI Chat Completions; embeddings
+  currently use Ollama. Tests send synthetic content, not your notes.
+- The installer creates `ALEXANDRIA_SETTINGS_KEY` in `.env` to protect stored API
+  keys. Keep it with your backups. Existing OCR/embedding environment variables
+  seed the database once; after that the Settings page is authoritative.
+- Reprocessing recognition and building a replacement semantic index are explicit
+  actions with their own cost implications. Saving a provider does not schedule
+  the entire library. See [provider settings](provider-settings.md) for encryption,
+  deployment locks, index replacement and supported source coverage.
 
 ## Upgrade
 
