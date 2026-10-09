@@ -16,7 +16,7 @@
     <a href="/tasks" {{if eq .Section "tasks"}}aria-current="page"{{end}}>Tasks</a>
     <a href="/settings/devices" {{if eq .Section "devices"}}aria-current="page"{{end}}>Devices</a>
     <a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>Settings</a>
-  </nav>
+  {{if .NativeBOOX}}<a href="/boox" {{if eq .Section "boox"}}aria-current="page"{{end}}>Native BOOX</a>{{end}}</nav>
 </header>
 <main>
 {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}

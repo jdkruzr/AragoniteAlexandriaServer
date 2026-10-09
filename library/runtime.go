@@ -30,6 +30,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/api"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/database"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks"
@@ -58,7 +59,10 @@ var ErrReadOnly = errors.New("library is read-only")
 // The standalone default uses credentials stored in that library's database.
 type Authenticator func(context.Context, *http.Request, string) error
 type Policy func(context.Context, string, Action) error
+type NativeBOOXConfig = boox.Config
+
 type Config struct {
+	NativeBOOX   *NativeBOOXConfig
 	ID           string
 	DatabaseURL  string
 	Objects      BlobStore
@@ -83,10 +87,12 @@ type Runtime struct {
 	objects BlobStore
 	sync    *host.Host
 	// attachSecret signs public task-attachment URLs; stable across restarts.
-	attachSecret string
-	mu           sync.Mutex
-	closed       bool
-	active       sync.WaitGroup
+	attachSecret  string
+	mu            sync.Mutex
+	closed        bool
+	nativeContext context.Context
+	nativeCancel  context.CancelFunc
+	active        sync.WaitGroup
 }
 
 func NewS3(ctx context.Context, cfg S3Config) (BlobStore, error) { return blob.NewS3(ctx, cfg) }
@@ -116,6 +122,11 @@ func Initialize(ctx context.Context, db *sql.DB, id string) error {
 }
 
 func Open(ctx context.Context, cfg Config) (*Runtime, error) {
+	if cfg.NativeBOOX != nil {
+		if err := cfg.NativeBOOX.Validate(); err != nil {
+			return nil, err
+		}
+	}
 	objects, err := blob.ForLibrary(cfg.Objects, cfg.ID)
 	if err != nil {
 		return nil, err
@@ -168,13 +179,17 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	nativeContext, nativeCancel := context.WithCancel(context.Background())
 	failed = false
-	return &Runtime{cfg: cfg, db: db, objects: objects, sync: protocol, attachSecret: secret}, nil
+	return &Runtime{nativeContext: nativeContext, nativeCancel: nativeCancel, cfg: cfg, db: db, objects: objects, sync: protocol, attachSecret: secret}, nil
 }
 
 func (r *Runtime) Close() error {
 	r.mu.Lock()
 	r.closed = true
+	if r.nativeCancel != nil {
+		r.nativeCancel()
+	}
 	r.mu.Unlock()
 	r.active.Wait()
 	return r.db.Close()
@@ -233,6 +248,9 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case http.MethodGet, http.MethodHead, http.MethodOptions, "PROPFIND", "REPORT":
 		action = Read
 	}
+	if r.cfg.NativeBOOX != nil && boox.RequiresWrite(req) {
+		action = Write
+	}
 	conn, done, err := r.admit(req.Context(), action)
 	if err != nil {
 		code := http.StatusServiceUnavailable
@@ -245,6 +263,28 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer done()
+	if r.cfg.NativeBOOX != nil {
+		native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID}
+		if err := native.ResolveIdentity(req.Context()); err != nil {
+			http.Error(w, "native identity unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if native.Owns(req) {
+			ctx, cancel := context.WithCancel(req.Context())
+			stop := context.AfterFunc(r.nativeContext, cancel)
+			defer func() { stop(); cancel() }()
+			native.ServeHTTP(w, req.WithContext(ctx))
+			return
+		}
+		if req.URL.Path == "/boox" || strings.HasPrefix(req.URL.Path, "/boox/") || strings.HasPrefix(req.URL.Path, "/api/v1/boox/admin/") {
+			if err := r.account(conn)(req); err != nil {
+				http.Error(w, "unauthorized", 401)
+				return
+			}
+			native.Admin(w, req)
+			return
+		}
+	}
 	if host.Owns(req.URL.Path) {
 		r.sync.Serve(host.Library{DB: conn, Objects: r.objects, Account: r.account(conn)}, w, req)
 		return
@@ -275,7 +315,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mux.Handle(taskhost.Prefix+"/", taskhost.CalDAV(taskDeps))
 	mux.Handle("/.well-known/caldav", taskhost.WellKnown())
 	mux.Handle("/.well-known/caldav/", taskhost.WellKnown())
-	status := web.Status{}
+	status := web.Status{NativeBOOX: r.cfg.NativeBOOX != nil}
 	if r.cfg.Pages.OCR != nil {
 		status.OCR = r.cfg.Pages.OCR.Model()
 	}
@@ -472,4 +512,22 @@ func (r *Runtime) CollectAssets(ctx context.Context, limit int) (int, error) {
 func (r *admittedReader) Close() error {
 	r.once.Do(func() { r.err = r.ReadCloser.Close(); r.done() })
 	return r.err
+}
+
+// ProcessNativeBOOX runs bounded journal ingestion and one publication step.
+func (r *Runtime) ProcessNativeBOOX(ctx context.Context) (int, error) {
+	if r.cfg.NativeBOOX == nil {
+		return 0, nil
+	}
+	conn, done, err := r.admit(ctx, Process)
+	if err != nil {
+		return 0, err
+	}
+	defer done()
+	native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID}
+	n, err := native.Observe(ctx)
+	if err == nil {
+		_, err = native.PublishOne(ctx)
+	}
+	return n, err
 }

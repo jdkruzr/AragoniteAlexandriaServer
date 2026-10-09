@@ -1,0 +1,36 @@
+# Opt-in infrastructure only. Management initializes Couchbase and runs
+# `alexandria-server boox-configure`; normal runtime never provisions either.
+services:
+  couchbase:
+    image: docker.io/couchbase/server:community-7.6.2
+    profiles: [boox]
+    volumes: [boox-couchbase:/opt/couchbase/var]
+    ports: ["127.0.0.1:${ALEXANDRIA_BOOX_CB_ADMIN_PORT:-18091}:8091"]
+    restart: unless-stopped
+  sync-gateway:
+    image: docker.io/couchbase/sync-gateway:3.2.2-community
+    profiles: [boox]
+    command: [/run/secrets/boox-gateway.json]
+    volumes:
+      - ${ALEXANDRIA_BOOX_GATEWAY_CONFIG:?Set the private Gateway startup file}:/run/secrets/boox-gateway.json:ro
+    depends_on: [couchbase]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:4984/"]
+      interval: 5s
+      timeout: 3s
+      retries: 36
+      start_period: 30s
+    restart: unless-stopped
+    # No public or admin host ports: Alexandria is the public capability boundary.
+  alexandria:
+    depends_on:
+      sync-gateway:
+        condition: service_healthy
+    environment:
+      ALEXANDRIA_BOOX_GATEWAY_PUBLIC_URL: http://sync-gateway:4984
+      ALEXANDRIA_BOOX_GATEWAY_ADMIN_URL: http://sync-gateway:4985
+      ALEXANDRIA_BOOX_GATEWAY_USERNAME: ${ALEXANDRIA_BOOX_GATEWAY_USERNAME:?Set private Gateway admin user}
+      ALEXANDRIA_BOOX_GATEWAY_PASSWORD: ${ALEXANDRIA_BOOX_GATEWAY_PASSWORD:?Set private Gateway admin password}
+      ALEXANDRIA_BOOX_DATABASE: neocloud
+volumes:
+  boox-couchbase:
