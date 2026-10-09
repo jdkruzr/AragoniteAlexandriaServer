@@ -134,8 +134,11 @@ HTTP 400 identifying the missing `anthropic-workspace-id` header. The endpoint
 and `claude-haiku-5-5` model identifier were correct. A supplied organization UUID
 was also rejected as a workspace header; workspace discovery with this key returned
 403. No real notebook pages were submitted and no credential/provider body was
-logged. Successful paid recognition remains pending a workspace selection or a
-workspace-scoped key.
+logged. A subsequent user-supplied workspace ID passed the live synthetic image
+recognition test with Haiku 5.5 through the deployed owner Settings flow. The
+workspace was saved through the normal form, retaining the encrypted key and
+existing enablement/options. No notebook pages were submitted or queued by this
+qualification.
 
 Settings now stores an optional **Anthropic workspace ID** in the existing JSON
 configuration and sends it only with Anthropic Messages requests. Workspace IDs
@@ -158,5 +161,6 @@ library passed; the owner form test additionally verifies workspace persistence,
 rendering and runtime refresh. Header isolation, thinking/text parsing, invalid
 workspace values and safe error classification have regression coverage. Vet
 passed. Personal-VM deployment passed public readiness, authenticated Settings,
-key redaction and a synthetic test showing the new workspace diagnostic. Private
+key redaction, a synthetic test showing the new workspace diagnostic, and then
+successful live synthetic recognition plus workspace persistence. Private
 local logs: `/tmp/anthropic-workspace-{tests,form-tests,build,deploy}.log`.
