@@ -201,8 +201,21 @@ func (d Deps) searchRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /search", func(w http.ResponseWriter, r *http.Request) {
 		q := strings.TrimSpace(r.URL.Query().Get("q"))
 		mode := r.URL.Query().Get("mode")
-		data := map[string]any{"Query": q, "Mode": mode, "Semantic": d.Status.Embedding != ""}
-		if q != "" {
+		scope := r.URL.Query().Get("source")
+		if len(q) > 256 || (scope != "" && scope != "client" && scope != "boox") || (scope == "boox" && !d.Status.NativeBOOX) {
+			http.Error(w, "Invalid search query or source.", 400)
+			return
+		}
+		data := map[string]any{"Query": q, "Mode": mode, "Source": scope, "Semantic": d.Status.Embedding != "", "BOOX": d.Status.NativeBOOX}
+		if q != "" && d.Status.NativeBOOX && scope != "client" {
+			matches, err := d.searchBOOX(r.Context(), q)
+			if err != nil {
+				d.fail(w, err)
+				return
+			}
+			data["Native"] = matches
+		}
+		if q != "" && scope != "boox" {
 			pages, err := d.Search.Search(r.Context(), q, 50, mode != "keyword")
 			if err != nil {
 				d.fail(w, err)

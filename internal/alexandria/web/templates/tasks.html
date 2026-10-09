@@ -1,5 +1,5 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Tasks</h1>
+<h1>Tasks</h1><p class="muted">Tasks across your library. Native BOOX task extraction and write-back are not available yet.</p>
 {{if not $d.Trash}}
 <form class="inline" method="post" action="/tasks">
   <input name="title" placeholder="New task" required maxlength="500">
@@ -21,7 +21,7 @@
 <li>
   <span class="title">{{.Title}}</span>
   {{if .DueAt}}<span class="muted">due {{time .DueAt}}</span>{{end}}
-  {{if .ForestNote}}<a class="small" href="/files/forestnote?notebook={{.ForestNote.NotebookID}}&page={{.ForestNote.PageID}}#page-{{.ForestNote.PageID}}">{{if .ForestNote.NotebookName}}{{.ForestNote.NotebookName}}{{else}}Notebook page{{end}}</a>{{end}}
+  {{if .ForestNote}}<span class="badge">Alexandria Client</span><a class="small" href="/files/forestnote?notebook={{.ForestNote.NotebookID}}&page={{.ForestNote.PageID}}#page-{{.ForestNote.PageID}}">{{if .ForestNote.NotebookName}}{{.ForestNote.NotebookName}}{{else}}Notebook page{{end}}</a>{{end}}
   {{if .Detail}}<div class="muted small">{{deref .Detail}}</div>{{end}}
   {{if not .Deleted}}
   <span class="row-actions">

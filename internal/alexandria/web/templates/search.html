@@ -1,20 +1,25 @@
 {{define "content"}}{{$d := .Data}}
 <h1>Search</h1>
 <form class="search" method="get" action="/search">
-  <input type="search" name="q" value="{{$d.Query}}" placeholder="Search notebooks and annotations" autofocus>
+  <input type="search" name="q" value="{{$d.Query}}" placeholder="Search across your library" maxlength="256" aria-label="Search query" autofocus>
   {{if $d.Semantic}}<select name="mode"><option value="">Words and meaning</option><option value="keyword" {{if eq $d.Mode "keyword"}}selected{{end}}>Exact words only</option></select>{{end}}
+  <select name="source" aria-label="Source"><option value="">All sources</option><option value="client" {{if eq $d.Source "client"}}selected{{end}}>Alexandria Client</option>{{if $d.BOOX}}<option value="boox" {{if eq $d.Source "boox"}}selected{{end}}>BOOX Native</option>{{end}}</select>
   <button>Search</button>
 </form>
+<p class="coverage">Coverage: Alexandria Client indexed page text and reading annotations.{{if $d.BOOX}} BOOX Native notebook titles, book titles and annotation text; native handwriting is not indexed yet.{{end}} Device-specific availability is not currently tracked by this search.</p>
 {{if $d.Query}}
-<h2>Notebook pages</h2>
+{{if $d.BOOX}}{{if ne $d.Source "client"}}<h2>BOOX Native</h2>{{range $d.Native}}<article class="result"><span class="badge">BOOX Native · {{.Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p>{{if .Snippet}}<p>{{.Snippet}}</p>{{end}}</article>{{else}}<p class="empty">No native metadata or annotation text matches.</p>{{end}}{{end}}{{end}}
+{{if ne $d.Source "boox"}}
+<h2>Alexandria Client · Notebook pages</h2>
 {{if not $d.Pages}}<p class="empty">No notebook pages match.</p>{{end}}
 {{range $d.Pages}}
 <article class="result"><a href="/files/forestnote?notebook={{.NotebookID}}&page={{.PageID}}#page-{{.PageID}}">{{.NotebookName}}, page {{.PageNumber}}</a><p>{{.Snippet}}</p></article>
 {{end}}
-<h2>Book annotations</h2>
+<h2>Alexandria Client · Book annotations</h2>
 {{if not $d.Annotations}}<p class="empty">No annotations match.</p>{{end}}
 {{range $d.Annotations}}
 <article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}Untitled book{{end}}</a><p>{{.Snippet}}</p></article>
+{{end}}
 {{end}}
 {{end}}
 {{end}}

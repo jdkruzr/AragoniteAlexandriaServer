@@ -26,12 +26,12 @@ var setupTemplate = template.Must(template.New("setup").Parse(`{{define "content
 {{end}}`))
 var devicesTemplate = template.Must(template.New("devices").Parse(`{{define "content"}}
 <p class="crumbs"><a href="/boox">Native BOOX</a> / Devices</p>
-<h1>BOOX devices</h1>
+<h1>BOOX devices</h1><p class="muted">Authorization is separate from connection or download completion. These registrations belong only to BOOX Native.</p>
 <div class="actions"><a class="button" href="/boox/enroll">Connect a device</a></div>
 {{if not .Data}}<p class="empty">No BOOX devices have connected yet.</p>{{else}}
 <table><thead><tr><th>Device</th><th>State</th><th>Device ID</th><th></th></tr></thead><tbody>
 {{range .Data}}<tr><td><strong>{{.Model}}</strong></td>
-<td>{{if .Revoked}}<span class="badge blank">Revoked</span>{{else}}<span class="badge indexed">Active</span>{{end}}</td>
+<td>{{if .Revoked}}<span class="badge blank">Revoked</span>{{else}}<span class="badge indexed">Authorized</span>{{end}}</td>
 <td class="muted small"><code>{{.ID}}</code></td>
 <td>{{if not .Revoked}}<form method="post" action="/boox/revoke"><input type="hidden" name="deviceId" value="{{.ID}}"><button class="destructive">Revoke device</button></form>{{end}}</td></tr>{{end}}
 </tbody></table>{{end}}
@@ -39,7 +39,7 @@ var devicesTemplate = template.Must(template.New("devices").Parse(`{{define "con
 
 func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *template.Template, title string, data any) {
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}}.RenderContent(w, r, content, title, "boox", data)
 }
 
@@ -47,6 +47,25 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	if r.Method == "GET" {
+		switch r.URL.Path {
+		case "/boox/notebook":
+			s.notebook(w, r)
+			return
+		case "/boox/page.png":
+			s.pageImage(w, r)
+			return
+		case "/boox/settings":
+			s.renderPage(w, r, booxSettings, "BOOX Native settings", nil)
+			return
+		case "/boox/reading":
+			s.reading(w, r)
+			return
+		case "/boox/activity":
+			s.browse(w, r)
+			return
+		}
+	}
 	switch r.URL.Path {
 	case "/boox/enroll":
 		if r.Method == "POST" {
