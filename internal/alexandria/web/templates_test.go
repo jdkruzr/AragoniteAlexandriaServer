@@ -11,6 +11,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
 
 // Every page template parses together with the layout.
@@ -37,9 +38,9 @@ func TestDataTemplatesExecute(t *testing.T) {
 	cases := map[string]any{
 		"book": books.LibraryBookDetail{Book: books.LibraryBook{ID: "b", Title: "T", Authors: "A", Format: "PDF", FileState: "ready"},
 			Annotations: []books.LibraryAnnotation{{ID: "a", Sticky: true, Location: "Page 2", Passage: "p", Highlighted: true, InkStrokes: 1, RecognizedText: "r", TextSource: "Corrected by hand", Status: "s"}}, Truncated: true},
-		"books":     []books.LibraryBook{{ID: "b", Title: "T", FileState: "uploading"}},
+		"books":     map[string]any{"Entries": []books.LibraryBook{{ID: "b", Title: "T", FileState: "uploading"}}, "Listing": listing.State{}},
 		"notebook":  map[string]any{"ID": "n", "Name": "N", "Pages": []notes.Page{{ID: "p", Number: 1, Key: "forestnote://n/p", BodyText: "x"}}, "Crumbs": []notes.Crumb{{ID: "f", Name: "F"}}, "Focus": "p"},
-		"notebooks": map[string]any{"Crumbs": nil, "Entries": []notes.Entry{{IsFolder: true, ID: "f", Name: "F"}, {ID: "n", Name: "N", Status: "partial", PageCount: 2}}, "Folder": "", "Sort": "name", "Order": "asc"},
+		"notebooks": map[string]any{"Listing": listing.State{}, "Crumbs": nil, "Entries": []notes.Entry{{IsFolder: true, ID: "f", Name: "F"}, {ID: "n", Name: "N", Status: "partial", PageCount: 2}}, "Folder": "", "Sort": "name", "Order": "asc"},
 		"devices":   map[string]any{"Devices": []relay.Device{{SiteID: "S", Name: "Ocean", Enrolled: true, LastSeenMs: 1, FirstSeenMs: 1}, {SiteID: "R", Revoked: true, Enrolled: true}, {SiteID: "N", NeedsAdoption: true, Enrolled: true}}},
 		"authorize": map[string]any{"Request": oauth.Request{ClientName: "Claude", RedirectURI: "https://claude.ai/cb"}, "Query": "a=b"},
 		"search": map[string]any{"Query": "q", "Mode": "", "Semantic": true, "Pages": []notes.Result{{NotebookID: "n", PageID: "p", NotebookName: "N", PageNumber: 1, Snippet: "s"}},

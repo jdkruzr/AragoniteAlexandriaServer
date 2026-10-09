@@ -22,6 +22,8 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
+	"sort"
 )
 
 // --- Notebooks ---
@@ -47,13 +49,16 @@ func (d Deps) notebookRoutes(mux *http.ServeMux) {
 			d.render(w, r, "notebook", name, "notebooks", map[string]any{"ID": id, "Name": name, "Pages": pages, "Crumbs": crumbs, "Focus": q.Get("page")})
 			return
 		}
-		sortField, order := q.Get("sort"), q.Get("order")
+		state := listing.Parse(q)
+		sortField, order := state.Sort, state.Order
 		crumbs, entries, err := notes.Folder(r.Context(), d.DB, q.Get("folder"), sortField, order)
 		if err != nil {
 			d.fail(w, err)
 			return
 		}
-		d.render(w, r, "notebooks", "Notebooks", "notebooks", map[string]any{"Crumbs": crumbs, "Entries": entries, "Folder": q.Get("folder"), "Sort": sortField, "Order": order})
+		state.Finish(q, "/files/forestnote", len(entries))
+		entries = entries[min(state.Offset, len(entries)):min(state.Offset+listing.Size, len(entries))]
+		d.render(w, r, "notebooks", "Notebooks", "notebooks", map[string]any{"Listing": state, "Crumbs": crumbs, "Entries": entries, "Folder": q.Get("folder"), "Sort": sortField, "Order": order})
 	})
 	mux.HandleFunc("GET /files/forestnote/render", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")
@@ -144,7 +149,31 @@ func (d Deps) bookRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
-		d.render(w, r, "books", "Books", "books", list)
+		state := listing.Parse(r.URL.Query())
+		sort.Slice(list, func(i, j int) bool {
+			a, b := list[i], list[j]
+			cmp := 0
+			switch state.Sort {
+			case "name":
+				cmp = strings.Compare(strings.ToLower(a.Title), strings.ToLower(b.Title))
+			case "created":
+				cmp = compareTime(a.AddedAt, b.AddedAt, state.Order)
+			case "modified":
+				cmp = compareTime(a.ModifiedAt, b.ModifiedAt, state.Order)
+			default:
+				cmp = compareTime(a.ModifiedAt, b.ModifiedAt, state.Order)
+			}
+			if cmp == 0 {
+				return a.ID < b.ID
+			}
+			if state.Sort == "name" && state.Order == "desc" {
+				return cmp > 0
+			}
+			return cmp < 0
+		})
+		state.Finish(r.URL.Query(), "/files/forestnote/books", len(list))
+		list = list[min(state.Offset, len(list)):min(state.Offset+listing.Size, len(list))]
+		d.render(w, r, "books", "Books", "books", map[string]any{"Entries": list, "Listing": state})
 	})
 	mux.HandleFunc("GET /files/forestnote/books/ink", func(w http.ResponseWriter, r *http.Request) {
 		png, err := library().RenderAnnotationInk(r.Context(), r.URL.Query().Get("annotation"))
@@ -474,3 +503,24 @@ func (d Deps) authorizeRoutes(mux *http.ServeMux) {
 }
 
 func urlValues(raw string) (url.Values, error) { return url.ParseQuery(raw) }
+
+// Unknown dates sort after known ones in either direction.
+func compareTime(a, b int64, order string) int {
+	if a == b {
+		return 0
+	}
+	if a <= 0 {
+		return 1
+	}
+	if b <= 0 {
+		return -1
+	}
+	cmp := -1
+	if a > b {
+		cmp = 1
+	}
+	if order == "desc" {
+		cmp = -cmp
+	}
+	return cmp
+}

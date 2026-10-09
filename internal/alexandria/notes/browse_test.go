@@ -58,3 +58,17 @@ func TestFolderListingStatusDeleteReprocessAndPDF(t *testing.T) {
 		t.Fatal("deleted notebook still listed")
 	}
 }
+
+func TestDateSortIsGlobalStableAndKeepsUnknownLast(t *testing.T) {
+	entries := []Entry{{ID: "folder", IsFolder: true, ModifiedAt: 10}, {ID: "new", ModifiedAt: 30}, {ID: "b", ModifiedAt: 20}, {ID: "a", ModifiedAt: 20}, {ID: "unknown"}}
+	sortEntries(entries, "modified", "desc")
+	for i, id := range []string{"new", "a", "b", "folder", "unknown"} {
+		if entries[i].ID != id {
+			t.Fatal(entries)
+		}
+	}
+	sortEntries(entries, "modified", "asc")
+	if entries[0].ID != "folder" || entries[4].ID != "unknown" {
+		t.Fatal(entries)
+	}
+}

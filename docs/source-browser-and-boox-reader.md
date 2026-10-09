@@ -100,3 +100,40 @@ Deployed image: `sha256:c007508269447d6aab6219c1a240ebb002897a88cb6a6b250015372c
 The deployment source receipt records runtime/build file hashes and the final
 source commit. Private screenshots and test logs are retained under PowerSync's
 ignored `artifacts/source-browser-20261009/`.
+
+## Listing and older-firmware correction, 2026-10-09
+
+User testing exposed an unrepresentative first qualification sample. Older ink
+encodes `matrixValues` as `{"empty":false,"values":[...]}`; newer ink uses the
+bare array. The first renderer refused the wrapper and showed no preview for
+otherwise populated pages. Both representations now use the same validated
+nine-element transform; synthetic tests require identical PNG output. Three
+private older first pages render 450, 132 and 280 visible shapes. Unsupported
+procedural backgrounds still receive explicit warnings. Renderer cache keys
+advance to v2 so prior output is not reused.
+
+BOOX now opens on all live notebooks instead of an alphabetical root/folder
+view. Folder navigation remains explicit. Native notebooks/reading records and
+client notebooks/books show Created and Modified UTC columns, default to newest
+modified first, and have changeable sorting. Native timestamps come from the
+records rather than PostgreSQL observation time. Client books use the immutable
+book-record timestamp for Created; Modified includes title/annotation content
+changes. Client notebook modification includes text edits and retained deletion
+timestamps. Unknown source dates remain unknown.
+
+Listings have 60-item pages, result totals and page numbers, with controls above
+and below the list. Sort links retain folder/search/deleted filters and reset
+the offset; page links retain ordering. Stable identity tie-breakers prevent
+equal dates from shuffling between pages. Mobile tables scroll within the page
+and retain both date columns. Regression tests cover a 65-note nested library,
+newest-first ordering, both pages, ascending creation order, URL scope retention,
+book modification semantics and both firmware transform representations.
+
+Public verification after this correction: 1,078 live BOOX notebooks across 18
+pages, with the newest modified date in October 2026. Page 2 has no overlapping
+IDs with page 1; sorting resets the offset. The three older server-only PNGs are
+byte-identical to independent archive renders. All content-list routes respond
+successfully; mobile keeps every date column and confines horizontal scrolling
+to the table. A fresh-session direct BOOX URL also exposed a missing Basic
+challenge; browser routes now issue the same owner-login challenge as the main
+site. Owner authorization and native device authentication are unchanged.

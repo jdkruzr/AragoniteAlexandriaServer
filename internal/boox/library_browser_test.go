@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -50,7 +51,7 @@ func TestReadOnlyNotebookBrowserSnapshotAndSearch(t *testing.T) {
 		}
 		return w
 	}
-	root := get("/boox").Body.String()
+	root := get("/boox?view=folders").Body.String()
 	if !strings.Contains(root, "Synthetic folder") || strings.Contains(root, "Synthetic Browser Note") || strings.Contains(root, "Synthetic deleted") {
 		t.Fatal("root/child/deletion isolation")
 	}
@@ -105,5 +106,41 @@ func TestPreviewCacheLibraryIsolation(t *testing.T) {
 	storePreview(a.previewKey("note", "rev", 1), previewResult{PNG: []byte("private")})
 	if _, ok := cachedPreview(b.previewKey("note", "rev", 1)); ok {
 		t.Fatal("library cache leak")
+	}
+}
+
+func TestNativeListingNewestPaginationAndScope(t *testing.T) {
+	s := testService(t)
+	ctx := context.Background()
+	for i := 0; i < 65; i++ {
+		id := fmt.Sprintf("note-%02d", i)
+		raw, _ := json.Marshal(map[string]any{"uniqueId": id, "title": id, "type": 1, "status": 1, "parentUniqueId": "nested", "createdAt": int64(1700000000000 + i), "updatedAt": int64(1750000000000 + i)})
+		if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body)VALUES($1,'1-a','notebook','1',$2,$3)`, id, s.uid(), raw); e != nil {
+			t.Fatal(e)
+		}
+	}
+	get := func(path string) string {
+		w := httptest.NewRecorder()
+		s.Admin(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 200 {
+			t.Fatalf("%s: %d %s", path, w.Code, w.Body.String())
+		}
+		return w.Body.String()
+	}
+	first := get("/boox")
+	if !strings.Contains(first, "1–60 of 65") || strings.Count(first, ">Next</a>") != 2 || !strings.Contains(first, "Created (UTC)") || !strings.Contains(first, "Modified (UTC)") {
+		t.Fatal("missing dates or visible pagination")
+	}
+	a, b := strings.Index(first, "id=note-64"), strings.Index(first, "id=note-63")
+	if a < 0 || b <= a || strings.Contains(first, "id=note-00") {
+		t.Fatal("default ordering or window wrong")
+	}
+	second := get("/boox?offset=60")
+	if !strings.Contains(second, "61–65 of 65") || !strings.Contains(second, "id=note-00") || strings.Contains(second, "id=note-64") {
+		t.Fatal("second page wrong")
+	}
+	ascending := get("/boox?folder=nested&sort=created&order=asc")
+	if strings.Index(ascending, "id=note-00") > strings.Index(ascending, "id=note-01") || !strings.Contains(ascending, "folder=nested&amp;offset=60&amp;order=asc&amp;sort=created") {
+		t.Fatal("ascending folder paging lost scope")
 	}
 }

@@ -49,3 +49,6 @@ code.secret { display:block; padding:.75rem; font-size:1rem; user-select:all; }
 @media(max-width:55rem) { .workspace { display:block; } .source-nav { border-right:0; border-bottom:1px solid var(--line); } .source-nav nav { flex-direction:row; } .source-nav small { display:inline; } .workspace main { padding:1rem; } }
 /* Long native titles and IDs must wrap inside narrow source tables. */
 table { overflow-wrap:anywhere; }
+
+.table-scroll { overflow-x:auto; max-width:100%; } .dated-list td:nth-last-child(-n+2) { white-space:nowrap; } .pagination { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; }
+@media(max-width:40rem) { .dated-list th:nth-child(3), .dated-list td:nth-child(3) { display:table-cell; } .dated-list { min-width:44rem; } }

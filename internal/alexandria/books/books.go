@@ -71,6 +71,7 @@ type LibraryBook struct {
 	ByteLength      int64
 	FileState       string
 	AnnotationCount int
+	ModifiedAt      int64
 	AddedAt         int64 // ms (HLC op_ts of the book row)
 }
 
@@ -149,6 +150,12 @@ const libraryListed = `NOT EXISTS (SELECT 1 FROM fn_reader_annotation_lifecycle 
 func (s *libraryService) books(ctx context.Context, bookID string) ([]LibraryBook, error) {
 	assetState := `COALESCE((SELECT state FROM rhizome_asset WHERE asset_id=b.asset_id),'')`
 	q := `SELECT b.id, b.media_type, b.byte_length, b.metadata_json, COALESCE(t.title,''), b.lww_op_ts,
+ GREATEST(b.lww_op_ts,COALESCE(t.lww_op_ts,0),
+ COALESCE((SELECT MAX(a.lww_op_ts) FROM fn_reader_annotation a WHERE a.book_id=b.id),0),
+ COALESCE((SELECT MAX(v.lww_op_ts) FROM fn_reader_annotation_value v JOIN fn_reader_edit_session es ON es.id=v.session_id JOIN fn_reader_annotation a ON a.id=es.annotation_id WHERE a.book_id=b.id),0),
+ COALESCE((SELECT MAX(v.lww_op_ts) FROM fn_reader_annotation_lifecycle v JOIN fn_reader_annotation a ON a.id=v.id WHERE a.book_id=b.id),0),
+ COALESCE((SELECT MAX(v.lww_op_ts) FROM fn_reader_stroke v JOIN fn_reader_annotation a ON a.id=v.annotation_id WHERE a.book_id=b.id),0),
+ COALESCE((SELECT MAX(v.lww_op_ts) FROM fn_reader_erase_claim v JOIN fn_reader_edit_session es ON es.id=v.session_id JOIN fn_reader_annotation a ON a.id=es.annotation_id WHERE a.book_id=b.id),0)),
 	  (SELECT count(*) FROM fn_reader_annotation a WHERE a.book_id=b.id AND ` + libraryListed + `),
 	  ` + assetState + `
 	 FROM fn_reader_book b LEFT JOIN fn_reader_book_title t ON t.id=b.id
@@ -167,7 +174,7 @@ func (s *libraryService) books(ctx context.Context, bookID string) ([]LibraryBoo
 	for rows.Next() {
 		var b LibraryBook
 		var metadata, title, state string
-		if err = rows.Scan(&b.ID, &b.MediaType, &b.ByteLength, &metadata, &title, &b.AddedAt, &b.AnnotationCount, &state); err != nil {
+		if err = rows.Scan(&b.ID, &b.MediaType, &b.ByteLength, &metadata, &title, &b.AddedAt, &b.ModifiedAt, &b.AnnotationCount, &state); err != nil {
 			return nil, err
 		}
 		meta := parseBookMetadata(metadata)

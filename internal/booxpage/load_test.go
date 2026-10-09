@@ -8,6 +8,7 @@ import (
 	"errors"
 	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
 	"google.golang.org/protobuf/proto"
+	"image/png"
 	"math"
 	"testing"
 )
@@ -145,5 +146,43 @@ func TestPageIDsFirmwareVariants(t *testing.T) {
 		if len(ids) != 2 || ids[0] != "a" || ids[1] != "b" {
 			t.Fatalf("%s: %v", v, ids)
 		}
+	}
+}
+
+func TestLegacyWrappedMatrixRendersSameAsArray(t *testing.T) {
+	id := "00000000-0000-0000-0000-000000000001"
+	base := &pb.ShapeInfoProto{UniqueId: id, ShapeType: 3, Thickness: 2, Color: -16777216, RevisionId: "r", MatrixValues: `[1,0,8,0,1,12,0,0,1]`}
+	render := func(matrix string) []byte {
+		t.Helper()
+		base.MatrixValues = matrix
+		z := shapeZip(t, base)
+		load := func(k string) ([]byte, error) {
+			switch k {
+			case "shape/page#a.zip":
+				return z, nil
+			case "point/page#r#points":
+				return pointFixture(id), nil
+			default:
+				return []byte(`{"properties":{"layoutType":"LayoutBlank"}}`), nil
+			}
+		}
+		p, _, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip"}, load)
+		if e != nil {
+			t.Fatal(e)
+		}
+		img, _, e := Preview(p, load)
+		if e != nil {
+			t.Fatal(e)
+		}
+		var b bytes.Buffer
+		if e = png.Encode(&b, img); e != nil {
+			t.Fatal(e)
+		}
+		return b.Bytes()
+	}
+	a := render(base.MatrixValues)
+	b := render(`{"empty":false,"values":[1,0,8,0,1,12,0,0,1]}`)
+	if !bytes.Equal(a, b) {
+		t.Fatal("firmware transform representation changed geometry")
 	}
 }
