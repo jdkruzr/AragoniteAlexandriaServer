@@ -46,3 +46,6 @@ Ported behavioral surfaces:
 - Web UI (internal/alexandria/web) and OAuth for MCP clients
   (internal/alexandria/oauth), following UltraBridge's ForestNote, Books,
   devices, settings and OAuth handlers
+- BOOX protobuf schema, pressure-point parser and ink/geometry rendering
+  (internal/booxpage, selectively ported and hardened from UltraBridge
+  internal/booxnote and internal/booxrender under Apache-2.0)
