@@ -31,7 +31,7 @@ func TestSettingsEncryptionCASAndSecretActions(t *testing.T) {
 	v.Config.OCR.URL = "http://localhost:9999"
 	v.Config.OCR.Model = "vision"
 	v.Config.OCR.Enabled = true
-	c, e := s.Candidate(ctx, v.Revision, v.Config, "private-test-key", "replace")
+	c, e := s.Candidate(ctx, v.Revision, v.Config, "private-test-key", "keep")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -111,7 +111,7 @@ func TestConnectionUsesSyntheticImageAndRedactsFailures(t *testing.T) {
 	defer srv.Close()
 	v := Snapshot{Config: Config{OCR: OCRConfig{URL: srv.URL, Model: "vision", Format: "openai"}}, APIKey: "secret"}
 	e := v.TestConnection(context.Background(), "ocr")
-	if e == nil || strings.Contains(e.Error(), "private upstream") || strings.Contains(e.Error(), "secret") {
+	if e == nil || !strings.Contains(e.Error(), "HTTP 401") || strings.Contains(e.Error(), "private upstream") || strings.Contains(e.Error(), "secret") {
 		t.Fatal(e)
 	}
 	if !strings.Contains(captured, "data:image/jpeg;base64,") || !strings.Contains(captured, "synthetic test image") {
