@@ -108,11 +108,18 @@ server {
 Add these to `.env`, then run `./install.sh` again to apply them.
 
 - **Handwriting recognition** makes notebook pages searchable and sends the
-  recognized text back to your tablets. Set `ALEXANDRIA_OCR_URL`,
+  recognized text back to Alexandria client tablets. Native BOOX recognition
+  remains server-only and is requested per page. Set `ALEXANDRIA_OCR_URL`,
   `ALEXANDRIA_OCR_API_KEY` and `ALEXANDRIA_OCR_MODEL`.
   `ALEXANDRIA_OCR_FORMAT` is `anthropic` (the default) or `openai` for any
-  OpenAI-compatible endpoint, such as a local vLLM. Pages are recognized once
-  per change; an unchanged page is never sent again.
+  image-capable OpenAI Chat Completions endpoint. Set the base URL without
+  `/v1` or a trailing slash; the client appends `/v1/messages` or
+  `/v1/chat/completions`. Standard requests omit provider-specific extensions.
+  For vLLM only, opt into suppressing thinking with
+  `ALEXANDRIA_OCR_VLLM_DISABLE_THINKING=true` and `ALEXANDRIA_OCR_FORMAT=openai`.
+  The setting defaults to false and is rejected with Anthropic format. Existing
+  vLLM deployments relying on the old automatic extension must opt in explicitly.
+  Pages are recognized once per change; an unchanged page is never sent again.
 - **Search by meaning:** set `ALEXANDRIA_EMBED_URL` to an Ollama server, and
   optionally `ALEXANDRIA_EMBED_MODEL` (default `nomic-embed-text:v1.5`).
 

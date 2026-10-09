@@ -38,6 +38,8 @@ ALEXANDRIA_BACKUP_DIR=./backups
 #ALEXANDRIA_OCR_API_KEY=
 #ALEXANDRIA_OCR_MODEL=
 #ALEXANDRIA_OCR_FORMAT=anthropic
+# vLLM only, with format=openai; leave false for other providers:
+#ALEXANDRIA_OCR_VLLM_DISABLE_THINKING=false
 # Optional search by meaning, with an Ollama server:
 #ALEXANDRIA_EMBED_URL=http://ollama.example:11434
 #ALEXANDRIA_EMBED_MODEL=nomic-embed-text:v1.5
