@@ -227,6 +227,10 @@ func (s Store) Candidate(ctx context.Context, revision int64, c Config, key, act
 	if e = Validate(c); e != nil {
 		return v, e
 	}
+	// Typing a key is an explicit replacement; never silently discard it.
+	if action == "keep" && strings.TrimSpace(key) != "" {
+		action = "replace"
+	}
 	switch action {
 	case "keep":
 		if v.APIKey != "" && c.OCR.URL != v.Config.OCR.URL {

@@ -15,7 +15,7 @@
 <label>Vision model <input name="ocr_model" value="{{$p.Config.OCR.Model}}" maxlength="256"></label>
 <label>API key <input type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="Never displayed after saving"></label>
 <p class="muted">{{if $p.HasKey}}A key is saved.{{else}}No key is saved.{{end}} Keys are encrypted in the database.</p>
-<label>Key action <select name="key_action"><option value="keep">Keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
+<label>Key action <select name="key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
 <label>Recognition prompt <textarea name="ocr_prompt" rows="4" maxlength="16000" placeholder="Leave blank for the default transcription prompt">{{$p.Config.OCR.Prompt}}</textarea></label>
 <label><input type="checkbox" name="vllm" {{if $p.Config.OCR.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
 <p class="muted">Alexandria client recognition can sync text back to its devices. Native BOOX recognition stays on this server and is requested per page.</p>
