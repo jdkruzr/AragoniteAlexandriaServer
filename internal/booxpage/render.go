@@ -15,12 +15,15 @@ var scribbleTypes = map[int32]bool{
 
 // Geometric shape types rendered from bounding rect.
 var geometricTypes = map[int32]bool{
-	0: true, 1: true, 7: true, 8: true, 17: true,
-	28: true, 31: true, 39: true,
+	0: true, 1: true, 7: true, 8: true, 28: true,
 }
 
 func renderShape(dc *gg.Context, s *Shape) {
-	if scribbleTypes[s.ShapeType] {
+	if s.ShapeType == 37 {
+		renderFill(dc, s)
+	} else if s.ShapeType == 40 {
+		renderUniversal(dc, s)
+	} else if scribbleTypes[s.ShapeType] {
 		renderScribble(dc, s)
 	} else if geometricTypes[s.ShapeType] {
 		renderGeometric(dc, s)
@@ -84,4 +87,29 @@ func pressureToWidth(pressure, thickness float64, ps penStyle) float64 {
 	// Scale by base thickness and pen width range.
 	width := ps.MinWidthFactor*thickness + curved*(ps.MaxWidthFactor-ps.MinWidthFactor)*thickness
 	return math.Max(width, 0.5) // minimum visible width
+}
+
+// Native fills store pairs of opposite corners, not pressure-sensitive ink.
+func renderFill(dc *gg.Context, s *Shape) {
+	dc.Push()
+	defer dc.Pop()
+	dc.ClearPath()
+	mat := parseMatrix(s.MatrixValues)
+	for i := 0; i+1 < len(s.Points); i += 2 {
+		a, b := s.Points[i], s.Points[i+1]
+		for j, pt := range [][2]float64{{float64(a.X), float64(a.Y)}, {float64(b.X), float64(a.Y)}, {float64(b.X), float64(b.Y)}, {float64(a.X), float64(b.Y)}} {
+			x, y := tp(mat, pt[0], pt[1])
+			if j == 0 {
+				dc.MoveTo(x, y)
+			} else {
+				dc.LineTo(x, y)
+			}
+		}
+		dc.ClosePath()
+	}
+	r, g, b, a := decodeARGB(s.Color)
+	dc.SetRGBA(r, g, b, a)
+	dc.FillPreserve()
+	dc.SetLineWidth(float64(s.Thickness))
+	dc.Stroke()
 }

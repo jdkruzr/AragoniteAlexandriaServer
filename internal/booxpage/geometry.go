@@ -34,12 +34,17 @@ func renderGeometric(dc *gg.Context, s *Shape) {
 	h := br.Bottom - br.Top
 
 	switch s.ShapeType {
-	case 0: // Circle — transform center and radii endpoints
-		cx, cy := tp(mat, x+w/2, y+h/2)
-		// Approximate radius by transforming edge points
-		rx1, _ := tp(mat, x+w, y+h/2)
-		_, ry1 := tp(mat, x+w/2, y+h)
-		dc.DrawEllipse(cx, cy, rx1-cx, ry1-cy)
+	case 0: // Sample the ellipse before applying the full affine transform.
+		for i := 0; i <= 120; i++ {
+			a := 2 * math.Pi * float64(i) / 120
+			px, py := tp(mat, x+w/2+w/2*math.Cos(a), y+h/2+h/2*math.Sin(a))
+			if i == 0 {
+				dc.MoveTo(px, py)
+			} else {
+				dc.LineTo(px, py)
+			}
+		}
+		dc.ClosePath()
 	case 1: // Rectangle — transform corners
 		x0, y0 := tp(mat, x, y)
 		x1, y1 := tp(mat, x+w, y)

@@ -6,9 +6,9 @@
   <select name="source" aria-label="Source"><option value="">All sources</option><option value="client" {{if eq $d.Source "client"}}selected{{end}}>Alexandria Client</option>{{if $d.BOOX}}<option value="boox" {{if eq $d.Source "boox"}}selected{{end}}>BOOX Native</option>{{end}}</select>
   <button>Search</button>
 </form>
-<p class="coverage">Coverage: Alexandria Client indexed page text and reading annotations.{{if $d.BOOX}} BOOX Native notebook titles, book titles and annotation text; native handwriting is not indexed yet.{{end}} Device-specific availability is not currently tracked by this search.</p>
+<p class="coverage">Coverage: Alexandria Client indexed page text and reading annotations.{{if $d.BOOX}} BOOX Native notebook titles, book titles and annotation text; handwriting from pages with completed server recognition. Unprocessed pages are not searched.{{end}} Device-specific availability is not currently tracked by this search.</p>
 {{if $d.Query}}
-{{if $d.BOOX}}{{if ne $d.Source "client"}}<h2>BOOX Native</h2>{{range $d.Native}}<article class="result"><span class="badge">BOOX Native · {{.Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p>{{if .Snippet}}<p>{{.Snippet}}</p>{{end}}</article>{{else}}<p class="empty">No native metadata or annotation text matches.</p>{{end}}{{end}}{{end}}
+{{if $d.BOOX}}{{if ne $d.Source "client"}}<h2>BOOX Native</h2>{{range $d.Native}}<article class="result"><span class="badge">BOOX Native · {{.Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p>{{if .Snippet}}<p>{{.Snippet}}</p>{{end}}</article>{{else}}<p class="empty">No native metadata, annotation or recognized page text matches.</p>{{end}}{{end}}{{end}}
 {{if ne $d.Source "boox"}}
 <h2>Alexandria Client · Notebook pages</h2>
 {{if not $d.Pages}}<p class="empty">No notebook pages match.</p>{{end}}

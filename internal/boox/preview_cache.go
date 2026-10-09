@@ -15,6 +15,7 @@ import (
 type previewResult struct {
 	PNG      []byte
 	Warnings []string
+	Notices  []string
 	Texts    []string
 	Access   time.Time
 }
@@ -41,17 +42,17 @@ func cachedPreview(key string) (previewResult, bool) {
 	return v, ok
 }
 func storePreview(key string, v previewResult) {
-	if len(v.PNG) > 16<<20 {
+	if previewSize(v) > 16<<20 {
 		return
 	}
 	previews.Lock()
 	defer previews.Unlock()
 	if old, ok := previews.Items[key]; ok {
-		previews.Bytes -= len(old.PNG)
+		previews.Bytes -= previewSize(old)
 	}
 	v.Access = time.Now()
 	previews.Items[key] = v
-	previews.Bytes += len(v.PNG)
+	previews.Bytes += previewSize(v)
 	for previews.Bytes > 64<<20 || len(previews.Items) > 64 {
 		oldest := ""
 		var at time.Time
@@ -61,7 +62,7 @@ func storePreview(key string, v previewResult) {
 				at = p.Access
 			}
 		}
-		previews.Bytes -= len(previews.Items[oldest].PNG)
+		previews.Bytes -= previewSize(previews.Items[oldest])
 		delete(previews.Items, oldest)
 	}
 }
@@ -87,6 +88,9 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 	if e != nil {
 		return previewResult{}, e
 	}
+	if n.IndexWarning != "" {
+		w = append(w, n.IndexWarning)
+	}
 	img, tw, e := booxpage.Preview(p, load)
 	if e != nil {
 		return previewResult{}, e
@@ -98,7 +102,21 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 	if e = png.Encode(&b, img); e != nil {
 		return previewResult{}, e
 	}
-	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts}
-	storePreview(key, v)
+	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices}
+	// A transient object/index read failure must not pin a partial page (or a
+	// metadata-only page number) after the immutable resources become readable.
+	if len(v.Warnings) == 0 {
+		storePreview(key, v)
+	}
 	return v, nil
+}
+
+func previewSize(v previewResult) int {
+	n := len(v.PNG)
+	for _, ss := range [][]string{v.Texts, v.Warnings, v.Notices} {
+		for _, s := range ss {
+			n += len(s)
+		}
+	}
+	return n
 }

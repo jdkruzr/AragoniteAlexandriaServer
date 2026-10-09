@@ -264,7 +264,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	defer done()
 	if r.cfg.NativeBOOX != nil {
-		native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID}
+		native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: r.cfg.Pages.OCR != nil}
 		if err := native.ResolveIdentity(req.Context()); err != nil {
 			http.Error(w, "native identity unavailable", http.StatusServiceUnavailable)
 			return
@@ -490,8 +490,21 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 	n := 0
 	for n < max && ctx.Err() == nil {
 		found, err := r.cfg.Pages.Step(ctx, conn)
-		if err != nil || !found {
+		if err != nil {
 			return n, err
+		}
+		if !found && r.cfg.NativeBOOX != nil {
+			native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: r.cfg.Pages.OCR != nil}
+			if err = native.ResolveIdentity(ctx); err != nil {
+				return n, err
+			}
+			found, err = native.ProcessPageIndex(ctx, r.cfg.Pages.OCR, r.cfg.Pages.Prompt)
+			if err != nil {
+				return n, err
+			}
+		}
+		if !found {
+			return n, nil
 		}
 		n++
 	}
@@ -527,7 +540,7 @@ func (r *Runtime) ProcessNativeBOOX(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	defer done()
-	native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID}
+	native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: r.cfg.Pages.OCR != nil}
 	n, err := native.Observe(ctx)
 	if err == nil {
 		_, err = native.PublishOne(ctx)

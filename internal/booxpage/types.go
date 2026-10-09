@@ -3,6 +3,8 @@ package booxpage
 
 // Page represents a single page within a note.
 type Page struct {
+	Notices    []string
+	Background *Background
 	PageID     string
 	Width      float64
 	Height     float64
@@ -13,6 +15,8 @@ type Page struct {
 
 // Shape represents a single shape (stroke, geometry, text, etc.) on a page.
 type Shape struct {
+	TextStyle    textStyle
+	Features     []featurePath
 	UniqueID     string
 	ShapeType    int32
 	Color        int32 // ARGB packed

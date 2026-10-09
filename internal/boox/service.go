@@ -18,11 +18,12 @@ import (
 )
 
 type Service struct {
-	Config    Config
-	DB        pg.DB
-	Objects   blob.Store
-	LibraryID string
-	identity  string
+	RecognitionEnabled bool
+	Config             Config
+	DB                 pg.DB
+	Objects            blob.Store
+	LibraryID          string
+	identity           string
 }
 type device struct {
 	ID, Account, Fingerprint, Generation string

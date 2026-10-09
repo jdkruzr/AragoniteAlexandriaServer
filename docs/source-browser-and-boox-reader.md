@@ -137,3 +137,13 @@ successfully; mobile keeps every date column and confines horizontal scrolling
 to the table. A fresh-session direct BOOX URL also exposed a missing Basic
 challenge; browser routes now issue the same owner-login challenge as the main
 site. Owner authorization and native device authentication are unchanged.
+
+## 2026-10-09 decoding and recognition follow-up
+
+The initial renderer limitations above are superseded by
+[Native BOOX decoding and recognition](boox-decoding-and-recognition.md): full
+virtual-page catalogs beyond the native 500-name cap, PDF backgrounds, common
+stationery, broader SVG/geometry/text handling, and explicit server-only page OCR
+with stale-result invalidation and global keyword search. The detailed coverage
+report distinguishes tested decoding from approximate visual fidelity and pending
+real-provider OCR qualification.

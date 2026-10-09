@@ -25,6 +25,7 @@ type notebookEntry struct {
 	CreatedAt, ModifiedAt       int64
 	ID, Title, Parent, Revision string
 	Folder                      bool
+	PagesTruncated              bool
 	Pages                       int
 }
 type libraryPage struct {
@@ -41,8 +42,8 @@ var libraryTemplate = template.Must(template.New("library").Funcs(template.FuncM
 <p><a href="/boox">All notebooks</a> · <a href="/boox?view=folders">Browse folders</a></p><p class="crumbs"><a href="/boox?view=folders">Folders</a>{{range $d.Crumbs}} / <a href="/boox?folder={{.ID}}">{{.Title}}</a>{{end}}</p>
 <form class="search" method="get" action="/boox"><input type="hidden" name="folder" value="{{$d.Folder}}">{{if not $d.All}}<input type="hidden" name="view" value="folders">{{end}}{{if $d.Deleted}}<input type="hidden" name="show" value="deleted">{{end}}
 <label>Sort <select name="sort"><option value="modified" {{if eq $d.Listing.Sort "modified"}}selected{{end}}>Modified</option><option value="created" {{if eq $d.Listing.Sort "created"}}selected{{end}}>Created</option><option value="name" {{if eq $d.Listing.Sort "name"}}selected{{end}}>Name</option><option value="pages" {{if eq $d.Listing.Sort "pages"}}selected{{end}}>Pages</option></select></label><select name="order" aria-label="Sort direction"><option value="desc" {{if eq $d.Listing.Order "desc"}}selected{{end}}>Descending / newest first</option><option value="asc" {{if eq $d.Listing.Order "asc"}}selected{{end}}>Ascending / oldest first</option></select><input type="search" name="q" value="{{$d.Query}}" placeholder="Find a notebook by title" aria-label="Notebook title"><button>Find</button></form>
-<p class="muted">One shared native library across your BOOX devices. Page previews are read-only; content availability is checked when you open a page.</p>
-<nav class="pagination" aria-label="Notebook pagination"><span>{{if $d.Listing.Total}}{{$d.Listing.Start}}–{{$d.Listing.End}} of {{$d.Listing.Total}}{{else}}0 results{{end}} · Page {{$d.Listing.Page}} of {{$d.Listing.Pages}}</span>{{if $d.Previous}}<a class="button" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button" href="{{$d.Next}}">Next</a>{{end}}</nav>{{if $d.Entries}}<div class="table-scroll"><table class="dated-list"><thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">Name{{$d.Listing.Indicator "name"}}</a></th><th>Kind</th><th><a href="{{$d.Listing.SortURL "pages"}}">Pages{{$d.Listing.Indicator "pages"}}</a></th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th></tr></thead><tbody>{{range $d.Entries}}<tr><td>{{if .Folder}}<a href="/boox?folder={{.ID}}">{{.Title}}</a>{{else}}<a href="/boox/notebook?id={{.ID}}">{{.Title}}</a>{{end}}</td><td>{{if .Folder}}Folder{{else}}Notebook{{end}}</td><td>{{if not .Folder}}{{.Pages}}{{end}}</td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td></tr>{{end}}</tbody></table></div>{{else}}<p class="empty">No matching notebooks or folders have arrived.</p>{{end}}
+<p class="muted">One shared native library across your BOOX devices. Page previews are read-only; content availability is checked when you open a page. A “500+” count is the native metadata limit; open the notebook for its full page index.</p>
+<nav class="pagination" aria-label="Notebook pagination"><span>{{if $d.Listing.Total}}{{$d.Listing.Start}}–{{$d.Listing.End}} of {{$d.Listing.Total}}{{else}}0 results{{end}} · Page {{$d.Listing.Page}} of {{$d.Listing.Pages}}</span>{{if $d.Previous}}<a class="button" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button" href="{{$d.Next}}">Next</a>{{end}}</nav>{{if $d.Entries}}<div class="table-scroll"><table class="dated-list"><thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">Name{{$d.Listing.Indicator "name"}}</a></th><th>Kind</th><th><a href="{{$d.Listing.SortURL "pages"}}">Pages{{$d.Listing.Indicator "pages"}}</a></th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th></tr></thead><tbody>{{range $d.Entries}}<tr><td>{{if .Folder}}<a href="/boox?folder={{.ID}}">{{.Title}}</a>{{else}}<a href="/boox/notebook?id={{.ID}}">{{.Title}}</a>{{end}}</td><td>{{if .Folder}}Folder{{else}}Notebook{{end}}</td><td>{{if not .Folder}}{{.Pages}}{{if .PagesTruncated}}+{{end}}{{end}}</td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td></tr>{{end}}</tbody></table></div>{{else}}<p class="empty">No matching notebooks or folders have arrived.</p>{{end}}
 <nav class="pagination" aria-label="Notebook pagination"><span>{{if $d.Listing.Total}}{{$d.Listing.Start}}–{{$d.Listing.End}} of {{$d.Listing.Total}}{{else}}0 results{{end}} · Page {{$d.Listing.Page}} of {{$d.Listing.Pages}}</span>{{if $d.Previous}}<a class="button" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button" href="{{$d.Next}}">Next</a>{{end}}</nav>
 <p>{{if $d.Deleted}}<a href="/boox">Live notebooks</a>{{else}}<a href="/boox?show=deleted">Deleted notebooks</a>{{end}} · <a href="/boox/enroll">Connect a device</a></p>{{end}}`))
 
@@ -90,6 +91,7 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		v.Parent = m.ParentUniqueID
 		v.Folder = m.Type == 0
 		v.Pages = len(booxpage.PageIDs(m.PageNameList))
+		v.PagesTruncated = v.Pages >= 500
 		d.Entries = append(d.Entries, v)
 	}
 	re := rows.Err()
@@ -131,6 +133,7 @@ type assetBinding struct {
 	Bytes    int64
 }
 type notebookSnapshot struct {
+	IndexWarning      string
 	Meta              booxpage.Metadata
 	Revision, Version string
 	Assets            map[string]assetBinding
@@ -159,7 +162,7 @@ func (s Service) notebookSnapshot(ctx context.Context, id string) (notebookSnaps
 		return out, e
 	}
 	h := sha256.New()
-	h.Write([]byte("boox-preview-v2\x00" + out.Revision))
+	h.Write([]byte("boox-preview-v3\x00" + out.Revision))
 	for rows.Next() {
 		var v assetBinding
 		if e = rows.Scan(&v.Key, &v.SHA, &v.Bytes); e != nil {
@@ -182,7 +185,16 @@ func (s Service) notebookSnapshot(ctx context.Context, id string) (notebookSnaps
 		return out, errors.New("notebook exceeds preview manifest limit")
 	}
 	out.Version = hex.EncodeToString(h.Sum(nil))
-	return out, tx.Commit()
+	if e = tx.Commit(); e != nil {
+		return out, e
+	}
+	meta, indexErr := booxpage.ResolvePages(out.Meta, out.Keys, s.snapshotLoader(ctx, out))
+	if indexErr != nil {
+		out.IndexWarning = indexErr.Error()
+	} else {
+		out.Meta = meta
+	}
+	return out, nil
 }
 func (s Service) snapshotLoader(ctx context.Context, n notebookSnapshot) booxpage.Load {
 	var total int64
@@ -209,6 +221,8 @@ func (s Service) snapshotLoader(ctx context.Context, n notebookSnapshot) booxpag
 }
 
 type notebookView struct {
+	RecognitionEnabled                                            bool
+	RecognitionState, RecognitionDetail, RecognizedText           string
 	Texts                                                         []string
 	ID, Title, Parent, Page, Version, Image, Previous, Next, Zoom string
 	Number, Count                                                 int
@@ -221,7 +235,7 @@ var notebookTemplate = template.Must(template.New("notebook").Parse(`{{define "c
 <nav class="actions" aria-label="Page navigation">{{if $d.Previous}}<a href="{{$d.Previous}}">Previous page</a>{{end}}{{if $d.Next}}<a href="{{$d.Next}}">Next page</a>{{end}}<a href="/boox/notebook?id={{$d.ID}}&page={{$d.Number}}&zoom={{if eq $d.Zoom "actual"}}fit{{else}}actual{{end}}">{{if eq $d.Zoom "actual"}}Fit page{{else}}Actual size{{end}}</a></nav>
 {{range $d.Warnings}}<p class="coverage">{{.}}</p>{{end}}
 {{if $d.Image}}<figure class="reader {{$d.Zoom}}"><img src="{{$d.Image}}" alt="Read-only preview of {{$d.Title}}, page {{$d.Number}}"><figcaption>Native ink preview · read-only. Pen appearance is approximate; unsupported content is identified above.</figcaption></figure>{{else}}<p class="empty">A page preview is not available yet. This does not mean the page is blank.</p>{{end}}
-<p class="muted">This preview reflects resources received so far. Native synchronization does not provide a complete page manifest.</p>{{if $d.Texts}}<section class="help"><h2>Page text</h2><p class="muted">Extracted text; original placement and formatting are not reproduced.</p>{{range $d.Texts}}<pre>{{.}}</pre>{{end}}</section>{{end}}<details><summary>Source and history</summary><p>This notebook is shared across the source’s devices. Device registration does not establish who authored a page.</p><p><a href="/api/v1/boox/admin/history?documentId={{$d.ID}}">Observed native versions</a></p></details>{{end}}`))
+<p class="muted">This preview reflects resources received so far. Native synchronization does not provide a complete page manifest.</p>{{if $d.Texts}}<section class="help"><h2>Page text</h2><p class="muted">Extracted text; original placement and formatting are not reproduced.</p>{{range $d.Texts}}<pre>{{.}}</pre>{{end}}</section>{{end}}{{if $d.Page}}<section class="help"><h2>Handwriting recognition</h2><p>Recognized text stays in Alexandria and becomes searchable here. Running recognition sends this page to your configured OCR provider.</p>{{if $d.RecognitionState}}<p><strong>{{$d.RecognitionState}}</strong> · {{$d.RecognitionDetail}}</p>{{else}}<p>Not processed.</p>{{end}}{{if $d.RecognizedText}}<pre>{{$d.RecognizedText}}</pre>{{end}}{{if $d.RecognitionEnabled}}<form method="post" action="/boox/recognize"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="page" value="{{$d.Number}}"><button>Run recognition</button></form>{{else}}<p>Handwriting recognition needs an OCR provider configured on this server.</p>{{end}}</section>{{end}}<details><summary>Source and history</summary><p>This notebook is shared across the source’s devices. Device registration does not establish who authored a page.</p><p><a href="/api/v1/boox/admin/history?documentId={{$d.ID}}">Observed native versions</a></p></details>{{end}}`))
 
 func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	n, e := s.notebookSnapshot(r.Context(), r.URL.Query().Get("id"))
@@ -242,7 +256,7 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	d := notebookView{ID: n.Meta.UniqueID, Title: n.Meta.Title, Parent: n.Meta.ParentUniqueID, Number: num, Count: len(ids), Version: n.Version, Deleted: n.Meta.Status != 1}
+	d := notebookView{RecognitionEnabled: s.RecognitionEnabled, ID: n.Meta.UniqueID, Title: n.Meta.Title, Parent: n.Meta.ParentUniqueID, Number: num, Count: len(ids), Version: n.Version, Deleted: n.Meta.Status != 1}
 	if r.URL.Query().Get("zoom") == "actual" {
 		d.Zoom = "actual"
 	}
@@ -259,7 +273,7 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			d.Warnings = append(d.Warnings, "Preview unavailable: "+err.Error())
 		} else {
-			d.Warnings = preview.Warnings
+			d.Warnings = append(append([]string{}, preview.Warnings...), preview.Notices...)
 			d.Texts = preview.Texts
 			d.Image = "/boox/page.png?id=" + url.QueryEscape(d.ID) + "&page=" + strconv.Itoa(num) + "&version=" + n.Version
 		}
@@ -267,6 +281,13 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(booxpage.PageIDs(n.Meta.RichTextPageNameList)) > 0 {
 		d.Warnings = append(d.Warnings, "This notebook also has rich-text pages; their layout is not rendered yet.")
+	}
+	if d.Page != "" {
+		err := s.DB.QueryRowContext(r.Context(), `SELECT state,detail,text FROM boox_page_index WHERE notebook_id=$1 AND page_id=$2`, d.ID, d.Page).Scan(&d.RecognitionState, &d.RecognitionDetail, &d.RecognizedText)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			failure(w, err)
+			return
+		}
 	}
 	s.renderPage(w, r, notebookTemplate, d.Title, d)
 }

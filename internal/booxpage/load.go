@@ -26,6 +26,8 @@ type PageInfo struct {
 	LayerList     []Layer
 }
 type Metadata struct {
+	VirtualPages         map[string]*pb.VirtualPage `json:"-"`
+	RemovePageList       json.RawMessage
 	Encryption           struct{ EncryptionType int }
 	UniqueID             string `json:"uniqueId"`
 	Title                string
@@ -57,6 +59,15 @@ func PageIDs(raw json.RawMessage) []string {
 	return nil
 }
 func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []string, error) {
+	return shapePage(meta, id, keys, load, map[string]bool{})
+}
+func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[string]bool) (*Page, []string, error) {
+	if visiting[id] || len(visiting) >= 4 {
+		return nil, nil, fmt.Errorf("Cyclic or excessive page references.")
+	}
+	visiting[id] = true
+	defer delete(visiting, id)
+
 	info := meta.NotePageInfo.PageInfoMap[id]
 	w, h := info.Width, info.Height
 	if w <= 0 || h <= 0 {
@@ -68,11 +79,25 @@ func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []str
 	}
 	p := &Page{PageID: id, Width: w, Height: h}
 	var warnings []string
+	bg, bgErr := backgroundFor(meta, id, keys, load)
+	p.Background = bg
+	if bgErr != nil {
+		warnings = append(warnings, bgErr.Error())
+	}
 	if meta.Encryption.EncryptionType != 0 {
 		return nil, nil, fmt.Errorf("encrypted notebook preview is not supported")
 	}
-	if meta.ActiveScene != 0 {
+	if meta.ActiveScene < 0 || meta.ActiveScene > 4 {
 		return nil, nil, fmt.Errorf("this notebook uses an unsupported native layout")
+	}
+	if meta.ActiveScene == 1 {
+		warnings = append(warnings, "Rich-text notebook: available text is shown separately; native layout is not reproduced.")
+	}
+	if meta.ActiveScene == 2 {
+		warnings = append(warnings, "Meeting notebook: audio and transcript layout are not reproduced.")
+	}
+	if meta.ActiveScene == 4 {
+		warnings = append(warnings, "Draft notebook layout has not been qualified.")
 	}
 	if meta.NotePageInfo.CanvasExpandType != "" && meta.NotePageInfo.CanvasExpandType != "DEFAULT" {
 		warnings = append(warnings, "Expanded canvas layout has not been qualified; this preview may be cropped.")
@@ -157,6 +182,32 @@ func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []str
 		if sp.ShapeStatus != 0 || hidden[sp.Zorder] {
 			continue
 		}
+
+		if sp.OptionsRepo != "" {
+			var options struct{ Repo map[string]json.RawMessage }
+			if json.Unmarshal([]byte(sp.OptionsRepo), &options) != nil {
+				return nil, nil, fmt.Errorf("invalid shape options")
+			}
+			visible := true
+			transparent := false
+			if raw, ok := options.Repo["KEY_IS_VISIBLE"]; ok {
+				if json.Unmarshal(raw, &visible) != nil {
+					return nil, nil, fmt.Errorf("unsupported visibility option")
+				}
+			}
+			if raw, ok := options.Repo["KEY_IS_TRANSPARENT"]; ok {
+				if json.Unmarshal(raw, &transparent) != nil {
+					return nil, nil, fmt.Errorf("unsupported transparency option")
+				}
+			}
+			if !visible {
+				continue
+			}
+			if transparent {
+				warnings = append(warnings, "Transparent erasure compositing is not rendered yet.")
+				continue
+			}
+		}
 		if len(info.LayerList) > 0 {
 			if _, ok := layerOrder[sp.Zorder]; !ok {
 				warnings = append(warnings, "A shape references an unknown layer.")
@@ -199,7 +250,7 @@ func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []str
 		if !finite(float64(s.Thickness)) || s.Thickness < 0 || s.Thickness > 10000 {
 			return nil, nil, fmt.Errorf("invalid pen width")
 		}
-		if scribbleTypes[s.ShapeType] {
+		if scribbleTypes[s.ShapeType] || s.ShapeType == 37 {
 			if len(sp.PointList) > 0 {
 				if (len(sp.PointList)-4)%16 != 0 {
 					return nil, nil, fmt.Errorf("invalid inline points")
@@ -228,6 +279,9 @@ func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []str
 					return nil, nil, fmt.Errorf("stroke is missing from its point file")
 				}
 			}
+			if s.ShapeType == 37 && len(s.Points)%2 != 0 {
+				return nil, nil, fmt.Errorf("invalid fill rectangle points")
+			}
 			totalPoints += len(s.Points)
 			if totalPoints > 500000 {
 				return nil, nil, fmt.Errorf("page exceeds preview point limit")
@@ -240,6 +294,97 @@ func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []str
 					return nil, nil, fmt.Errorf("invalid point coordinate")
 				}
 			}
+		} else if s.ShapeType == 2000 {
+			var ref struct {
+				ShapeReferenceBean struct {
+					PageID, ShapeID string
+					MatrixValues    []float64
+				}
+			}
+			if json.Unmarshal([]byte(sp.ConnectionBean), &ref) != nil || ref.ShapeReferenceBean.PageID == "" || ref.ShapeReferenceBean.ShapeID == "" {
+				warnings = append(warnings, "Reference shape target is unavailable.")
+				continue
+			}
+			r := ref.ShapeReferenceBean
+			var target *Shape
+			if r.PageID == id {
+				for _, candidate := range p.Shapes {
+					if candidate.UniqueID == r.ShapeID {
+						target = candidate
+						break
+					}
+				}
+			} else {
+				page, _, err := shapePage(meta, r.PageID, keys, load, visiting)
+				if err == nil {
+					for _, candidate := range page.Shapes {
+						if candidate.UniqueID == r.ShapeID {
+							target = candidate
+							break
+						}
+					}
+				}
+			}
+			if target == nil {
+				warnings = append(warnings, "Reference shape target could not be decoded.")
+				continue
+			}
+			combined, err := composeAffine(r.MatrixValues, target.MatrixValues)
+			if err != nil {
+				warnings = append(warnings, err.Error())
+				continue
+			}
+			copy := *target
+			copy.UniqueID = s.UniqueID
+			copy.ZOrder = s.ZOrder
+			copy.MatrixValues = combined
+			s = &copy
+			totalPoints += len(s.Points)
+			if totalPoints > 500000 {
+				return nil, nil, fmt.Errorf("page exceeds preview point limit")
+			}
+			if s.Text != "" {
+				p.Texts = append(p.Texts, s.Text)
+			}
+		} else if s.ShapeType == 6 || s.ShapeType == 16 {
+			if len(s.Text) > 65536 || len(sp.RichText) > 1<<20 {
+				return nil, nil, fmt.Errorf("text exceeds preview limit")
+			}
+			if s.Text == "" && sp.RichText != "" {
+				s.Text = plainHTML(sp.RichText)
+			}
+			if s.Text != "" {
+				p.Texts = append(p.Texts, s.Text)
+			}
+			if json.Unmarshal([]byte(sp.TextStyle), &s.TextStyle) != nil || !finite(s.TextStyle.TextSize) || s.TextStyle.TextSize <= 0 || s.TextStyle.TextSize > 1000 || !finite(s.TextStyle.TextSpacing) || s.TextStyle.TextSpacing < 0 || s.TextStyle.TextSpacing > 100 || s.TextStyle.Orientation != 0 || s.TextStyle.TextBorder != 0 || s.TextStyle.PaddingStart < 0 || s.TextStyle.PaddingEnd < 0 {
+				warnings = append(warnings, "Text styling is unsupported; readable text is shown separately.")
+				continue
+			}
+			p.Notices = append(p.Notices, "Text uses a substitute font; native typography and rich spans may differ.")
+		} else if s.ShapeType == 29 {
+			var extra struct{ TextContent string }
+			_ = json.Unmarshal([]byte(sp.Extra), &extra)
+			text := extra.TextContent
+			if text == "" {
+				var ref struct{ RelativePath string }
+				if json.Unmarshal([]byte(sp.Resource), &ref) == nil && ref.RelativePath != "" {
+					if b, e := load("resource/data/" + strings.TrimPrefix(ref.RelativePath, "/")); e == nil && len(b) <= 1<<20 {
+						text = plainHTML(string(b))
+					}
+				}
+			}
+			if text != "" {
+				p.Texts = append(p.Texts, text)
+			}
+			warnings = append(warnings, "Rich-text layout is not reproduced; available text is shown separately.")
+			continue
+		} else if s.ShapeType == 40 {
+			features, err := parseUniversal(sp.Extra)
+			if err != nil {
+				warnings = append(warnings, err.Error())
+				continue
+			}
+			s.Features = features
 		} else if s.ShapeType == 19 {
 			var ref struct{ RelativePath string }
 			if json.Unmarshal([]byte(sp.Resource), &ref) != nil || ref.RelativePath == "" {
@@ -266,6 +411,15 @@ func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []str
 		}
 		return a.UniqueID < b.UniqueID
 	})
+	textBytes := 0
+	for _, text := range p.Texts {
+		textBytes += len(text)
+	}
+	if textBytes > 1<<20 {
+		return nil, nil, fmt.Errorf("page text exceeds preview limit")
+	}
+	sort.Strings(p.Notices)
+	p.Notices = compact(p.Notices)
 	sort.Strings(warnings)
 	warnings = compact(warnings)
 	return p, warnings, nil

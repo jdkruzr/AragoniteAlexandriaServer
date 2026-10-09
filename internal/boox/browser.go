@@ -67,6 +67,8 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch r.URL.Path {
+	case "/boox/recognize":
+		s.queuePageHTTP(w, r)
 	case "/boox/enroll":
 		if r.Method == "POST" {
 			code, e := s.IssueCode(r.Context())
