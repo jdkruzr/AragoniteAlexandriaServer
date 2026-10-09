@@ -16,29 +16,34 @@ import (
 	"strings"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
+	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
 
 const notebookPredicate = `domain='notebook' AND body->>'uniqueId'=document_id AND NOT body ? 'commitType' AND body->>'type' IN ('0','1')`
 
 type notebookEntry struct {
+	CreatedAt, ModifiedAt       int64
 	ID, Title, Parent, Revision string
 	Folder                      bool
 	Pages                       int
 }
 type libraryPage struct {
+	Listing                       listview.State
+	All                           bool
 	Entries                       []notebookEntry
 	Crumbs                        []notebookEntry
 	Folder, Query, Next, Previous string
 	Deleted                       bool
 }
 
-var libraryTemplate = template.Must(template.New("library").Parse(`{{define "content"}}{{$d:=.Data}}
+var libraryTemplate = template.Must(template.New("library").Funcs(template.FuncMap{"ms": listview.Date}).Parse(`{{define "content"}}{{$d:=.Data}}
 <h1>{{if $d.Deleted}}Deleted notebooks{{else}}Notebooks{{end}}</h1>
-<p class="crumbs"><a href="/boox">BOOX notebooks</a>{{range $d.Crumbs}} / <a href="/boox?folder={{.ID}}">{{.Title}}</a>{{end}}</p>
-<form class="search" method="get" action="/boox"><input type="search" name="q" value="{{$d.Query}}" placeholder="Find a notebook by title" aria-label="Notebook title"><button>Find</button></form>
+<p><a href="/boox">All notebooks</a> · <a href="/boox?view=folders">Browse folders</a></p><p class="crumbs"><a href="/boox?view=folders">Folders</a>{{range $d.Crumbs}} / <a href="/boox?folder={{.ID}}">{{.Title}}</a>{{end}}</p>
+<form class="search" method="get" action="/boox"><input type="hidden" name="folder" value="{{$d.Folder}}">{{if not $d.All}}<input type="hidden" name="view" value="folders">{{end}}{{if $d.Deleted}}<input type="hidden" name="show" value="deleted">{{end}}
+<label>Sort <select name="sort"><option value="modified" {{if eq $d.Listing.Sort "modified"}}selected{{end}}>Modified</option><option value="created" {{if eq $d.Listing.Sort "created"}}selected{{end}}>Created</option><option value="name" {{if eq $d.Listing.Sort "name"}}selected{{end}}>Name</option><option value="pages" {{if eq $d.Listing.Sort "pages"}}selected{{end}}>Pages</option></select></label><select name="order" aria-label="Sort direction"><option value="desc" {{if eq $d.Listing.Order "desc"}}selected{{end}}>Descending / newest first</option><option value="asc" {{if eq $d.Listing.Order "asc"}}selected{{end}}>Ascending / oldest first</option></select><input type="search" name="q" value="{{$d.Query}}" placeholder="Find a notebook by title" aria-label="Notebook title"><button>Find</button></form>
 <p class="muted">One shared native library across your BOOX devices. Page previews are read-only; content availability is checked when you open a page.</p>
-{{if $d.Entries}}<table><thead><tr><th>Name</th><th>Kind</th><th>Pages</th></tr></thead><tbody>{{range $d.Entries}}<tr><td>{{if .Folder}}<a href="/boox?folder={{.ID}}">{{.Title}}</a>{{else}}<a href="/boox/notebook?id={{.ID}}">{{.Title}}</a>{{end}}</td><td>{{if .Folder}}Folder{{else}}Notebook{{end}}</td><td>{{if not .Folder}}{{.Pages}}{{end}}</td></tr>{{end}}</tbody></table>{{else}}<p class="empty">No matching notebooks or folders have arrived.</p>{{end}}
-<nav class="pagination" aria-label="Notebook pages">{{if $d.Previous}}<a href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a href="{{$d.Next}}">Next</a>{{end}}</nav>
+<nav class="pagination" aria-label="Notebook pagination"><span>{{if $d.Listing.Total}}{{$d.Listing.Start}}–{{$d.Listing.End}} of {{$d.Listing.Total}}{{else}}0 results{{end}} · Page {{$d.Listing.Page}} of {{$d.Listing.Pages}}</span>{{if $d.Previous}}<a class="button" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button" href="{{$d.Next}}">Next</a>{{end}}</nav>{{if $d.Entries}}<div class="table-scroll"><table class="dated-list"><thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">Name{{$d.Listing.Indicator "name"}}</a></th><th>Kind</th><th><a href="{{$d.Listing.SortURL "pages"}}">Pages{{$d.Listing.Indicator "pages"}}</a></th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th></tr></thead><tbody>{{range $d.Entries}}<tr><td>{{if .Folder}}<a href="/boox?folder={{.ID}}">{{.Title}}</a>{{else}}<a href="/boox/notebook?id={{.ID}}">{{.Title}}</a>{{end}}</td><td>{{if .Folder}}Folder{{else}}Notebook{{end}}</td><td>{{if not .Folder}}{{.Pages}}{{end}}</td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td></tr>{{end}}</tbody></table></div>{{else}}<p class="empty">No matching notebooks or folders have arrived.</p>{{end}}
+<nav class="pagination" aria-label="Notebook pagination"><span>{{if $d.Listing.Total}}{{$d.Listing.Start}}–{{$d.Listing.End}} of {{$d.Listing.Total}}{{else}}0 results{{end}} · Page {{$d.Listing.Page}} of {{$d.Listing.Pages}}</span>{{if $d.Previous}}<a class="button" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button" href="{{$d.Next}}">Next</a>{{end}}</nav>
 <p>{{if $d.Deleted}}<a href="/boox">Live notebooks</a>{{else}}<a href="/boox?show=deleted">Deleted notebooks</a>{{end}} · <a href="/boox/enroll">Connect a device</a></p>{{end}}`))
 
 func browserOffset(r *http.Request) int {
@@ -54,8 +59,10 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 	if d.Deleted {
 		status = "0"
 	}
-	offset := browserOffset(r)
-	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,revision,body FROM boox_projection p WHERE `+notebookPredicate+` AND native_uid=$1 AND body->>'status'=$2 AND ($3<>'' AND strpos(lower(coalesce(body->>'title','')),lower($3))>0 OR $3='' AND ($5 OR coalesce(body->>'parentUniqueId','')=$4 OR $4='' AND NOT EXISTS(SELECT 1 FROM boox_projection parent WHERE parent.document_id=p.body->>'parentUniqueId' AND parent.native_uid=$1 AND parent.body->>'type'='0' AND parent.body->>'status'='1'))) ORDER BY body->>'type',lower(body->>'title'),document_id LIMIT 61 OFFSET $6`, s.uid(), status, d.Query, d.Folder, d.Deleted, offset)
+	d.Listing = listview.Parse(r.URL.Query())
+	d.All = d.Folder == "" && r.URL.Query().Get("view") != "folders"
+	offset := d.Listing.Offset
+	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,revision,body,count(*) OVER() FROM boox_projection p WHERE `+notebookPredicate+` AND native_uid=$1 AND body->>'status'=$2 AND (NOT $7 OR body->>'type'='1') AND ($3<>'' AND strpos(lower(coalesce(body->>'title','')),lower($3))>0 OR $3='' AND ($7 OR $5 OR coalesce(body->>'parentUniqueId','')=$4 OR $4='' AND NOT EXISTS(SELECT 1 FROM boox_projection parent WHERE parent.document_id=p.body->>'parentUniqueId' AND parent.native_uid=$1 AND parent.body->>'type'='0' AND parent.body->>'status'='1'))) ORDER BY `+d.Listing.NativeOrder()+` LIMIT 60 OFFSET $6`, s.uid(), status, d.Query, d.Folder, d.Deleted, offset, d.All)
 	if e != nil {
 		failure(w, e)
 		return
@@ -63,10 +70,11 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var v notebookEntry
 		var raw []byte
-		if e = rows.Scan(&v.ID, &v.Revision, &raw); e != nil {
+		if e = rows.Scan(&v.ID, &v.Revision, &raw, &d.Listing.Total); e != nil {
 			break
 		}
 		var m struct {
+			CreatedAt, UpdatedAt  int64
 			Title, ParentUniqueID string
 			Type                  int
 			PageNameList          json.RawMessage
@@ -74,6 +82,7 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		if e = json.Unmarshal(raw, &m); e != nil {
 			break
 		}
+		v.CreatedAt, v.ModifiedAt = m.CreatedAt, m.UpdatedAt
 		v.Title = m.Title
 		if v.Title == "" {
 			v.Title = "Untitled"
@@ -89,14 +98,14 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		failure(w, errors.New("notebook inventory read failed"))
 		return
 	}
-	link := func(n int) string { q := r.URL.Query(); q.Set("offset", strconv.Itoa(n)); return "/boox?" + q.Encode() }
-	if len(d.Entries) > 60 {
-		d.Entries = d.Entries[:60]
-		d.Next = link(offset + 60)
+	if len(d.Entries) == 0 && offset > 0 {
+		q := r.URL.Query()
+		q.Del("offset")
+		http.Redirect(w, r, "/boox?"+q.Encode(), http.StatusSeeOther)
+		return
 	}
-	if offset > 0 {
-		d.Previous = link(max(0, offset-60))
-	}
+	d.Listing.Finish(r.URL.Query(), "/boox", d.Listing.Total)
+	d.Next, d.Previous = d.Listing.Next, d.Listing.Previous
 	seen := map[string]bool{}
 	parent := d.Folder
 	for parent != "" && !seen[parent] && len(d.Crumbs) < 30 {
@@ -150,7 +159,7 @@ func (s Service) notebookSnapshot(ctx context.Context, id string) (notebookSnaps
 		return out, e
 	}
 	h := sha256.New()
-	h.Write([]byte("boox-preview-v1\x00" + out.Revision))
+	h.Write([]byte("boox-preview-v2\x00" + out.Revision))
 	for rows.Next() {
 		var v assetBinding
 		if e = rows.Scan(&v.Key, &v.SHA, &v.Bytes); e != nil {

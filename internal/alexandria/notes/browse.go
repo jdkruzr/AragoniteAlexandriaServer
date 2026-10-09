@@ -35,15 +35,15 @@ type Entry struct {
 	Status                string // notebooks: blank, partial or indexed
 }
 
-// notebookModified is the newest change to the notebook, its live pages or
-// their live ink (HLC op_ts values are milliseconds).
+// notebookModified includes content edits and deletions, not recognition jobs.
+// Retained tombstones contribute their source HLC timestamps (milliseconds).
 const notebookModified = `GREATEST(n.lww_wall_ts,
-	COALESCE((SELECT MAX(p.lww_wall_ts) FROM fn_page p WHERE p.notebook_id = n.id AND p.deleted_at IS NULL), 0),
-	COALESCE((SELECT MAX(s.lww_wall_ts) FROM fn_stroke s JOIN fn_page p2 ON p2.id = s.page_id
-		WHERE p2.notebook_id = n.id AND p2.deleted_at IS NULL AND s.deleted_at IS NULL), 0))`
+ COALESCE((SELECT MAX(p.lww_wall_ts) FROM fn_page p WHERE p.notebook_id=n.id),0),
+ COALESCE((SELECT MAX(t.lww_wall_ts) FROM fn_text_box t JOIN fn_page p ON p.id=t.page_id WHERE p.notebook_id=n.id),0),
+ COALESCE((SELECT MAX(s.lww_wall_ts) FROM fn_stroke s JOIN fn_page p ON p.id=s.page_id WHERE p.notebook_id=n.id),0))`
 
-// Folder lists one folder ("" = root): its breadcrumb, then folders and
-// notebooks, each group sorted by sortField (name, created, modified, pages).
+// Folder lists one folder ("" = root), with stable ordering across folders
+// and notebooks by sortField (name, created, modified, pages).
 func Folder(ctx context.Context, db pg.Querier, folderID, sortField, order string) ([]Crumb, []Entry, error) {
 	crumbs, err := folderPath(ctx, db, folderID)
 	if err != nil {
@@ -96,9 +96,9 @@ func Folder(ctx context.Context, db pg.Querier, folderID, sortField, order strin
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
-	sortEntries(folders, sortField, order)
-	sortEntries(notebooks, sortField, order)
-	return crumbs, append(folders, notebooks...), nil
+	entries := append(folders, notebooks...)
+	sortEntries(entries, sortField, order)
+	return crumbs, entries, nil
 }
 
 func sortEntries(entries []Entry, field, order string) {
@@ -114,6 +114,21 @@ func sortEntries(entries []Entry, field, order string) {
 		return strings.ToLower(entries[i].Name) < strings.ToLower(entries[j].Name)
 	}
 	sort.SliceStable(entries, func(i, j int) bool {
+		if field == "created" || field == "modified" {
+			a, b := entries[i].CreatedAt, entries[j].CreatedAt
+			if field == "modified" {
+				a, b = entries[i].ModifiedAt, entries[j].ModifiedAt
+			}
+			if a <= 0 && b > 0 {
+				return false
+			}
+			if b <= 0 && a > 0 {
+				return true
+			}
+		}
+		if !less(i, j) && !less(j, i) {
+			return entries[i].ID < entries[j].ID
+		}
 		if order == "desc" {
 			return less(j, i)
 		}

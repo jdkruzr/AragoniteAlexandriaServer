@@ -177,7 +177,14 @@ func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []str
 			}
 		}
 		if sp.MatrixValues != "" {
-			if json.Unmarshal([]byte(sp.MatrixValues), &s.MatrixValues) != nil || len(s.MatrixValues) != 9 {
+			if json.Unmarshal([]byte(sp.MatrixValues), &s.MatrixValues) != nil {
+				var wrapped struct{ Values []float64 }
+				if json.Unmarshal([]byte(sp.MatrixValues), &wrapped) != nil {
+					return nil, nil, fmt.Errorf("unsupported shape transform")
+				}
+				s.MatrixValues = wrapped.Values
+			}
+			if len(s.MatrixValues) != 9 {
 				return nil, nil, fmt.Errorf("unsupported shape transform")
 			}
 			for _, v := range s.MatrixValues {

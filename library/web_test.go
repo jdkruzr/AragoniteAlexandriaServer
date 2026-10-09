@@ -219,3 +219,15 @@ func TestDevicesPageListsAndRevokes(t *testing.T) {
 		t.Fatal("revoked state not shown")
 	}
 }
+
+func TestDirectBOOXBrowserLinkChallengesForOwnerLogin(t *testing.T) {
+	r, _, _ := fixture(t)
+	r.cfg.NativeBOOX = &NativeBOOXConfig{PublicURL: "http://library.test", Database: "neocloud"}
+	b := browser{t, r}
+	for _, path := range []string{"/boox", "/boox/notebook?id=missing"} {
+		w := b.do("GET", path, "", nil, false)
+		if w.Code != 401 || !strings.Contains(w.Header().Get("WWW-Authenticate"), "Basic realm=") {
+			t.Fatalf("%s: %d missing login challenge", path, w.Code)
+		}
+	}
+}

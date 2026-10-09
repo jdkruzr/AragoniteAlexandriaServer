@@ -22,3 +22,5 @@
 </main></div>
 </body>
 </html>
+
+{{define "pagination"}}<nav class="pagination" aria-label="Results pages"><span>{{if .Total}}{{.Start}}–{{.End}} of {{.Total}}{{else}}0 results{{end}} · Page {{.Page}} of {{.Pages}}</span>{{if .Previous}}<a class="button" href="{{.Previous}}">Previous</a>{{end}}{{if .Next}}<a class="button" href="{{.Next}}">Next</a>{{end}}</nav>{{end}}
