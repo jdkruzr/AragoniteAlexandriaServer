@@ -67,6 +67,8 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch r.URL.Path {
+	case "/boox/audio":
+		s.audioRecoveryHTTP(w, r)
 	case "/boox/reading/refresh":
 		s.readerRefreshHTTP(w, r)
 	case "/boox/books/upload":
