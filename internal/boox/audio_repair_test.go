@@ -90,7 +90,8 @@ func TestONY1AudioCompatibilityValidation(t *testing.T) {
 func TestAudioRepairPreservesOriginalAndConsistentOSS(t *testing.T) {
 	s := testService(t)
 	ctx := context.Background()
-	credentials := getSTS(t, s, enrollTest(t, s, uuid.NewString()))
+	profile := enrollTest(t, s, uuid.NewString())
+	credentials := getSTS(t, s, profile)
 	doc := "synthetic-audio-note"
 	key := s.uid() + "/note/" + doc + "/resource/data/synthetic.mp3"
 	body := map[string]any{"_id": doc, "_rev": "1-test", "uniqueId": doc, "user": s.uid(), "dbId": s.uid() + "-NOTE_TREE", "type": 1, "status": 1, "title": "Synthetic audio"}
@@ -176,8 +177,25 @@ func TestAudioRepairPreservesOriginalAndConsistentOSS(t *testing.T) {
 	}))
 	defer server.Close()
 	s.Config.GatewayAdminURL = server.URL
-	if _, err = s.DB.ExecContext(ctx, `UPDATE boox_operation SET state='queued' WHERE id=$1`, id); err != nil {
-		t.Fatal(err)
+	form := url.Values{"documentId": {doc}, "operationId": {id}}
+	req := httptest.NewRequest("POST", "/boox/audio", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	guard := httptest.NewRecorder()
+	s.Admin(guard, req)
+	if guard.Code != 403 {
+		t.Fatal("missing origin", guard.Code)
+	}
+	req = httptest.NewRequest("POST", "/boox/audio", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", s.Config.PublicURL)
+	guard = httptest.NewRecorder()
+	s.Admin(guard, req)
+	if guard.Code != 303 {
+		t.Fatal("web publish", guard.Code, guard.Body.String())
+	}
+	before := request(t, s, "GET", "/api/v1/boox/device/audio-recovery?operation="+id, nil, map[string]string{"Authorization": "Bearer " + profile["companionToken"].(string)})
+	if before.Code != 409 {
+		t.Fatal("unpublished repair exposed", before.Code)
 	}
 	for i := 0; i < 2; i++ {
 		if _, err = s.PublishOne(ctx); err != nil {
@@ -208,6 +226,7 @@ func TestAudioRepairPreservesOriginalAndConsistentOSS(t *testing.T) {
 	if err = s.DB.QueryRowContext(ctx, `SELECT sha256 FROM boox_blob_version WHERE id=$1`, originalVersion).Scan(&retainedSHA); err != nil || retainedSHA != hash(raw) {
 		t.Fatal("original history changed")
 	}
+	checkAudioRecoveryDelivery(t, s, profile, id, doc, originalVersion, raw)
 	input["idempotencyKey"] = uuid.NewString()
 	if w = call(true); w.Code != 409 {
 		t.Fatal("stale asset accepted", w.Code)

@@ -297,6 +297,10 @@ func (s Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			failure(w, e)
 			return
 		}
+		if r.URL.Path == "/api/v1/boox/device/audio-recovery" {
+			s.audioRecoveryDevice(w, r)
+			return
+		}
 		if r.Method == "GET" && r.URL.Path == "/api/v1/boox/device/status" {
 			reply(w, 200, map[string]any{"deviceId": d.ID, "source": "boox_native_couchbase", "summary": "Native transport is configured. Editor application remains unverified.", "application": "unverified"})
 			return
