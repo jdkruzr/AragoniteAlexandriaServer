@@ -31,16 +31,16 @@ func NewGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Durat
 	return newGateway(db, mainAddr, spcAddr, shutdownTimeout, jobEnqueuer, logger, nil)
 }
 
-func NewRuntimeGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Duration, handler http.Handler, logger *slog.Logger) *Gateway {
-	return newGateway(db, mainAddr, spcAddr, shutdownTimeout, nil, logger, handler)
+func NewRuntimeGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Duration, handler http.Handler, logger *slog.Logger, readiness ...func(context.Context) error) *Gateway {
+	return newGateway(db, mainAddr, spcAddr, shutdownTimeout, nil, logger, handler, readiness...)
 }
 
-func newGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Duration, jobEnqueuer api.JobEnqueuer, logger *slog.Logger, libraryHandler http.Handler) *Gateway {
+func newGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Duration, jobEnqueuer api.JobEnqueuer, logger *slog.Logger, libraryHandler http.Handler, readiness ...func(context.Context) error) *Gateway {
 	registry := prometheus.NewRegistry()
 	metrics := NewMetrics(registry)
 	mainMux := http.NewServeMux()
 	mainMux.Handle("GET /metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
-	registerProbes(mainMux, db)
+	registerProbes(mainMux, db, readiness...)
 	protected := http.NewServeMux()
 	api.Tasks{Store: tasks.NewStore(db)}.Register(protected)
 	api.Jobs{Service: jobEnqueuer}.Register(protected)
@@ -55,7 +55,7 @@ func newGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Durat
 		mainMux.Handle("/", libraryHandler)
 	}
 	spcMux := http.NewServeMux()
-	registerProbes(spcMux, db)
+	registerProbes(spcMux, db, readiness...)
 	spcMux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotImplemented, map[string]string{"error": "SPC protocol port not yet enabled"})
 	})
@@ -92,7 +92,7 @@ func (g *Gateway) Run(ctx context.Context) error {
 	return nil
 }
 
-func registerProbes(mux *http.ServeMux, db *sql.DB) {
+func registerProbes(mux *http.ServeMux, db *sql.DB, readiness ...func(context.Context) error) {
 	mux.HandleFunc("GET /livez", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "alive"})
 	})
@@ -105,6 +105,13 @@ func registerProbes(mux *http.ServeMux, db *sql.DB) {
 		if err := database.Ready(ctx, db); err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
 			return
+		}
+		for _, check := range readiness {
+			if err := check(ctx); err != nil {
+				// Public probes must not disclose upstream addresses, credentials or bodies.
+				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})

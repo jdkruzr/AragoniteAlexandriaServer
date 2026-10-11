@@ -395,6 +395,7 @@ type apiToken struct {
 }
 
 func (d Deps) settingsRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /settings/password", d.changePassword)
 	mux.HandleFunc("GET /settings", func(w http.ResponseWriter, r *http.Request) { d.settingsPage(w, r, nil) })
 	mux.HandleFunc("POST /settings/caldav", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("collection"))
@@ -538,6 +539,6 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, override *pro
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	d.render(w, r, "settings", "Settings", "settings", map[string]any{
-		"Collection": collection, "DueMode": due, "Tokens": tokens, "NewToken": r.URL.Query().Get("new_token") != "",
+		"LocalPasswords": d.LocalPasswords, "Collection": collection, "DueMode": due, "Tokens": tokens, "NewToken": r.URL.Query().Get("new_token") != "",
 		"Providers": providerView, "Status": d.Status, "CalDAV": taskhost.Prefix + "/user/calendars/tasks/", "OAuthLabel": oauth.TokenLabel})
 }

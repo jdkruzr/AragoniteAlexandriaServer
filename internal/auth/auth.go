@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -37,6 +38,43 @@ func (s *Store) SetUser(ctx context.Context, username, password string) error {
 		ON CONFLICT(username) DO UPDATE SET password_hash=EXCLUDED.password_hash,updated_at=now()`, username, string(hash))
 	return err
 }
+
+// ChangePassword requires the current secret and compare-and-swaps the hash so
+// a simultaneous operator reset cannot be overwritten by a stale form.
+func (s *Store) ChangePassword(ctx context.Context, username, current, next string) error {
+	if utf8.RuneCountInString(next) < 12 || len(next) > 72 {
+		return ErrPasswordPolicy
+	}
+	var old string
+	if err := s.db.QueryRowContext(ctx, "SELECT password_hash FROM alexandria_users WHERE username=$1", username).Scan(&old); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrCurrentPassword
+		}
+		return err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(old), []byte(current)) != nil {
+		return ErrCurrentPassword
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(next), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	result, err := s.db.ExecContext(ctx, "UPDATE alexandria_users SET password_hash=$1,updated_at=now() WHERE username=$2 AND password_hash=$3", string(hash), username, old)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return ErrCurrentPassword
+	}
+	return nil
+}
+
+var ErrPasswordPolicy = errors.New("Use at least 12 characters and at most 72 UTF-8 bytes.")
+var ErrCurrentPassword = errors.New("Current password is incorrect or has changed. Reload and try again.")
 
 func (s *Store) CreateToken(ctx context.Context, label string) (string, error) {
 	label = strings.TrimSpace(label)

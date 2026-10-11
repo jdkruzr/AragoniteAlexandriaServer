@@ -1,5 +1,17 @@
 {{define "content"}}{{$d := .Data}}
 <h1>Settings</h1>
+{{if $d.LocalPasswords}}
+<section>
+<h2>Change password</h2>
+<form method="post" action="/settings/password" class="stack">
+<label>Current password <input type="password" name="current_password" autocomplete="current-password" required></label>
+<label>New password <input type="password" name="new_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+<label>Confirm new password <input type="password" name="confirm_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+<p class="muted">Use at least 12 characters (up to 72 UTF-8 bytes). Your browser may ask you to sign in again afterward. Device enrollment and API tokens are unchanged.</p>
+<button>Change password</button>
+</form>
+</section>
+{{end}}
 {{if $d.Providers}}{{$p := $d.Providers}}
 <section>
 <h2>Recognition and semantic search</h2>

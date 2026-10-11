@@ -306,7 +306,11 @@ func runService(logger *slog.Logger) error {
 		return err
 	}
 	defer runtime.Close()
-	gateway := server.NewRuntimeGateway(db, cfg.ListenAddr, cfg.SPCListenAddr, cfg.ShutdownTimeout, runtime, logger)
+	readiness := []func(context.Context) error{objectStore.CheckBucket}
+	if native != nil {
+		readiness = append(readiness, native.CheckReady)
+	}
+	gateway := server.NewRuntimeGateway(db, cfg.ListenAddr, cfg.SPCListenAddr, cfg.ShutdownTimeout, runtime, logger, readiness...)
 	work := func(ctx context.Context) error {
 		timer := time.NewTimer(0)
 		defer timer.Stop()

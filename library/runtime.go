@@ -385,7 +385,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		return recognition.Notebook{}, errors.New("Unknown source")
 	}
-	mux.Handle("/", web.Handler(web.Deps{RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status}))
+	mux.Handle("/", web.Handler(web.Deps{LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {

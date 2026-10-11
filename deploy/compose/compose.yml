@@ -20,6 +20,8 @@ services:
 
   seaweedfs:
     image: docker.io/chrislusf/seaweedfs:3.85
+    # Observed clean shutdown exceeds Docker's default ten-second grace period.
+    stop_grace_period: 60s
     # Without an identity file SeaweedFS accepts any credentials; generate one from .env so the
     # bucket requires the same key pair the server uses. The secret never lands in the image.
     environment:
