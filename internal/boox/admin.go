@@ -106,6 +106,8 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_, _ = w.Write(exact)
+	case r.URL.Path == "/api/v1/boox/admin/audio-repair-preview" && r.Method == "POST":
+		s.audioRepairPreview(w, r)
 	case r.URL.Path == "/api/v1/boox/admin/repair-preview" && r.Method == "POST":
 		s.repairPreview(w, r)
 	case r.URL.Path == "/api/v1/boox/admin/assets" && r.Method == "GET":

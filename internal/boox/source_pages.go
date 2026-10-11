@@ -21,15 +21,15 @@ type readingView struct {
 	Next, Previous string
 }
 
-var readingTemplate = template.Must(template.New("reading").Funcs(template.FuncMap{"ms": listview.Date}).Parse(`{{define "content"}}{{$d:=.Data}}<h1>Reading</h1><p class="muted">Native book metadata, highlights and bookmarks. Native page values retain the device’s meaning; missing source dates are shown as —.</p>{{template "pagination" $d.Listing}}
+var readingTemplate = template.Must(template.New("reading").Funcs(template.FuncMap{"ms": listview.Date}).Parse(`{{define "content"}}{{$d:=.Data}}<h1>Reading</h1><p><a class="button" href="/boox/books/upload">Upload a book</a></p><p class="muted">Native book metadata, highlights and bookmarks. Native page values retain the device’s meaning; missing source dates are shown as —.</p>{{template "pagination" $d.Listing}}
 <div class="table-scroll"><table class="dated-list"><thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">Title{{$d.Listing.Indicator "name"}}</a></th><th>Kind</th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th></tr></thead><tbody>
-{{range $d.Items}}<tr><td>{{.Title}}<details><summary>Reading details</summary>{{if .Page}}<p>Native page value: {{.Page}}</p>{{end}}{{if .Progress}}<p>Native progress: {{.Progress}}</p>{{end}}{{if .Quote}}<blockquote>{{.Quote}}</blockquote>{{end}}{{if .Note}}<p>{{.Note}}</p>{{end}}<a href="/api/v1/boox/admin/history?documentId={{.ID}}">Observed versions</a></details></td><td>{{.Kind}}</td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td></tr>{{else}}<tr><td colspan="4">No matching reading records have arrived.</td></tr>{{end}}
+{{range $d.Items}}<tr><td>{{.Title}}<details><summary>Reading details</summary>{{if .Page}}<p>Native page value: {{.Page}}</p>{{end}}{{if .Progress}}<p>Native progress: {{.Progress}}</p>{{end}}{{if .Quote}}<blockquote>{{.Quote}}</blockquote>{{end}}{{if .Note}}<p>{{.Note}}</p>{{end}}<a href="/api/v1/boox/admin/history?documentId={{.ID}}">Observed versions</a>{{if eq .Kind "Book"}} · <a href="/boox/reading/refresh?record={{.ID}}">Refresh received reading data</a>{{end}}</details></td><td>{{.Kind}}</td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td></tr>{{else}}<tr><td colspan="4">No matching reading records have arrived.</td></tr>{{end}}
 </tbody></table></div>{{template "pagination" $d.Listing}}{{end}}`))
 
 func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	state := listview.Parse(r.URL.Query())
 	offset := state.Offset
-	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,body,count(*) OVER() FROM boox_projection WHERE domain='reading' AND native_uid=$1 AND body->>'modeType' IN ('1','2','4') AND coalesce(body->>'status','1')='1' AND ($2='' OR document_id=$2) ORDER BY `+state.NativeOrder()+` LIMIT 60 OFFSET $3`, s.uid(), r.URL.Query().Get("record"), offset)
+	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,body,count(*) OVER() FROM boox_projection WHERE domain='reading' AND native_uid=$1 AND body->>'modeType' IN ('1','2','4') AND coalesce(body->>'status','0')='0' AND ($2='' OR document_id=$2) ORDER BY `+state.NativeOrder()+` LIMIT 60 OFFSET $3`, s.uid(), r.URL.Query().Get("record"), offset)
 	if e != nil {
 		failure(w, e)
 		return

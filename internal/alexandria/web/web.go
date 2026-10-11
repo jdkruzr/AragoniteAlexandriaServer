@@ -74,6 +74,7 @@ type Status struct {
 }
 
 type Deps struct {
+	LocalPasswords     bool
 	RecognitionCatalog recognition.Catalog
 	Providers          *providers.Store
 	DB                 pg.DB
@@ -208,7 +209,7 @@ func sourceTab(path, section string) string {
 		return section
 	}
 	switch path {
-	case "/boox/reading":
+	case "/boox/reading", "/boox/books/upload":
 		return "reading"
 	case "/boox/devices", "/boox/enroll":
 		return "devices"

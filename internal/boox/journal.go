@@ -161,6 +161,17 @@ func (s Service) PublishOne(ctx context.Context) (bool, error) {
 		return true, e
 	}
 	var live map[string]any
+	if kind == "upload_book" && state == "queued" {
+		live, e = s.publishBookRecord(ctx, tx, id, doc, payload)
+		if e != nil {
+			return true, e
+		}
+		_, e = tx.ExecContext(ctx, `UPDATE boox_operation SET state='record_published',published_revision=$2,updated_at=now() WHERE id=$1`, id, live["_rev"])
+		if e != nil {
+			return true, e
+		}
+		state = "record_published"
+	}
 	if e = s.Config.gateway(ctx, "GET", "/"+url.PathEscape(doc), nil, &live); e != nil {
 		return true, e
 	}
