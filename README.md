@@ -4,26 +4,28 @@
 
 # Aragonite Alexandria Server
 
-Aragonite Alexandria Server is the cloud-native successor to UltraBridge: a portable bridge
-for e-ink notes, tasks, search, and processing. It is being built in a separate
-repository so the existing UltraBridge installation can remain boring,
-dependable, and entirely uninvolved in architectural experiments.
+Aragonite Alexandria Server synchronizes notes and reading data from supported
+applications and e-ink devices, with a web interface for browsing, search, tasks
+and handwriting recognition. It supports self-hosted and managed deployments.
+Alexandria Client and native BOOX applications connect through separate sync
+interfaces while sharing server features.
 
-> **Status: foundation under active development.** PostgreSQL migrations,
-> durable leased jobs, S3-compatible blobs, process roles, probes/metrics,
-> migration preflight, Compose, Helm, and the AWS deployment foundation exist.
-> Device protocols and the end-user application have not reached parity and
-> this project must not replace UltraBridge yet.
+> **Status: active development.** Alexandria Client sync, native BOOX sync,
+> source browsing, recognition jobs and standalone deployment are implemented.
+> reMarkable and Supernote connectors remain planned; full UltraBridge parity
+> is not claimed. See the [source and data-store architecture](docs/architecture.md)
+> for implemented boundaries and planned interfaces.
 
 ## Architectural Contract
 
-- PostgreSQL plus `pgvector` is the only production metadata store.
+- Alexandria-managed metadata and search use PostgreSQL plus `pgvector`.
+  Native BOOX replication additionally uses Couchbase Server and Sync Gateway.
 - S3-compatible object storage is the only production blob contract.
 - Pods and cloud tasks use local disk only for disposable scratch space.
 - Jobs are durable, leased, idempotent records. AWS Batch and Kubernetes are
   execution mechanisms, never the source of truth.
-- Vendor WebSockets are wake-up hints. A missed notification cannot invalidate
-  or lose durable sync state.
+- Notification sockets are wake-up hints; native BOOX CBL/BLIP sockets carry
+  replication data. Durable state remains in the owning source repository.
 - AWS-specific code stays in infrastructure and adapter packages.
 
 See [Architecture](docs/architecture.md), [development guide](docs/development.md),
@@ -86,6 +88,8 @@ vertical slice, not an assertion of UltraBridge feature parity.
 
 The AWS module expects an existing VPC, subnets, DNS management, and ACM
 certificate. It does not create a surprise network architecture on your behalf.
+The [AWS architecture diagrams](docs/architecture-aws.md) map the complete target
+design to AWS services and mark remaining deployment work as **To be implemented**.
 First-run management tasks and credential cutover are described in
 [deployment setup](docs/deployment-identity-upgrade.md). Neither standalone
 deployment requires the separate Hosting repository or subscriptions.

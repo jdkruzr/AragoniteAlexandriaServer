@@ -5,21 +5,27 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility"
 )
 
 type sourceMatch struct{ Title, Snippet, URL, Kind string }
 
 func (d Deps) searchBOOX(ctx context.Context, q string) ([]sourceMatch, error) {
-	rows, e := d.DB.QueryContext(ctx, `SELECT document_id,domain,coalesce(body->>'title',body->>'name','Untitled'),coalesce(body->>'quote',''),coalesce(body->>'documentId',''),coalesce(body->>'modeType','') FROM boox_projection WHERE (domain='notebook' AND body->>'type'='1' AND body->>'uniqueId'=document_id AND NOT body ? 'commitType' OR domain='reading' AND body->>'modeType' IN ('1','2','4')) AND coalesce(body->>'status','1')='1' AND (strpos(lower(coalesce(body->>'title',body->>'name','')),lower($1))>0 OR domain='reading' AND strpos(lower(coalesce(body->>'quote','')||' '||coalesce(body->>'note','')),lower($1))>0) ORDER BY domain,lower(body->>'title'),document_id LIMIT 50`, q)
+	rows, e := d.DB.QueryContext(ctx, `SELECT p.document_id,p.domain,coalesce(p.body->>'title',p.body->>'name','Untitled'),coalesce(p.body->>'quote','')
+ FROM boox_projection p WHERE (`+booxvisibility.Notebook("p")+` OR `+booxvisibility.Reading("p")+`)
+ AND (strpos(lower(coalesce(p.body->>'title',p.body->>'name','')),lower($1))>0
+ OR p.domain='reading' AND strpos(lower(coalesce(p.body->>'quote','')||' '||coalesce(p.body->>'note','')),lower($1))>0)
+ ORDER BY p.domain,lower(p.body->>'title'),p.document_id LIMIT 50`, q)
 	if e != nil {
 		return nil, e
 	}
 	defer rows.Close()
 	var out []sourceMatch
 	for rows.Next() {
-		var id, domain, parent, mode string
+		var id, domain string
 		var m sourceMatch
-		if e = rows.Scan(&id, &domain, &m.Title, &m.Snippet, &parent, &mode); e != nil {
+		if e = rows.Scan(&id, &domain, &m.Title, &m.Snippet); e != nil {
 			return nil, e
 		}
 		if domain == "notebook" {
@@ -38,7 +44,7 @@ func (d Deps) searchBOOX(ctx context.Context, q string) ([]sourceMatch, error) {
 		return nil, e
 	}
 	rows.Close()
-	indexed, e := d.DB.QueryContext(ctx, `SELECT p.notebook_id,p.page_number,coalesce(n.body->>'title','Untitled'),left(p.text,500) FROM boox_page_index p JOIN boox_projection n ON n.document_id=p.notebook_id WHERE p.state='ready' AND n.domain='notebook' AND n.body->>'status'='1' AND n.body->>'type'='1' AND to_tsvector('simple',p.text) @@ plainto_tsquery('simple',$1) ORDER BY p.updated_at DESC,p.notebook_id,p.page_number LIMIT 50`, q)
+	indexed, e := d.DB.QueryContext(ctx, `SELECT p.notebook_id,p.page_number,coalesce(n.body->>'title','Untitled'),left(p.text,500) FROM boox_page_index p JOIN boox_projection n ON n.document_id=p.notebook_id WHERE p.state='ready' AND `+booxvisibility.Notebook("n")+` AND to_tsvector('simple',p.text) @@ plainto_tsquery('simple',$1) ORDER BY p.updated_at DESC,p.notebook_id,p.page_number LIMIT 50`, q)
 	if e != nil {
 		return nil, e
 	}

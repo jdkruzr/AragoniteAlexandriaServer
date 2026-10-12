@@ -189,8 +189,8 @@ func TestBookUploadOriginAndReadingVisibility(t *testing.T) {
 		id           string
 		mode, status int
 	}{{"livebook", 4, 0}, {"deletedbook", 4, 1}, {"livehighlight", 1, 0}, {"deletedhighlight", 1, 1}, {"livebookmark", 2, 0}, {"deletedbookmark", 2, 1}} {
-		b, _ := json.Marshal(map[string]any{"modeType": v.mode, "status": v.status, "title": v.id})
-		if _, e := s.DB.ExecContext(context.Background(), `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'1-x','reading','',$2,$3)`, v.id, s.uid(), b); e != nil {
+		b, _ := json.Marshal(map[string]any{"uniqueId": v.id, "documentId": "livebook", "modeType": v.mode, "status": v.status, "title": v.id})
+		if _, e := s.DB.ExecContext(context.Background(), `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'1-x','reading','',$2,$3)`, s.uid()+"#"+v.id, s.uid(), b); e != nil {
 			t.Fatal(e)
 		}
 	}
