@@ -3,6 +3,7 @@ package boox
 import (
 	"encoding/json"
 	"errors"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility"
 	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 	"html/template"
 	"net/http"
@@ -29,7 +30,7 @@ var readingTemplate = template.Must(template.New("reading").Funcs(template.FuncM
 func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	state := listview.Parse(r.URL.Query())
 	offset := state.Offset
-	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,body,count(*) OVER() FROM boox_projection WHERE domain='reading' AND native_uid=$1 AND body->>'modeType' IN ('1','2','4') AND coalesce(body->>'status','0')='0' AND ($2='' OR document_id=$2) ORDER BY `+state.NativeOrder()+` LIMIT 60 OFFSET $3`, s.uid(), r.URL.Query().Get("record"), offset)
+	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,body,count(*) OVER() FROM boox_projection p WHERE `+booxvisibility.Reading("p")+` AND native_uid=$1 AND ($2='' OR document_id=$2) ORDER BY `+state.NativeOrder()+` LIMIT 60 OFFSET $3`, s.uid(), r.URL.Query().Get("record"), offset)
 	if e != nil {
 		failure(w, e)
 		return
