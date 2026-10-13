@@ -62,7 +62,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/files/forestnote/books":                               "No books yet",
 		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, page 1",
 		"/tasks":                                                "Nothing to do",
-		"/settings/devices":                                     "<h2>Connect a device</h2>",
+		"/files/forestnote/devices":                             "<h2>Connect a device</h2>",
 		"/settings/integrations":                                "/caldav/user/calendars/tasks/",
 		"/help":                                                 "Handwriting recognition",
 		"/":                                                     "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
@@ -206,18 +206,21 @@ func TestDevicesPageListsAndRevokes(t *testing.T) {
 	if got := enroll(r, `{"site_id":"`+site+`","token_hash":"`+hash+`"}`, nil); got.Code != 204 {
 		t.Fatal(got.Code)
 	}
-	got := b.do("GET", "/settings/devices", "", nil, true)
+	if old := b.do("GET", "/settings/devices", "", nil, true); old.Code != 301 || old.Header().Get("Location") != "/files/forestnote/devices" {
+		t.Fatalf("old devices path: %d %s", old.Code, old.Header().Get("Location"))
+	}
+	got := b.do("GET", "/files/forestnote/devices", "", nil, true)
 	if got.Code != 200 || !strings.Contains(got.Body.String(), site) || !strings.Contains(got.Body.String(), "Active") {
 		t.Fatalf("devices: %d %s", got.Code, got.Body)
 	}
-	if got := b.do("POST", "/settings/devices/revoke", "site_id="+site, sameSite, true); got.Code != 303 {
+	if got := b.do("POST", "/settings/devices/revoke", "site_id="+site, sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/files/forestnote/devices") {
 		t.Fatalf("revoke: %d", got.Code)
 	}
 	var revoked bool
 	if err := db.QueryRow(`SELECT revoked FROM sync_device_identity WHERE site_id=$1`, site).Scan(&revoked); err != nil || !revoked {
 		t.Fatal("not revoked", err)
 	}
-	if got := b.do("GET", "/settings/devices", "", nil, true); !strings.Contains(got.Body.String(), "Revoked") {
+	if got := b.do("GET", "/files/forestnote/devices", "", nil, true); !strings.Contains(got.Body.String(), "Revoked") {
 		t.Fatal("revoked state not shown")
 	}
 }

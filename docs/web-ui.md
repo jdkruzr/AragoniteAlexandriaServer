@@ -11,7 +11,14 @@ templates in `internal/boox/*.go`, grafted into the same layout by
 - **Global nav:** Library · Search · Tasks · Recognition (`/jobs`) · Settings,
   plus Help at the right.
 - **Sources sidebar:** Alexandria Client, BOOX, + Add source. Each source has
-  its own tabs; BOOX uses Notebooks · Reading · Devices · Settings.
+  its own tabs. The Client uses Notebooks · Books · Devices
+  (`/files/forestnote/devices`; the old `/settings/devices` URLs redirect or
+  alias) · Settings. BOOX uses Notebooks · Reading · Devices · Settings.
+- **Notebook viewers** for both sources show one page with previous/next, a
+  page-number jump, fit/actual zoom and a side panel for page text and
+  recognition. Client pages are addressed by stable page ID (`?page=<id>`, used
+  by search, tasks and MCP links); `n=<number>` jumps by number; `view=grid`
+  shows all pages.
   Diagnostics (`/boox/activity`) is linked from BOOX Settings rather than tabbed.
 - **Settings tabs:** Account (`/settings`), Search (`/settings/search`),
   Recognition (`/settings/recognition`), Tasks & integrations

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,7 +48,7 @@ func (d Deps) notebookRoutes(mux *http.ServeMux) {
 				d.fail(w, err)
 				return
 			}
-			d.render(w, r, "notebook", name, "notebooks", map[string]any{"ID": id, "Name": name, "Pages": pages, "Crumbs": crumbs, "Focus": q.Get("page")})
+			d.render(w, r, "notebook", name, "notebooks", notebookReader(id, name, pages, crumbs, q))
 			return
 		}
 		state := listing.Parse(q)
@@ -112,6 +113,56 @@ func (d Deps) notebookRoutes(mux *http.ServeMux) {
 		}
 		back(w, r, "/files/forestnote?notebook="+id, "Pages queued for recognition.")
 	})
+}
+
+// clientReader is one notebook opened at one page. Pages are addressed by
+// stable page ID (search, tasks and MCP links use ?page=<id>); n= jumps by
+// number. view=grid keeps the all-pages overview.
+type clientReader struct {
+	ID, Name, Zoom       string
+	Pages                []notes.Page
+	Crumbs               []notes.Crumb
+	Page                 notes.Page
+	Count                int
+	Grid                 bool
+	Previous, Next, Base string
+}
+
+func notebookReader(id, name string, pages []notes.Page, crumbs []notes.Crumb, q url.Values) clientReader {
+	v := clientReader{ID: id, Name: name, Pages: pages, Crumbs: crumbs, Count: len(pages), Grid: q.Get("view") == "grid", Zoom: "fit",
+		Base: "/files/forestnote?notebook=" + url.QueryEscape(id)}
+	if q.Get("zoom") == "actual" {
+		v.Zoom = "actual"
+	}
+	if len(pages) == 0 {
+		return v
+	}
+	at := 0
+	if n, err := strconv.Atoi(q.Get("n")); err == nil {
+		at = min(max(n, 1), len(pages)) - 1
+	} else if want := q.Get("page"); want != "" {
+		for i, p := range pages {
+			if p.ID == want {
+				at = i
+				break
+			}
+		}
+	}
+	v.Page = pages[at]
+	link := func(i int) string {
+		u := v.Base + "&page=" + url.QueryEscape(pages[i].ID)
+		if v.Zoom == "actual" {
+			u += "&zoom=actual"
+		}
+		return u
+	}
+	if at > 0 {
+		v.Previous = link(at - 1)
+	}
+	if at+1 < len(pages) {
+		v.Next = link(at + 1)
+	}
+	return v
 }
 
 var unsafeName = regexp.MustCompile(`[\x00-\x1f\x7f"\\/:*?<>|]`)
@@ -345,7 +396,12 @@ var ulid = func(s string) bool { return wire.IsULID(s) }
 
 func (d Deps) deviceRoutes(mux *http.ServeMux) {
 	store := func() relay.Store { return relay.Store{DB: d.DB} }
+	// Client devices live with their source. The old /settings/devices paths stay
+	// as aliases so bookmarks and forms rendered before an upgrade keep working.
 	mux.HandleFunc("GET /settings/devices", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/files/forestnote/devices", http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("GET /files/forestnote/devices", func(w http.ResponseWriter, r *http.Request) {
 		devices, err := store().ListDevices(r.Context())
 		if err != nil {
 			d.fail(w, err)
@@ -353,7 +409,7 @@ func (d Deps) deviceRoutes(mux *http.ServeMux) {
 		}
 		d.render(w, r, "devices", "Devices", "devices", map[string]any{"Devices": devices})
 	})
-	mux.HandleFunc("POST /settings/devices/{action}", func(w http.ResponseWriter, r *http.Request) {
+	deviceAction := func(w http.ResponseWriter, r *http.Request) {
 		site := r.FormValue("site_id")
 		if !ulid(site) {
 			http.Error(w, "unknown device", http.StatusBadRequest)
@@ -386,8 +442,10 @@ func (d Deps) deviceRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/settings/devices", notice)
-	})
+		back(w, r, "/files/forestnote/devices", notice)
+	}
+	mux.HandleFunc("POST /files/forestnote/devices/{action}", deviceAction)
+	mux.HandleFunc("POST /settings/devices/{action}", deviceAction)
 }
 
 // --- Settings: CalDAV and API tokens ---

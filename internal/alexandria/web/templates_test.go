@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"io/fs"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -39,7 +40,7 @@ func TestDataTemplatesExecute(t *testing.T) {
 		"book": books.LibraryBookDetail{Book: books.LibraryBook{ID: "b", Title: "T", Authors: "A", Format: "PDF", FileState: "ready"},
 			Annotations: []books.LibraryAnnotation{{ID: "a", Sticky: true, Location: "Page 2", Passage: "p", Highlighted: true, InkStrokes: 1, RecognizedText: "r", TextSource: "Corrected by hand", Status: "s"}}, Truncated: true},
 		"books":     map[string]any{"Entries": []books.LibraryBook{{ID: "b", Title: "T", FileState: "uploading"}}, "Listing": listing.State{}},
-		"notebook":  map[string]any{"ID": "n", "Name": "N", "Pages": []notes.Page{{ID: "p", Number: 1, Key: "forestnote://n/p", BodyText: "x"}}, "Crumbs": []notes.Crumb{{ID: "f", Name: "F"}}, "Focus": "p"},
+		"notebook":  notebookReader("n", "N", []notes.Page{{ID: "p", Number: 1, Key: "forestnote://n/p", BodyText: "x"}, {ID: "q", Number: 2, Key: "forestnote://n/q"}}, []notes.Crumb{{ID: "f", Name: "F"}}, url.Values{"page": {"q"}}),
 		"notebooks": map[string]any{"Listing": listing.State{}, "Crumbs": nil, "Entries": []notes.Entry{{IsFolder: true, ID: "f", Name: "F"}, {ID: "n", Name: "N", Status: "partial", PageCount: 2}}, "Folder": "", "Sort": "name", "Order": "asc"},
 		"devices":   map[string]any{"Devices": []relay.Device{{SiteID: "S", Name: "Ocean", Enrolled: true, LastSeenMs: 1, FirstSeenMs: 1}, {SiteID: "R", Revoked: true, Enrolled: true}, {SiteID: "N", NeedsAdoption: true, Enrolled: true}}},
 		"authorize": map[string]any{"Request": oauth.Request{ClientName: "Claude", RedirectURI: "https://claude.ai/cb"}, "Query": "a=b"},
