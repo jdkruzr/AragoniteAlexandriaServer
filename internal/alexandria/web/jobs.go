@@ -95,6 +95,16 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			}
 			data["Notebook"] = n
 			data["Count"] = len(n.Pages)
+			// Optional prefill, e.g. "recognize this page" from a viewer.
+			from, _ := strconv.Atoi(r.URL.Query().Get("from"))
+			to, _ := strconv.Atoi(r.URL.Query().Get("to"))
+			if from < 1 || from > len(n.Pages) {
+				from = 1
+			}
+			if to < from || to > len(n.Pages) {
+				to = len(n.Pages)
+			}
+			data["From"], data["To"] = from, to
 			data["Version"] = n.Version()
 		} else {
 			query := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -120,7 +130,7 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			return
 		}
 		if d.Status.OCR == "" {
-			back(w, r, "/jobs/new", "Enable a recognition provider in Server settings first.")
+			back(w, r, "/jobs/new", "Turn on a recognition provider in Settings → Recognition first.")
 			return
 		}
 		if r.Form.Get("confirm") != "on" || d.RecognitionCatalog == nil {

@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -39,6 +40,7 @@ func previewPages() []previewPage {
 		{ID: "j2", Source: "client", Notebook: "c", Title: "Synthetic sketch", Number: 2, State: "failed", Detail: "Provider timed out", Attempts: 2, Created: now, Updated: now}}}
 	run := &recognition.Run{ID: "r", State: "review", Source: "boox", Created: now, Total: 3, Pages: 9, Unavailable: 1, Awaiting: 8,
 		Notebooks: []recognition.RunNotebook{{ID: "a", Title: "Synthetic planning", State: "ready", Pages: 4}, {ID: "b", Title: "Synthetic retro", State: "ready", Pages: 4}, {ID: "c", Title: "Synthetic missing", State: "unavailable", Detail: "Catalog unavailable"}}}
+	clientPages := []notes.Page{{ID: "p1", Number: 1, Key: "forestnote://n/p1", BodyText: "Agenda\n- storage pilot\n- budget review", Model: "vision-model"}, {ID: "p2", Number: 2, Key: "forestnote://n/p2"}, {ID: "p3", Number: 3, Key: "forestnote://n/p3", BodyText: "Follow-ups"}}
 	return []previewPage{
 		{"overview", "overview", "Library", "overview", "/", overviewData{NativeBOOX: true, OCR: true, JobsKnown: true, Active: 3, Failed: 1,
 			Client: SourceSummary{Notebooks: 4, Books: 2, Devices: 1, LastActivity: now.Add(-3 * time.Hour), ActivityLabel: "Last sync"},
@@ -55,6 +57,8 @@ func previewPages() []previewPage {
 		{"jobs-library-start", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Source": "boox", "NativeBOOX": true, "Enabled": true}},
 		{"jobs-library-review", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Run": run, "Source": "boox", "NativeBOOX": true, "Enabled": true}},
 		{"client-notebooks", "notebooks", "Notebooks", "notebooks", "/files/forestnote", map[string]any{"Listing": listing.State{}, "Entries": []notes.Entry{{IsFolder: true, ID: "f", Name: "Synthetic folder"}, {ID: "n", Name: "Synthetic notebook", Status: "partial", PageCount: 3, CreatedAt: 1, ModifiedAt: 2}}}},
+		{"client-notebook", "notebook", "Synthetic notebook", "notebooks", "/files/forestnote", notebookReader("n", "Synthetic notebook", clientPages, nil, url.Values{"page": {"p2"}})},
+		{"client-notebook-grid", "notebook", "Synthetic notebook", "notebooks", "/files/forestnote", notebookReader("n", "Synthetic notebook", clientPages, nil, url.Values{"view": {"grid"}})},
 		{"client-notebooks-empty", "notebooks", "Notebooks", "notebooks", "/files/forestnote", map[string]any{"Listing": listing.State{}}},
 		{"client-books", "books", "Books", "books", "/files/forestnote/books", map[string]any{"Listing": listing.State{}, "Entries": []books.LibraryBook{{ID: "b", Title: "Synthetic book", Authors: "A. Author", Format: "EPUB", FileState: "ready", ByteLength: 2 << 20}}}},
 		{"client-devices", "devices", "Client devices", "devices", "/settings/devices", map[string]any{"Devices": []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.UnixMilli(), FirstSeenMs: 1}}}},

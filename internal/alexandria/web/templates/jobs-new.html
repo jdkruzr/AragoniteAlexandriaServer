@@ -2,7 +2,7 @@
 {{if not $d.Enabled}}<p class="notice">Turn on handwriting recognition in <a href="/settings/recognition">Settings → Recognition</a> before queueing pages.</p>{{end}}
 {{if $d.Notebook}}{{$n := $d.Notebook}}<h2>{{$n.Title}}</h2><p>{{$d.Count}} pages · {{if eq $d.Source "boox"}}BOOX{{else}}Alexandria Client{{end}}</p>
 {{if $d.Count}}<form class="stack" method="post" action="/jobs/queue"><input type="hidden" name="source" value="{{$d.Source}}"><input type="hidden" name="notebook" value="{{$n.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="token" value="{{$d.Token}}">
-<label>First page <input type="number" name="from" value="1" min="1" max="{{$d.Count}}" required></label><label>Last page <input type="number" name="to" value="{{$d.Count}}" min="1" max="{{$d.Count}}" required></label>
+<label>First page <input type="number" name="from" value="{{$d.From}}" min="1" max="{{$d.Count}}" required></label><label>Last page <input type="number" name="to" value="{{$d.To}}" min="1" max="{{$d.Count}}" required></label>
 <label><input type="checkbox" name="force">Recognize again even if a matching result is cached</label>
 <p class="hint">Pages already queued, running or paused keep their existing jobs. BOOX pages without a complete preview wait until they can be drawn.</p>
 <label class="confirm"><input type="checkbox" name="confirm" required>I agree to send these pages to my configured recognition provider. Provider charges may apply.</label><button {{if not $d.Enabled}}disabled{{end}}>Queue selected pages</button></form>{{else}}<p class="empty">No pages available.</p>{{end}}
