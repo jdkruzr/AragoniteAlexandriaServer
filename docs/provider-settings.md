@@ -66,12 +66,58 @@ BOOX workers subsequently reject removed pages. It does not enroll untouched BOO
 pages. Unchanged inputs can still use cached recognition. BOOX text remains
 server-only; Alexandria client recognition can sync back to its client devices.
 
+## Semantic search panel (2026-10-12)
+
+Settings separates three independent states: **Saved provider**, **Semantic search**,
+and **Search index**. A reachable service with an installed model can show **Ready**
+while semantic search stays **Off** and the index is **Not built**. The optional
+Compose Ollama service supplies CPU-based Nomic embeddings; installing it does not
+opt the library into semantic search. Missing configuration, an unreachable service,
+and a missing model have distinct guidance. URL/model fields live under **Advanced
+semantic search settings** and require **Save provider settings** before panel actions
+use them. Unsaved connection-test form values never masquerade as saved state.
+
+Opening Settings checks only the saved Ollama `/api/tags` model list, with a two-second
+timeout, a bounded response and no redirects. It does not run inference, load/download
+a model or send notes. **Test saved connection** sends only a synthetic sentence.
+Model presence alone does not prove embedding support, so enabling/building also
+runs a synthetic embedding check before changing settings or queuing library text.
+
+**Enable and build index** updates the feature flag and queues available text in one
+transaction. A failed preflight or transaction leaves settings/index state intact.
+**Turn off** requires no provider connection: it disables semantic queries and pauses
+new embedding processing, retains vectors and queued work, and leaves keyword search
+available. In-flight requests may finish. It does not stop the Ollama service.
+**Turn on and resume** reuses a retained generation for the saved endpoint/model;
+a different provider requires a new build. The initial build and replacement build
+have different labels. Counts show searchable pages in the retained active index,
+outstanding pages (including failures), and failed pages. Use **Refresh status** to
+check progress and **Retry failed index work** when needed.
+
+Coverage is explicit per source: Alexandria Client page text, recognized BOOX pages,
+and BOOX reading records. Counts distinguish text available, embedded, pending and
+failed. Listed BOOX pages without current searchable text are counted separately;
+this can include blank, unprocessed and invalidated pages. Full book contents and
+Alexandria Client reading annotations are not part of semantic indexing. These controls do not trigger handwriting
+recognition. Semantic mutations preserve OCR configuration and encrypted credentials.
+They require owner authentication, same-origin forms and current settings revisions;
+ordinary API/MCP tokens cannot toggle this feature. No schema migration is needed.
+
+Synthetic PostgreSQL/S3 tests exercise rollback after a forced generation-insert
+failure, retained vectors/work across disable/resume, model changes, stale tabs,
+provider outages, owner/CSRF boundaries and read-only readiness probes. Browser
+previews cover desktop, narrow mobile and dark theme. The full fresh required
+PostgreSQL/S3 race suite and `go vet ./...` pass; the final wording adjustment also
+passes the focused panel integration test. Production read-only verification shows
+Ready / Off / Not built with unchanged configuration/credentials and zero index
+work. Ollama and storage services were not restarted.
+
 ## Semantic index generations
 
 Saving an embedding endpoint/model does not run a paid rebuild or switch the
 active vector space. **Build replacement index** explicitly queues current
-Alexandria client indexed text; it does not perform OCR. BOOX recognition remains
-keyword-searchable and is not yet part of the semantic index.
+available Client and BOOX text; it does not perform OCR. Recognition jobs remain
+a separate explicit action.
 
 The existing active generation remains searchable while the replacement builds.
 Each generation has its own endpoint/model and fixed observed dimension. Vectors
@@ -164,3 +210,107 @@ passed. Personal-VM deployment passed public readiness, authenticated Settings,
 key redaction, a synthetic test showing the new workspace diagnostic, and then
 successful live synthetic recognition plus workspace persistence. Private
 local logs: `/tmp/anthropic-workspace-{tests,form-tests,build,deploy}.log`.
+
+## BOOX library-wide recognition (2026-10-13)
+
+Open **Jobs → Recognize BOOX library… → Prepare library review** (also linked
+from BOOX Notebooks). Preparation inventories live notebooks in the current
+native account, across folders and devices. It resolves full page catalogs in
+the background, including notebooks whose native metadata truncates the list.
+It neither renders every page nor calls the recognition model. Close the browser
+and return through Jobs; the review and worker cursor are durable.
+
+Once preparation finishes, review notebook/page counts and unavailable catalogs.
+All available notebooks are selected by default; check **Exclude** to leave one
+out. The selection counts update as exclusions change. Retry unavailable
+catalogs after synchronization. Confirm sending the selected pages, then choose
+**Queue included notebooks**. Recognition must be enabled first. Leave forced
+recognition off to reuse matching cached results. No whole-library OCR starts
+merely by enabling recognition, visiting Jobs, or preparing a review.
+
+The library batch dispatches at most 100 pages per committed step. Notebook page
+identities/order are checked against the reviewed snapshot before each step;
+changed/deleted/incomplete catalogs are held as unavailable rather than adding
+unreviewed pages. New notebooks/pages need a new review. Already queued, running
+or paused jobs retain their original batch and are counted explicitly as skipped,
+not as successes. Each notebook has a page-job view, and the library view groups
+those batches into one progress display. A source change after dispatch is still
+handled by the page worker's normal visibility checks and result fencing.
+
+The current scope is notebook pages, including reading-associated notebooks.
+It excludes deleted notebooks, folders, book files and NeoReader annotation ink.
+Discovery is not a guarantee that every preview is complete: incomplete or
+unsupported page rendering blocks OCR and appears in the job details. Reviews
+support up to 10,000 notebooks and 20,000 discovered pages per notebook.
+
+Progress distinguishes preparation, undispatched pages, queued, processing,
+ready, failed, blocked, paused and cancelled work. Failed/blocked/cancelled outcomes
+never count as successful recognition. Library and page-job views offer live
+refresh; Jobs links recent library batches. Global Jobs hides superseded attempts
+by default, with **Include superseded attempts** for history. Batch views preserve
+their own outcomes; retry moves the replacement attempt into the same batch.
+
+**Pause library batch**, **Resume library batch**, **Retry failed and blocked
+pages**, and **Cancel unfinished** apply across its dispatched notebooks. Pause
+and cancellation also fence undispatched work and in-flight catalog completion.
+Transient page failures use exponential backoff and stop after five failed
+attempts. Provider authentication/request failures stop for intervention. An
+already-sent request can still incur charges; cancelled or paused late results
+cannot publish. Unavailable catalogs after confirmation require a fresh review.
+Preparation/dispatch leases recover after a worker restart; a committed dispatch
+cursor and page jobs are saved atomically, avoiding duplicate dispatch on resume.
+
+### Recognition image budget
+
+BOOX and Alexandria Client recognition images share a deterministic encoder:
+maximum **1,000,000 JPEG bytes** and **4096 pixels on the long side**, without
+upscaling or changing aspect ratio. Transparency is flattened on white. Within
+the dimension bound, JPEG quality is tried at 92, 85, 78 and 72 before reducing
+both dimensions by 20% and trying again. The actual encoded size is checked;
+provider adapters enforce the byte ceiling as well. Job details show prepared
+pixel dimensions and JPEG bytes (cached recognition may need no new image).
+The image policy is part of the OCR cache identity. Native source images and
+page previews are not rewritten by this policy.
+
+The limit is for the JPEG, not the whole HTTP request: base64 adds approximately
+one third plus JSON/prompt overhead. PPI does not establish compressed size.
+At 300 ppi, US Letter is 2550 × 3300 pixels and A4 is approximately 2480 × 3508.
+A sparse synthetic A4 test retained those dimensions at 760,436 bytes; a dense
+random-noise test reduced from 2200 × 3000 to 1126 × 1536 at 896,327 bytes.
+These examples demonstrate the content dependence, not handwriting accuracy.
+Actual OCR dimensions start from the existing source renderer; this cap does
+not promise a physical 300-ppi scan or recover detail missing from that render.
+
+Deployment note: migration 0024 is additive. Drain/stop the application before
+running management migrations and refreshing runtime grants, then restart the
+application. Long-lived native replication connections can retain schema
+admission locks even when PostgreSQL reports those sessions as idle. Leaving
+the old application running while waiting for the migration can block new
+requests behind the migration's exclusive lock. Backing services need not be
+restarted for this upgrade.
+
+### Shared Client and BOOX library recognition (2026-10-13)
+
+**Jobs → Recognize a library…** now opens the same workflow for Alexandria Client
+and BOOX Native. Select a source and choose **Choose source**, then **Prepare
+library review**. Each source's Notebooks page links directly to its selected
+source with **Recognize this library…**. Reviews, notebook exclusions, explicit
+provider confirmation, progress, pause/resume, retries and cancellation use the
+same screens and controls. Client recognition also works when BOOX is disabled.
+
+A batch belongs to one source, saved when its review is created. Changing a URL
+or submitted source cannot retarget an existing batch. Jobs labels recent library
+batches by source; notebook links lead to the corresponding source browser.
+Client reviews include live Client notebooks and pages, excluding deleted items,
+books and reading annotations. Recognition results can sync back to Client
+devices. BOOX recognition remains server-side. Both sources use the image budget
+above. Empty reviews show **No available pages** and omit the queue controls.
+
+Preparation does not submit pages for recognition. Dispatch revalidates the
+reviewed page list and commits at most 100 pages at a time; active/paused jobs
+keep their existing batches. New pages require a new review. Retry and batch
+controls are scoped to the saved source, including when two sources share IDs.
+
+Additive migration 0025 records the source and preserves existing reviews as
+BOOX reviews. Follow the application-stop migration procedure above and refresh
+runtime grants before restarting. No migration or deployment starts OCR.

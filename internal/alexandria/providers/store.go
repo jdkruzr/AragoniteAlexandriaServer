@@ -53,7 +53,17 @@ type Snapshot struct {
 	Config   Config
 	APIKey   string `json:"-"`
 }
+type Coverage struct {
+	Label                            string
+	Texts, Embedded, Pending, Failed int
+}
 type View struct {
+	Coverage                []Coverage
+	BOOXWithoutText         int
+	SavedEmbedding          EmbedConfig
+	Availability            Availability
+	IndexedPages            int
+	CanResume               bool
 	Revision                int64
 	Config                  Config
 	HasKey, Locked, CanSave bool
@@ -166,7 +176,7 @@ func (s Store) View(ctx context.Context) (View, error) {
 	if e != nil {
 		return View{}, e
 	}
-	out := View{Revision: v.Revision, Config: v.Config, HasKey: v.APIKey != "", Locked: s.Bootstrap.Locked, CanSave: len(s.Bootstrap.Key) == 32 && !s.Bootstrap.Locked}
+	out := View{SavedEmbedding: v.Config.Embedding, Revision: v.Revision, Config: v.Config, HasKey: v.APIKey != "", Locked: s.Bootstrap.Locked, CanSave: len(s.Bootstrap.Key) == 32 && !s.Bootstrap.Locked}
 	e = s.DB.QueryRowContext(ctx, `SELECT model FROM alexandria_embedding_generation WHERE state='active'`).Scan(&out.ActiveModel)
 	if e != nil && !errors.Is(e, sql.ErrNoRows) {
 		return out, e
@@ -176,6 +186,41 @@ func (s Store) View(ctx context.Context) (View, error) {
 		return out, e
 	}
 	e = s.DB.QueryRowContext(ctx, `SELECT count(*),count(*) FILTER(WHERE w.failed) FROM alexandria_embedding_work w JOIN alexandria_embedding_generation g ON g.id=w.generation WHERE g.state IN ('active','building')`).Scan(&out.Pending, &out.Failed)
+	if e != nil {
+		return out, e
+	}
+	e = s.DB.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM alexandria_embedding_generation WHERE state IN ('active','building') AND endpoint=$1 AND model=$2)`, v.Config.Embedding.URL, v.Config.Embedding.Model).Scan(&out.CanResume)
+	if e != nil {
+		return out, e
+	}
+	rows, e := s.DB.QueryContext(ctx, `WITH eligible AS (
+ SELECT * FROM alexandria_search_live WHERE btrim(body_text)<>''
+ ), kinds(source,kind,label) AS (VALUES ('client','Notebook page','Alexandria Client pages'),('boox','Recognized page','BOOX notebook pages'),('boox','Reading','BOOX reading records'))
+ SELECT k.label,
+ (SELECT count(*) FROM eligible c WHERE c.source=k.source AND c.kind=k.kind),
+ (SELECT count(*) FROM eligible c WHERE c.source=k.source AND c.kind=k.kind AND EXISTS(SELECT 1 FROM alexandria_embedding_vectors v JOIN alexandria_embedding_generation g ON g.id=v.generation AND g.state='active' WHERE v.note_key=c.note_key AND v.page=c.page AND v.body_hash=md5(c.body_text))),
+ (SELECT count(DISTINCT (w.note_key,w.page)) FROM alexandria_embedding_work w JOIN alexandria_embedding_generation g ON g.id=w.generation AND g.state IN ('active','building') JOIN eligible c ON c.note_key=w.note_key AND c.page=w.page WHERE c.source=k.source AND c.kind=k.kind),
+ (SELECT count(DISTINCT (w.note_key,w.page)) FROM alexandria_embedding_work w JOIN alexandria_embedding_generation g ON g.id=w.generation AND g.state IN ('active','building') JOIN eligible c ON c.note_key=w.note_key AND c.page=w.page WHERE c.source=k.source AND c.kind=k.kind AND w.failed)
+ FROM kinds k ORDER BY k.source DESC,k.kind`)
+	if e != nil {
+		return out, e
+	}
+	out.IndexedPages = 0
+	for rows.Next() {
+		var c Coverage
+		if e = rows.Scan(&c.Label, &c.Texts, &c.Embedded, &c.Pending, &c.Failed); e != nil {
+			rows.Close()
+			return out, e
+		}
+		out.Coverage = append(out.Coverage, c)
+		out.IndexedPages += c.Embedded
+	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return out, e
+	}
+	e = s.DB.QueryRowContext(ctx, `SELECT count(DISTINCT (n.document_id,ids.id)) FROM boox_search_notebooks n CROSS JOIN LATERAL jsonb_array_elements_text(boox_search_page_ids(n.body->'pageNameList')) ids(id) WHERE NOT EXISTS(SELECT 1 FROM boox_search_page_text p WHERE p.document_id=n.document_id AND p.page_id=ids.id)`).Scan(&out.BOOXWithoutText)
 	return out, e
 }
 func endpoint(v string) error {

@@ -43,6 +43,10 @@ ALEXANDRIA_BACKUP_DIR=./backups
 # Optional search by meaning, with an Ollama server:
 #ALEXANDRIA_EMBED_URL=http://ollama.example:11434
 #ALEXANDRIA_EMBED_MODEL=nomic-embed-text:v1.5
+# Optional bundled CPU Ollama (service only; configure/enable search in Settings):
+#ALEXANDRIA_OLLAMA_ENABLED=true
+#ALEXANDRIA_OLLAMA_CPUS=1.0
+#ALEXANDRIA_OLLAMA_MEMORY=2g
 ENV
 	echo "Wrote .env with new random secrets."
 fi

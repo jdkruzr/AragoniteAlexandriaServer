@@ -141,6 +141,47 @@ commit/MESSAGE. Exact asset repair takes `nativeKey`, `versionId`, document ID,
 expected revision and idempotency key, and preserves displaced versions. Asset
 binding promotion is committed in an earlier worker step before notifications.
 
+### Numbered notebook cleanup
+
+**BOOX Native → Notebooks → Clean up numbered notebooks…** (also linked from
+BOOX settings) reviews live notebooks named exactly `Notebook-` followed by one
+or more ASCII digits. Matching is case-sensitive and includes all folders and
+notebook types. Folders, already-deleted records, foreign-account records and
+names with additional text are excluded. This is a name rule, not an inspection
+of handwriting or a claim that the notebooks are empty.
+
+The review lists notebook links, native metadata page counts, and creation and
+modification dates. Up to 200 matches are shown per review; repeat after they
+finish for larger inventories. All displayed entries start selected. Uncheck
+anything to keep, explicitly confirm deletion from the library and its synced
+devices, then choose **Delete selected notebooks**. Opening the review alone
+creates no operations and deletes nothing.
+
+Submission atomically checks every selected projected revision and queues the
+existing native `set_note_status` operation with status 0. A stale selection
+rejects the entire submission. The publisher checks the authoritative Gateway
+revision again, preserves opaque fields and resource identities, and publishes
+the native commit and MESSAGE. A concurrent native edit blocks that notebook
+instead of overwriting it. Repeated/concurrent submissions of the same form
+reuse one durable intent. Normal observer/index invalidation removes deleted
+notebooks from live browsing and search; retained revisions and uploaded assets
+are not purged, so this is not a storage-reclamation operation.
+
+Cleanup progress and recent batches survive closing the browser or restarting
+the server. **Published** confirms server publication, not device receipt.
+Pending work refreshes automatically and the native publisher retries temporary
+errors. Blocked or superseded records require reviewing current matches again.
+**Cancel not yet published** cancels still-queued operations; publication already
+in progress may complete. Cancellation does not undo completed deletions.
+Cleanup uses the existing operation journal and requires no schema migration.
+
+Qualification uses disposable PostgreSQL/object storage and a synthetic Gateway:
+exact matching and scope, read-only review, origin/confirmation enforcement,
+atomic stale rejection, concurrent replay, cancellation, authoritative revision
+fencing, metadata preservation, commit/MESSAGE publication, lost-ACK replay,
+retained history and removal from search. Real library deletion is left to the
+owner's confirmation in the UI.
+
 The v2 native storage widget returns a direct `CloudStorageStatusBean` object,
 with `total` and a `data` map of named byte counts, including `left`. Used bytes
 sum current nondeleted native-owner bindings by domain. They are logical usage,
@@ -214,3 +255,29 @@ to discover restored bytes. Migration requires releasing the library runtime's
 advisory lock: stop the app, run migrations and runtime bootstrap, then start the
 new image. Keep the data services and volumes intact. A published repair remains
 application-unverified until native receipt/import is independently observed.
+
+
+### First owner-run cleanup verification — 2026-10-13
+
+At 19:35–19:39 UTC, read-only checks confirmed the owner's cleanup batch published
+all 40 operations without errors, plus one separate device-originated notebook
+deletion. All 41 current Gateway notebook records have status 0 and no reported
+conflict leaves. All 40 native commits and MESSAGE publications are verified.
+One MESSAGE's current revision had been republished without the server operation
+marker; its original Gateway revision confirms the initial notification. That
+intermediate body was absent from the observer archive, consistent with the
+already documented changes-feed coalescing limitation.
+
+Both Lumi and Palma native providers independently report all 41 notebooks as
+deleted. All 1,038 remaining server notebooks are live on both devices, totaling
+1,615 pages in their native lists. Palma has no additional live notebooks; Lumi
+retains the previously identified seven local-only notebooks (six lab-account
+notebooks plus one sync-disabled main-account notebook). The observer is caught
+up at sequence 14010 with no changes beyond that cursor at verification. Deleted
+notebooks have zero remaining current page text or derived search rows. No other
+notebook status changed relative to the pre-cleanup snapshot.
+
+Private Gateway/history verification and paired-device inventory evidence are
+under `deploy/compose/private/notebook-cleanup-20261013/post-user-run/` on the
+host. This verifies notebook deletion application, not a new full resource/ink
+integrity audit. No mutations were performed during verification.

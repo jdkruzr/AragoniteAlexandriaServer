@@ -12,11 +12,12 @@ import (
 )
 
 func (d Deps) jobRoutes(mux *http.ServeMux) {
+	d.libraryJobRoutes(mux)
 	store := recognition.Store{DB: d.DB}
 	mux.HandleFunc("GET /jobs", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		offset, _ := strconv.Atoi(q.Get("offset"))
-		f := recognition.Filter{Source: q.Get("source"), State: q.Get("state"), Batch: q.Get("batch"), Offset: offset}
+		f := recognition.Filter{History: q.Get("history") == "1", Source: q.Get("source"), State: q.Get("state"), Batch: q.Get("batch"), Run: q.Get("run"), Offset: offset}
 		v, e := store.List(r.Context(), f)
 		if e != nil {
 			d.fail(w, e)
@@ -51,7 +52,19 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			liveQuery.Set("live", "1")
 		}
 		liveURL := "/jobs?" + liveQuery.Encode()
-		d.render(w, r, "jobs", "Jobs", "jobs", map[string]any{"View": v, "Filter": f, "Live": live, "LiveURL": liveURL, "Previous": previous, "Next": next, "Refresh": r.URL.RequestURI(), "Start": min(offset+1, v.Total), "End": min(offset+50, v.Total)})
+		runs, e := store.RecentRuns(r.Context())
+		if e != nil {
+			d.fail(w, e)
+			return
+		}
+		total, done := 0, 0
+		for state, count := range v.Counts {
+			total += count
+			if state == "ready" || state == "failed" || state == "blocked" || state == "cancelled" {
+				done += count
+			}
+		}
+		d.render(w, r, "jobs", "Jobs", "jobs", map[string]any{"NativeBOOX": d.Status.NativeBOOX, "Runs": runs, "ProgressTotal": total, "ProgressDone": done, "View": v, "Filter": f, "Live": live, "LiveURL": liveURL, "Previous": previous, "Next": next, "Refresh": r.URL.RequestURI(), "Start": min(offset+1, v.Total), "End": min(offset+50, v.Total)})
 	})
 	mux.HandleFunc("POST /jobs/control", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 4096)

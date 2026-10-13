@@ -15,6 +15,9 @@ if [ -n "${ALEXANDRIA_DATA_DIR:-}" ]; then
     fi
 fi
 compose() {
+    if [ "${ALEXANDRIA_OLLAMA_ENABLED:-false}" = true ]; then
+        set -- --profile embeddings "$@"
+    fi
     if [ "${ALEXANDRIA_BOOX_ENABLED:-false}" = true ]; then
         if [ -n "${ALEXANDRIA_DATA_DIR:-}" ]; then
             : "${ALEXANDRIA_COUCHBASE_DIR:?Set ALEXANDRIA_COUCHBASE_DIR for native BOOX}"

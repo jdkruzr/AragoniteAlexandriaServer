@@ -1,6 +1,30 @@
 name: aragonite-alexandria-server
 
 services:
+  # Available with the embeddings profile; never starts or indexes by default.
+  # No host ports or GPU devices: only the application network can reach it.
+  ollama:
+    image: ${ALEXANDRIA_OLLAMA_IMAGE:-docker.io/ollama/ollama:0.40.3}
+    profiles: ["embeddings"]
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NO_CLOUD: "1"
+      OLLAMA_VULKAN: "0"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_KEEP_ALIVE: ${ALEXANDRIA_OLLAMA_KEEP_ALIVE:-5m}
+    cpus: ${ALEXANDRIA_OLLAMA_CPUS:-1.0}
+    mem_limit: ${ALEXANDRIA_OLLAMA_MEMORY:-2g}
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
   postgres:
     image: docker.io/pgvector/pgvector:pg17
     environment:
@@ -174,6 +198,8 @@ services:
     restart: "no"
 
 volumes:
+  ollama-models:
+    name: ${ALEXANDRIA_OLLAMA_VOLUME:-aragonite-alexandria-server-ollama-models}
   postgres-data:
     name: ${ALEXANDRIA_POSTGRES_VOLUME:-aragonite-alexandria-server-postgres-data}
   object-data:

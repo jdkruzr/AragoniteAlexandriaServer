@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image/jpeg"
 	"io"
 	"net/http"
 	"strings"
@@ -85,6 +86,20 @@ func (c *OCRClient) Model() string { return c.model }
 // Recognize sends a JPEG page image to the vision API and returns the transcribed text.
 // If prompt is empty, the default prompt is used.
 func (c *OCRClient) Recognize(ctx context.Context, jpegData []byte, prompt string) (string, error) {
+	if len(jpegData) > MaxImageBytes {
+		cfg, err := jpeg.DecodeConfig(bytes.NewReader(jpegData))
+		if err != nil || int64(cfg.Width)*int64(cfg.Height) > 100_000_000 {
+			return "", fmt.Errorf("invalid recognition image")
+		}
+		img, err := jpeg.Decode(bytes.NewReader(jpegData))
+		if err != nil {
+			return "", fmt.Errorf("invalid recognition image")
+		}
+		jpegData, _, err = EncodePage(img)
+		if err != nil {
+			return "", err
+		}
+	}
 	if prompt == "" {
 		prompt = DefaultOCRPrompt
 	}

@@ -289,7 +289,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		return true
 	}
-	if strings.HasPrefix(req.URL.Path, "/jobs") || r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || strings.HasPrefix(req.URL.Path, "/settings/providers")) {
+	if strings.HasPrefix(req.URL.Path, "/jobs") || r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || strings.HasPrefix(req.URL.Path, "/settings/providers") || strings.HasPrefix(req.URL.Path, "/settings/semantic")) {
 		if e := r.account(conn)(req); e != nil {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
 			http.Error(w, "unauthorized", 401)
@@ -372,19 +372,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if searcher.Embedder != nil {
 		status.Embedding = searcher.Embedder.Model()
 	}
-	catalog := func(ctx context.Context, source, id string) (recognition.Notebook, error) {
-		if source == "client" {
-			return recognition.ClientNotebook(ctx, conn, id)
-		}
-		if source == "boox" && r.cfg.NativeBOOX != nil {
-			native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID}
-			if e := native.ResolveIdentity(ctx); e != nil {
-				return recognition.Notebook{}, e
-			}
-			return native.RecognitionNotebook(ctx, id)
-		}
-		return recognition.Notebook{}, errors.New("Unknown source")
-	}
+	catalog := r.recognitionCatalog(conn)
 	mux.Handle("/", web.Handler(web.Deps{LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
@@ -549,13 +537,13 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 	defer done()
 
 	n, idle := 0, 0
-	for turn := 0; n < max && idle < 3 && ctx.Err() == nil; turn++ {
+	for turn := 0; n < max && idle < 4 && ctx.Err() == nil; turn++ {
 		pages, store, snapshot, err := r.pageConfiguration(ctx, conn)
 		if err != nil {
 			return n, err
 		}
 		found := false
-		switch turn % 3 {
+		switch turn % 4 {
 		case 0:
 			found, err = pages.Step(ctx, conn)
 		case 1:
@@ -565,6 +553,8 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 					found, err = native.ProcessPageIndex(ctx, pages.OCR, pages.Prompt)
 				}
 			}
+		case 3:
+			found, err = (recognition.Store{DB: conn}).StepRun(ctx, r.recognitionCatalog(conn), pages.OCR != nil)
 		case 2:
 			if store != nil && snapshot.Config.Embedding.Enabled {
 				found, err = store.ProcessIndex(ctx)
@@ -641,4 +631,20 @@ func (r *Runtime) pageConfiguration(ctx context.Context, db pg.DB) (notes.Pipeli
 		p.OCR = v.OCRClient()
 	}
 	return p, s, v, nil
+}
+
+func (r *Runtime) recognitionCatalog(db pg.DB) recognition.Catalog {
+	return func(ctx context.Context, source, id string) (recognition.Notebook, error) {
+		if source == "client" {
+			return recognition.ClientNotebook(ctx, db, id)
+		}
+		if source == "boox" && r.cfg.NativeBOOX != nil {
+			native := boox.Service{Config: *r.cfg.NativeBOOX, DB: db, Objects: r.objects, LibraryID: r.cfg.ID}
+			if e := native.ResolveIdentity(ctx); e != nil {
+				return recognition.Notebook{}, e
+			}
+			return native.RecognitionNotebook(ctx, id)
+		}
+		return recognition.Notebook{}, errors.New("Unknown source")
+	}
 }
