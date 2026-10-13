@@ -1,0 +1,26 @@
+Aragonite software-family crystal master, version 1
+
+Generated using the built-in image-generation tool with transparent_background=true.
+Reference: ~/AragonitePowerSync/design/icons/powersync-aragonite-sync-concept-v1.png
+Asset: aragonite-crystal-master-v1.png
+
+Reuse this transparent PNG as the fixed crystal layer for related software icons.
+Place separate app symbols above or behind it; preserve aspect ratio. Match the
+charcoal outlines and warm amber/ivory facets, with muted teal for accent symbols
+as in the original PowerSync icon. Keep editable layers in future compositions
+and export launcher sizes from the assembled artwork. Check small-size and
+grayscale readability, and leave space for launcher masks.
+
+This is a regenerated derivative, not a pixel-exact extraction. Reusing its pixels
+in a layered compositor keeps the crystal consistent; generative edits may alter
+its geometry. The PNG has transparency but does not contain editable facet layers.
+
+Generation prompt:
+Use case: background-extraction.
+Asset type: reusable Aragonite software-family crystal master, transparent PNG.
+Input image 1 is the edit target: the original approved PowerSync icon.
+Primary request: isolate and regenerate ONLY the central amber aragonite crystal formation as a standalone asset. Remove the surrounding teal sync arrows entirely. Preserve the original crystal's recognizable silhouette, exact arrangement of intergrown points, proportions, perspective, broad facet layout, warm amber/gold and ivory face colors, and thick dark charcoal outlines as closely as possible. Tall central-left point, long diagonal right point, shorter front-left and front-right crystals, small rugged intergrown base.
+Style: match the original polished chunky mineral icon graphic. Natural rough crystal cluster, broad clean facets, strong readable silhouette, subtle existing face shading.
+Composition: one crystal cluster centered on a square high-resolution canvas, fully visible, approximately 80 percent of canvas height, comfortable transparent margin all around.
+Background: actual alpha transparency, including all negative space. No background color, no checkerboard baked into pixels, no floor, no shadow, no glow.
+Constraints: crystal only. No arrows, teal elements, badges, container, text, letters, watermark, or extra objects. Do not redesign the crystal or add new points. Clean edges suitable for layering above or below separate software-specific icon elements.

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/aragonite-alexandria-server-mark.png" width="240" alt="Aragonite Alexandria Server woven-page mark">
+  <img src="assets/aragonite-alexandria-server-crystal-temple-v1.png" width="240" alt="Aragonite Alexandria Server crystal and Greek library">
 </p>
 
 # Aragonite Alexandria Server

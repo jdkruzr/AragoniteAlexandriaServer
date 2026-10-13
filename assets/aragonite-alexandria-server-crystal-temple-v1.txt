@@ -1,0 +1,21 @@
+Alexandria Server crystal and Greek library icon, version 1
+Generated 2026-10-13 using the built-in image-generation tool with transparent_background=true.
+Asset: aragonite-alexandria-server-crystal-temple-v1.png
+
+Crystal reference: ~/AragonitePowerSearch/design/aragonite/aragonite-crystal-master-v1.png
+Architecture reference: ~/AragoniteAlexandria/android-icon/alexandria-icon.svg
+The architecture SVG was rendered with rsvg-convert at 1024x1024 on white for input.
+The shared crystal was supplied directly as the primary image reference.
+This is a generative composition, not pixel-exact layering of the crystal master.
+Used by the README and embedded web header/favicon. Run python3 assets/export-icons.py
+to regenerate web sizes. Source wiring is local; no deployment is part of this update.
+The crystal master and its prompt are also copied into assets/ for independent reuse.
+
+Prompt:
+Use case: compositing.
+Asset type: Alexandria Server software icon, member of the shared Aragonite icon family.
+Input image 1: primary subject, the approved amber aragonite crystal master. Preserve its recognizable silhouette, arrangement of points, broad amber/gold and ivory facets, thick charcoal outline, and proportions as closely as possible.
+Input image 2: architecture reference ONLY: Alexandria's simple front-facing Greek library building, triangular pediment, four sturdy columns, horizontal stepped plinth. Ignore the fountain pen and white background in this reference.
+Primary request: compose one elegant, readable software icon combining the crystal cluster with a classical Greek columned library facade. Place the building behind the crystal, its triangular roof and outer columns clearly visible; place the crystal prominently in front of the lower central facade, visually integrated with the building's base. Keep both subjects recognizable. The building should be broad enough that the crystal does not conceal all its columns, and the crystal should remain large enough to show its familiar shape.
+Style: match the crystal's bold polished icon illustration, chunky clean shapes, broad uncluttered facets, dark charcoal outlines. Building in muted teal with restrained pale ivory details; crystal retains warm amber/gold and ivory. Subtle face shading as in the crystal, no intricate architectural ornament or realistic texture. Balanced unified composition, strong silhouette, readable in grayscale and at small sizes.
+Square canvas, comfortable 10 percent margin on all sides, entire artwork fully visible. Actual alpha-transparent background including spaces between exposed columns. No colored backdrop, checkerboard, text, letters, pen, arrows, server racks, clouds, ground shadow, watermark or decorative border. Deliver a single polished icon.

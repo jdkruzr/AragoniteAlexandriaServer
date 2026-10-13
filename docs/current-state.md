@@ -1,5 +1,11 @@
 # Alexandria Server handoff
 
+2026-10-13: The shared-crystal/Greek-library icon is wired into the embedded web
+header, browser favicon and README. Reusable master and prompt are retained in
+`assets/`; `python3 assets/export-icons.py` regenerates the web sizes. Fresh web
+template tests and direct handler checks pass for the rendered page and both PNG
+responses. This branding change is local and has not been deployed.
+
 Open follow-up, 2026-10-13: independent native page-ID enumeration identified an eight-page discrepancy in the pre-cleanup OCR review: its 1,079 notebooks reconstruct 1,677 pages, while those same notebooks list 1,669 pages on Lumi. Two notebooks account for the difference (server 2/device 1 and server 15/device 8). Reconcile virtual-page membership before treating the server catalog as an exact device page census. The separate 10,000–12,000-page estimate came from PowerSearch counting file-based index records as pages; a read-only device audit found 11,822 point files belonging to 1,684 live pages across all local accounts. The audit script and detailed results live in the PowerSearch repository. No catalog reconciliation fix is included in this consolidation.
 
 2026-10-13: First owner-run numbered-notebook cleanup verified end-to-end: all 40 operations published plus one separate device deletion; all 41 are deleted in Gateway and both native device providers. All 1,038 remaining server notebooks match on Lumi and Palma (1,615 native-listed pages). No unexpected status changes, conflict leaves, remaining current page text or derived search rows for the deleted notebooks; observer caught up at sequence 14010. All 40 commits/MESSAGEs verified, including one original MESSAGE recovered from Gateway history after native republication dropped its operation marker. Read-only verification; private evidence under `deploy/compose/private/notebook-cleanup-20261013/post-user-run/`. See [owner-run verification](boox-native-setup.md#first-owner-run-cleanup-verification--2026-10-13).

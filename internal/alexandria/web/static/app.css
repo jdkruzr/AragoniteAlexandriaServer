@@ -3,7 +3,8 @@
 * { box-sizing: border-box; }
 body { margin:0; font:16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
 header { display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; align-items:center; padding:.75rem 1rem; border-bottom:1px solid var(--line); background:var(--panel); }
-.brand { font-weight:700; color:var(--ink); text-decoration:none; }
+.brand { display:inline-flex; align-items:center; gap:.5rem; font-weight:700; color:var(--ink); text-decoration:none; }
+.brand img { flex:none; object-fit:contain; }
 nav { display:flex; flex-wrap:wrap; gap:.25rem 1rem; }
 nav a { color:var(--muted); text-decoration:none; padding:.2rem 0; }
 nav a[aria-current=page] { color:var(--ink); border-bottom:2px solid var(--accent); }
