@@ -105,7 +105,8 @@ server {
 
 ## Optional features
 
-Add these to `.env`, then run `./install.sh` again to apply them.
+Application providers are configured in Settings. Deployment-level options live
+in `.env`.
 
 - Configure **handwriting recognition** and **search by meaning** in the web
   **Settings** page. Changes are stored in PostgreSQL and apply without restarting.
@@ -118,6 +119,57 @@ Add these to `.env`, then run `./install.sh` again to apply them.
   actions with their own cost implications. Saving a provider does not schedule
   the entire library. See [provider settings](provider-settings.md) for encryption,
   deployment locks, index replacement and supported source coverage.
+
+### Optional CPU embedding service
+
+Compose includes an Ollama service behind the `embeddings` profile. It is
+available in every installation, but does not start or download models by
+default. From `deploy/compose`, run:
+
+```sh
+./setup-ollama.sh
+# Or select a different model explicitly:
+./setup-ollama.sh nomic-embed-text:v1.5
+```
+
+This starts only Ollama and downloads the model; it does not restart Alexandria,
+change provider settings or enqueue indexing. Add `ALEXANDRIA_OLLAMA_ENABLED=true`
+to `.env` so installer and backup lifecycle commands also include the service.
+Docker's restart policy brings an already-created service back after a host
+restart. To stop it, use `docker compose --profile embeddings stop ollama` and
+remove the enable flag to keep later installer runs from starting it again.
+
+In web **Settings → Search by meaning**, save base URL `http://ollama:11434` and
+model `nomic-embed-text:v1.5`. Leave semantic search unchecked to keep the provider
+available but unused by indexing. **Test embedding** sends synthetic text to the
+provider without enabling search. Enabling semantic search and building its
+index are separate explicit actions. Existing database settings take precedence
+over bootstrap environment variables; setting `ALEXANDRIA_EMBED_URL` on an
+established installation will not update them.
+
+The service uses CPU only, with no GPU devices or published host ports. Defaults
+are one CPU, 2 GiB RAM, one loaded model and five minutes of model retention while
+idle. Ollama cloud features are disabled. The application talks to it on the
+private Compose network; no additional TLS proxy route is needed. Configure
+`ALEXANDRIA_OLLAMA_CPUS`, `ALEXANDRIA_OLLAMA_MEMORY`,
+`ALEXANDRIA_OLLAMA_KEEP_ALIVE` and `ALEXANDRIA_OLLAMA_IMAGE` in `.env` to override
+those deployment choices (the image defaults to the pinned `0.40.3` release).
+
+Downloaded models persist in the `ollama-models` named volume, whose Docker name
+can be overridden with `ALEXANDRIA_OLLAMA_VOLUME`. This is a disposable model
+cache, not user data: current backup scripts do not archive it. Re-run the setup
+script after restoring onto a new host. Keep the model version consistent with
+saved embedding generations; changing models requires a replacement index.
+
+Semantic indexing covers Alexandria Client text, completed BOOX recognition, and
+BOOX book titles/highlights/annotation text. Settings shows per-source coverage.
+Enabling it does not run OCR or extract whole-book contents; request handwriting
+recognition separately through Jobs. See [provider settings](provider-settings.md).
+
+References: [Ollama CPU Docker deployment](https://docs.ollama.com/docker),
+[embedding API](https://docs.ollama.com/api/embed),
+[local-only configuration](https://docs.ollama.com/faq#how-do-i-disable-ollama-cloud-features),
+and the [configured model](https://registry.ollama.com/library/nomic-embed-text:v1.5).
 
 ## Upgrade
 

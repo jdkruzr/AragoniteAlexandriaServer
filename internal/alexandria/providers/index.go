@@ -18,8 +18,18 @@ import (
 // BuildIndex explicitly authorizes a text-only rebuild. The old generation
 // remains searchable until the replacement has no unfinished work.
 func (s Store) BuildIndex(ctx context.Context, revision int64) error {
-	if s.Bootstrap.Locked {
-		return errors.New("Provider settings are locked.")
+	return s.buildIndex(ctx, revision, false)
+}
+
+// EnableAndBuildIndex changes the feature flag and queues the first generation
+// together. Any failure leaves both the configuration and existing index intact.
+func (s Store) EnableAndBuildIndex(ctx context.Context, revision int64) error {
+	return s.buildIndex(ctx, revision, true)
+}
+
+func (s Store) buildIndex(ctx context.Context, revision int64, enable bool) error {
+	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
+		return errors.New("Provider settings cannot be changed in this deployment.")
 	}
 	tx, e := s.DB.BeginTx(ctx, nil)
 	if e != nil {
@@ -31,7 +41,7 @@ func (s Store) BuildIndex(ctx context.Context, revision int64) error {
 	}
 	var rev int64
 	var raw []byte
-	if e = tx.QueryRowContext(ctx, `SELECT revision,config FROM alexandria_provider_settings WHERE singleton FOR SHARE`).Scan(&rev, &raw); e != nil {
+	if e = tx.QueryRowContext(ctx, `SELECT revision,config FROM alexandria_provider_settings WHERE singleton FOR UPDATE`).Scan(&rev, &raw); e != nil {
 		return e
 	}
 	if rev != revision {
@@ -40,6 +50,15 @@ func (s Store) BuildIndex(ctx context.Context, revision int64) error {
 	var c Config
 	if e = decodeConfig(raw, &c); e != nil {
 		return e
+	}
+	if enable {
+		c.Embedding.Enabled = true
+		if e = Validate(c); e != nil {
+			return e
+		}
+		if e = setEmbeddingEnabled(ctx, tx, rev, true); e != nil {
+			return e
+		}
 	}
 	if !c.Embedding.Enabled {
 		return errors.New("Enable and save semantic search settings first.")
@@ -51,7 +70,7 @@ func (s Store) BuildIndex(ctx context.Context, revision int64) error {
 	if _, e = tx.ExecContext(ctx, `INSERT INTO alexandria_embedding_generation(id,endpoint,model,state) VALUES($1,$2,$3,'building')`, id, c.Embedding.URL, c.Embedding.Model); e != nil {
 		return e
 	}
-	if _, e = tx.ExecContext(ctx, `INSERT INTO alexandria_embedding_work(generation,note_key,page) SELECT $1,note_key,page FROM alexandria_note_content WHERE source='forestnote'`, id); e != nil {
+	if _, e = tx.ExecContext(ctx, `INSERT INTO alexandria_embedding_work(generation,note_key,page) SELECT $1,note_key,page FROM alexandria_note_content WHERE source IN ('forestnote','boox-page','boox-reading')`, id); e != nil {
 		return e
 	}
 	if e = activate(ctx, tx, id); e != nil {
@@ -59,6 +78,64 @@ func (s Store) BuildIndex(ctx context.Context, revision int64) error {
 	}
 	return tx.Commit()
 }
+
+// SetEmbeddingEnabled pauses work without deleting it, or resumes a retained
+// generation for the saved provider. A changed provider requires a new build.
+func (s Store) SetEmbeddingEnabled(ctx context.Context, revision int64, enabled bool) error {
+	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
+		return errors.New("Provider settings cannot be changed in this deployment.")
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(716204821001)`); err != nil {
+		return err
+	}
+	var rev int64
+	var raw []byte
+	if err = tx.QueryRowContext(ctx, `SELECT revision,config FROM alexandria_provider_settings WHERE singleton FOR UPDATE`).Scan(&rev, &raw); err != nil {
+		return err
+	}
+	if rev != revision {
+		return ErrStale
+	}
+	var c Config
+	if err = decodeConfig(raw, &c); err != nil {
+		return err
+	}
+	if enabled {
+		c.Embedding.Enabled = true
+		if err = Validate(c); err != nil {
+			return err
+		}
+		var matches bool
+		if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM alexandria_embedding_generation WHERE state IN ('active','building') AND endpoint=$1 AND model=$2)`, c.Embedding.URL, c.Embedding.Model).Scan(&matches); err != nil {
+			return err
+		}
+		if !matches {
+			return errors.New("Build an index with the saved provider before resuming semantic search.")
+		}
+	}
+	if err = setEmbeddingEnabled(ctx, tx, rev, enabled); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func setEmbeddingEnabled(ctx context.Context, tx *sql.Tx, revision int64, enabled bool) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE alexandria_provider_settings SET config=jsonb_set(config,'{Embedding,Enabled}',to_jsonb($1::boolean)),revision=revision+1,updated_at=now() WHERE singleton`, enabled); err != nil {
+		return err
+	}
+	action := "semantic search disabled"
+	if enabled {
+		action = "semantic search enabled"
+	}
+	_, err := tx.ExecContext(ctx, `INSERT INTO alexandria_provider_audit(revision,action) VALUES($1,$2)`, revision+1, action)
+	return err
+}
+
 func activate(ctx context.Context, tx *sql.Tx, id string) error {
 	var done bool
 	if e := tx.QueryRowContext(ctx, `SELECT state='building' AND NOT EXISTS(SELECT 1 FROM alexandria_embedding_work WHERE generation=$1) FROM alexandria_embedding_generation WHERE id=$1`, id).Scan(&done); e != nil {

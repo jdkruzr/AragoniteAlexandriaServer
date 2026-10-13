@@ -6,20 +6,13 @@
   <select name="source" aria-label="Source"><option value="">All sources</option><option value="client" {{if eq $d.Source "client"}}selected{{end}}>Alexandria Client</option>{{if $d.BOOX}}<option value="boox" {{if eq $d.Source "boox"}}selected{{end}}>BOOX Native</option>{{end}}</select>
   <button>Search</button>
 </form>
-<p class="coverage">Coverage: Alexandria Client indexed page text and reading annotations.{{if $d.BOOX}} BOOX Native notebook titles, book titles and annotation text; handwriting from pages with completed server recognition. Unprocessed pages are not searched.{{end}} Device-specific availability is not currently tracked by this search.</p>
+<p class="coverage">Coverage: Alexandria Client indexed page text and reading annotations.{{if $d.BOOX}} BOOX Native notebook titles, book titles and annotation text; handwriting from pages with completed server recognition. Unprocessed pages are not searched.{{end}} Words and meaning covers client page text, recognized BOOX pages, and BOOX reading text when an index is ready. Client book annotations and BOOX notebook-title matches use keywords. Device-specific availability is not currently tracked by this search.</p>
 {{if $d.Query}}
-{{if $d.BOOX}}{{if ne $d.Source "client"}}<h2>BOOX Native</h2>{{range $d.Native}}<article class="result"><span class="badge">BOOX Native · {{.Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p>{{if .Snippet}}<p>{{.Snippet}}</p>{{end}}</article>{{else}}<p class="empty">No native metadata, annotation or recognized page text matches.</p>{{end}}{{end}}{{end}}
-{{if ne $d.Source "boox"}}
-<h2>Alexandria Client · Notebook pages</h2>
-{{if not $d.Pages}}<p class="empty">No notebook pages match.</p>{{end}}
-{{range $d.Pages}}
-<article class="result"><a href="/files/forestnote?notebook={{.NotebookID}}&page={{.PageID}}#page-{{.PageID}}">{{.NotebookName}}, page {{.PageNumber}}</a><p>{{.Snippet}}</p></article>
-{{end}}
-<h2>Alexandria Client · Book annotations</h2>
-{{if not $d.Annotations}}<p class="empty">No annotations match.</p>{{end}}
-{{range $d.Annotations}}
-<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}Untitled book{{end}}</a><p>{{.Snippet}}</p></article>
-{{end}}
-{{end}}
+<h2>Search results</h2>
+{{range $d.Results}}
+<article class="result"><span class="badge">{{if eq .Source "boox"}}BOOX Native{{else}}Alexandria Client{{end}} · {{.Kind}}</span><p><a href="{{.URL}}">{{.NotebookName}}{{if eq .Source "client"}}{{if .PageNumber}}, page {{.PageNumber}}{{end}}{{end}}</a>{{if eq .Source "boox"}}{{if .PageNumber}}, page {{.PageNumber}}{{end}}{{end}}</p><p>{{.Snippet}}</p></article>
+{{else}}<p class="empty">No page text or BOOX reading records match.</p>{{end}}
+{{if $d.Native}}<h2>BOOX notebook titles</h2>{{range $d.Native}}<article class="result"><span class="badge">BOOX Native · {{.Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p></article>{{end}}{{end}}
+{{if $d.Annotations}}<h2>Alexandria Client · Book annotations</h2>{{range $d.Annotations}}<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}Untitled book{{end}}</a><p>{{.Snippet}}</p></article>{{end}}{{end}}
 {{end}}
 {{end}}

@@ -245,14 +245,18 @@ func (d Deps) searchRoutes(mux *http.ServeMux) {
 			}
 			data["Native"] = matches
 		}
-		if q != "" && scope != "boox" {
-			pages, err := d.Search.Search(r.Context(), q, 50, mode != "keyword")
+		if q != "" {
+			searchScope := scope
+			if !d.Status.NativeBOOX {
+				searchScope = "client"
+			}
+			pages, err := d.Search.SearchScoped(r.Context(), q, 50, mode != "keyword", searchScope)
 			if err != nil {
 				d.fail(w, err)
 				return
 			}
-			data["Pages"] = pages
-			if len(q) <= 256 && len(strings.Fields(q)) <= 16 {
+			data["Results"] = pages
+			if scope != "boox" && len(q) <= 256 && len(strings.Fields(q)) <= 16 {
 				annotations, err := readersearch.New(d.DB).Search(r.Context(), q, "", 50)
 				if err != nil {
 					d.fail(w, err)
@@ -536,9 +540,11 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, override *pro
 			}
 			providerView = &v
 		}
+		providerView.Availability = providers.EmbeddingAvailability(ctx, providerView.SavedEmbedding)
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	d.render(w, r, "settings", "Settings", "settings", map[string]any{
-		"LocalPasswords": d.LocalPasswords, "Collection": collection, "DueMode": due, "Tokens": tokens, "NewToken": r.URL.Query().Get("new_token") != "",
+		"DefaultOCRPrompt": notes.DefaultPrompt,
+		"LocalPasswords":   d.LocalPasswords, "Collection": collection, "DueMode": due, "Tokens": tokens, "NewToken": r.URL.Query().Get("new_token") != "",
 		"Providers": providerView, "Status": d.Status, "CalDAV": taskhost.Prefix + "/user/calendars/tasks/", "OAuthLabel": oauth.TokenLabel})
 }

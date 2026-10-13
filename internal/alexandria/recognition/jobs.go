@@ -37,7 +37,7 @@ type Catalog func(context.Context, string, string) (Notebook, error)
 type Store struct{ DB pg.DB }
 type Job struct {
 	ID, Batch, Source, Notebook, Title, Page, State, Detail, Model string
-	Number, Attempts                                               int
+	Number, Attempts, ImageWidth, ImageHeight, ImageBytes          int
 	Created, Updated, Next                                         time.Time
 	Started, Finished                                              *time.Time
 }
@@ -50,8 +50,9 @@ func (j Job) URL() string {
 }
 
 type Filter struct {
-	Source, State, Batch string
-	Offset               int
+	Source, State, Batch, Run string
+	Offset                    int
+	History                   bool
 }
 type View struct {
 	Jobs       []Job
@@ -70,6 +71,11 @@ func (s Store) List(ctx context.Context, f Filter) (View, error) {
 	default:
 		return v, errors.New("Unknown status")
 	}
+	if f.Run != "" {
+		if _, e := uuid.Parse(f.Run); e != nil {
+			return v, errors.New("Invalid library run")
+		}
+	}
 	if f.Batch != "" {
 		if _, e := uuid.Parse(f.Batch); e != nil {
 			return v, errors.New("Invalid batch")
@@ -78,8 +84,11 @@ func (s Store) List(ctx context.Context, f Filter) (View, error) {
 	if f.Offset < 0 || f.Offset > 1000000 {
 		return v, errors.New("Invalid page")
 	}
-	where := ` FROM alexandria_recognition_job j WHERE ($1='' OR source=$1) AND ($2='' OR batch_id::text=$2)`
-	rows, e := s.DB.QueryContext(ctx, `SELECT state,count(*)`+where+` GROUP BY state`, f.Source, f.Batch)
+	where := ` FROM alexandria_recognition_job j WHERE ($1='' OR source=$1) AND ($2='' OR batch_id::text=$2) AND ($3='' OR batch_id IN (SELECT id FROM alexandria_recognition_batch WHERE run_id::text=$3))`
+	if f.Batch == "" && f.Run == "" && !f.History {
+		where += " AND superseded_by IS NULL"
+	}
+	rows, e := s.DB.QueryContext(ctx, `SELECT state,count(*)`+where+` GROUP BY state`, f.Source, f.Batch, f.Run)
 	if e != nil {
 		return v, e
 	}
@@ -107,15 +116,15 @@ func (s Store) List(ctx context.Context, f Filter) (View, error) {
 			return v, e
 		}
 	}
-	rows, e = s.DB.QueryContext(ctx, `SELECT id::text,coalesce(batch_id::text,''),source,notebook_id,page_id,page_number,state,attempts,detail,model,created_at,updated_at,next_at,started_at,finished_at,
- coalesce((SELECT title FROM alexandria_recognition_batch b WHERE b.id=j.batch_id),CASE WHEN source='boox' THEN (SELECT body->>'title' FROM boox_projection p WHERE p.document_id=j.notebook_id AND domain='notebook' LIMIT 1) ELSE (SELECT name FROM fn_notebook n WHERE n.id=j.notebook_id) END,notebook_id)`+where+` AND ($3='' OR state=$3) ORDER BY created_at DESC,id DESC LIMIT 50 OFFSET $4`, f.Source, f.Batch, f.State, f.Offset)
+	rows, e = s.DB.QueryContext(ctx, `SELECT id::text,coalesce(batch_id::text,''),source,notebook_id,page_id,page_number,state,attempts,detail,model,created_at,updated_at,next_at,started_at,finished_at,image_width,image_height,image_bytes,
+ coalesce(CASE WHEN source='boox' THEN (SELECT body->>'title' FROM boox_projection p WHERE p.document_id=j.notebook_id AND domain='notebook' LIMIT 1) ELSE (SELECT name FROM fn_notebook n WHERE n.id=j.notebook_id) END,(SELECT title FROM alexandria_recognition_batch b WHERE b.id=j.batch_id),notebook_id)`+where+` AND ($4='' OR state=$4) ORDER BY created_at DESC,id DESC LIMIT 50 OFFSET $5`, f.Source, f.Batch, f.Run, f.State, f.Offset)
 	if e != nil {
 		return v, e
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var j Job
-		e = rows.Scan(&j.ID, &j.Batch, &j.Source, &j.Notebook, &j.Page, &j.Number, &j.State, &j.Attempts, &j.Detail, &j.Model, &j.Created, &j.Updated, &j.Next, &j.Started, &j.Finished, &j.Title)
+		e = rows.Scan(&j.ID, &j.Batch, &j.Source, &j.Notebook, &j.Page, &j.Number, &j.State, &j.Attempts, &j.Detail, &j.Model, &j.Created, &j.Updated, &j.Next, &j.Started, &j.Finished, &j.ImageWidth, &j.ImageHeight, &j.ImageBytes, &j.Title)
 		if e != nil {
 			return v, e
 		}
@@ -123,6 +132,8 @@ func (s Store) List(ctx context.Context, f Filter) (View, error) {
 	}
 	return v, rows.Err()
 }
+
+var ErrAlreadyActive = errors.New("Selected pages already have queued, running or paused jobs. Manage those jobs instead.")
 
 // Queue atomically schedules a reviewed page selection. Active work is reused;
 // its original batch keeps ownership. Completed cached results can be reused.
@@ -138,6 +149,14 @@ func (s Store) Queue(ctx context.Context, source string, n Notebook, from, to in
 		return "", 0, e
 	}
 	defer tx.Rollback()
+	batch, count, e := queueTx(ctx, tx, source, n, from, to, force, request, false)
+	if e != nil {
+		return "", 0, e
+	}
+	return batch, count, tx.Commit()
+}
+
+func queueTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, from, to int, force bool, request string, appendBatch bool) (string, int, error) {
 	if _, e := uuid.Parse(request); e != nil {
 		return "", 0, errors.New("Invalid request token")
 	}
@@ -155,7 +174,9 @@ func (s Store) Queue(ctx context.Context, source string, n Notebook, from, to in
 		if !matches {
 			return "", 0, errors.New("Request token does not match notebook")
 		}
-		return batch, count, tx.Commit()
+		if !appendBatch {
+			return batch, count, nil
+		}
 	}
 	if e != nil {
 		return "", 0, e
@@ -188,9 +209,9 @@ func (s Store) Queue(ctx context.Context, source string, n Notebook, from, to in
 		count++
 	}
 	if count == 0 {
-		return "", 0, errors.New("Selected pages already have queued, running or paused jobs. Manage those jobs instead.")
+		return batch, 0, ErrAlreadyActive
 	}
-	return batch, count, tx.Commit()
+	return batch, count, nil
 }
 
 // Control locks queue rows before changing their ledger, matching worker lock
@@ -217,6 +238,13 @@ func (s Store) Control(ctx context.Context, id string, batch bool, action string
 		return 0, e
 	}
 	defer tx.Rollback()
+	count, e := controlTx(ctx, tx, id, batch, action, allowed)
+	if e != nil {
+		return 0, e
+	}
+	return count, tx.Commit()
+}
+func controlTx(ctx context.Context, tx *sql.Tx, id string, batch bool, action, allowed string) (int64, error) {
 	selector := "id"
 	if batch {
 		selector = "batch_id"
@@ -280,5 +308,5 @@ func (s Store) Control(ctx context.Context, id string, batch bool, action string
 			}
 		}
 	}
-	return count, tx.Commit()
+	return count, nil
 }

@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"image/jpeg"
 	"image/png"
 	"net/http"
 	"net/url"
@@ -34,7 +33,7 @@ func (s Service) QueuePage(ctx context.Context, id string, num int) error {
 		return errors.New("page unavailable")
 	}
 	_, e = s.DB.ExecContext(ctx, `INSERT INTO boox_page_index(notebook_id,page_id,page_number) VALUES($1,$2,$3)
- ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,text='',detail='',updated_at=now()`, id, ids[num-1], num)
+ ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,text='',detail='',updated_at=now() WHERE boox_page_index.state NOT IN ('processing','paused')`, id, ids[num-1], num)
 	return e
 }
 func (s Service) queuePageHTTP(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +124,7 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		prompt = notes.DefaultPrompt
 	}
 	sum := sha256.New()
-	sum.Write([]byte("boox-ocr-v1\x00" + s.RecognitionIdentity + "\x00" + ocr.Model() + "\x00" + prompt + "\x00"))
+	sum.Write([]byte("boox-ocr-v1\x00" + ocrapi.ImagePolicyVersion + "\x00" + s.RecognitionIdentity + "\x00" + ocr.Model() + "\x00" + prompt + "\x00"))
 	sum.Write(p.PNG)
 	inputHash := hex.EncodeToString(sum.Sum(nil))
 	text := oldOCR
@@ -134,12 +133,15 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		if e != nil {
 			return deferFailure("Preview could not be decoded.")
 		}
-		var b bytes.Buffer
-		if e = jpeg.Encode(&b, img, &jpeg.Options{Quality: 92}); e != nil {
+		jpegData, info, e := ocrapi.EncodePage(img)
+		if e != nil {
 			return deferFailure("Recognition image unavailable.")
 		}
+		if _, e = s.DB.ExecContext(ctx, `UPDATE alexandria_recognition_job j SET image_width=$4,image_height=$5,image_bytes=$6 FROM boox_page_index p WHERE j.id=p.job_id AND p.notebook_id=$1 AND p.page_id=$2 AND p.lease_token=$3`, id, page, token, info.Width, info.Height, info.Bytes); e != nil {
+			return true, e
+		}
 		recognitionCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		text, e = ocr.Recognize(recognitionCtx, b.Bytes(), prompt)
+		text, e = ocr.Recognize(recognitionCtx, jpegData, prompt)
 		cancel()
 		if e != nil {
 			retry, detail := ocrapi.Failure(e)

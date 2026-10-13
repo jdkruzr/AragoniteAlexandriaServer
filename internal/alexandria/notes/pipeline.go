@@ -12,7 +12,6 @@
 package notes
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -20,7 +19,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"image/jpeg"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -244,11 +242,8 @@ func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied ti
 	if !s.live || (len(s.strokes) == 0 && len(s.boxes) == 0) {
 		return finish(ctx, db, page, dirtied, generation, token, s, key, nil)
 	}
-	r := result{hash: inputHash(s), configRevision: p.SettingsRevision}
-	if p.OCRIdentity != "" {
-		h := sha256.Sum256([]byte(r.hash + ":" + p.OCRIdentity))
-		r.hash = hex.EncodeToString(h[:])
-	}
+	h := sha256.Sum256([]byte(inputHash(s) + ":" + ocrapi.ImagePolicyVersion + ":" + p.OCRIdentity))
+	r := result{hash: hex.EncodeToString(h[:]), configRevision: p.SettingsRevision}
 	var cached string
 	err = db.QueryRowContext(ctx, `SELECT text, model FROM alexandria_page_ocr WHERE page_id=$1 AND input_hash=$2`, page, r.hash).Scan(&cached, &r.model)
 	switch {
@@ -261,15 +256,18 @@ func (p Pipeline) process(ctx context.Context, db pg.DB, page string, dirtied ti
 		if err != nil {
 			return fmt.Errorf("render: %w", err)
 		}
-		var buf bytes.Buffer
-		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); err != nil {
+		jpegData, info, err := ocrapi.EncodePage(img)
+		if err != nil {
 			return fmt.Errorf("encode: %w", err)
+		}
+		if _, err = db.ExecContext(ctx, `UPDATE alexandria_recognition_job j SET image_width=$3,image_height=$4,image_bytes=$5 FROM alexandria_page_dirty d WHERE j.id=d.job_id AND d.page_id=$1 AND d.lease_token=$2::uuid`, page, token, info.Width, info.Height, info.Bytes); err != nil {
+			return err
 		}
 		prompt := p.Prompt
 		if prompt == "" {
 			prompt = DefaultPrompt
 		}
-		text, err := p.OCR.Recognize(ctx, buf.Bytes(), prompt)
+		text, err := p.OCR.Recognize(ctx, jpegData, prompt)
 		if err != nil {
 			return fmt.Errorf("recognition provider request failed: %w", err)
 		}

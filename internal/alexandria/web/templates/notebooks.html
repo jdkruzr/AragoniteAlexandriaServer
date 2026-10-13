@@ -1,5 +1,6 @@
 {{define "content"}}{{$d := .Data}}
 <h1>Notebooks</h1>
+<p><a href="/jobs/library?source=client">Recognize this library…</a></p>
 <p class="crumbs"><a href="/files/forestnote">All notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}}</p>
 <p class="muted"><a href="/files/forestnote/books">Books</a> are listed separately.</p>
 {{if not $d.Entries}}<p class="empty">Nothing here yet. Notebooks appear after a device syncs.</p>{{else}}

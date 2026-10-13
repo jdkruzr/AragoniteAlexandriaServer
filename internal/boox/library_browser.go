@@ -41,6 +41,7 @@ type libraryPage struct {
 
 var libraryTemplate = template.Must(template.New("library").Funcs(template.FuncMap{"ms": listview.Date}).Parse(`{{define "content"}}{{$d:=.Data}}
 <h1>{{if $d.Deleted}}Deleted notebooks{{else}}Notebooks{{end}}</h1>
+<p><a href="/jobs/library?source=boox">Recognize this library…</a> · <a href="/boox/cleanup">Clean up numbered notebooks…</a></p>
 <p><a href="/boox">All notebooks</a> · <a href="/boox?view=folders">Browse folders</a></p><p class="crumbs"><a href="/boox?view=folders&amp;category={{$d.Category}}">Library root</a>{{range $d.Crumbs}} / <a href="/boox?folder={{.ID}}&amp;category={{$d.Category}}">{{.Title}}</a>{{end}}</p>
 <form class="search" method="get" action="/boox"><input type="hidden" name="folder" value="{{$d.Folder}}">{{if not $d.All}}<input type="hidden" name="view" value="folders">{{end}}{{if $d.Deleted}}<input type="hidden" name="show" value="deleted">{{end}}
 <label>Note type <select name="category"><option value="all" {{if eq $d.Category "all"}}selected{{end}}>All note types</option><option value="handwritten" {{if eq $d.Category "handwritten"}}selected{{end}}>Handwritten notes</option><option value="text" {{if eq $d.Category "text"}}selected{{end}}>Text notes</option><option value="reading" {{if eq $d.Category "reading"}}selected{{end}}>Reading notes</option><option value="other" {{if eq $d.Category "other"}}selected{{end}}>Other note types</option></select></label>
@@ -290,6 +291,20 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	ids := booxpage.PageIDs(n.Meta.PageNameList)
 	num, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if pageID := r.URL.Query().Get("page_id"); pageID != "" {
+		num = 0
+		for i, id := range ids {
+			if id == pageID {
+				num = i + 1
+				break
+			}
+		}
+		if num == 0 || n.Meta.Status != 1 {
+			http.NotFound(w, r)
+			return
+		}
+	}
+
 	if num < 1 {
 		num = 1
 	}

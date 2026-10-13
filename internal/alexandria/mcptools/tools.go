@@ -180,7 +180,7 @@ func text(s string, out any) *mcp.CallToolResult {
 func registerNoteTools(server *mcp.Server, d Deps) {
 	mcp.AddTool[searchNotesInput, any](server, &mcp.Tool{
 		Name:        "search_notes",
-		Description: "Search synced handwritten notebook pages by keyword query (recognized handwriting, text boxes and device-recognized text). Optional: mode (hybrid/keyword) and limit. Other UltraBridge filters (source, folder, location, device_model, dates, sort) are accepted and ignored: this server holds Alexandria notebooks only.",
+		Description: "Search Alexandria Client page text and BOOX recognized pages and reading text. Optional: mode (hybrid/keyword), limit, source or sources (client/forestnote, boox). Defaults to all sources. Folder, location, device_model, dates and sort are accepted but not implemented. BOOX results provide web links; the client-only image/page tools do not accept BOOX paths.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in searchNotesInput) (*mcp.CallToolResult, any, error) {
 		if in.Query == "" {
 			return nil, nil, fmt.Errorf("query is required")
@@ -189,7 +189,27 @@ func registerNoteTools(server *mcp.Server, d Deps) {
 		if limit <= 0 {
 			limit = 10
 		}
-		results, err := d.Search.Search(ctx, in.Query, limit, in.Mode != "keyword")
+		scope := ""
+		selected := map[string]bool{}
+		inputs := append([]string{}, in.Sources...)
+		if in.Source != "" {
+			inputs = append(inputs, in.Source)
+		}
+		for _, src := range inputs {
+			if src == "forestnote" {
+				src = "client"
+			}
+			if src != "client" && src != "boox" {
+				return nil, nil, fmt.Errorf("invalid source")
+			}
+			selected[src] = true
+		}
+		if len(selected) == 1 {
+			for src := range selected {
+				scope = src
+			}
+		}
+		results, err := d.Search.SearchScoped(ctx, in.Query, limit, in.Mode != "keyword", scope)
 		if err != nil {
 			return nil, nil, fmt.Errorf("search failed: %w", err)
 		}
@@ -200,6 +220,16 @@ func registerNoteTools(server *mcp.Server, d Deps) {
 				Score: r.Score, SourceType: notes.Source, DetailPath: detailPath(r.NotebookID, r.PageID)}
 			m.DetailURL = d.display(m.DetailPath)
 			m.ImageToolHint = fmt.Sprintf(`get_note_image {"note_path": %q, "page": 0}`, r.NoteKey)
+			if r.Source == "boox" {
+				m.SourceType = "boox"
+				m.DetailPath = r.URL
+				m.DetailURL = d.display(r.URL)
+				m.ImageToolHint = ""
+				m.Title = r.NotebookName
+				if r.PageNumber > 0 {
+					m.Title = fmt.Sprintf("%s, page %d", r.NotebookName, r.PageNumber)
+				}
+			}
 			out.Results = append(out.Results, m)
 			fmt.Fprintf(&sb, "--- Result %d ---\nNote: %s (page 0)\nTitle: %s\nSource type: %s\nURL: %s\nText:\n%s\n\n",
 				i+1, m.Path, m.Title, m.SourceType, m.DetailURL, m.Snippet)

@@ -210,3 +210,34 @@ func TestTaskToolsLifecycle(t *testing.T) {
 		t.Fatal("missing task found")
 	}
 }
+
+func TestSearchNotesBOOXSourceAndLinks(t *testing.T) {
+	db, client := setup(t)
+	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('test#book','1-test','reading','','test','{"uniqueId":"book","modeType":4,"title":"garlic cultivation","status":0}')`); err != nil {
+		t.Fatal(err)
+	}
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "search_notes", Arguments: map[string]any{"query": "cultivat", "source": "boox"}})
+	if err != nil || result.IsError {
+		t.Fatal("MCP BOOX query", result, err)
+	}
+	raw, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out searchNotesOutput
+	if err = json.Unmarshal(raw, &out); err != nil || out.Count != 1 {
+		t.Fatal("MCP source filter", string(raw), err)
+	}
+	hit := out.Results[0]
+	if hit.SourceType != "boox" || !strings.Contains(hit.DetailURL, "/boox/reading?record=test%23book") || hit.ImageToolHint != "" {
+		t.Fatal("misleading BOOX tool link", hit)
+	}
+	result, err = client.CallTool(ctx, &mcp.CallToolParams{Name: "search_notes", Arguments: map[string]any{"query": "garlic", "sources": []string{"boox", "client"}}})
+	if err != nil || result.IsError {
+		t.Fatal(err)
+	}
+	raw, _ = json.Marshal(result.StructuredContent)
+	if err = json.Unmarshal(raw, &out); err != nil || out.Count != 2 {
+		t.Fatal("global MCP", string(raw), err)
+	}
+}

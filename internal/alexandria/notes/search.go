@@ -2,8 +2,12 @@ package notes
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,6 +29,9 @@ const (
 )
 
 type Result struct {
+	Source       string  `json:"source"`
+	Kind         string  `json:"kind"`
+	URL          string  `json:"url"`
 	NoteKey      string  `json:"note_key"`
 	NotebookID   string  `json:"notebook_id"`
 	NotebookName string  `json:"notebook_name"`
@@ -41,11 +48,19 @@ type Searcher struct {
 	Embedder   embed.Embedder // nil = keyword only
 }
 
-// livePages restricts results to pages and notebooks that are not deleted.
-const livePages = `JOIN fn_page p ON c.note_key = 'forestnote://' || p.notebook_id || '/' || p.id AND p.deleted_at IS NULL
-	JOIN fn_notebook n ON n.id = p.notebook_id AND n.deleted_at IS NULL`
-
+// Search retains the client-only Go API; shared surfaces use SearchScoped.
 func (s Searcher) Search(ctx context.Context, query string, limit int, hybrid bool) ([]Result, error) {
+	return s.SearchScoped(ctx, query, limit, hybrid, "client")
+}
+
+// SearchScoped embeds a query once for all selected sources. Empty scope is global.
+func (s Searcher) SearchScoped(ctx context.Context, query string, limit int, hybrid bool, scope string) ([]Result, error) {
+	if scope == "forestnote" {
+		scope = "client"
+	}
+	if scope != "" && scope != "client" && scope != "boox" {
+		return nil, fmt.Errorf("invalid search source")
+	}
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return []Result{}, nil
@@ -61,18 +76,19 @@ func (s Searcher) Search(ctx context.Context, query string, limit int, hybrid bo
 	hits := map[string]*hit{}
 	// The phrase, or every term (UltraBridge's FTS5 query shape).
 	rows, err := s.DB.QueryContext(ctx, `WITH q AS (SELECT phraseto_tsquery('simple', $1) || plainto_tsquery('simple', $1) AS query)
-		SELECT c.note_key, p.notebook_id, COALESCE(n.name,''), p.id, c.body_text,
+		SELECT c.note_key, c.notebook_id, c.title, c.page_id, c.page_number, c.source, c.kind, c.body_text,
 			ts_headline('simple', c.body_text, q.query, 'StartSel="",StopSel="",MaxWords=25,MinWords=8,ShortWord=1')
-		FROM alexandria_note_content c CROSS JOIN q `+livePages+`
-		WHERE c.source = 'forestnote' AND c.search_document @@ q.query
-		ORDER BY ts_rank_cd(c.search_document, q.query) DESC, c.note_key LIMIT $2`, query, candidates)
+		FROM alexandria_search_live c CROSS JOIN q
+		WHERE ($3='' OR c.source=$3) AND (c.search_document @@ q.query
+ OR c.source='boox' AND c.kind='Reading' AND strpos(lower(c.body_text),lower($1))>0)
+		ORDER BY ts_rank_cd(c.search_document, q.query) DESC, c.note_key LIMIT $2`, query, candidates, scope)
 	if err != nil {
 		return nil, err
 	}
 	rank := 0
 	for rows.Next() {
 		h := &hit{}
-		if err := rows.Scan(&h.NoteKey, &h.NotebookID, &h.NotebookName, &h.PageID, &h.text, &h.Snippet); err != nil {
+		if err := rows.Scan(&h.NoteKey, &h.NotebookID, &h.NotebookName, &h.PageID, &h.PageNumber, &h.Source, &h.Kind, &h.text, &h.Snippet); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -95,11 +111,11 @@ func (s Searcher) Search(ctx context.Context, query string, limit int, hybrid bo
 				filter = "e.generation=$2 AND e.body_hash=md5(c.body_text)"
 				identity = s.Generation
 			}
-			rows, err := s.DB.QueryContext(ctx, `SELECT c.note_key, p.notebook_id, COALESCE(n.name,''), p.id, c.body_text, min(CASE WHEN e.dimensions=$3 THEN e.embedding <=> $1::vector END) AS distance
-				FROM `+table+` e JOIN alexandria_note_content c ON c.note_key = e.note_key AND c.page = e.page `+livePages+`
-				WHERE `+filter+` AND e.dimensions = $3
-				GROUP BY c.note_key, p.notebook_id, n.name, p.id, c.body_text ORDER BY distance, c.note_key LIMIT $4`,
-				vectorLiteral(vector), identity, len(vector), candidates)
+			rows, err := s.DB.QueryContext(ctx, `SELECT c.note_key, c.notebook_id, c.title, c.page_id, c.page_number, c.source, c.kind, c.body_text, min(CASE WHEN e.dimensions=$3 THEN e.embedding <=> $1::vector END) AS distance
+				FROM `+table+` e JOIN alexandria_search_live c ON c.note_key = e.note_key AND c.page = e.page
+				WHERE `+filter+` AND e.dimensions = $3 AND ($5='' OR c.source=$5)
+				GROUP BY c.note_key, c.notebook_id, c.title, c.page_id, c.page_number, c.source, c.kind, c.body_text ORDER BY distance, c.note_key LIMIT $4`,
+				vectorLiteral(vector), identity, len(vector), candidates, scope)
 			if err != nil {
 				return nil, err
 			}
@@ -107,7 +123,7 @@ func (s Searcher) Search(ctx context.Context, query string, limit int, hybrid bo
 			for rows.Next() {
 				h := &hit{}
 				var distance float64
-				if err := rows.Scan(&h.NoteKey, &h.NotebookID, &h.NotebookName, &h.PageID, &h.text, &distance); err != nil {
+				if err := rows.Scan(&h.NoteKey, &h.NotebookID, &h.NotebookName, &h.PageID, &h.PageNumber, &h.Source, &h.Kind, &h.text, &distance); err != nil {
 					rows.Close()
 					return nil, err
 				}
@@ -130,6 +146,49 @@ func (s Searcher) Search(ctx context.Context, query string, limit int, hybrid bo
 		}
 		// An unreachable embedder degrades to keyword search, never an error.
 	}
+	// A query embedding can take seconds. Recheck lexical and vector candidates
+	// afterward so a deletion/edit during inference cannot return stale text.
+	type candidate struct {
+		Key  string `json:"key"`
+		Hash string `json:"hash"`
+	}
+	check := make([]candidate, 0, len(hits))
+	for key, h := range hits {
+		sum := md5.Sum([]byte(h.text))
+		check = append(check, candidate{key, hex.EncodeToString(sum[:])})
+	}
+	raw, _ := json.Marshal(check)
+	current, err := s.DB.QueryContext(ctx, `SELECT c.note_key,c.notebook_id,c.title,c.page_id,c.page_number,c.source,c.kind FROM alexandria_search_live c JOIN jsonb_to_recordset($1::jsonb) AS wanted(key text,hash text) ON c.note_key=wanted.key AND md5(c.body_text)=wanted.hash`, raw)
+	if err != nil {
+		return nil, err
+	}
+	live := map[string]bool{}
+	for current.Next() {
+		var key string
+		var meta Result
+		if err = current.Scan(&key, &meta.NotebookID, &meta.NotebookName, &meta.PageID, &meta.PageNumber, &meta.Source, &meta.Kind); err != nil {
+			current.Close()
+			return nil, err
+		}
+		h := hits[key]
+		h.NotebookID = meta.NotebookID
+		h.NotebookName = meta.NotebookName
+		h.PageID = meta.PageID
+		h.PageNumber = meta.PageNumber
+		h.Source = meta.Source
+		h.Kind = meta.Kind
+		live[key] = true
+	}
+	err = current.Err()
+	current.Close()
+	if err != nil {
+		return nil, err
+	}
+	for key := range hits {
+		if !live[key] {
+			delete(hits, key)
+		}
+	}
 	out := make([]*hit, 0, len(hits))
 	for _, h := range hits {
 		out = append(out, h)
@@ -146,10 +205,17 @@ func (s Searcher) Search(ctx context.Context, query string, limit int, hybrid bo
 	results := make([]Result, len(out))
 	for i, h := range out {
 		h.Score = h.score
-		if err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM fn_page p, fn_page self
+		if h.Source == "client" {
+			if err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM fn_page p, fn_page self
 			WHERE self.id=$1 AND p.notebook_id=self.notebook_id AND p.deleted_at IS NULL
 			AND (p.sort_order, p.id) <= (self.sort_order, self.id)`, h.PageID).Scan(&h.PageNumber); err != nil {
-			return nil, err
+				return nil, err
+			}
+			h.URL = "/files/forestnote?notebook=" + url.QueryEscape(h.NotebookID) + "&page=" + url.QueryEscape(h.PageID) + "#page-" + url.PathEscape(h.PageID)
+		} else if h.Kind == "Reading" {
+			h.URL = "/boox/reading?record=" + url.QueryEscape(h.NotebookID)
+		} else {
+			h.URL = "/boox/notebook?id=" + url.QueryEscape(h.NotebookID) + "&page=" + strconv.Itoa(h.PageNumber) + "&page_id=" + url.QueryEscape(h.PageID)
 		}
 		results[i] = h.Result
 	}
@@ -173,7 +239,12 @@ func (s Searcher) Handler() http.Handler {
 			return
 		}
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-		results, err := s.Search(r.Context(), r.URL.Query().Get("q"), limit, r.URL.Query().Get("mode") != "keyword")
+		scope := r.URL.Query().Get("source")
+		if scope != "" && scope != "client" && scope != "boox" && scope != "forestnote" {
+			http.Error(w, "invalid_source", 400)
+			return
+		}
+		results, err := s.SearchScoped(r.Context(), r.URL.Query().Get("q"), limit, r.URL.Query().Get("mode") != "keyword", scope)
 		if err != nil {
 			http.Error(w, "search_unavailable", 503)
 			return

@@ -67,9 +67,13 @@ func TestBatchControlsHistoryIdempotencyAndPagination(t *testing.T) {
 	if e != nil || v.Total != 1 || v.Counts["queued"] != 1 {
 		t.Fatal(v, e)
 	}
-	v, e = s.List(ctx, Filter{State: "failed"})
+	v, e = s.List(ctx, Filter{State: "failed", History: true})
 	if e != nil || v.Total != 1 {
 		t.Fatal("failure history lost", v, e)
+	}
+	v, e = s.List(ctx, Filter{State: "failed"})
+	if e != nil || v.Total != 0 {
+		t.Fatal("superseded failure counted as current", v, e)
 	}
 }
 

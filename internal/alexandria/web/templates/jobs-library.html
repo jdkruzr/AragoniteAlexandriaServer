@@ -1,0 +1,40 @@
+{{define "content"}}{{$d:=.Data}}
+<p><a href="/jobs">← Recognition jobs</a></p><h1>Library recognition</h1>
+{{if $d.SourceUnavailable}}<p class="notice">This source is disabled in this deployment. Existing batch history remains available.</p>{{else if not $d.Enabled}}<p class="notice">Recognition is off. You can prepare a review now; enable recognition in <a href="/settings">Settings</a> before confirming it.</p>{{end}}
+{{if not $d.Run}}
+<form class="inline" method="get" action="/jobs/library"><label>Source <select name="source"><option value="client" {{if eq $d.Source "client"}}selected{{end}}>Alexandria Client</option>{{if $d.NativeBOOX}}<option value="boox" {{if eq $d.Source "boox"}}selected{{end}}>BOOX Native</option>{{end}}</select></label><button>Choose source</button></form>
+<p>Prepare a review of all live notebooks received from {{if eq $d.Source "client"}}Alexandria Client{{else}}BOOX Native{{end}}, across folders and devices. Preparation reads page catalogs and does not call your recognition provider.</p>
+<p>You can exclude notebooks before confirming. Deleted notebooks and folders are omitted. {{if eq $d.Source "boox"}}This covers notebook pages, including reading-associated notebooks; book files and NeoReader handwriting annotations are not included. Recognized text stays on the server.{{else}}This covers notebook pages; books and reading annotations are not included. Recognition results can sync back to Alexandria Client devices.{{end}}</p>
+<form method="post" action="/jobs/library"><input type="hidden" name="source" value="{{$d.Source}}"><input type="hidden" name="token" value="{{$d.Token}}"><button name="action" value="prepare">Prepare library review</button></form>
+{{else}}{{$r:=$d.Run}}
+<p><strong>Source: {{$r.SourceLabel}}</strong> · <a href="/jobs/library?source={{$r.Source}}">New library review</a></p>
+<p>Started {{$r.Created.UTC.Format "2006-01-02 15:04:05"}} UTC · <strong>{{$r.Label}}</strong> · <a href="/jobs/library?id={{$r.ID}}">Refresh</a></p>
+{{if eq $r.State "preparing"}}<h2>Preparing the review</h2><progress value="{{$r.Prepared}}" max="{{if $r.Total}}{{$r.Total}}{{else}}1{{end}}">{{$r.Prepared}} / {{$r.Total}}</progress><p>{{$r.Prepared}} of {{$r.Total}} notebook catalogs checked. This continues if you close the browser. Status refreshes every five seconds.</p>{{end}}
+{{if eq $r.State "review"}}<h2>Review before starting</h2><p>{{$r.Total}} notebooks checked · {{$r.Pages}} discovered pages · {{$r.Unavailable}} notebooks unavailable. Page resources are checked during processing; discovered pages are not a guarantee of complete previews.</p>
+{{if $r.Unavailable}}<form method="post" action="/jobs/library"><input type="hidden" name="id" value="{{$r.ID}}"><button name="action" value="retry_catalog">Retry unavailable catalogs</button></form>{{end}}
+<form class="stack library-review" method="post" action="/jobs/library" id="library-review">
+<input type="hidden" name="id" value="{{$r.ID}}">
+<p>All available notebooks are included by default. Check <strong>Exclude</strong> beside any notebook you want to leave out.</p>
+<div class="table-scroll"><table class="recognition-notebooks"><thead><tr><th>Exclude</th><th>Notebook</th><th>Pages</th><th>Availability</th></tr></thead><tbody>{{range $r.Notebooks}}<tr><td>{{if eq .State "ready"}}<input type="checkbox" name="exclude" value="{{.ID}}" aria-label="Exclude {{.Title}}" data-pages="{{.Pages}}">{{end}}</td><td><a href="{{$r.NotebookURL .ID}}">{{.Title}}</a></td><td>{{.Pages}}</td><td>{{if eq .State "ready"}}Available{{else}}Unavailable{{end}}{{if .Detail}} — {{.Detail}}{{end}}</td></tr>{{end}}</tbody></table></div>
+{{if $r.Awaiting}}<p id="library-selection" role="status" aria-live="polite">All available notebooks are included unless excluded above.</p>
+<label><input type="checkbox" name="force">Recognize again even if a matching result is cached</label>
+<p>Already queued, running or paused pages keep their existing jobs. New pages added after this review require a new review. Changed page lists are held for review instead of silently expanding this selection.</p>
+<p>Each recognition image is at most 1 MB (1,000,000 JPEG bytes), with a maximum long side of 4096 pixels. Images are never enlarged; compression is adjusted before further resizing. Encoded dimensions and size appear in job details. Base64 adds about one third to the request size.</p>
+<p>{{if eq $r.Source "client"}}Recognition results can sync back to Alexandria Client devices.{{else}}Recognized text stays on the server; native BOOX pages are unchanged.{{end}}</p>
+<label><input type="checkbox" name="confirm" required>Send the included pages to my configured recognition provider. Provider charges may apply.</label>
+<button name="action" value="queue" {{if not $d.Enabled}}disabled{{end}}>Queue included notebooks</button>
+{{else}}<p class="empty">No available pages to queue. Sync notebooks from this source, or retry any unavailable catalogs above.</p>{{end}}
+</form><script src="/static/recognition.js" defer></script>
+{{else if ne $r.State "preparing"}}
+<h2>Library batch progress</h2>
+<progress value="{{$r.Finished}}" max="{{if $r.WorkTotal}}{{$r.WorkTotal}}{{else}}1{{end}}">{{$r.Finished}} / {{$r.Queued}}</progress>
+<p><strong>{{$r.Ready}} ready</strong> · {{$r.Pending}} queued · {{$r.Processing}} processing · {{$r.Paused}} paused · {{$r.Failed}} failed · {{$r.Blocked}} blocked · {{$r.Cancelled}} cancelled</p>
+<p>{{$r.Finished}} of {{$r.Queued}} dispatched pages have an outcome; failed, blocked and cancelled pages are not successful transcriptions. {{$r.Awaiting}} reviewed pages have not been dispatched. {{$r.Skipped}} active/paused pages were left in existing jobs; {{$r.Excluded}} notebooks excluded; {{$r.Unavailable}} unavailable.</p>
+{{if and (eq $r.State "queued") (eq $r.Awaiting 0) (eq $r.Pending 0) (eq $r.Processing 0)}}<p class="coverage">No runnable work remains in this library batch. Review any failed, blocked, paused or unavailable items below.</p>{{end}}
+<p><a href="/jobs?run={{$r.ID}}&amp;live=1">All page jobs</a> · <a href="/jobs?run={{$r.ID}}&amp;state=failed">Failures</a> · <a href="/jobs?run={{$r.ID}}&amp;state=blocked">Blocked pages</a></p>
+<form class="actions" method="post" action="/jobs/library"><input type="hidden" name="id" value="{{$r.ID}}">{{if eq $r.State "queued"}}<button name="action" value="pause">Pause library batch</button><button name="action" value="retry">Retry failed and blocked pages</button>{{end}}{{if eq $r.State "paused"}}<button name="action" value="resume">Resume library batch</button>{{end}}{{if ne $r.State "cancelled"}}<button name="action" value="cancel" class="destructive">Cancel unfinished</button>{{end}}</form>
+<p class="muted">Pause and cancel also stop dispatching new notebook jobs. An already-sent provider request may finish and incur charges; its late result cannot publish. Transient failures retry automatically with backoff, up to five failed attempts. Failed and blocked pages can be retried here after fixing their cause. Unavailable catalogs need a <a href="/jobs/library?source={{$r.Source}}">new library review</a>.</p>
+<div class="table-scroll"><table class="recognition-notebooks"><thead><tr><th>Notebook</th><th>Pages</th><th>Dispatched / skipped</th><th>Status</th></tr></thead><tbody>{{range $r.Notebooks}}<tr><td><a href="{{$r.NotebookURL .ID}}">{{.Title}}</a>{{if .Queued}} · <a href="/jobs?batch={{.Batch}}&amp;live=1">Page jobs</a>{{end}}</td><td>{{.Pages}}</td><td>{{.Queued}} / {{.Skipped}}</td><td>{{if eq .State "ready"}}Awaiting dispatch{{else if eq .State "queued"}}Dispatched{{else if eq .State "excluded"}}Excluded{{else if eq .State "pending"}}Catalog pending{{else}}Unavailable{{end}}{{if .Detail}} — {{.Detail}}{{end}}</td></tr>{{end}}</tbody></table></div>
+{{end}}
+{{if or (eq $r.State "preparing") (eq $r.State "review")}}<form method="post" action="/jobs/library"><input type="hidden" name="id" value="{{$r.ID}}"><button name="action" value="cancel">Cancel review</button></form>{{end}}
+{{end}}{{end}}

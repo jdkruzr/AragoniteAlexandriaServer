@@ -389,6 +389,12 @@ provider. Search by meaning uses an optional **embedding** provider, which conve
 text into vectors for similarity searches. These providers process content; they
 do not decide which source revision wins during sync.
 
+The Compose distribution includes an optional CPU-only Ollama embedding service.
+Its private endpoint and persistent model cache can be provisioned while semantic
+search remains disabled in application Settings. Starting a provider, enabling
+its use and requesting an index build are separate operations. See
+[local embedding deployment](deployment-compose.md#optional-cpu-embedding-service).
+
 Queued jobs and their progress are stored in PostgreSQL. Workers claim a temporary
 lease before processing a job, allowing another worker to recover it if the first
 stops. Repeated execution must not duplicate published results, and maintenance
@@ -454,3 +460,44 @@ types that have not yet been integrated with those search interfaces.
 | Server assembly and unimplemented protocol placeholders | [`internal/server/server.go`](../internal/server/server.go) |
 | Source UI and recognition | [Source browser](source-browser-and-boox-reader.md), [recognition jobs](recognition-jobs.md) |
 | Deployment storage and backup | [Storage layout](deployment-storage.md) |
+
+
+## Shared semantic search (2026-10-13)
+
+Semantic search is derived application data in PostgreSQL/pgvector. The optional
+Ollama service embeds text; it does not interpret native ink or replicate documents.
+Couchbase/Sync Gateway and native object storage remain the BOOX source authorities.
+
+Migration 0023 connects current BOOX text to `alexandria_note_content`, alongside
+Alexandria Client text. BOOX notebook text comes from completed server recognition;
+reading text comes from current book titles, highlights and annotation notes. No
+whole-book extraction or device OCR import is implied. Notebook pages use stable
+notebook/page identifiers rather than page numbers; reading records retain their
+native document identifiers. Source revision metadata supports currentness checks.
+
+Database triggers refresh derived text on recognition/projection changes. Reading
+children require a live parent in the same account, including when arrival is out
+of order. Source invalidation removes stale text; deletion removes its vectors in
+all generations and invalidates outstanding work. Query-time source checks reject
+stale records independently of cleanup. Candidates are checked again after query
+embedding to catch edits/deletions during inference. Embedding completion retains
+its existing lease/version and text-hash checks. Source history stays separate.
+
+The shared `alexandria_search_live` view supplies current content and source-aware
+result metadata. Global web, JSON API and MCP search embed a query once across
+selected sources and combine keyword/vector ranks. BOOX reading keyword matches
+also retain the existing case-insensitive substring behavior for titles and text. `source=client` (or the API/MCP
+alias `forestnote`) and `source=boox` narrow results; omitted scope searches both.
+The legacy Go `Searcher.Search` method remains client-only; `SearchScoped` is the
+shared entry point. An unavailable embedding provider falls back to keyword search.
+Client reading annotations and BOOX notebook-title matches remain supplemental
+keyword-only web results. BOOX result links resolve stable page IDs on navigation.
+MCP BOOX results use web links rather than advertising client-only image tools.
+
+The upgrade backfills only already available text. It neither enables embeddings
+nor enqueues handwriting recognition. Existing active/building generations receive
+text changes through the same work queue; the disabled feature pauses processing.
+An explicit index build includes both sources. Settings displays per-source text,
+active-index coverage and outstanding/failed work, plus native pages still lacking
+current recognition text. Handwriting recognition remains an explicit, separately
+managed Jobs operation with its own provider and potential costs.

@@ -67,6 +67,8 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch r.URL.Path {
+	case "/boox/cleanup":
+		s.cleanupHTTP(w, r)
 	case "/boox/audio":
 		s.audioRecoveryHTTP(w, r)
 	case "/boox/reading/refresh":
