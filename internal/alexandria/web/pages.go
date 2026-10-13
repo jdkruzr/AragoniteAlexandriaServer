@@ -400,7 +400,13 @@ type apiToken struct {
 
 func (d Deps) settingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /settings/password", d.changePassword)
-	mux.HandleFunc("GET /settings", func(w http.ResponseWriter, r *http.Request) { d.settingsPage(w, r, nil) })
+	for _, tab := range []string{"account", "search", "recognition", "integrations"} {
+		path := "/settings/" + tab
+		if tab == "account" {
+			path = "/settings"
+		}
+		mux.HandleFunc("GET "+path, func(w http.ResponseWriter, r *http.Request) { d.settingsPage(w, r, tab, nil) })
+	}
 	mux.HandleFunc("POST /settings/caldav", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("collection"))
 		mode := r.FormValue("due_mode")
@@ -418,7 +424,7 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/settings", "CalDAV settings saved.")
+		back(w, r, "/settings/integrations", "CalDAV settings saved.")
 	})
 	mux.HandleFunc("POST /settings/tokens/create", func(w http.ResponseWriter, r *http.Request) {
 		label := strings.TrimSpace(r.FormValue("label"))
@@ -439,7 +445,7 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/settings", "Token revoked.")
+		back(w, r, "/settings/integrations", "Token revoked.")
 	})
 }
 
@@ -500,51 +506,71 @@ func compareTime(a, b int64, order string) int {
 	return cmp
 }
 
-func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, override *providers.View) {
+// settingsPage renders one Settings tab. Each tab loads only what it shows;
+// the provider tabs share one View so a failed connection test can re-render
+// the submitted (unsaved) values.
+func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, override *providers.View) {
 	ctx := r.Context()
-	collection, err := settings.Get(ctx, d.DB, settings.CalDAVCollectionName, "Tasks")
-	if err != nil {
-		d.fail(w, err)
-		return
-	}
-	due, err := settings.Get(ctx, d.DB, settings.DueTimeMode, "preserve")
-	if err != nil {
-		d.fail(w, err)
-		return
-	}
-	rows, err := d.DB.QueryContext(ctx, `SELECT token_hash, label, created_at, last_used_at FROM alexandria_api_tokens WHERE revoked_at IS NULL ORDER BY created_at DESC`)
-	if err != nil {
-		d.fail(w, err)
-		return
-	}
-	var tokens []apiToken
-	for rows.Next() {
-		var t apiToken
-		if err := rows.Scan(&t.Hash, &t.Label, &t.Created, &t.LastUsed); err != nil {
-			rows.Close()
+	data := map[string]any{"LocalPasswords": d.LocalPasswords, "Status": d.Status}
+	switch tab {
+	case "integrations":
+		collection, err := settings.Get(ctx, d.DB, settings.CalDAVCollectionName, "Tasks")
+		if err != nil {
 			d.fail(w, err)
 			return
 		}
-		tokens = append(tokens, t)
-	}
-	rows.Close()
-	var providerView *providers.View
-	if d.Providers != nil {
-		if override != nil {
-			providerView = override
-		} else {
-			v, e := d.Providers.View(ctx)
-			if e != nil {
-				d.fail(w, e)
+		due, err := settings.Get(ctx, d.DB, settings.DueTimeMode, "preserve")
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		rows, err := d.DB.QueryContext(ctx, `SELECT token_hash, label, created_at, last_used_at FROM alexandria_api_tokens WHERE revoked_at IS NULL ORDER BY created_at DESC`)
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		var tokens []apiToken
+		for rows.Next() {
+			var t apiToken
+			if err := rows.Scan(&t.Hash, &t.Label, &t.Created, &t.LastUsed); err != nil {
+				rows.Close()
+				d.fail(w, err)
 				return
 			}
-			providerView = &v
+			tokens = append(tokens, t)
 		}
-		providerView.Availability = providers.EmbeddingAvailability(ctx, providerView.SavedEmbedding)
+		rows.Close()
+		data["Collection"], data["DueMode"], data["Tokens"] = collection, due, tokens
+		data["CalDAV"], data["OAuthLabel"] = taskhost.Prefix+"/user/calendars/tasks/", oauth.TokenLabel
+	case "search", "recognition":
+		var providerView *providers.View
+		if d.Providers != nil {
+			if override != nil {
+				providerView = override
+			} else {
+				v, e := d.Providers.View(ctx)
+				if e != nil {
+					d.fail(w, e)
+					return
+				}
+				providerView = &v
+			}
+			if tab == "search" {
+				// A bounded model-list request; never inference.
+				providerView.Availability = providers.EmbeddingAvailability(ctx, providerView.SavedEmbedding)
+			}
+		}
+		data["Providers"], data["DefaultOCRPrompt"] = providerView, notes.DefaultPrompt
+	}
+	name, title := "settings", "Account"
+	switch tab {
+	case "search":
+		name, title = "settings-search", "Search by meaning"
+	case "recognition":
+		name, title = "settings-recognition", "Handwriting recognition"
+	case "integrations":
+		name, title = "settings-integrations", "Tasks & integrations"
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	d.render(w, r, "settings", "Settings", "settings", map[string]any{
-		"DefaultOCRPrompt": notes.DefaultPrompt,
-		"LocalPasswords":   d.LocalPasswords, "Collection": collection, "DueMode": due, "Tokens": tokens, "NewToken": r.URL.Query().Get("new_token") != "",
-		"Providers": providerView, "Status": d.Status, "CalDAV": taskhost.Prefix + "/user/calendars/tasks/", "OAuthLabel": oauth.TokenLabel})
+	d.render(w, r, name, title, "settings", data)
 }

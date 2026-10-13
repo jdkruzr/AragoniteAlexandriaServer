@@ -1,0 +1,108 @@
+{{define "content"}}{{$d := .Data}}
+<div class="guide">
+<h1>Help</h1>
+<p class="lede">How Alexandria works, what each setting does, and what it costs. Look for <span class="badge">?</span> buttons throughout the app for short versions of these explanations.</p>
+<ol class="guide-index">
+<li><a href="#start">Getting started</a></li>
+<li><a href="#client">Alexandria Client</a></li>
+{{if $d.NativeBOOX}}<li><a href="#boox">BOOX</a></li>{{end}}
+<li><a href="#devices">Devices</a></li>
+<li><a href="#search">Search</a></li>
+<li><a href="#semantic">Search by meaning</a></li>
+<li><a href="#recognition">Handwriting recognition</a></li>
+<li><a href="#deleting">Deleting and recovering</a></li>
+<li><a href="#tasks">Tasks and CalDAV</a></li>
+<li><a href="#api">API and MCP access</a></li>
+<li><a href="#account">Your account</a></li>
+<li><a href="#diagnostics">Operator notes</a></li>
+</ol>
+
+<section id="start"><h2>Getting started</h2>
+<p>Alexandria keeps one library for one person, gathered from several <strong>sources</strong>. Each source keeps its own notebooks and devices, because each one syncs in its own way. Search, tasks and handwriting recognition work across all of them.</p>
+<p>To add content, connect a device from <a href="/sources">Add source</a>. Notebooks appear after the device's first sync.</p>
+</section>
+
+<section id="client"><h2>Alexandria Client</h2>
+<p>The Alexandria Client app syncs notebooks and books with this server using its own protocol. Recognized handwriting can sync back to Client devices, so the text shows up there too.</p>
+<p>Book dates: <em>Created</em> is when the Client first recorded the book, not its publication date. <em>Modified</em> includes title and annotation changes.</p>
+</section>
+
+{{if $d.NativeBOOX}}<section id="boox"><h2>BOOX</h2>
+<p>BOOX tablets connect through the <strong>PowerSync</strong> app, which points the tablet's built-in Notes and NeoReader sync at this server instead of Onyx's cloud. Your notebooks keep their native format, and every tablet signed in to the same BOOX account shares one library.</p>
+<p><strong>Browsing is read-only.</strong> Opening notebooks or pages here never changes your tablets. Only a few actions write back: deleting numbered notebooks, uploading a book, refreshing reading data and audio recovery. Each of those says so before you confirm.</p>
+<p><strong>Page previews</strong> are drawn on the server from the ink files received so far. Pen textures are approximate. A missing preview does not mean the page is blank; some files may still be on their way.</p>
+<p><strong>When two tablets disagree</strong>, Alexandria follows the same winner the tablets' own sync chooses. Every version the server sees is kept, so earlier versions can be recovered, but changes a tablet never sent can't be recovered.</p>
+<p><strong>Reading</strong> shows books, highlights and bookmarks from NeoReader. Page numbers are shown exactly as the tablet recorded them. You can upload EPUB or PDF books (up to 64 MiB); each tablet downloads a book when you open it in its library.</p>
+<p><strong>Going back to Onyx</strong>: use Restore in PowerSync on the tablet. Revoking a device here only removes its access to this server; it does not switch the tablet back.</p>
+</section>{{end}}
+
+<section id="devices"><h2>Devices</h2>
+<p>Each source keeps its own device list. A tablet connected through two sources appears in both.</p>
+<dl>
+<dt>Alexandria Client devices</dt><dd>Sign in from the Client app's Settings → Sync using this server's address and your account. <em>Waiting</em> counts changes the device has not pulled yet. <em>Clear sync position</em> is safe for a device still in use; it picks up where it left off.</dd>
+{{if $d.NativeBOOX}}<dt>BOOX devices</dt><dd>Install PowerSync, enter this server's address, and type a one-time code from <a href="/boox/enroll">Connect a device</a>. Codes expire after ten minutes. <em>Authorized</em> means a tablet may connect; it doesn't mean everything has finished downloading.</dd>{{end}}
+<dt>Revoking</dt><dd>Stops a device syncing. Its notes stay in your library.</dd>
+</dl>
+</section>
+
+<section id="search"><h2>Search</h2>
+<p>Search looks through Alexandria Client page text and book annotations{{if $d.NativeBOOX}}, BOOX notebook titles, book titles, highlights and notes, and handwriting from BOOX pages that have been recognized{{end}}. Pages that have never been recognized can only be found by title, so if a search misses something, check whether its pages have been through <a href="#recognition">recognition</a>.</p>
+<p><strong>Words and meaning</strong> (shown when <a href="#semantic">search by meaning</a> is on) also finds related ideas. <strong>Exact words only</strong> matches what you typed. Use the source menu to narrow results to one source.</p>
+</section>
+
+<section id="semantic"><h2>Search by meaning</h2>
+<p>Semantic search turns your text into vectors so a search for “budget” can find a page about “cost showback”. It needs an <strong>embedding provider</strong>: the optional bundled Ollama service runs the Nomic model on the server's CPU, or you can point it at another Ollama-compatible endpoint.</p>
+<p>Settings shows three separate things, because each can be true without the others:</p>
+<dl><dt>Provider</dt><dd>Whether the saved embedding service answers. Checked without sending any of your notes.</dd>
+<dt>Semantic search</dt><dd>Whether you've turned the feature on.</dd>
+<dt>Index</dt><dd>Whether the vectors exist yet. Building takes a while; the previous index stays usable until a replacement finishes.</dd></dl>
+<p>Turning it off keeps the index and pauses new work, so turning it back on resumes quickly. Search by meaning only indexes text that already exists. It never starts handwriting recognition.</p>
+</section>
+
+<section id="recognition"><h2>Handwriting recognition</h2>
+<p>Recognition sends page images to a vision model you configure and stores the text it returns, which makes the pages searchable. <strong>It can cost money</strong>, so nothing is sent until you confirm.</p>
+<dl>
+<dt>Providers</dt><dd>Anthropic Messages or OpenAI Chat Completions formats, including local OpenAI-compatible servers such as vLLM. API keys are encrypted in the database and never displayed after saving.</dd>
+<dt>Where text goes</dt><dd>Alexandria Client text can sync back to Client devices.{{if $d.NativeBOOX}} BOOX text stays on this server: it's searchable here but never changes your BOOX notebooks.{{end}}</dd>
+<dt>One notebook or a whole library</dt><dd>Recognize individual pages from a notebook, or use <a href="/jobs/library">Recognize a library</a>. A library run first checks every notebook's page list. That check is free and doesn't contact your provider. You then review and exclude notebooks before confirming. Pages are sent in chunks of up to 100.</dd>
+<dt>Pause, cancel and retry</dt><dd>Pausing or cancelling stops results being published, but a request already sent may still finish and be billed. Resuming may send it again. Retry reuses unchanged successful results. Temporary failures retry automatically up to five times.</dd>
+<dt>Image size</dt><dd>Each page is sent as a JPEG of at most 1 MB and 4096 pixels on its long side. Pages are never enlarged. Base64 encoding adds about a third to the request size.</dd>
+<dt>Reprocessing</dt><dd>Re-runs pages that were already recognized or requested, using the current settings. Unchanged pages reuse cached results; a new model or prompt can cost money again.</dd>
+<dt>Connection tests</dt><dd>Send a synthetic image or sentence, never your notes. They may cost a fraction of a cent and don't save settings.</dd>
+</dl>
+</section>
+
+<section id="deleting"><h2>Deleting and recovering</h2>
+<dl>
+<dt>Alexandria Client notebooks</dt><dd>Devices delete the notebook on their next sync. If a device edits it afterwards, it comes back.</dd>
+{{if $d.NativeBOOX}}<dt>BOOX numbered-notebook cleanup</dt><dd>BOOX names new notebooks <code>Notebook-1</code>, <code>Notebook-2</code> and so on. <a href="/boox/cleanup">Cleanup</a> finds notebooks named exactly that, across folders, so you can delete the ones you never renamed. It matches names only and doesn't look at the pages, so open anything you're unsure about. Deletion syncs to every BOOX tablet using this library.</dd>
+<dt>Deleted BOOX notebooks</dt><dd>Stay viewable under <a href="/boox?show=deleted">Deleted notebooks</a>. The server keeps their history and files, so deletion doesn't free storage space.</dd>{{end}}
+<dt>Tasks</dt><dd>Deleted tasks go to a separate list first.</dd>
+</dl>
+</section>
+
+<section id="tasks"><h2>Tasks and CalDAV</h2>
+<p><a href="/tasks">Tasks</a> is one list across your library. Tasks made from Alexandria Client pages link back to their page.{{if $d.NativeBOOX}} BOOX task extraction is not available yet.{{end}}</p>
+<p>Any CalDAV task app can sync the list using the address in <a href="/settings/integrations">Settings → Tasks &amp; integrations</a> and your account. Choose <em>Date only</em> if your app mishandles due times.</p>
+</section>
+
+<section id="api"><h2>API and MCP access</h2>
+<p>Claude on the web connects using this server's MCP address. You approve it on a page here, and it then appears in your token list. Other MCP clients and scripts use an API token from <a href="/settings/integrations">Settings → Tasks &amp; integrations</a>. A token can search and read your notebooks and books, edit text boxes and manage tasks, so revoke any you no longer use. A token is shown once, when you create it.</p>
+</section>
+
+<section id="account"><h2>Your account</h2>
+<p>Passwords need at least 12 characters (up to 72 bytes). After a change your browser may ask you to sign in again. Enrolled devices and API tokens keep working.</p>
+</section>
+
+<section id="diagnostics"><h2>Operator notes</h2>
+<p>For people running the server, and for automation working with a running copy:</p>
+<ul>
+<li>The footer and the <code>alexandria-version</code> meta tag show the build that's running. The readiness endpoint is <code>/readyz</code>.</li>
+<li>Every <span class="badge">?</span> button has a <code>data-help</code> key matching the help registry in <code>internal/alexandria/web/help.go</code>. Popover text is in the page HTML even while closed.</li>
+<li>Each page's <code>&lt;body&gt;</code> carries <code>data-section</code>, and the Settings, Client and BOOX tabs use <code>aria-current="page"</code>.</li>
+{{if $d.NativeBOOX}}<li><a href="/boox/activity">BOOX diagnostics</a> lists the raw records the server has observed, with native IDs and revisions. Each record's <em>Observed versions</em> link opens its retained history as JSON from <code>/api/v1/boox/admin/history</code>.</li>{{end}}
+<li>Recognition job details include the encoded image size and model. Batches and library runs keep their history after they finish.</li>
+</ul>
+</section>
+</div>
+{{end}}

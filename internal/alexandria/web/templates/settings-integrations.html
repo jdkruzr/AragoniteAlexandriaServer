@@ -1,0 +1,34 @@
+{{define "content"}}{{$d := .Data}}
+<h1>Tasks &amp; integrations</h1>
+<section class="card">
+<h2>Tasks over CalDAV {{template "help" "tasks.caldav"}}</h2>
+<p>CalDAV address: <code>{{.Base}}{{$d.CalDAV}}</code></p>
+<form method="post" action="/settings/caldav" class="stack">
+<label>Task list name <input name="collection" value="{{$d.Collection}}" maxlength="200"></label>
+<label>Due dates
+<select name="due_mode">
+<option value="preserve" {{if eq $d.DueMode "preserve"}}selected{{end}}>Keep the time of day</option>
+<option value="date_only" {{if eq $d.DueMode "date_only"}}selected{{end}}>Date only</option>
+</select></label>
+<div><button>Save</button></div>
+</form>
+</section>
+<section class="card">
+<h2>API and MCP access {{template "help" "api.mcp"}}</h2>
+<p>MCP address: <code>{{.Base}}/mcp</code></p>
+<p class="small muted">Claude on the web connects with this address and asks you to approve access. Other clients use a token.</p>
+<form method="post" action="/settings/tokens/create" class="inline">
+<input name="label" placeholder="What is this token for?" maxlength="100" aria-label="Token name"><button>Create token</button>
+</form>
+{{if $d.Tokens}}
+<div class="table-scroll"><table>
+<thead><tr><th>Token</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+<tbody>{{range $d.Tokens}}
+<tr><td>{{if eq .Label $d.OAuthLabel}}Claude (approved here){{else}}{{.Label}}{{end}}</td><td>{{.Created.Local.Format "2006-01-02"}}</td>
+<td>{{if .LastUsed}}{{.LastUsed.Local.Format "2006-01-02 15:04"}}{{else}}Never{{end}}</td>
+<td><form method="post" action="/settings/tokens/revoke"><input type="hidden" name="token_hash" value="{{.Hash}}"><button class="quiet">Revoke</button></form></td></tr>
+{{end}}</tbody>
+</table></div>
+{{else}}<p class="empty">No tokens yet.</p>{{end}}
+</section>
+{{end}}

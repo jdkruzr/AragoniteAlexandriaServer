@@ -36,5 +36,5 @@ func (d Deps) changePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	// Render success before the next request challenges cached Basic credentials.
 	r.URL.RawQuery = url.Values{"notice": {"Password changed. Use your new password when your browser next asks you to sign in."}}.Encode()
-	d.settingsPage(w, r, nil)
+	d.settingsPage(w, r, "account", nil)
 }

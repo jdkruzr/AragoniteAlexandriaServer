@@ -1,1 +1,9 @@
-{{define "content"}}<h1>Add a source</h1><section class="help"><h2>Alexandria Client</h2><p>Connect the Alexandria client app to this server.</p><p><a href="/settings/devices">Client devices and enrollment</a></p></section>{{if .NativeBOOX}}<section class="help"><h2>BOOX Native · PowerSync</h2><p>Use PowerSync to connect native notebook and reading synchronization.</p><p><a class="button" href="/boox/enroll">Connect a BOOX device</a></p></section>{{end}}<p class="muted">Additional source types will appear here when their connectors are available. A tablet connected through multiple sources has separate registrations.</p>{{end}}
+{{define "content"}}
+<h1>Add a source</h1>
+<p class="lede">Each source syncs in its own way and keeps its own devices. Search, tasks and recognition work across all of them.</p>
+<div class="cards">
+<section class="card"><h2>Alexandria Client</h2><p>The Alexandria note-taking app. Notebooks, books and recognized text sync both ways.</p><div class="card-foot"><a class="button" href="/settings/devices">Connect a Client device</a></div></section>
+{{if .NativeBOOX}}<section class="card"><h2>BOOX</h2><p>BOOX tablets' built-in Notes and NeoReader, via the PowerSync app. Your notebooks keep their native format.</p><div class="card-foot"><a class="button" href="/boox/enroll">Connect a BOOX device</a></div></section>{{end}}
+</div>
+<p class="small muted">More source types will appear here as their connectors become available. <a href="/help#devices">About devices and sources</a></p>
+{{end}}

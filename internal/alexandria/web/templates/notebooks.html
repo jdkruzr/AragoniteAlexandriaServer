@@ -1,9 +1,7 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Notebooks</h1>
-<p><a href="/jobs/library?source=client">Recognize this library…</a></p>
-<p class="crumbs"><a href="/files/forestnote">All notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}}</p>
-<p class="muted"><a href="/files/forestnote/books">Books</a> are listed separately.</p>
-{{if not $d.Entries}}<p class="empty">Nothing here yet. Notebooks appear after a device syncs.</p>{{else}}
+<div class="page-head"><h1>Notebooks</h1><a class="button secondary" href="/jobs/library?source=client">Recognize this library…</a></div>
+{{if $d.Crumbs}}<p class="crumbs"><a href="/files/forestnote">All notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}}</p>{{end}}
+{{if not $d.Entries}}<div class="card"><p class="empty">Nothing here yet. Notebooks appear after a device syncs.</p><p><a class="button" href="/settings/devices">Connect a device</a></p></div>{{else}}
 {{template "pagination" $d.Listing}}<div class="table-scroll"><table class="dated-list"><thead><tr>
 <th><a href="{{$d.Listing.SortURL "name"}}">Name{{$d.Listing.Indicator "name"}}</a></th><th><a href="{{$d.Listing.SortURL "pages"}}">Pages{{$d.Listing.Indicator "pages"}}</a></th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th><th>Search</th>
 </tr></thead>

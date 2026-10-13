@@ -1,13 +1,12 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Tasks</h1><p class="muted">Tasks across your library. Native BOOX task extraction and write-back are not available yet.</p>
+<div class="page-head"><h1>Tasks {{template "help" "tasks.overview"}}</h1><a class="button secondary" href="/tasks{{if not $d.Trash}}?show=deleted{{end}}">{{if $d.Trash}}Back to tasks{{else}}Deleted tasks{{end}}</a></div>
 {{if not $d.Trash}}
 <form class="inline" method="post" action="/tasks">
-  <input name="title" placeholder="New task" required maxlength="500">
+  <input name="title" placeholder="New task" required maxlength="500" aria-label="New task">
   <input type="date" name="due" aria-label="Due date">
-  <button>Add Task</button>
+  <button>Add task</button>
 </form>
 {{end}}
-<p><a href="/tasks{{if not $d.Trash}}?show=deleted{{end}}">{{if $d.Trash}}Back to tasks{{else}}Deleted tasks{{end}}</a></p>
 <h2>{{if $d.Trash}}Deleted{{else}}To Do{{end}}</h2>
 {{if not $d.Open}}<p class="empty">Nothing to do.</p>{{else}}<ul class="tasks">{{range $d.Open}}{{template "task" .}}{{end}}</ul>{{end}}
 {{if $d.Done}}

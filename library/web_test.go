@@ -62,8 +62,10 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/files/forestnote/books":                               "No books yet",
 		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, page 1",
 		"/tasks":                                                "Nothing to do",
-		"/settings/devices":                                     "No devices have enrolled yet",
-		"/settings":                                             "/caldav/user/calendars/tasks/",
+		"/settings/devices":                                     "<h2>Connect a device</h2>",
+		"/settings/integrations":                                "/caldav/user/calendars/tasks/",
+		"/help":                                                 "Handwriting recognition",
+		"/":                                                     "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
 	} {
 		got := b.do("GET", path, "", nil, true)
 		if got.Code != 200 || !strings.Contains(got.Body.String(), want) {

@@ -1,5 +1,5 @@
 {{define "content"}}{{$d := .Data}}
-<p class="crumbs"><a href="/files/forestnote/books">Books</a></p>
+<p class="crumbs"><a href="/files/forestnote/books">Books</a> /</p>
 <h1>{{$d.Book.Title}}</h1>
 <p class="muted">{{if $d.Book.Authors}}{{$d.Book.Authors}} · {{end}}{{$d.Book.Format}}{{if eq $d.Book.FileState "ready"}} · <a href="/files/forestnote/books/file?book={{$d.Book.ID}}">Download</a>{{end}}</p>
 {{if not $d.Annotations}}<p class="empty">No annotations in this book.</p>{{end}}

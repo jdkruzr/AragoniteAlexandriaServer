@@ -1,0 +1,39 @@
+{{define "content"}}{{$d := .Data}}
+<h1>Handwriting recognition</h1>
+{{if $d.Providers}}{{$p := $d.Providers}}
+<p class="lede">Turn handwriting into searchable text with a vision model you choose. Nothing is sent until you queue pages and confirm. {{template "help" "recognition.where"}}</p>
+<p class="actions"><a class="button" href="/jobs/library">Recognize a library…</a><a class="button secondary" href="/jobs">View recognition jobs</a></p>
+<section class="card">
+<h2>Provider {{template "help" "recognition.provider"}}</h2>
+{{if $p.Locked}}<p class="coverage">Provider settings are locked by the deployment.</p>{{else if not $p.CanSave}}<p class="coverage">The deployment needs a settings encryption key before provider credentials can be saved.</p>{{end}}
+<form method="post" action="/settings/providers" class="stack">
+<input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition">
+{{/* The provider form saves both providers at once; carry the saved embedding settings unchanged. */}}
+{{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}<input type="hidden" name="embed_url" value="{{$p.Config.Embedding.URL}}"><input type="hidden" name="embed_model" value="{{$p.Config.Embedding.Model}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Vision model</legend>
+<label><input type="checkbox" name="ocr_enabled" {{if $p.Config.OCR.Enabled}}checked{{end}}> Enable recognition</label>
+<label>API format <select name="ocr_format"><option value="anthropic" {{if eq $p.Config.OCR.Format "anthropic"}}selected{{end}}>Anthropic Messages</option><option value="openai" {{if eq $p.Config.OCR.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option></select></label>
+<div class="field"><span><label for="ocr-url">Base URL</label> {{template "help" "recognition.url"}}</span><input id="ocr-url" type="url" name="ocr_url" value="{{$p.Config.OCR.URL}}" maxlength="2048" placeholder="https://api.example.com"></div>
+<label>Model <input name="ocr_model" value="{{$p.Config.OCR.Model}}" maxlength="256"></label>
+<label>API key <input type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasKey}}Saved — leave blank to keep{{else}}Never displayed after saving{{end}}"></label>
+<p class="hint">{{if $p.HasKey}}A key is saved.{{else}}No key is saved.{{end}}</p>
+<label>Key action <select name="key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
+<details class="more"><summary>More options</summary>
+<div class="stack">
+<div class="field"><span><label for="anthropic-workspace">Anthropic workspace ID (optional)</label> {{template "help" "recognition.workspace"}}</span><input id="anthropic-workspace" name="anthropic_workspace" value="{{$p.Config.OCR.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></div>
+<div class="field"><span><label for="ocr-prompt">Recognition prompt</label> {{template "help" "recognition.prompt"}}</span><textarea id="ocr-prompt" name="ocr_prompt" rows="4" maxlength="16000" aria-describedby="ocr-prompt-help" placeholder="{{$d.DefaultOCRPrompt}}">{{$p.Config.OCR.Prompt}}</textarea></div>
+<p id="ocr-prompt-help" class="hint">Leave blank to use the default prompt: <q>{{$d.DefaultOCRPrompt}}</q></p>
+<label><input type="checkbox" name="vllm" {{if $p.Config.OCR.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
+</div>
+</details>
+</fieldset>
+<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save</button><button name="action" value="test_ocr" class="secondary">Test without saving</button>{{template "help" "recognition.tests"}}</div>
+</form>
+</section>
+<section class="card">
+<h2>Reprocess recognized pages {{template "help" "recognition.reprocess"}}</h2>
+<p>Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages.</p>
+<form method="post" action="/settings/providers" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition"><label class="confirm"><input type="checkbox" name="confirm" required> I want these pages reprocessed, including any provider charges.</label><div><button name="action" value="reprocess" class="secondary" {{if not $p.CanSave}}disabled{{end}}>Reprocess previously requested pages</button></div></form>
+</section>
+{{else}}<p>Handwriting recognition is configured by this deployment.</p>{{end}}
+{{end}}

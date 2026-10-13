@@ -1,121 +1,20 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Settings</h1>
+<h1>Account</h1>
 {{if $d.LocalPasswords}}
-<section>
-<h2>Change password</h2>
+<section class="card">
+<h2>Change password {{template "help" "account.password"}}</h2>
 <form method="post" action="/settings/password" class="stack">
 <label>Current password <input type="password" name="current_password" autocomplete="current-password" required></label>
 <label>New password <input type="password" name="new_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
 <label>Confirm new password <input type="password" name="confirm_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
-<p class="muted">Use at least 12 characters (up to 72 UTF-8 bytes). Your browser may ask you to sign in again afterward. Device enrollment and API tokens are unchanged.</p>
-<button>Change password</button>
+<p class="hint">At least 12 characters. Devices and API tokens keep working.</p>
+<div><button>Change password</button></div>
 </form>
 </section>
-{{end}}
-{{if $d.Providers}}{{$p := $d.Providers}}
-<section id="semantic-search" class="semantic-panel" aria-labelledby="semantic-heading">
-<h2 id="semantic-heading">Search by meaning</h2>
-<p>Find related ideas even when the wording differs. The optional local Ollama service uses Nomic embeddings on CPU; installing it does not turn semantic search on.</p>
-<dl class="semantic-status">
-<div><dt>Saved provider</dt><dd><span class="badge {{if $p.Availability.Ready}}indexed{{else}}partial{{end}}">{{$p.Availability.Label}}</span></dd></div>
-<div><dt>Semantic search</dt><dd><span class="badge {{if $p.SavedEmbedding.Enabled}}indexed{{else}}blank{{end}}">{{if $p.SavedEmbedding.Enabled}}On{{else}}Off{{end}}</span></dd></div>
-<div><dt>Search index</dt><dd>{{if $p.Failed}}Needs attention{{else if $p.IndexState}}{{if $p.SavedEmbedding.Enabled}}Building{{else}}Build paused{{end}}{{else if $p.ActiveModel}}{{if $p.Pending}}{{if $p.SavedEmbedding.Enabled}}Updating{{else}}Updates paused{{end}}{{else}}Ready{{end}}{{else}}Not built{{end}}</dd></div>
-</dl>
-<p>{{$p.Availability.Detail}} {{if $p.SavedEmbedding.Model}}Saved model: <code>{{$p.SavedEmbedding.Model}}</code>.{{end}}</p>
-{{if not $p.SavedEmbedding.Enabled}}<p><strong>Semantic search is off.</strong> Enabling it sends existing searchable text to the saved provider to build an index. Keyword search works independently.</p>{{end}}
-{{if or $p.ActiveModel $p.IndexState}}<p>Searchable records in the retained index: <strong>{{$p.IndexedPages}}</strong>. Outstanding pages: <strong>{{$p.Pending}}</strong>; failed: <strong>{{$p.Failed}}</strong> (included in outstanding).
-{{if $p.ActiveModel}}Current index model: <code>{{$p.ActiveModel}}</code>.{{end}}
-{{if $p.IndexState}}{{if $p.ActiveModel}}The previous index stays available until the new build completes.{{else}}Results become available when this first build completes.{{end}}{{end}}</p>{{end}}
-{{if and $p.ActiveModel (not $p.CanResume)}}<p class="coverage">The retained index uses different provider settings. Build a replacement to use the saved provider.</p>{{end}}
-<form method="post" action="/settings/semantic" class="inline">
-<input type="hidden" name="revision" value="{{$p.Revision}}">
-{{if $p.SavedEmbedding.Enabled}}
-<button name="action" value="disable" class="quiet" {{if not $p.CanSave}}disabled{{end}}>Turn off</button>
-{{if not $p.IndexState}}<button name="action" value="build" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>{{if $p.ActiveModel}}Build replacement index{{else}}Build index{{end}}</button>{{end}}
-{{else}}
-{{if $p.CanResume}}<button name="action" value="enable" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>Turn on and resume</button>{{else}}<button name="action" value="enable_build" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>Enable and build index</button>{{end}}
-{{end}}
-{{if $p.Failed}}<button name="action" value="retry" {{if or (not $p.CanSave) (not $p.SavedEmbedding.Enabled)}}disabled{{end}}>Retry failed index work</button>{{end}}
-<button name="action" value="test" class="quiet" {{if not $p.SavedEmbedding.URL}}disabled{{end}}>Test saved connection</button>
-<a href="/settings#semantic-search">Refresh status</a>
-</form>
-<p class="muted">Turning this off retains the index and pauses new embedding work. In-flight requests may finish. It does not stop the Ollama service. Tests and enabling run a synthetic connection check before using your notes.</p>
-<h3>Coverage by source</h3>
-<div class="table-scroll" tabindex="0" role="region" aria-label="Semantic search coverage; scroll horizontally for all columns"><table class="semantic-coverage"><thead><tr><th>Source</th><th>Text available</th><th>Embedded</th><th>Pending</th><th>Failed</th></tr></thead><tbody>
-{{range $p.Coverage}}<tr><th scope="row">{{.Label}}</th><td>{{.Texts}}</td><td>{{.Embedded}}</td><td>{{.Pending}}</td><td>{{.Failed}}</td></tr>{{end}}
-</tbody></table></div>
-<p class="muted">Embedded counts current text in the active index. Pending counts distinct records across active and building indexes, including failures. Coverage remains visible when search is off.</p>
-<p class="coverage">Semantic coverage: Alexandria Client page text, recognized BOOX notebook pages, and BOOX book titles, highlights and annotation text. Entire book contents are not indexed here.</p>
-<p>BOOX pages listed by native metadata without current searchable recognition text: <strong>{{$p.BOOXWithoutText}}</strong>. This can include blank, unprocessed or invalidated pages. Enabling semantic search never starts handwriting recognition. Use <a href="/jobs">Recognition jobs</a> to request and monitor OCR separately.</p>
-</section>
-<section>
-<h2>Provider settings</h2>
-<p>Changes apply to new requests and jobs without restarting the server. In-flight jobs finish with their original settings. Saving does not reprocess existing pages.</p>
-{{if $p.Locked}}<p class="coverage">Provider settings are locked by the deployment.</p>{{else if not $p.CanSave}}<p class="coverage">The deployment needs a settings encryption key before provider credentials can be saved.</p>{{end}}
-<form method="post" action="/settings/providers" class="stack">
-<input type="hidden" name="revision" value="{{$p.Revision}}">
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Handwriting recognition</legend>
-<label><input type="checkbox" name="ocr_enabled" {{if $p.Config.OCR.Enabled}}checked{{end}}> Enable recognition</label>
-<label>API format <select name="ocr_format"><option value="anthropic" {{if eq $p.Config.OCR.Format "anthropic"}}selected{{end}}>Anthropic Messages</option><option value="openai" {{if eq $p.Config.OCR.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option></select></label>
-<label>Base URL <input type="url" name="ocr_url" value="{{$p.Config.OCR.URL}}" maxlength="2048" placeholder="https://api.example.com"></label>
-<p class="muted">Use the base URL, without /v1 or a trailing slash. Local HTTP endpoints are supported.</p>
-<label>Anthropic workspace ID (optional) <input name="anthropic_workspace" value="{{$p.Config.OCR.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></label>
-<p class="muted">Required for Anthropic keys that can access multiple workspaces. Find the ID in Claude Console → Settings → Workspaces. Ignored for OpenAI format.</p>
-<label>Vision model <input name="ocr_model" value="{{$p.Config.OCR.Model}}" maxlength="256"></label>
-<label>API key <input type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="Never displayed after saving"></label>
-<p class="muted">{{if $p.HasKey}}A key is saved.{{else}}No key is saved.{{end}} Keys are encrypted in the database.</p>
-<label>Key action <select name="key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
-<label>Recognition prompt <textarea name="ocr_prompt" rows="4" maxlength="16000" aria-describedby="ocr-prompt-help" placeholder="{{$d.DefaultOCRPrompt}}">{{$p.Config.OCR.Prompt}}</textarea></label>
-<p id="ocr-prompt-help" class="muted">Leave blank to use the default prompt: <q>{{$d.DefaultOCRPrompt}}</q> Enter a custom prompt to override it.</p>
-<label><input type="checkbox" name="vllm" {{if $p.Config.OCR.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
-<p class="muted">Alexandria client recognition can sync text back to its devices. Native BOOX recognition stays on this server and is requested per page.</p>
-<button name="action" value="test_ocr">Test recognition connection</button>
-</fieldset>
-<details id="semantic-advanced"><summary>Advanced semantic search settings</summary>
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Embedding provider</legend>
-{{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}
-<p class="muted">Use the bundled local Ollama service or another Ollama-compatible endpoint. Save changes here before using the search panel above. Changing providers requires a new index build.</p>
-<label>Ollama base URL <input type="url" name="embed_url" value="{{$p.Config.Embedding.URL}}" maxlength="2048" placeholder="http://ollama.example:11434"></label>
-<label>Embedding model <input name="embed_model" value="{{$p.Config.Embedding.Model}}" maxlength="256"></label>
-<button name="action" value="test_embedding">Test embedding connection</button>
-</fieldset>
-</details>
-<p>Connection tests send a synthetic image or sentence, never your notes. They may incur a small provider charge and do not save settings.</p>
-<button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save provider settings</button>
-</form>
-<h3>Reprocess recognition</h3>
-<p>Revisit previously recognized Alexandria client pages and previously requested BOOX pages using the saved settings. This does not enroll the rest of the library. Unchanged inputs use cached results; changing the provider, model or prompt may incur new charges.</p>
-<form method="post" action="/settings/providers" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}"><label><input type="checkbox" name="confirm" required> I want these pages reprocessed, including any provider charges.</label><button name="action" value="reprocess" {{if not $p.CanSave}}disabled{{end}}>Reprocess previously requested pages</button></form>
-</section>
-{{else}}<section><h2>Recognition and semantic search</h2><p>Provider configuration is managed by this deployment.</p></section>{{end}}
-<section>
-  <h2>Tasks Over CalDAV</h2>
-  <p>CalDAV address: <code>{{.Base}}{{$d.CalDAV}}</code></p>
-  <form method="post" action="/settings/caldav" class="stack">
-    <label>Task list name <input name="collection" value="{{$d.Collection}}" maxlength="200"></label>
-    <label>Due dates
-      <select name="due_mode">
-        <option value="preserve" {{if eq $d.DueMode "preserve"}}selected{{end}}>Keep the time of day</option>
-        <option value="date_only" {{if eq $d.DueMode "date_only"}}selected{{end}}>Date only</option>
-      </select></label>
-    <button>Save</button>
-  </form>
-</section>
-<section>
-  <h2>API and MCP Access</h2>
-  <p>MCP address: <code>{{.Base}}/mcp</code>. Claude on the web connects with this address and asks you to approve access here. Other clients use a token.</p>
-  <form method="post" action="/settings/tokens/create" class="inline">
-    <input name="label" placeholder="What is this token for?" maxlength="100"><button>Create Token</button>
-  </form>
-  {{if $d.Tokens}}
-  <table>
-    <thead><tr><th>Token</th><th>Created</th><th>Last used</th><th></th></tr></thead>
-    <tbody>{{range $d.Tokens}}
-      <tr><td>{{if eq .Label $d.OAuthLabel}}Claude (approved here){{else}}{{.Label}}{{end}}</td><td>{{.Created.Local.Format "2006-01-02"}}</td>
-      <td>{{if .LastUsed}}{{.LastUsed.Local.Format "2006-01-02 15:04"}}{{else}}Never{{end}}</td>
-      <td><form method="post" action="/settings/tokens/revoke"><input type="hidden" name="token_hash" value="{{.Hash}}"><button class="quiet">Revoke</button></form></td></tr>
-    {{end}}</tbody>
-  </table>
-  {{end}}
+{{else}}<p class="muted">Your sign-in is managed by the service hosting this library.</p>{{end}}
+<section class="card">
+<h2>About this server</h2>
+<p class="stats"><span><span class="stat-label">Address</span><br><code>{{.Base}}</code></span><span><span class="stat-label">Version</span><br><code>{{version}}</code></span></p>
+<p class="small muted">Other settings: <a href="/settings/search">search by meaning</a>, <a href="/settings/recognition">handwriting recognition</a>, and <a href="/settings/integrations">tasks, CalDAV and API access</a>.</p>
 </section>
 {{end}}
