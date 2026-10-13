@@ -2,22 +2,25 @@
 
 Aragonite Alexandria is the client; Aragonite Alexandria Server is the server.
 Aragonite Alexandria Hosting is the separate commercial hosting control plane.
-The existing artwork and its original generation brief are retained below.
+The Server uses the shared Aragonite crystal with a Greek library facade.
 
-![Aragonite Alexandria woven-page mark](../assets/aragonite-alexandria-server-mark.png)
+![Aragonite Alexandria crystal and Greek library](../assets/aragonite-alexandria-server-crystal-temple-v1.png)
 
-The canonical raster mark is `assets/aragonite-alexandria-server-mark.png`. Keeping it in
-the repository makes it viewable anywhere the repository or generated docs are
-published, without depending on a private UltraBridge service.
+The canonical raster mark is
+`assets/aragonite-alexandria-server-crystal-temple-v1.png`. It is used by the README
+and exported into the embedded web header and browser favicon. Run
+`python3 assets/export-icons.py` (requires Pillow) to regenerate the web sizes.
 
-It was generated with OpenAI's built-in image generation tool using this brief,
-quoted verbatim; it predates the rename from the working name Loom to Alexandria:
+It was generated with the built-in image generation tool using the shared crystal
+master and the Alexandria client's Greek library silhouette as references. The
+[full prompt](../assets/aragonite-alexandria-server-crystal-temple-v1.txt) records
+the composition. This is a generated derivative, not pixel-exact layering.
 
-> A single polished app icon/logo mark for “Aragonite Loom”: an abstract woven
-> sheet of paper merging with a crystalline aragonite form. Minimal geometric
-> vector-like construction; dark charcoal, warm off-white, mineral teal, and a
-> restrained coral accent; transparent background; no words, letters, border,
-> mockup, shadow, or photographic texture; legible at small sizes.
+The reusable [crystal master](../assets/aragonite-crystal-master-v1.png) and its
+[source prompt](../assets/aragonite-crystal-master-v1.txt) are retained locally,
+identical to the copies in PowerSearch, PowerSync and Alexandria Client. Warm
+amber/ivory facets, muted teal secondary symbols and charcoal outlines connect
+the family. The earlier woven-page Server mark is superseded.
 
 The PNG is 1254×1254 with transparency. Derivative sizes should be generated
 from this canonical file rather than repeatedly recompressing another export.
