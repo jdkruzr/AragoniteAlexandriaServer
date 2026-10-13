@@ -5,7 +5,9 @@ import (
 	"context"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
+	"html"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -19,16 +21,18 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 		t.Fatal(e)
 	}
 	b := browser{t, r}
-	get := b.do("GET", "/settings", "", nil, true)
-	if get.Code != 200 || !strings.Contains(get.Body.String(), "Save provider settings") {
+	get := b.do("GET", "/settings/recognition", "", nil, true)
+	if get.Code != 200 || !strings.Contains(get.Body.String(), `value="test_ocr"`) {
 		t.Fatal(get.Code, get.Body.String())
 	}
 	token, e := auth.NewStore(db).CreateToken(ctx, "synthetic caller")
 	if e != nil {
 		t.Fatal(e)
 	}
-	if got := b.do("GET", "/settings", "", map[string]string{"Authorization": "Bearer " + token}, false); got.Code != 401 {
-		t.Fatal("bearer token admitted owner settings", got.Code)
+	for _, path := range []string{"/settings", "/settings/search", "/settings/recognition", "/settings/integrations"} {
+		if got := b.do("GET", path, "", map[string]string{"Authorization": "Bearer " + token}, false); got.Code != 401 {
+			t.Fatal("bearer token admitted owner settings", path, got.Code)
+		}
 	}
 	form := url.Values{"revision": {"1"}, "action": {"save"}, "ocr_enabled": {"on"}, "ocr_format": {"openai"}, "ocr_url": {"http://localhost:9999"}, "ocr_model": {"synthetic-vision"}, "embed_model": {"synthetic"}, "api_key": {"private-secret-value"}, "key_action": {"replace"}, "anthropic_workspace": {"wrkspc_test123"}}
 	if got := b.do("POST", "/settings/providers", form.Encode(), nil, true); got.Code != 403 {
@@ -37,7 +41,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if got := b.do("POST", "/settings/providers", form.Encode(), sameSite, true); got.Code != 303 {
 		t.Fatal(got.Code, got.Body.String())
 	}
-	get = b.do("GET", "/settings", "", nil, true)
+	get = b.do("GET", "/settings/recognition", "", nil, true)
 	if get.Code != 200 || strings.Contains(get.Body.String(), "private-secret-value") || !strings.Contains(get.Body.String(), "A key is saved") || !strings.Contains(get.Body.String(), "wrkspc_test123") {
 		t.Fatal("secret view", get.Code)
 	}
@@ -51,8 +55,36 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if e != nil || p2.OCR == nil {
 		t.Fatal("worker stale", e)
 	}
+	// The Search tab saves both providers at once: posting its form exactly as
+	// rendered (hidden recognition fields included) must leave recognition and
+	// the saved key untouched.
+	search := b.do("GET", "/settings/search", "", nil, true).Body.String()
+	if strings.Contains(search, "private-secret-value") {
+		t.Fatal("search tab exposed the key")
+	}
+	start := strings.Index(search, `id="semantic-advanced"`)
+	end := strings.Index(search[start:], "</form>")
+	embedForm := url.Values{"action": {"save"}}
+	for _, m := range regexp.MustCompile(`<input (?:type="hidden" |id="[^"]*" |type="url" )*name="([^"]+)" value="([^"]*)"`).FindAllStringSubmatch(search[start:start+end], -1) {
+		embedForm.Set(m[1], html.UnescapeString(m[2]))
+	}
+	embedForm.Set("embed_model", "synthetic-2")
+	if embedForm.Get("ocr_model") != "synthetic-vision" || embedForm.Get("anthropic_workspace") != "wrkspc_test123" || embedForm.Get("page") != "search" {
+		t.Fatal("search tab does not carry recognition settings", embedForm)
+	}
+	if got := b.do("POST", "/settings/providers", embedForm.Encode(), sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/settings/search") {
+		t.Fatal("search tab save", got.Code, got.Header().Get("Location"))
+	}
+	p, _, snap, e = r.pageConfiguration(ctx, db)
+	if e != nil || p.OCR == nil || p.OCR.Model() != "synthetic-vision" || snap.Config.OCR.AnthropicWorkspace != "wrkspc_test123" || snap.Config.Embedding.Model != "synthetic-2" || snap.Revision != 3 {
+		t.Fatal("search tab changed recognition settings", e, snap.Revision)
+	}
+	if !strings.Contains(b.do("GET", "/settings/recognition", "", nil, true).Body.String(), "A key is saved") {
+		t.Fatal("search tab cleared the key")
+	}
+	form.Set("embed_model", "synthetic-2")
+	form.Set("revision", "3")
 	oldIdentity := p.OCRIdentity
-	form.Set("revision", "2")
 	form.Set("key_action", "keep")
 	form.Set("api_key", "")
 	form.Set("ocr_enabled", "")

@@ -72,6 +72,8 @@ services:
   alexandria:
     build:
       context: ../..
+      args:
+        ALEXANDRIA_VERSION: ${ALEXANDRIA_VERSION:-dev}
     image: aragonite-alexandria-server:local
     environment: &server-environment
       ALEXANDRIA_ROLE: all

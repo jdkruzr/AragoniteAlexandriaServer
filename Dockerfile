@@ -4,9 +4,11 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
+# Shown in the web UI footer so people and automation can identify the build.
+ARG ALEXANDRIA_VERSION=dev
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/alexandria-server ./cmd/alexandria-server
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web.Version=${ALEXANDRIA_VERSION}" -o /out/alexandria-server ./cmd/alexandria-server
 
 FROM alpine:3.22
 RUN apk add --no-cache ca-certificates poppler-utils tzdata \

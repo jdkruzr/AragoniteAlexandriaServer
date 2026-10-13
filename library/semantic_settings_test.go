@@ -56,7 +56,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 	b := browser{t, r}
 	get := func(want ...string) string {
 		t.Helper()
-		res := b.do("GET", "/settings", "", nil, true)
+		res := b.do("GET", "/settings/search", "", nil, true)
 		if res.Code != 200 {
 			t.Fatal(res.Code, res.Body.String())
 		}
@@ -68,7 +68,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 		}
 		return html
 	}
-	get("Ready", "Not built", "Semantic search is off.", "Enable and build index", "Advanced semantic search settings", "BOOX notebook pages")
+	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", "Embedding provider", "BOOX notebook pages")
 	if inference.Load() != 0 {
 		t.Fatal("viewing Settings ran inference")
 	}
@@ -115,7 +115,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 	}
 	offline.Store(false)
 	action("enable_build")
-	get("Building", "Turn off", "Outstanding pages: <strong>1</strong>")
+	get("Building", "Turn off", "<strong>1</strong> outstanding")
 	if inference.Load() != 1 {
 		t.Fatal("unexpected preflight count", inference.Load())
 	}
@@ -135,7 +135,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 	if ok, err := s.ProcessIndex(ctx); err != nil || !ok {
 		t.Fatal(ok, err)
 	}
-	get("Searchable records in the retained index: <strong>1</strong>", "Build replacement index")
+	get("<strong>1</strong> records indexed", "Build replacement index")
 	action("disable")
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM alexandria_embedding_vectors`).Scan(&n); err != nil || n != 1 {
 		t.Fatal("disable deleted vectors", n, err)
@@ -149,7 +149,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	advanced := url.Values{"revision": {strconv.FormatInt(snap.Revision, 10)}, "action": {"test_embedding"}, "ocr_format": {"openai"}, "embed_enabled": {"on"}, "embed_url": {"http://127.0.0.1:1"}, "embed_model": {"unsaved-model"}, "key_action": {"keep"}}
+	advanced := url.Values{"revision": {strconv.FormatInt(snap.Revision, 10)}, "action": {"test_embedding"}, "page": {"search"}, "ocr_format": {"openai"}, "embed_enabled": {"on"}, "embed_url": {"http://127.0.0.1:1"}, "embed_model": {"unsaved-model"}, "key_action": {"keep"}}
 	res = b.do("POST", "/settings/providers", advanced.Encode(), sameSite, true)
 	if res.Code != 200 || !strings.Contains(res.Body.String(), "Saved model: <code>synthetic</code>") || !strings.Contains(res.Body.String(), `value="unsaved-model"`) {
 		t.Fatal("unsaved provider presented as saved", res.Code)

@@ -4,7 +4,14 @@
 header, browser favicon and README. Reusable master and prompt are retained in
 `assets/`; `python3 assets/export-icons.py` regenerates the web sizes. Fresh web
 template tests and direct handler checks pass for the rendered page and both PNG
-responses. This branding change is local and has not been deployed.
+responses. Deployed with the UI reorganization below (`9fd0fed-ui1`).
+
+**Reading this file:** newest entries come first. Older foundation-era
+pause/not-yet-ported statements below are historical; the October 6 resumption in
+`AGENTS.md` and newer dated implementation checkpoints supersede them for the
+resumed standalone work.
+
+2026-10-13: Web UI reorganized for people, deployed as `9fd0fed-ui1` (image `sha256:cab08fb4c056c869e4a2de29129dba012794a99161ee6c16b874f21ac0e6debc`). Global nav is now Library · Search · Tasks · Recognition · Settings + Help. The Library overview shows per-source counts, last sync/upload and recognition/semantic state. Settings is split into Account, Search, Recognition and Tasks & integrations tabs; all four keep the owner-only account gate. The combined provider form carries the other tab's saved values, verified by a round-trip test. Long explanatory text moved into `?` help popovers (native `popover`, no script) backed by a registry in `internal/alexandria/web/help.go` and a `/help` guide. Cost and deletion warnings stay inline at their confirm controls. BOOX Activity became Diagnostics (linked from BOOX Settings, paginated, filterable); BOOX devices show last upload received. Added a favicon set, a 32 px header mark, a version footer/meta tag (`ALEXANDRIA_VERSION` build arg) and an offline preview/screenshot workflow. Fresh required PostgreSQL/S3 full race suite, vet and the seven Compose tests pass. Synthetic desktop/mobile/dark previews of 27 pages pass the overflow and popover checks. Application-only deploy, no migration; 54 staged hashes match; readiness 200, anonymous 401. Live pages checked with real counts. Rollback image tag `before-ui-redesign-20261013`; private evidence under `deploy/compose/private/ui-redesign-20261013/`. See [web UI conventions](web-ui.md).
 
 Open follow-up, 2026-10-13: independent native page-ID enumeration identified an eight-page discrepancy in the pre-cleanup OCR review: its 1,079 notebooks reconstruct 1,677 pages, while those same notebooks list 1,669 pages on Lumi. Two notebooks account for the difference (server 2/device 1 and server 15/device 8). Reconcile virtual-page membership before treating the server catalog as an exact device page census. The separate 10,000–12,000-page estimate came from PowerSearch counting file-based index records as pages; a read-only device audit found 11,822 point files belonging to 1,684 live pages across all local accounts. The audit script and detailed results live in the PowerSearch repository. No catalog reconciliation fix is included in this consolidation.
 

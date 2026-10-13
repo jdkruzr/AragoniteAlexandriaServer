@@ -11,6 +11,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"embed"
 	"fmt"
 	"html/template"
@@ -32,6 +33,8 @@ import (
 var assets embed.FS
 
 var funcs = template.FuncMap{
+	"tip":     tip,
+	"version": func() string { return Version },
 	"listJobStates": func() []string {
 		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled"}
 	},
@@ -55,6 +58,27 @@ var funcs = template.FuncMap{
 			return fmt.Sprintf("%.0f KB", float64(n)/(1<<10))
 		}
 		return fmt.Sprintf("%d B", n)
+	},
+	"ago": func(t time.Time) string {
+		if t.IsZero() {
+			return "never"
+		}
+		switch d := time.Since(t); {
+		case d < time.Minute:
+			return "just now"
+		case d < time.Hour:
+			return plural(int(d/time.Minute), "minute") + " ago"
+		case d < 48*time.Hour:
+			return plural(int(d/time.Hour), "hour") + " ago"
+		default:
+			return plural(int(d/(24*time.Hour)), "day") + " ago"
+		}
+	},
+	"count": func(n int) string {
+		if n < 0 {
+			return "—"
+		}
+		return fmt.Sprintf("%d", n)
 	},
 	"deref": func(s *string) string {
 		if s == nil {
@@ -83,6 +107,8 @@ type Deps struct {
 	PublicURL          string
 	Status             Status
 	Logger             *slog.Logger
+	// BOOXSummary reports the native source for the overview; nil without BOOX.
+	BOOXSummary func(context.Context) (SourceSummary, error)
 }
 
 type page struct {
@@ -162,10 +188,11 @@ func back(w http.ResponseWriter, r *http.Request, path, notice string) {
 // Handler serves the UI for one admitted, authenticated request.
 func Handler(d Deps) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		d.render(w, r, "overview", "Overview", "overview", nil)
-	})
+	mux.HandleFunc("GET /{$}", d.overview)
 	mux.Handle("GET /static/", http.FileServerFS(assets))
+	mux.HandleFunc("GET /help", func(w http.ResponseWriter, r *http.Request) {
+		d.render(w, r, "help", "Help", "help", map[string]any{"NativeBOOX": d.Status.NativeBOOX})
+	})
 	mux.HandleFunc("GET /sources", func(w http.ResponseWriter, r *http.Request) { d.render(w, r, "sources", "Add source", "sources", nil) })
 	mux.HandleFunc("GET /sources/client", func(w http.ResponseWriter, r *http.Request) {
 		d.render(w, r, "client-settings", "Alexandria Client settings", "client-settings", nil)
@@ -196,7 +223,7 @@ func Handler(d Deps) http.Handler {
 // Owns reports whether the web UI serves a path (the API, sync, CalDAV and
 // MCP keep their own routes).
 func Owns(path string) bool {
-	for _, prefix := range []string{"/sources", "/files/", "/search", "/tasks", "/settings", "/static/", "/authorize"} {
+	for _, prefix := range []string{"/sources", "/files/", "/search", "/tasks", "/settings", "/static/", "/authorize", "/help", "/jobs"} {
 		if strings.HasPrefix(path, prefix) {
 			return true
 		}
@@ -205,18 +232,30 @@ func Owns(path string) bool {
 }
 
 func sourceTab(path, section string) string {
-	if section != "boox" {
-		return section
+	switch section {
+	case "settings":
+		switch path {
+		case "/settings/search", "/settings/recognition", "/settings/integrations":
+			return strings.TrimPrefix(path, "/settings/")
+		}
+		return "account"
+	case "boox":
+		switch path {
+		case "/boox/reading", "/boox/books/upload", "/boox/reading/refresh":
+			return "reading"
+		case "/boox/devices", "/boox/enroll":
+			return "devices"
+		case "/boox/activity", "/boox/settings":
+			return "settings"
+		}
+		return "notebooks"
 	}
-	switch path {
-	case "/boox/reading", "/boox/books/upload":
-		return "reading"
-	case "/boox/devices", "/boox/enroll":
-		return "devices"
-	case "/boox/activity":
-		return "activity"
-	case "/boox/settings":
-		return "settings"
+	return section
+}
+
+func plural(n int, unit string) string {
+	if n == 1 {
+		return "1 " + unit
 	}
-	return "notebooks"
+	return fmt.Sprintf("%d %ss", n, unit)
 }

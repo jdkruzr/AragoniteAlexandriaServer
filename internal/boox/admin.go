@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 	"html/template"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -291,41 +293,84 @@ func (s Service) preview(w http.ResponseWriter, r *http.Request) {
 	reply(w, 200, map[string]any{"operationId": id, "state": "preview", "kind": in.Kind, "documentId": in.DocumentID, "expectedRevision": in.Expected, "selectedRevision": in.Selected, "changes": map[string]any{"title": in.Title, "status": in.Status, "readerFields": changes}, "scope": "bounded native fields only; original resource identities preserved", "application": "unverified"})
 }
 
-var browseTemplate = template.Must(template.New("boox").Parse(`{{define "content"}}
-<h1>BOOX activity and diagnostics</h1>
-<div class="actions"><a class="button" href="/boox/enroll">Connect a device</a><a href="/boox/devices">Manage devices</a></div>
-<p class="muted">Notebook and reading records synced from your BOOX devices.</p>
-{{if not .Data}}<p class="empty">Nothing here yet. Records appear after a BOOX device syncs.</p>{{else}}
-<table><thead><tr><th>Domain</th><th>Title or native ID</th><th>Revision</th><th>Metadata editing</th><th>History</th></tr></thead><tbody>
-{{range .Data}}<tr><td>{{.Domain}}</td><td>{{.Title}}</td><td class="small"><code>{{.Revision}}</code></td><td>{{if .Supported}}<span class="badge indexed">Supported</span>{{else}}<span class="badge blank">Unavailable</span>{{end}}</td><td><a href="/api/v1/boox/admin/history?documentId={{.ID}}">Observed versions</a></td></tr>{{end}}
-</tbody></table>{{end}}
+var browseTemplate = template.Must(template.New("boox").Parse(`{{define "content"}}{{$d:=.Data}}
+<p class="crumbs"><a href="/boox/settings">BOOX settings</a> /</p>
+<h1>BOOX diagnostics {{template "help" "boox.diagnostics"}}</h1>
+<form class="search" method="get" action="/boox/activity"><label>Record type <select name="domain"><option value="">All types</option>{{range $d.Domains}}<option value="{{.}}" {{if eq . $d.Domain}}selected{{end}}>{{.}}</option>{{end}}</select></label><button class="secondary">Show</button></form>
+{{if not $d.Items}}<p class="empty">Nothing here yet. Records appear after a BOOX device syncs.</p>{{else}}
+<nav class="pagination" aria-label="Diagnostics pages"><span>{{$d.Start}}–{{$d.End}} of {{$d.Total}}</span>{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}">Next</a>{{end}}</nav>
+<div class="table-scroll"><table><thead><tr><th>Type</th><th>Title or native ID</th><th>Revision</th><th>Metadata editing</th><th>History {{template "help" "boox.history"}}</th></tr></thead><tbody>
+{{range $d.Items}}<tr><td>{{.Domain}}</td><td>{{.Title}}{{if ne .Title .ID}}<div class="muted small"><code>{{.ID}}</code></div>{{end}}</td><td class="small"><code>{{.Revision}}</code></td><td>{{if .Supported}}<span class="badge indexed">Supported</span>{{else}}<span class="badge blank">Unavailable</span>{{end}}</td><td><a href="/api/v1/boox/admin/history?documentId={{.ID}}">Observed versions</a></td></tr>{{end}}
+</tbody></table></div>
+<nav class="pagination" aria-label="Diagnostics pages"><span>{{$d.Start}}–{{$d.End}} of {{$d.Total}}</span>{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}">Next</a>{{end}}</nav>{{end}}
 {{end}}`))
 
+// browse lists observed native records for diagnosis, 100 per page, ordered
+// by type and native ID. Titles lead; native IDs stay visible for tooling.
 func (s Service) browse(w http.ResponseWriter, r *http.Request) {
-	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,revision,domain,coalesce(body->>'title',document_id),supported FROM boox_projection ORDER BY domain,document_id LIMIT 500`)
+	const size = 100
+	domain := r.URL.Query().Get("domain")
+	offset := browserOffset(r)
+	type item struct {
+		ID, Revision, Domain, Title string
+		Supported                   bool
+	}
+	d := struct {
+		Items                  []item
+		Domains                []string
+		Domain, Previous, Next string
+		Start, End, Total      int
+	}{Domain: domain}
+	rows, e := s.DB.QueryContext(r.Context(), `SELECT DISTINCT domain FROM boox_projection ORDER BY domain`)
+	if e != nil {
+		failure(w, e)
+		return
+	}
+	for rows.Next() {
+		var v string
+		if rows.Scan(&v) != nil {
+			rows.Close()
+			failure(w, errors.New("projection read failed"))
+			return
+		}
+		d.Domains = append(d.Domains, v)
+	}
+	rows.Close()
+	rows, e = s.DB.QueryContext(r.Context(), `SELECT document_id,revision,domain,coalesce(body->>'title',document_id),supported,count(*) OVER() FROM boox_projection WHERE $1='' OR domain=$1 ORDER BY domain,document_id LIMIT $2 OFFSET $3`, domain, size, offset)
 	if e != nil {
 		failure(w, e)
 		return
 	}
 	defer rows.Close()
-	type item struct {
-		ID, Revision, Domain, Title string
-		Supported                   bool
-	}
-	out := []item{}
 	for rows.Next() {
 		var v item
-		if rows.Scan(&v.ID, &v.Revision, &v.Domain, &v.Title, &v.Supported) != nil {
+		if rows.Scan(&v.ID, &v.Revision, &v.Domain, &v.Title, &v.Supported, &d.Total) != nil {
 			failure(w, errors.New("projection read failed"))
 			return
 		}
-		out = append(out, v)
+		d.Items = append(d.Items, v)
 	}
 	if rows.Err() != nil {
 		failure(w, rows.Err())
 		return
 	}
-	s.renderPage(w, r, browseTemplate, "BOOX activity", out)
+	page := func(n int) string {
+		q := url.Values{"offset": {strconv.Itoa(n)}}
+		if domain != "" {
+			q.Set("domain", domain)
+		}
+		return "/boox/activity?" + q.Encode()
+	}
+	if len(d.Items) > 0 {
+		d.Start, d.End = offset+1, offset+len(d.Items)
+	}
+	if offset > 0 {
+		d.Previous = page(max(0, offset-size))
+	}
+	if offset+size < d.Total {
+		d.Next = page(offset + size)
+	}
+	s.renderPage(w, r, browseTemplate, "BOOX diagnostics", d)
 }
 
 func (s Service) assetHistory(w http.ResponseWriter, r *http.Request) {

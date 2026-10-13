@@ -448,7 +448,7 @@ func (r Run) SourceLabel() string {
 	if r.Source == "client" {
 		return "Alexandria Client"
 	}
-	return "BOOX Native"
+	return "BOOX"
 }
 func (r Run) NotebookURL(id string) string {
 	if r.Source == "client" {

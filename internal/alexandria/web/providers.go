@@ -31,14 +31,14 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			return
 		}
 		if snap.Revision != rev {
-			back(w, r, "/settings", providers.ErrStale.Error())
+			back(w, r, "/settings/search", providers.ErrStale.Error())
 			return
 		}
 		action := r.PostForm.Get("action")
 		if action == "enable_build" || action == "enable" || action == "build" || action == "test" {
 			// Explicit actions may run a synthetic inference; viewing Settings never does.
 			if err = snap.TestConnection(r.Context(), "embedding"); err != nil {
-				back(w, r, "/settings", err.Error())
+				back(w, r, "/settings/search", err.Error())
 				return
 			}
 		}
@@ -70,7 +70,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		} else if err != nil {
 			notice = "Semantic search settings were not changed. Reload and check the saved provider and deployment settings."
 		}
-		back(w, r, "/settings", notice)
+		back(w, r, "/settings/search", notice)
 	})
 	mux.HandleFunc("POST /settings/providers", func(w http.ResponseWriter, r *http.Request) {
 		if d.Providers == nil {
@@ -88,10 +88,14 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			return
 		}
 		action := r.Form.Get("action")
+		tab := "recognition"
+		if r.Form.Get("page") == "search" || action == "test_embedding" {
+			tab = "search"
+		}
 		if action == "build" || action == "retry" || action == "reprocess" {
 			if action == "reprocess" {
 				if r.Form.Get("confirm") != "on" {
-					back(w, r, "/settings", "Confirm recognition reprocessing before starting.")
+					back(w, r, "/settings/"+tab, "Confirm recognition reprocessing before starting.")
 					return
 				}
 				e = d.Providers.Reprocess(r.Context(), rev)
@@ -101,14 +105,14 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 				e = d.Providers.RetryIndex(r.Context())
 			}
 			if e != nil {
-				back(w, r, "/settings", "Index action could not be started. Reload and check your saved settings.")
+				back(w, r, "/settings/"+tab, "Index action could not be started. Reload and check your saved settings.")
 				return
 			}
 			if action == "reprocess" {
-				back(w, r, "/settings", "Previously requested recognition pages queued. Changed OCR inputs may incur provider charges.")
+				back(w, r, "/settings/"+tab, "Previously requested recognition pages queued. Changed OCR inputs may incur provider charges.")
 				return
 			}
-			back(w, r, "/settings", "Index work queued. The previous index remains available while the replacement builds.")
+			back(w, r, "/settings/"+tab, "Index work queued. The previous index remains available while the replacement builds.")
 			return
 		}
 		c := providers.Config{OCR: providers.OCRConfig{Enabled: r.Form.Get("ocr_enabled") == "on", URL: strings.TrimSpace(r.Form.Get("ocr_url")), Model: strings.TrimSpace(r.Form.Get("ocr_model")), Format: r.Form.Get("ocr_format"), Prompt: r.Form.Get("ocr_prompt"), AnthropicWorkspace: strings.TrimSpace(r.Form.Get("anthropic_workspace")), VLLMDisableThinking: r.Form.Get("vllm") == "on"}, Embedding: providers.EmbedConfig{Enabled: r.Form.Get("embed_enabled") == "on", URL: strings.TrimSpace(r.Form.Get("embed_url")), Model: strings.TrimSpace(r.Form.Get("embed_model"))}}
@@ -118,7 +122,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			case "save":
 				e = d.Providers.Save(r.Context(), candidate)
 				if e == nil {
-					back(w, r, "/settings", "Provider settings saved. New requests and jobs use them immediately. Existing pages were not queued for recognition.")
+					back(w, r, "/settings/"+tab, "Provider settings saved. New requests and jobs use them immediately. Existing pages were not queued for recognition.")
 					return
 				}
 			case "test_ocr":
@@ -142,6 +146,6 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			notice = e.Error()
 		}
 		r.URL.RawQuery = url.Values{"notice": {notice}}.Encode()
-		d.settingsPage(w, r, &view)
+		d.settingsPage(w, r, tab, &view)
 	})
 }
