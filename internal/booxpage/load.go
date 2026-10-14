@@ -95,7 +95,9 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		warnings = append(warnings, RichTextNotebookWarning)
 	}
 	if meta.ActiveScene == 2 {
-		warnings = append(warnings, "Meeting notebook: audio and transcript layout are not reproduced.")
+		// The meeting panel holds audio and its transcript; the handwriting
+		// pages themselves are ordinary.
+		p.Notices = append(p.Notices, "Meeting notebook: the audio and transcript panel isn't shown.")
 	}
 	if meta.ActiveScene == 4 {
 		p.Notices = append(p.Notices, "Draft notebook: the preview grows to fit ink beyond the page.")

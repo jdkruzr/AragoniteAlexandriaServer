@@ -252,3 +252,12 @@ func TestDraftPagesGrowToFitInkAndBookmarksAreSkipped(t *testing.T) {
 		t.Fatal("preview cropped the draft page", e)
 	}
 }
+
+func TestMeetingNotebookPagesAreNotBlocked(t *testing.T) {
+	m := metaFixture()
+	m.ActiveScene = 2
+	p, w, e := ShapePage(m, "page", nil, func(string) ([]byte, error) { return nil, errors.New("missing") })
+	if e != nil || len(w) != 0 || len(p.Notices) != 1 {
+		t.Fatal(e, w, p.Notices)
+	}
+}
