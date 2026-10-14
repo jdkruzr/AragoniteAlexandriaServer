@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
 	"testing"
+	"time"
 )
 
 func TestLibraryReviewDispatchControlsAndRetries(t *testing.T) {
@@ -229,6 +230,14 @@ func TestLibraryDispatchChunksResumeWithoutDuplicatingJobs(t *testing.T) {
 	}
 	if ok, e := s.StepRun(ctx, cat, true); ok || e != nil {
 		t.Fatal("completed run dispatched again", ok, e)
+	}
+	// 60 pages finished over the last five minutes: about 12 a minute.
+	if _, e := db.ExecContext(ctx, `UPDATE alexandria_recognition_job j SET state='ready',finished_at=now()-(n.i*interval '5 seconds') FROM (SELECT id,row_number() OVER (ORDER BY page_id) i FROM alexandria_recognition_job) n WHERE j.id=n.id AND n.i<=60`); e != nil {
+		t.Fatal(e)
+	}
+	if r, e := s.GetRun(ctx, id); e != nil || r.Remaining() != 175 || r.PerMinute < 11.5 || r.PerMinute > 12.5 || r.Percent() != 25 ||
+		r.ETA.Before(time.Now().Add(13*time.Minute)) || r.ETA.After(time.Now().Add(16*time.Minute)) {
+		t.Fatal("pace", r.Remaining(), r.PerMinute, r.Percent(), r.ETA, e)
 	}
 	if _, e := db.ExecContext(ctx, `UPDATE boox_page_index SET state='ready'`); e != nil {
 		t.Fatal(e)

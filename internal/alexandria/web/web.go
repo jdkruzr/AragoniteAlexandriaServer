@@ -80,6 +80,25 @@ var funcs = template.FuncMap{
 		}
 		return fmt.Sprintf("%d", n)
 	},
+	// num groups thousands: 1624 → "1,624".
+	"num": func(n int) string {
+		s := fmt.Sprintf("%d", n)
+		for i := len(s) - 3; i > 0 && s[i-1] != '-'; i -= 3 {
+			s = s[:i] + "," + s[i:]
+		}
+		return s
+	},
+	// until is a rounded time left before t, such as "2 h 5 min".
+	"until": func(t time.Time) string {
+		m := int(time.Until(t).Round(time.Minute) / time.Minute)
+		switch {
+		case m < 1:
+			return "under a minute"
+		case m < 60:
+			return fmt.Sprintf("%d min", m)
+		}
+		return fmt.Sprintf("%d h %d min", m/60, m%60)
+	},
 	"deref": func(s *string) string {
 		if s == nil {
 			return ""

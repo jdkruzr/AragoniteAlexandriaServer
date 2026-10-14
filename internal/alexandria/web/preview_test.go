@@ -41,6 +41,10 @@ func previewPages() []previewPage {
 		{ID: "j2", Source: "client", Notebook: "c", Title: "Synthetic sketch", Number: 2, State: "failed", Detail: "Provider timed out", Attempts: 2, Created: now, Updated: now}}}
 	run := &recognition.Run{ID: "r", State: "review", Source: "boox", Created: now, Total: 3, Pages: 9, Unavailable: 1, Awaiting: 8,
 		Notebooks: []recognition.RunNotebook{{ID: "a", Title: "Synthetic planning", State: "ready", Pages: 4}, {ID: "b", Title: "Synthetic retro", State: "ready", Pages: 4}, {ID: "c", Title: "Synthetic missing", State: "unavailable", Detail: "Catalog unavailable"}}}
+	progress := *run
+	progress.State, progress.Total, progress.Pages, progress.Queued, progress.Awaiting, progress.Ready, progress.Processing, progress.Pending, progress.Failed, progress.Finished = "queued", 1040, 1624, 412, 1212, 389, 1, 21, 1, 390
+	progress.PerMinute, progress.ETA = 12.4, now.Add(129*time.Minute)
+	progress.Notebooks = []recognition.RunNotebook{{ID: "a", Title: "Synthetic planning", State: "queued", Pages: 4, Queued: 4}, {ID: "b", Title: "Synthetic retro", State: "ready", Pages: 4}, {ID: "c", Title: "Synthetic missing", State: "unavailable", Detail: "Catalog unavailable"}}
 	clientPages := []notes.Page{{ID: "p1", Number: 1, Key: "forestnote://n/p1", BodyText: "Agenda\n- storage pilot\n- budget review", Model: "vision-model"}, {ID: "p2", Number: 2, Key: "forestnote://n/p2"}, {ID: "p3", Number: 3, Key: "forestnote://n/p3", BodyText: "Follow-ups"}}
 	return []previewPage{
 		{"overview", "overview", "Library", "overview", "/", overviewData{NativeBOOX: true, OCR: true, JobsKnown: true, Active: 3, Failed: 1,
@@ -56,7 +60,8 @@ func previewPages() []previewPage {
 		{"settings-integrations", "settings-integrations", "Tasks & integrations", "settings", "/settings/integrations", map[string]any{"Collection": "Tasks", "DueMode": "preserve", "CalDAV": "/caldav/user/calendars/tasks/", "Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", Created: now}}}},
 		{"jobs", "jobs", "Recognition jobs", "jobs", "/jobs", map[string]any{"View": jobs, "Filter": recognition.Filter{}, "ProgressTotal": 2, "ProgressDone": 2, "Start": 1, "End": 2, "Refresh": "/jobs", "LiveURL": "/jobs?live=1"}},
 		{"jobs-library-start", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Source": "boox", "NativeBOOX": true, "Enabled": true}},
-		{"jobs-library-review", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Run": run, "Source": "boox", "NativeBOOX": true, "Enabled": true}},
+		{"jobs-library-review", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Run": run, "Source": "boox", "NativeBOOX": true, "Enabled": true, "Model": "synthetic-vision"}},
+		{"jobs-library-progress", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Run": &progress, "Source": "boox", "NativeBOOX": true, "Enabled": true, "Model": "synthetic-vision"}},
 		{"client-notebooks", "notebooks", "Notebooks", "notebooks", "/files/forestnote", map[string]any{"Listing": listing.State{}, "Entries": []notes.Entry{{IsFolder: true, ID: "f", Name: "Synthetic folder"}, {ID: "n", Name: "Synthetic notebook", Status: "partial", PageCount: 3, CreatedAt: 1, ModifiedAt: 2}}}},
 		{"client-notebook", "notebook", "Synthetic notebook", "notebooks", "/files/forestnote", notebookReader("n", "Synthetic notebook", clientPages, nil, url.Values{"page": {"p2"}})},
 		{"client-notebook-grid", "notebook", "Synthetic notebook", "notebooks", "/files/forestnote", notebookReader("n", "Synthetic notebook", clientPages, nil, url.Values{"view": {"grid"}})},
