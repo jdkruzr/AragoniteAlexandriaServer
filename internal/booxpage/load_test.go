@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
 	"google.golang.org/protobuf/proto"
 	"image/png"
@@ -375,5 +376,21 @@ func TestZeroFilledShapeArchiveWithoutPointsKeepsANotice(t *testing.T) {
 	blobs["shape/page#b#2.zip"] = []byte("\x00\x01not a zip")
 	if _, _, e := ShapePage(metaFixture(), "page", []string{"shape/page#a#1.zip", "shape/page#b#2.zip"}, load); e == nil {
 		t.Fatal("garbage archive accepted")
+	}
+}
+
+func TestShapeLimitCountsDistinctShapesNotRewrites(t *testing.T) {
+	// Five whole-page copies of 12,000 strokes: 60,000 records, 12,000 shapes.
+	var shapes []*pb.ShapeInfoProto
+	for i := range 12000 {
+		shapes = append(shapes, &pb.ShapeInfoProto{UniqueId: fmt.Sprintf("s%05d", i), ShapeType: 2, Color: -16777216, Thickness: 1, PointList: make([]byte, 4+16), UpdatedAt: 1})
+	}
+	page := shapeZip(t, shapes...)
+	var keys []string
+	for i := range 5 {
+		keys = append(keys, fmt.Sprintf("shape/page#c%d#%d.zip", i, i))
+	}
+	if _, _, e := ShapePage(metaFixture(), "page", keys, func(string) ([]byte, error) { return page, nil }); e != nil {
+		t.Fatal(e)
 	}
 }

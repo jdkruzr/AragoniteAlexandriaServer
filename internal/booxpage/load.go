@@ -151,14 +151,19 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				return nil, nil, fmt.Errorf("invalid shape metadata")
 			}
 			for _, s := range list.Proto {
+				// Whole-page rewrites repeat every shape, so the record
+				// ceiling is generous; the shape limit counts distinct shapes.
 				count++
-				if count > 50000 {
-					return nil, nil, fmt.Errorf("page exceeds preview shape limit")
+				if count > 500000 {
+					return nil, nil, fmt.Errorf("page exceeds preview record limit")
 				}
 				if s.UniqueId == "" {
 					return nil, nil, fmt.Errorf("shape identity missing")
 				}
 				old := winners[s.UniqueId]
+				if old == nil && len(winners) >= 50000 {
+					return nil, nil, fmt.Errorf("page exceeds preview shape limit")
+				}
 				if old == nil || s.UpdatedAt > old.UpdatedAt {
 					winners[s.UniqueId] = s
 				} else if s.UpdatedAt == old.UpdatedAt && !proto.Equal(s, old) {
