@@ -71,9 +71,22 @@ so an update re-transcribes only new or changed recordings.
 
 ## Summary contract
 
-`minutes.PromptVersion` (`minutes-v1`) is part of `input_hash`. The system prompt
-explains the two inputs: the notes are the author's emphasis, the recordings the
-fuller record. It asks for strict JSON in this shape:
+The system prompt has two parts (`minutes.System`):
+
+- **Instructions**, editable by the owner in Settings → Recognition → Audio Note
+  Minutes → Summary instructions (`SummaryConfig.Instructions`, provider
+  settings JSON, no migration). Blank means `minutes.DefaultInstructions`, which
+  explains the two inputs (the notes are the author's emphasis, the recordings
+  the fuller record) and the style of each field. Saving the default text
+  unchanged stores blank, so the installation keeps following the built-in text.
+  Capped at 16,000 characters.
+- **Response format** (`minutes.ResponseFormat`), always appended and shown
+  read-only in Settings, because `Parse` depends on it.
+
+`input_hash` covers `minutes.PromptVersion` (`minutes-v2`) and a hash of the
+full system prompt, so changing the instructions marks existing minutes out of
+date; nothing regenerates until the owner summarizes again. The format asks for
+strict JSON in this shape:
 
 ```
 {"topic":…, "keywords":[4–6], "key_points":[{"text":…, "from":"recording|notes|both"} ×1–5], "conclusion":…}

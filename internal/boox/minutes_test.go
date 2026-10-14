@@ -63,10 +63,10 @@ func syntheticResource(id, title, rel string, created, durationMS int64) []byte 
 	return protowire.AppendBytes(out, e)
 }
 
-type fakeSummary struct{ prompts []string }
+type fakeSummary struct{ systems, prompts []string }
 
-func (f *fakeSummary) Complete(_ context.Context, _, prompt string, _ int) (string, error) {
-	f.prompts = append(f.prompts, prompt)
+func (f *fakeSummary) Complete(_ context.Context, system, prompt string, _ int) (string, error) {
+	f.systems, f.prompts = append(f.systems, system), append(f.prompts, prompt)
 	return "<think>private</think>```json\n" + `{"topic":"Synthetic nebula review","keywords":["nebula","quasar","schedule","Friday"],"key_points":[{"text":"The nebula survey moves to Friday.","from":"both"}],"conclusion":"Proceed on Friday."}` + "\n```", nil
 }
 
@@ -136,7 +136,7 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 	}
 	s.DB.ExecContext(ctx, `UPDATE alexandria_note_minutes SET next_at=now()`)
 	// With automatic sending on, finished minutes go straight to BOOX.
-	s.Minutes.AutoSend = true
+	s.Minutes.AutoSend, s.Minutes.Instructions = true, "Write like a ship's log."
 	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_identity SET native_uid=$1 WHERE id=1`, s.uid()); e != nil {
 		t.Fatal(e)
 	}
@@ -158,6 +158,9 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 	if len(summary.prompts) != 1 || !strings.Contains(summary.prompts[0], "synthetic quasar transcript") || !strings.Contains(summary.prompts[0], "nebula survey") || !strings.Contains(summary.prompts[0], "Recording 1: Standup, started 2026-10-13 21:50:41 UTC, length 1:01") {
 		t.Fatal("prompt lacks notes, transcript or metadata", summary.prompts)
 	}
+	if summary.systems[0] != minutes.System("Write like a ship's log.") {
+		t.Fatal("custom instructions not used", summary.systems[0])
+	}
 	m, ok, e := minutes.Load(ctx, s.DB, "boox", "note")
 	if e != nil || !ok || m.State != "ready" || m.Topic != "Synthetic nebula review" || len(m.Keywords) != 4 || m.Metadata.Recordings[0].DurationMS != 61000 || m.Metadata.PagesWithText != 1 || m.Metadata.Transcriber != "synthetic-whisper" || m.Recordings[0].Segments[0].Text != "the nebula survey moves to friday" {
 		t.Fatalf("stored minutes %+v %v %v", m, ok, e)
@@ -178,9 +181,15 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 		}
 		return w.Body.String()
 	}
-	if body := page(); !strings.Contains(body, "Synthetic nebula review") || strings.Contains(body, "has changed") {
+	if body := page(); !strings.Contains(body, "Synthetic nebula review") || strings.Contains(body, "have changed") {
 		t.Fatal("ready minutes page", body)
 	}
+	// New instructions make the minutes out of date, and restoring them doesn't.
+	s.Minutes.Instructions = ""
+	if body := page(); !strings.Contains(body, "summary instructions have changed") {
+		t.Fatal("instruction change not flagged")
+	}
+	s.Minutes.Instructions = "Write like a ship's log."
 	w = httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/boox/minutes/audio?id=note&key=resource/data/rec.mp3&sha="+hash(syntheticONY1(t, plain)), nil)
 	r.Header.Set("Range", "bytes=0-2")
@@ -190,7 +199,7 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 	}
 	// A second recording makes the minutes stale; nothing regenerates by itself.
 	putNoteBlob(t, s, "resource/data/later.mp3", syntheticONY1(t, []byte("ID3 later")))
-	if body := page(); !strings.Contains(body, "has changed") {
+	if body := page(); !strings.Contains(body, "have changed") {
 		t.Fatal("stale minutes not flagged")
 	}
 	if found, e := s.ProcessMinutes(ctx, client, summary, "synthetic-llm", "t1"); e != nil || found || uploads != 1 {

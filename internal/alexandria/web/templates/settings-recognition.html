@@ -55,6 +55,11 @@
 <label><input type="checkbox" name="s_vllm" {{if $p.Config.Summary.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
 </div></details>
 </fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Summary instructions {{template "help" "minutes.instructions"}}</legend>
+<textarea id="s-instructions" name="s_instructions" rows="12" maxlength="16000" aria-label="Summary instructions" aria-describedby="s-instructions-help">{{with $p.Config.Summary.Instructions}}{{.}}{{else}}{{$d.DefaultMinutesInstructions}}{{end}}</textarea>
+<p id="s-instructions-help" class="hint">{{if $p.Config.Summary.Instructions}}You're using your own instructions.{{else}}These are the built-in instructions.{{end}} Clear the box and save to go back to the built-in ones. Changing them marks existing minutes as out of date; nothing is rewritten until you summarize a note again.</p>
+<details class="more"><summary>Response format (always added)</summary><pre>{{$d.MinutesFormat}}</pre></details>
+</fieldset>
 <fieldset {{if not $p.CanSave}}disabled{{end}}><legend>When minutes are ready {{template "help" "minutes.autosend"}}</legend>
 <label><input type="checkbox" name="s_boox" {{if $p.Config.Summary.SendToBOOX}}checked{{end}}> Send them to BOOX automatically</label>
 </fieldset>

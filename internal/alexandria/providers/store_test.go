@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
 	"net/http"
@@ -343,12 +344,12 @@ func TestMinutesProvidersKeepSeparateCredentialsAndRecognitionSettings(t *testin
 	}
 	v, _ = s.Load(ctx)
 	t1 := TranscriptionConfig{Enabled: true, URL: " http://whisper.local:8090/ ", Model: "whisper", Language: "EN"}
-	m1 := SummaryConfig{Enabled: true, URL: "http://llm.local", Model: "qwen", Format: "openai", VLLMDisableThinking: true, AnthropicWorkspace: "wrkspc_ignored", SendToBOOX: true}
+	m1 := SummaryConfig{Enabled: true, URL: "http://llm.local", Model: "qwen", Format: "openai", VLLMDisableThinking: true, AnthropicWorkspace: "wrkspc_ignored", SendToBOOX: true, Instructions: " Be terse.\r\nUse British spelling.\r\n"}
 	c, e = s.MinutesCandidate(ctx, v.Revision, t1, m1, KeyChange{"private-stt-key", "keep"}, KeyChange{"private-llm-key", "replace"})
 	if e != nil {
 		t.Fatal(e)
 	}
-	if c.Config.OCR != v.Config.OCR || c.APIKey != "private-ocr-key" || c.Config.Transcription.URL != "http://whisper.local:8090" || c.Config.Transcription.Language != "en" || c.Config.Summary.AnthropicWorkspace != "" {
+	if c.Config.OCR != v.Config.OCR || c.APIKey != "private-ocr-key" || c.Config.Transcription.URL != "http://whisper.local:8090" || c.Config.Transcription.Language != "en" || c.Config.Summary.AnthropicWorkspace != "" || c.Config.Summary.Instructions != "Be terse.\nUse British spelling." {
 		t.Fatalf("candidate %+v", c.Config)
 	}
 	if e = s.Save(ctx, c); e != nil {
@@ -374,12 +375,22 @@ func TestMinutesProvidersKeepSeparateCredentialsAndRecognitionSettings(t *testin
 		t.Fatal(e)
 	}
 	got, _ = s.Load(ctx)
-	if got.Config.Transcription.Model != "whisper" || got.Config.Summary.Model != "qwen" || !got.Config.Summary.SendToBOOX || got.SummaryKey != "private-llm-key" || got.Config.OCR.Model != "vision-2" {
+	if got.Config.Transcription.Model != "whisper" || got.Config.Summary.Model != "qwen" || !got.Config.Summary.SendToBOOX || got.Config.Summary.Instructions != "Be terse.\nUse British spelling." || got.SummaryKey != "private-llm-key" || got.Config.OCR.Model != "vision-2" {
 		t.Fatalf("recognition save dropped minutes settings %+v", got.Config)
 	}
 	view, _ := s.View(ctx)
 	if !view.HasTranscriptionKey || !view.HasSummaryKey {
 		t.Fatal("view key flags")
+	}
+	// Saving the built-in text unchanged keeps following the default.
+	m2 := m1
+	m2.Instructions = strings.ReplaceAll(minutes.DefaultInstructions, "\n", "\r\n") + "\r\n"
+	if c, e = s.MinutesCandidate(ctx, got.Revision, t1, m2, KeyChange{"", "keep"}, KeyChange{"", "keep"}); e != nil || c.Config.Summary.Instructions != "" {
+		t.Fatal("default instructions stored as custom", e)
+	}
+	m2.Instructions = strings.Repeat("é", minutes.MaxInstructionRunes+1)
+	if _, e = s.MinutesCandidate(ctx, got.Revision, t1, m2, KeyChange{"", "keep"}, KeyChange{"", "keep"}); e == nil {
+		t.Fatal("oversized instructions accepted")
 	}
 	// Moving an endpoint requires an explicit key decision.
 	t2 := t1

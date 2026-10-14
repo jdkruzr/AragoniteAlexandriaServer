@@ -30,6 +30,7 @@ type MinutesConfig struct {
 	Transcriber, Summarizer string // model names, shown before the owner confirms
 	Identity                string // transcription settings identity
 	AutoSend                bool   // send finished minutes to BOOX
+	Instructions            string // custom summary instructions; blank is the default
 }
 
 // Recordings are notebook audio files in resource/data. Titles, start times and
@@ -178,11 +179,11 @@ func (s Service) pageTexts(ctx context.Context, n notebookSnapshot) ([]pageText,
 func pending(p pageText) bool { return p.State == "queued" || p.State == "processing" }
 func missing(p pageText) bool { return p.State != "ready" && !pending(p) }
 
-// minutesInputHash covers recordings, page text and the prompt contract; the
-// minutes view compares it with the current notebook to flag stale minutes.
-func minutesInputHash(recs []string, pages []pageText) string {
+// minutesInputHash covers recordings, page text and the prompt; the minutes
+// view compares it with the current notebook to flag stale minutes.
+func minutesInputHash(recs []string, pages []pageText, instructions string) string {
 	h := sha256.New()
-	h.Write([]byte(minutes.PromptVersion + "\x00"))
+	fmt.Fprintf(h, "%s\x00%x\x00", minutes.PromptVersion, sha256.Sum256([]byte(minutes.System(instructions))))
 	for _, r := range recs {
 		fmt.Fprintf(h, "r\x00%s\x00", r)
 	}
@@ -484,9 +485,9 @@ func (s Service) processSummary(ctx context.Context, summary minutes.Completer, 
 	if summary == nil {
 		return fail("Set up a summary model in Settings → Recognition, then retry.", true)
 	}
-	inputHash := minutesInputHash(ids, pages)
+	inputHash := minutesInputHash(ids, pages, s.Minutes.Instructions)
 	work, cancel := context.WithTimeout(ctx, 10*time.Minute)
-	m, e := minutes.Summarize(work, summary, in)
+	m, e := minutes.Summarize(work, summary, s.Minutes.Instructions, in)
 	cancel()
 	if e != nil {
 		retry, detail := ocrapi.Failure(e)

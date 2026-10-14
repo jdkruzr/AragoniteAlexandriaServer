@@ -15,8 +15,10 @@ import (
 	"github.com/google/uuid"
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech"
@@ -48,6 +50,9 @@ type SummaryConfig struct {
 	// SendToBOOX sends every finished BOOX minutes note to the devices, as
 	// if the owner had pressed Send to BOOX.
 	SendToBOOX bool `json:",omitempty"`
+	// Instructions replace minutes.DefaultInstructions when set. The
+	// response format is fixed and always appended.
+	Instructions string `json:",omitempty"`
 }
 type Config struct {
 	OCR           OCRConfig
@@ -321,6 +326,9 @@ func Validate(c Config) error {
 	if l := c.Transcription.Language; len(l) > 8 || strings.Trim(l, "abcdefghijklmnopqrstuvwxyz") != "" {
 		return errors.New("Leave the language empty to detect it, or enter a code such as en.")
 	}
+	if utf8.RuneCountInString(c.Summary.Instructions) > minutes.MaxInstructionRunes {
+		return errors.New("The summary instructions exceed the settings limit.")
+	}
 	if len(c.Transcription.Model) > 256 || len(c.Summary.Model) > 256 {
 		return errors.New("Model exceeds the settings limit.")
 	}
@@ -387,6 +395,12 @@ func (s Store) MinutesCandidate(ctx context.Context, revision int64, t Transcrip
 	t.Model, t.Language = strings.TrimSpace(t.Model), strings.ToLower(strings.TrimSpace(t.Language))
 	m.URL = strings.TrimRight(strings.TrimSpace(m.URL), "/")
 	m.Model, m.AnthropicWorkspace = strings.TrimSpace(m.Model), strings.TrimSpace(m.AnthropicWorkspace)
+	// The form shows the default text; saving it unchanged keeps following
+	// the built-in instructions as they evolve.
+	m.Instructions = strings.TrimSpace(strings.ReplaceAll(m.Instructions, "\r\n", "\n"))
+	if m.Instructions == minutes.DefaultInstructions {
+		m.Instructions = ""
+	}
 	if m.Format != "anthropic" {
 		m.AnthropicWorkspace = ""
 	}
