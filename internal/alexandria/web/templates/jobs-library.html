@@ -12,8 +12,8 @@
 <form method="post" action="/jobs/library"><input type="hidden" name="source" value="{{$d.Source}}"><input type="hidden" name="token" value="{{$d.Token}}"><button name="action" value="prepare">Prepare library review</button></form>
 {{else}}{{$r:=$d.Run}}
 <p><strong>Source: {{$r.SourceLabel}}</strong> · <a href="/jobs/library?source={{$r.Source}}">New library review</a></p>
-<p>Started {{$r.Created.UTC.Format "2006-01-02 15:04:05"}} UTC · <strong>{{$r.Label}}</strong> · <a href="/jobs/library?id={{$r.ID}}">Refresh</a></p>
-{{if eq $r.State "preparing"}}<h2>Preparing the review</h2><progress value="{{$r.Prepared}}" max="{{if $r.Total}}{{$r.Total}}{{else}}1{{end}}">{{$r.Prepared}} / {{$r.Total}}</progress><p>{{$r.Prepared}} of {{$r.Total}} notebook catalogs checked. This continues if you close the browser. Status refreshes every five seconds.</p>{{end}}
+<p id="run-summary" data-live-region data-live-key="{{$r.State}}">Started {{$r.Created.UTC.Format "2006-01-02 15:04:05"}} UTC · <strong>{{$r.Label}}</strong> · <a href="/jobs/library?id={{$r.ID}}">Refresh</a></p>
+{{if eq $r.State "preparing"}}<h2>Preparing the review</h2><div id="run-preparing" data-live-region data-live-key="{{$r.State}}"><progress value="{{$r.Prepared}}" max="{{if $r.Total}}{{$r.Total}}{{else}}1{{end}}">{{$r.Prepared}} / {{$r.Total}}</progress><p>{{num $r.Prepared}} of {{num $r.Total}} notebook catalogs checked. This continues if you close the browser. Status updates every five seconds.</p></div>{{end}}
 {{if eq $r.State "review"}}<h2>Review before starting</h2>
 <form class="stack library-review" method="post" action="/jobs/library" id="library-review">
 <input type="hidden" name="id" value="{{$r.ID}}">
@@ -38,6 +38,7 @@
 <script src="/static/recognition.js" defer></script>
 {{else if ne $r.State "preparing"}}
 <h2>Library batch progress</h2>
+<div id="run-progress" data-live-region data-live-key="{{$r.State}}">
 <progress value="{{$r.Finished}}" max="{{if $r.WorkTotal}}{{$r.WorkTotal}}{{else}}1{{end}}">{{$r.Percent}}%</progress>
 <div class="table-scroll run-box"><table class="run-status keep-cols"><tbody>
 <tr><th scope="row">Done</th><td>{{num $r.Finished}} of {{num $r.WorkTotal}} pages ({{$r.Percent}}%)</td></tr>
@@ -64,6 +65,7 @@
 </tbody></table></div>
 </div>
 {{if and (eq $r.State "queued") (eq $r.Remaining 0)}}<p class="coverage">No runnable work remains in this library batch. Review any failed, blocked, paused or unavailable items below.</p>{{end}}
+</div>
 <form class="actions" method="post" action="/jobs/library"><input type="hidden" name="id" value="{{$r.ID}}">{{if eq $r.State "queued"}}<button name="action" value="pause" class="secondary">Pause library batch</button><button name="action" value="retry" class="secondary">Retry failed and blocked pages</button>{{end}}{{if eq $r.State "paused"}}<button name="action" value="resume">Resume library batch</button>{{end}}{{if ne $r.State "cancelled"}}<button name="action" value="cancel" class="destructive">Cancel unfinished</button>{{end}}</form>
 <p class="small muted"><a href="/jobs?run={{$r.ID}}&amp;live=1">All page jobs</a>. A request already sent to the provider may still finish and be billed after pausing or cancelling; its late result is discarded. {{template "help" "recognition.controls"}} Unavailable notebooks need a <a href="/jobs/library?source={{$r.Source}}">new library review</a>.</p>
 <details class="more"><summary>Notebooks ({{num $r.Total}})</summary>
