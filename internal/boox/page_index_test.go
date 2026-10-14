@@ -177,7 +177,7 @@ func TestPageRecognitionConfigurationWarningsAndRetry(t *testing.T) {
 	o.fail = false
 	s.ProcessPageIndex(ctx, o, "")
 	s.DB.QueryRowContext(ctx, `SELECT state,detail FROM boox_page_index`).Scan(&state, &detail)
-	if state != "blocked" || !strings.Contains(detail, "preview is incomplete: Page template") || o.calls != 1 {
+	if state != "blocked" || !strings.Contains(detail, "preview is incomplete: "+NoPageFilesWarning) || o.calls != 1 {
 		t.Fatal("incomplete page recognized", state, detail, o.calls)
 	}
 }
@@ -336,6 +336,29 @@ func TestBlankPageSkipsRecognition(t *testing.T) {
 	s.DB.QueryRowContext(ctx, `SELECT state,text,detail FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &text, &detail)
 	if state != "ready" || text != "" || !strings.HasPrefix(detail, "No handwriting") || ocr.calls != 0 {
 		t.Fatalf("%s %q %q calls=%d", state, text, detail, ocr.calls)
+	}
+}
+
+func TestPageWithNoFilesStaysBlockedWithAPlainReason(t *testing.T) {
+	// Seen on device: a notebook created and never written has no shapes and
+	// no template. From the server it looks like a page still syncing, so it
+	// stays blocked, and says so.
+	s := indexFixture(t)
+	ctx := context.Background()
+	if _, e := s.DB.ExecContext(ctx, `DELETE FROM boox_blob_live WHERE native_key LIKE '%/shape/%' OR native_key LIKE '%/template/%'`); e != nil {
+		t.Fatal(e)
+	}
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	ocr := &testOCR{}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state, detail string
+	s.DB.QueryRowContext(ctx, `SELECT state,detail FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &detail)
+	if state != "blocked" || !strings.Contains(detail, NoPageFilesWarning) || ocr.calls != 0 {
+		t.Fatal(state, detail, ocr.calls)
 	}
 }
 
