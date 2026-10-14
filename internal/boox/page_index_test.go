@@ -339,6 +339,36 @@ func TestBlankPageSkipsRecognition(t *testing.T) {
 	}
 }
 
+func TestEmptyNotebookWithoutTemplateSkipsRecognition(t *testing.T) {
+	// Seen on device: a notebook created and never written has no shapes
+	// and no template file at all.
+	s := indexFixture(t)
+	ctx := context.Background()
+	if _, e := s.DB.ExecContext(ctx, `DELETE FROM boox_blob_live WHERE native_key LIKE '%/shape/%' OR native_key LIKE '%/template/%'`); e != nil {
+		t.Fatal(e)
+	}
+	n, e := s.notebookSnapshot(ctx, "note")
+	if e != nil {
+		t.Fatal(e)
+	}
+	p, e := s.renderPreview(ctx, n, 1)
+	if e != nil || len(p.Warnings) != 0 || len(p.Notices) == 0 || !p.Blank {
+		t.Fatal(e, p.Warnings, p.Notices)
+	}
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	ocr := &testOCR{}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state string
+	s.DB.QueryRowContext(ctx, `SELECT state FROM boox_page_index WHERE notebook_id='note'`).Scan(&state)
+	if state != "ready" || ocr.calls != 0 {
+		t.Fatal(state, ocr.calls)
+	}
+}
+
 func TestBlockedDetailNamesWarnings(t *testing.T) {
 	d := blockedDetail([]string{"Native shape type 77 is not rendered yet.", "Native shape type 77 is not rendered yet.", "A shape references an unknown layer."})
 	if d != "Not sent for recognition because the preview is incomplete: Native shape type 77 is not rendered yet. A shape references an unknown layer." {
