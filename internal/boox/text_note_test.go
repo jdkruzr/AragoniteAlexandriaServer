@@ -43,6 +43,16 @@ func TestRichTextDocumentBlocks(t *testing.T) {
 	}
 }
 
+func TestTextBlocksAcceptCommonBullets(t *testing.T) {
+	var kinds []string
+	for _, b := range textBlocks("# Title\n- dash\n* star\n• dot\n*emphasis*\n\n") {
+		kinds = append(kinds, b.Kind+":"+b.Text)
+	}
+	if got := strings.Join(kinds, "|"); got != "heading:Title|bullet:dash|bullet:star|bullet:dot|:*emphasis*" {
+		t.Fatal(got)
+	}
+}
+
 func TestBuildTextNoteGraph(t *testing.T) {
 	ids := newTextIDs()
 	record, assets, e := buildTextNote("uid1", TextNote{Parent: "folder1", Title: "Synthetic_Minutes", Blocks: []TextBlock{{Text: "hello"}}}, ids, time.UnixMilli(1791669879703))
