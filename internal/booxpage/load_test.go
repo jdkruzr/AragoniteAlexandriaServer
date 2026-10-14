@@ -211,3 +211,28 @@ func TestIssuesNameTheShapeWithoutContent(t *testing.T) {
 		t.Fatal("issue leaked shape text")
 	}
 }
+
+func TestRegularPolygonFromPenPoints(t *testing.T) {
+	id := "00000000-0000-0000-0000-000000000024"
+	sp := &pb.ShapeInfoProto{UniqueId: id, ShapeType: 24, Thickness: 2, Color: -16777216, RevisionId: "r", BoundingRect: `{"left":0,"top":0,"right":40,"bottom":40}`}
+	assets := map[string][]byte{"shape/page#a.zip": shapeZip(t, sp), "point/page#r#points": pointFixture(id)}
+	load := func(k string) ([]byte, error) {
+		if b, ok := assets[k]; ok {
+			return b, nil
+		}
+		return nil, errors.New("missing")
+	}
+	p, w, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip"}, load)
+	if e != nil || len(w) != 0 || len(p.Shapes) != 1 || len(p.Shapes[0].Points) != 2 {
+		t.Fatal(p, w, e)
+	}
+	// Down (10,10), up (30,30): centre (10,20), radius √500, first vertex straight up.
+	v := regularPolygon(p.Shapes[0].Points, 5)
+	r := math.Sqrt(500)
+	if len(v) != 5 || math.Abs(v[0][0]-10) > 1e-4 || math.Abs(v[0][1]-(20-r)) > 1e-4 || math.Abs(v[1][0]-(10+r*math.Sin(2*math.Pi/5))) > 1e-4 {
+		t.Fatal(v)
+	}
+	if len(regularPolygon(p.Shapes[0].Points[:1], 5)) != 0 {
+		t.Fatal("one point made a polygon")
+	}
+}

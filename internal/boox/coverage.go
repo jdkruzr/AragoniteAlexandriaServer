@@ -1,8 +1,10 @@
 package boox
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"image/png"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 )
@@ -15,15 +17,18 @@ type CoveragePage struct {
 	ActiveScene             int
 	CanvasExpand            string
 	IndexWarning, Error     string
+	Width, Height           float64    // page size
+	InkBounds               [4]float64 // left, top, right, bottom of rendered shapes' boxes
 	Warnings                []string
 	DrawWarnings            []string       // template, background and drawing
 	ShapeTypes              map[string]int // rendered shapes by type
 	Issues                  []booxpage.Issue
+	PNG                     []byte `json:"-"` // the preview, when requested
 }
 
 // BlockedCoverage reports every page whose recognition is blocked. It is
 // read-only: it renders nothing to cache and changes no job.
-func (s Service) BlockedCoverage(ctx context.Context) ([]CoveragePage, error) {
+func (s Service) BlockedCoverage(ctx context.Context, withPNG bool) ([]CoveragePage, error) {
 	rows, err := s.DB.QueryContext(ctx, `SELECT notebook_id,page_id FROM boox_page_index WHERE state='blocked' ORDER BY notebook_id,page_number LIMIT 500`)
 	if err != nil {
 		return nil, err
@@ -43,12 +48,12 @@ func (s Service) BlockedCoverage(ctx context.Context) ([]CoveragePage, error) {
 	}
 	var out []CoveragePage
 	for _, p := range pages {
-		out = append(out, s.PageCoverage(ctx, p[0], p[1]))
+		out = append(out, s.PageCoverage(ctx, p[0], p[1], withPNG))
 	}
 	return out, nil
 }
 
-func (s Service) PageCoverage(ctx context.Context, notebook, page string) CoveragePage {
+func (s Service) PageCoverage(ctx context.Context, notebook, page string, withPNG bool) CoveragePage {
 	c := CoveragePage{Notebook: notebook, PageID: page, ShapeTypes: map[string]int{}}
 	n, err := s.notebookSnapshot(ctx, notebook)
 	if err != nil {
@@ -66,14 +71,28 @@ func (s Service) PageCoverage(ctx context.Context, notebook, page string) Covera
 		c.Error = err.Error()
 		return c
 	}
-	c.Warnings, c.Issues = warnings, p.Issues
-	if _, tw, err := booxpage.Preview(p, s.snapshotLoader(ctx, n)); err != nil {
+	c.Warnings, c.Issues, c.Width, c.Height = warnings, p.Issues, p.Width, p.Height
+	img, tw, err := booxpage.Preview(p, s.snapshotLoader(ctx, n))
+	if err != nil {
 		c.Error = "drawing: " + err.Error()
 	} else {
 		c.DrawWarnings = tw
+		if withPNG {
+			var b bytes.Buffer
+			if png.Encode(&b, img) == nil {
+				c.PNG = b.Bytes()
+			}
+		}
 	}
+	first := true
 	for _, sh := range p.Shapes {
 		c.ShapeTypes[fmt.Sprint(sh.ShapeType)]++
+		if r := sh.BoundingRect; r != nil {
+			if first {
+				c.InkBounds, first = [4]float64{r.Left, r.Top, r.Right, r.Bottom}, false
+			}
+			c.InkBounds = [4]float64{min(c.InkBounds[0], r.Left), min(c.InkBounds[1], r.Top), max(c.InkBounds[2], r.Right), max(c.InkBounds[3], r.Bottom)}
+		}
 	}
 	return c
 }

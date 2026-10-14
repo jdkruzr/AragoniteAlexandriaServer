@@ -15,8 +15,12 @@ var scribbleTypes = map[int32]bool{
 
 // Geometric shape types rendered from bounding rect.
 var geometricTypes = map[int32]bool{
-	0: true, 1: true, 7: true, 8: true, 28: true,
+	0: true, 1: true, 7: true, 8: true, 24: true, 27: true, 28: true,
 }
+
+// Regular polygons are built from their pen-down and pen-up points. The side
+// count isn't stored: type 24 is always the firmware's default pentagon.
+var polygonSides = map[int32]int{24: 5, 27: 6}
 
 func renderShape(dc *gg.Context, s *Shape) {
 	if s.ShapeType == 37 {

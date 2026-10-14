@@ -67,6 +67,16 @@ func renderGeometric(dc *gg.Context, s *Shape) {
 		dc.LineTo(tx1, ty1)
 		dc.LineTo(tx2, ty2)
 		dc.ClosePath()
+	case 24, 27: // Regular polygon, as the firmware's PolygonShapeUtils
+		for i, v := range regularPolygon(s.Points, polygonSides[s.ShapeType]) {
+			px, py := tp(mat, v[0], v[1])
+			if i == 0 {
+				dc.MoveTo(px, py)
+			} else {
+				dc.LineTo(px, py)
+			}
+		}
+		dc.ClosePath()
 	case 28: // Arrow line
 		ax0, ay0 := tp(mat, br.Left, br.Top)
 		ax1, ay1 := tp(mat, br.Right, br.Bottom)
@@ -104,4 +114,22 @@ func renderGeometric(dc *gg.Context, s *Shape) {
 		dc.SetRGBA(r, g, b, a)
 	}
 	dc.Stroke()
+}
+
+// regularPolygon centres the polygon level with the pen-down point, halfway
+// between the down and up heights, with the up point on its circumcircle.
+// The first vertex is straight up; the rest follow clockwise.
+func regularPolygon(points []TinyPoint, sides int) [][2]float64 {
+	if len(points) < 2 || sides < 3 {
+		return nil
+	}
+	down, up := points[0], points[len(points)-1]
+	cx, cy := float64(down.X), (float64(down.Y)+float64(up.Y))/2
+	r := math.Hypot(float64(up.X)-cx, float64(up.Y)-cy)
+	out := make([][2]float64, sides)
+	for i := range out {
+		a := float64(i) * 2 * math.Pi / float64(sides)
+		out[i] = [2]float64{cx + r*math.Sin(a), cy - r*math.Cos(a)}
+	}
+	return out
 }

@@ -32,6 +32,7 @@ type ShapeSummary struct {
 	ConnectionKeys, CreateArgKeys        []string
 	ResourceExtension                    string
 	TextRunes, RichTextBytes, PointBytes int
+	TextStyle                            map[string]any `json:",omitempty"` // text boxes only: numbers and flags
 }
 
 // Shape represents a single shape (stroke, geometry, text, etc.) on a page.

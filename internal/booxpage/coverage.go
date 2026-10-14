@@ -32,6 +32,18 @@ func summarize(sp *pb.ShapeInfoProto) ShapeSummary {
 	out.OptionKeys = jsonKeys(sp.OptionsRepo)
 	out.ConnectionKeys = jsonKeys(sp.ConnectionBean)
 	out.CreateArgKeys = jsonKeys(sp.CreateArgs)
+	if sp.ShapeType == 6 || sp.ShapeType == 16 {
+		var style map[string]any
+		if json.Unmarshal([]byte(sp.TextStyle), &style) == nil {
+			out.TextStyle = map[string]any{}
+			for k, v := range style {
+				switch v.(type) {
+				case float64, bool, nil:
+					out.TextStyle[k] = v
+				}
+			}
+		}
+	}
 	var ref struct{ RelativePath string }
 	if json.Unmarshal([]byte(sp.Resource), &ref) == nil {
 		out.ResourceExtension = strings.ToLower(path.Ext(ref.RelativePath))
