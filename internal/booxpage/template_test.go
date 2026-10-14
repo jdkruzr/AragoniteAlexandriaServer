@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-pdf/fpdf"
 	"image"
 	"image/color"
@@ -172,5 +173,29 @@ func TestZeroFilledTemplateIsSkippedWithNotice(t *testing.T) {
 	garbage := func(k string) ([]byte, error) { return []byte("\x01\x02"), nil }
 	if e := drawBackground(gg.NewContext(50, 50), &Page{PageID: "page"}, garbage); e == nil {
 		t.Fatal("unreadable template accepted")
+	}
+}
+
+func TestGridTemplateOfRectanglesTakesTheFastPath(t *testing.T) {
+	// Seen on device: a grid template of over a thousand 2 px rectangles took
+	// tens of seconds through the general SVG rasterizer.
+	var b strings.Builder
+	b.WriteString(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1650 2200"><defs><style>.cls-1{fill:none;stroke:#999;stroke-miterlimit:10;stroke-width:2px;}</style></defs><title>grid</title>`)
+	for y := 36; y+56 <= 2200; y += 56 {
+		for x := 41; x+56 <= 1650; x += 56 {
+			fmt.Fprintf(&b, `<rect class="cls-1" x="%d" y="%d" width="56" height="56" />`, x, y)
+		}
+	}
+	b.WriteString(`</svg>`)
+	dc := gg.NewContext(1404, 1872)
+	if e := drawLineSVG(dc, []byte(b.String())); e != nil {
+		t.Fatal(e)
+	}
+	// A cell edge is drawn grey; a cell's middle is left empty.
+	if _, _, _, a := dc.Image().At(97*1404/1650, 400).RGBA(); a == 0 {
+		t.Fatal("grid line missing")
+	}
+	if _, _, _, a := dc.Image().At(69*1404/1650, 64*1872/2200).RGBA(); a != 0 {
+		t.Fatal("cell filled")
 	}
 }
