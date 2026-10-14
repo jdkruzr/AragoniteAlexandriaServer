@@ -262,17 +262,69 @@ func TestMeetingNotebookPagesAreNotBlocked(t *testing.T) {
 	}
 }
 
-func TestZeroFilledShapeArchiveIsSkippedWithNotice(t *testing.T) {
-	box := &pb.ShapeInfoProto{UniqueId: "box", ShapeType: 1, Color: -16777216, Thickness: 2, BoundingRect: `{"left":10,"top":10,"right":40,"bottom":40}`, CreatedAt: 1}
-	good := shapeZip(t, box)
-	blobs := map[string][]byte{"shape/page#a.zip": good, "shape/page#b.zip": make([]byte, 4875), "shape/page#c.zip": make([]byte, 1962)}
+func TestZeroFilledSessionsAreRecoveredFromOrphanedPoints(t *testing.T) {
+	const a, b, lost, late = "00000000-0000-0000-0000-00000000000a", "00000000-0000-0000-0000-00000000000b", "00000000-0000-0000-0000-00000000000c", "00000000-0000-0000-0000-00000000000d"
+	// Two good sessions: a black pen, then a red marker just before the gap.
+	// A shape created after the gap must not be chosen as "the pen before".
+	black := &pb.ShapeInfoProto{UniqueId: a, ShapeType: 2, Color: -16777216, Thickness: 3, RevisionId: "ra", CreatedAt: 100}
+	red := &pb.ShapeInfoProto{UniqueId: b, ShapeType: 5, Color: -65536, Thickness: 7, RevisionId: "rb", CreatedAt: 200}
+	after := &pb.ShapeInfoProto{UniqueId: late, ShapeType: 2, Color: -16776961, Thickness: 1, RevisionId: "rd", CreatedAt: 900}
+	blobs := map[string][]byte{
+		"shape/page#s1#100.zip": shapeZip(t, black),
+		"shape/page#s2#200.zip": shapeZip(t, red),
+		"shape/page#s3#300.zip": make([]byte, 4875),
+		"shape/page#s4#900.zip": shapeZip(t, after),
+		"point/page#ra#points":  pointFixture(a),
+		"point/page#rb#points":  pointFixture(b),
+		"point/page#rc#points":  pointFixture(lost),
+		"point/page#rd#points":  pointFixture(late),
+	}
+	keys := make([]string, 0, len(blobs))
+	for k := range blobs {
+		keys = append(keys, k)
+	}
 	load := func(k string) ([]byte, error) { return blobs[k], nil }
-	p, w, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip", "shape/page#b.zip", "shape/page#c.zip"}, load)
+	p, w, e := ShapePage(metaFixture(), "page", keys, load)
+	if e != nil || len(w) != 0 || len(p.Shapes) != 4 || len(p.Notices) != 1 || !strings.Contains(p.Notices[0], "recovered from point data") {
+		t.Fatal(e, w, len(p.Shapes), p.Notices)
+	}
+	var got *Shape
+	for _, s := range p.Shapes {
+		if s.UniqueID == lost {
+			got = s
+		}
+	}
+	if got == nil || got.ShapeType != 5 || got.Color != -65536 || got.Thickness != 7 || got.RevisionID != "rc" || len(got.Points) != 2 {
+		t.Fatalf("recovered stroke %+v", got)
+	}
+	if _, _, e := Preview(p, func(string) ([]byte, error) { return nil, errors.New("no template") }); e != nil {
+		t.Fatal(e)
+	}
+
+	// Without an empty archive, an unreferenced point file is not drawn:
+	// that is how erased ink looks too.
+	blobs["shape/page#s3#300.zip"] = shapeZip(t, &pb.ShapeInfoProto{UniqueId: lost, ShapeType: 2, RevisionId: "rc", ShapeStatus: 1, CreatedAt: 300})
+	p, _, e = ShapePage(metaFixture(), "page", keys, load)
+	if e != nil || len(p.Shapes) != 3 || len(p.Notices) != 0 {
+		t.Fatal(e, len(p.Shapes), p.Notices)
+	}
+	keysNoEmpty := []string{"shape/page#s1#100.zip", "shape/page#s2#200.zip", "point/page#ra#points", "point/page#rb#points", "point/page#rc#points"}
+	p, _, e = ShapePage(metaFixture(), "page", keysNoEmpty, load)
+	if e != nil || len(p.Shapes) != 2 {
+		t.Fatal(e, len(p.Shapes))
+	}
+}
+
+func TestZeroFilledShapeArchiveWithoutPointsKeepsANotice(t *testing.T) {
+	box := &pb.ShapeInfoProto{UniqueId: "box", ShapeType: 1, Color: -16777216, Thickness: 2, BoundingRect: `{"left":10,"top":10,"right":40,"bottom":40}`, CreatedAt: 1}
+	blobs := map[string][]byte{"shape/page#a#1.zip": shapeZip(t, box), "shape/page#b#2.zip": make([]byte, 4875), "shape/page#c#3.zip": make([]byte, 1962)}
+	load := func(k string) ([]byte, error) { return blobs[k], nil }
+	p, w, e := ShapePage(metaFixture(), "page", []string{"shape/page#a#1.zip", "shape/page#b#2.zip", "shape/page#c#3.zip"}, load)
 	if e != nil || len(w) != 0 || len(p.Shapes) != 1 || len(p.Notices) != 1 || !strings.HasPrefix(p.Notices[0], "2 pen sessions") {
 		t.Fatal(e, w, p.Notices)
 	}
-	blobs["shape/page#b.zip"] = []byte("\x00\x01not a zip")
-	if _, _, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip", "shape/page#b.zip"}, load); e == nil {
+	blobs["shape/page#b#2.zip"] = []byte("\x00\x01not a zip")
+	if _, _, e := ShapePage(metaFixture(), "page", []string{"shape/page#a#1.zip", "shape/page#b#2.zip"}, load); e == nil {
 		t.Fatal("garbage archive accepted")
 	}
 }
