@@ -123,6 +123,25 @@ func TestLibraryReviewDispatchControlsAndRetries(t *testing.T) {
 	if err != nil || r.Cancelled != 2 || r.Ready != 1 {
 		t.Fatal(r, err)
 	}
+	// Seen live: a page in the run failed, then a change on the device
+	// re-queued it and it succeeded. The run kept counting the old failure.
+	if _, err = conn.ExecContext(ctx, `UPDATE boox_page_index SET state='failed' WHERE page_id='c1'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = conn.ExecContext(ctx, `UPDATE boox_page_index SET state='queued' WHERE page_id='c1'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = conn.ExecContext(ctx, `UPDATE boox_page_index SET state='ready' WHERE page_id='c1'`); err != nil {
+		t.Fatal(err)
+	}
+	r, err = s.GetRun(ctx, id)
+	if err != nil || r.Failed != 0 {
+		t.Fatal("replaced failure still counted", r.Failed, err)
+	}
+	runs, err := s.RecentRuns(ctx)
+	if err != nil || len(runs) == 0 || runs[0].Failed != 0 {
+		t.Fatal("recent runs count replaced failure", runs, err)
+	}
 }
 func TestLibraryRunCrashLeaseChangedCatalogAndCancellation(t *testing.T) {
 	ctx := context.Background()

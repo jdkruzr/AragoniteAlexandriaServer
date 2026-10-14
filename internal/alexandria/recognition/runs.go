@@ -280,7 +280,9 @@ func (s Store) GetRun(ctx context.Context, id string) (Run, error) {
 	if re != nil {
 		return r, re
 	}
-	rows, err = s.DB.QueryContext(ctx, `SELECT j.state,count(*) FROM alexandria_recognition_job j JOIN alexandria_recognition_batch b ON b.id=j.batch_id WHERE b.run_id=$1 GROUP BY j.state`, id)
+	// Earlier attempts stay attached when a change on the device re-queues a
+	// page; only each page's current attempt counts toward the run.
+	rows, err = s.DB.QueryContext(ctx, `SELECT j.state,count(*) FROM alexandria_recognition_job j JOIN alexandria_recognition_batch b ON b.id=j.batch_id WHERE b.run_id=$1 AND j.superseded_by IS NULL GROUP BY j.state`, id)
 	if err != nil {
 		return r, err
 	}
@@ -326,7 +328,7 @@ func (s Store) RecentRuns(ctx context.Context) ([]Run, error) {
  coalesce(j.ready,0),coalesce(j.pending,0),coalesce(j.processing,0),coalesce(j.failed,0),coalesce(j.blocked,0),coalesce(j.paused,0),coalesce(j.cancelled,0)
  FROM (SELECT * FROM alexandria_recognition_run ORDER BY created_at DESC LIMIT 20) r
  LEFT JOIN LATERAL (SELECT sum(CASE WHEN state='ready' THEN jsonb_array_length(pages)-cursor ELSE 0 END) awaiting,sum(queued) queued,sum(skipped) skipped,count(*) FILTER(WHERE state='unavailable') unavailable FROM alexandria_recognition_run_notebook WHERE run_id=r.id) n ON true
- LEFT JOIN LATERAL (SELECT count(*) FILTER(WHERE j.state='ready') ready,count(*) FILTER(WHERE j.state='queued') pending,count(*) FILTER(WHERE j.state='processing') processing,count(*) FILTER(WHERE j.state='failed') failed,count(*) FILTER(WHERE j.state='blocked') blocked,count(*) FILTER(WHERE j.state='paused') paused,count(*) FILTER(WHERE j.state='cancelled') cancelled FROM alexandria_recognition_job j JOIN alexandria_recognition_batch b ON b.id=j.batch_id WHERE b.run_id=r.id) j ON true ORDER BY r.created_at DESC`)
+ LEFT JOIN LATERAL (SELECT count(*) FILTER(WHERE j.state='ready') ready,count(*) FILTER(WHERE j.state='queued') pending,count(*) FILTER(WHERE j.state='processing') processing,count(*) FILTER(WHERE j.state='failed') failed,count(*) FILTER(WHERE j.state='blocked') blocked,count(*) FILTER(WHERE j.state='paused') paused,count(*) FILTER(WHERE j.state='cancelled') cancelled FROM alexandria_recognition_job j JOIN alexandria_recognition_batch b ON b.id=j.batch_id WHERE b.run_id=r.id AND j.superseded_by IS NULL) j ON true ORDER BY r.created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
