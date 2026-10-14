@@ -3,6 +3,7 @@ package booxpage
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"github.com/go-pdf/fpdf"
 	"image"
 	"image/color"
@@ -131,5 +132,33 @@ func TestPDFBackgroundSelectsPage(t *testing.T) {
 	}
 	if e := drawPDF(dc, b.Bytes(), 9); e == nil {
 		t.Fatal("missing PDF page accepted")
+	}
+}
+
+func TestPDFTemplateFoundWithNotebookTemplates(t *testing.T) {
+	if _, e := exec.LookPath("pdftoppm"); e != nil {
+		t.Skip("Poppler not installed")
+	}
+	pdf := fpdf.New("P", "pt", "A4", "")
+	pdf.AddPage()
+	pdf.SetFillColor(0, 0, 255)
+	pdf.Rect(0, 0, 595, 842, "F")
+	var b bytes.Buffer
+	if e := pdf.Output(&b); e != nil {
+		t.Fatal(e)
+	}
+	p := &Page{Width: 100, Height: 120, Background: &Background{Kind: "pdf", Path: "resource/data/t.pdf"}}
+	dc := gg.NewContext(100, 120)
+	load := func(k string) ([]byte, error) {
+		if k == "note/templateRes/t.pdf" {
+			return b.Bytes(), nil
+		}
+		return nil, errors.New("missing")
+	}
+	if e := drawBackground(dc, p, load); e != nil {
+		t.Fatal(e)
+	}
+	if _, _, bl, _ := dc.Image().At(50, 60).RGBA(); bl < 60000 {
+		t.Fatal("template PDF not drawn")
 	}
 }
