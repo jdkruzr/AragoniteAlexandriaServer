@@ -23,7 +23,8 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 )
 
-// QueuePage records an explicit request. Incoming sync only refreshes pages the
+// QueuePage records an explicit request. The page keeps its current text
+// (still searchable) until a new result replaces it. Incoming sync only refreshes pages the
 // owner has already requested, avoiding an implicit paid whole-library OCR run.
 func (s Service) QueuePage(ctx context.Context, id string, num int) error {
 	n, e := s.notebookSnapshot(ctx, id)
@@ -35,7 +36,7 @@ func (s Service) QueuePage(ctx context.Context, id string, num int) error {
 		return errors.New("page unavailable")
 	}
 	_, e = s.DB.ExecContext(ctx, `INSERT INTO boox_page_index(notebook_id,page_id,page_number) VALUES($1,$2,$3)
- ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,text='',detail='',updated_at=now() WHERE boox_page_index.state NOT IN ('processing','paused','skipped')`, id, ids[num-1], num)
+ ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,detail='',updated_at=now() WHERE boox_page_index.state NOT IN ('processing','paused','skipped')`, id, ids[num-1], num)
 	return e
 }
 func (s Service) queuePageHTTP(w http.ResponseWriter, r *http.Request) {
@@ -77,8 +78,10 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 	if e != nil {
 		return false, e
 	}
+	// A blocked page keeps its last result: text is cleared only when the
+	// page itself changes (boox_invalidate_page_index), never by a re-run.
 	finish := func(state, text, detail, input, ocrHash, ocrText, model string) error {
-		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,text=$5,detail=$6,input_version=$7,ocr_hash=$8,ocr_text=$9,model=$10,lease_token='',lease_until=NULL,updated_at=now(),page_number=$11,config_revision=$13 WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$12`, id, page, token, state, text, detail, input, ocrHash, ocrText, model, num, version, s.RecognitionRevision)
+		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,text=CASE WHEN $4='blocked' THEN text ELSE $5 END,detail=$6,input_version=$7,ocr_hash=$8,ocr_text=$9,model=$10,lease_token='',lease_until=NULL,updated_at=now(),page_number=$11,config_revision=$13 WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$12`, id, page, token, state, text, detail, input, ocrHash, ocrText, model, num, version, s.RecognitionRevision)
 		return e
 	}
 	deferFailure := func(detail string, terminal ...bool) (bool, error) {
@@ -90,7 +93,7 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 				detail = ocrapi.GaveUp(detail)
 			}
 		}
-		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,detail=$5,updated_at=now(),attempts=attempts+1,next_at=now()+$6::interval,lease_until=NULL,lease_token='',text='' WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$7`, id, page, token, state, detail, fmt.Sprintf("%d seconds", int(delay.Seconds())), version)
+		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,detail=$5,updated_at=now(),attempts=attempts+1,next_at=now()+$6::interval,lease_until=NULL,lease_token='' WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$7`, id, page, token, state, detail, fmt.Sprintf("%d seconds", int(delay.Seconds())), version)
 		return true, e
 	}
 	n, e := s.notebookSnapshot(ctx, id)

@@ -237,7 +237,7 @@ func queueTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, from, t
 		var job string
 		if source == "boox" {
 			e = tx.QueryRowContext(ctx, `INSERT INTO boox_page_index(notebook_id,page_id,page_number) VALUES($1,$2,$3)
- ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,text='',detail='',ocr_hash=CASE WHEN $4 THEN '' ELSE boox_page_index.ocr_hash END
+ ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,detail='',ocr_hash=CASE WHEN $4 THEN '' ELSE boox_page_index.ocr_hash END
  WHERE boox_page_index.state IN ('ready','failed','blocked','cancelled') RETURNING job_id::text`, n.ID, p.ID, p.Number, force).Scan(&job)
 		} else {
 			e = tx.QueryRowContext(ctx, `INSERT INTO alexandria_page_dirty(page_id) VALUES($1) ON CONFLICT(page_id) DO UPDATE SET state='queued',dirtied_at=clock_timestamp(),attempts=0,next_at=now(),lease_until=NULL,lease_token=NULL,detail='' WHERE alexandria_page_dirty.state IN ('ready','failed','blocked','cancelled') RETURNING job_id::text`, p.ID).Scan(&job)
