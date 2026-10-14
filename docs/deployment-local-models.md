@@ -1,6 +1,6 @@
-# Local models for note minutes
+# Local models for Audio Note Minutes
 
-2026-10-13. Note minutes on the home deployment use two local services on
+2026-10-13. Audio Note Minutes on the home deployment use two local services on
 **gpu-host** (`192.0.2.20`, 2× RTX 3090, Ryzen 7 3700X). Alexandria
 (`192.0.2.10`) reaches both over the LAN.
 
@@ -11,7 +11,7 @@
 
 Both require a bearer key. vLLM's is in `/etc/vllm-qwen38/vllm-qwen38.env`, and
 Whisper's is `WHISPER_API_KEY` in `/etc/whisper/whisper.env` (root, 0600). Enter
-them only in Alexandria's Settings → Recognition → Note minutes, and never on a
+them only in Alexandria's Settings → Recognition → Audio Note Minutes, and never on a
 command line.
 
 ## Whisper service

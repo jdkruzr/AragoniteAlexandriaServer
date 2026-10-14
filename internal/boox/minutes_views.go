@@ -25,8 +25,8 @@ type minutesView struct {
 
 var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).Parse(`{{define "content"}}{{$d:=.Data}}{{$m:=$d.Stored}}
 <p class="crumbs"><a href="/boox">Notebooks</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> /</p>
-<div class="page-head"><h1>Minutes {{template "help" "boox.minutes"}}</h1>{{if $d.Has}}<div class="toolbar"><a class="button secondary" href="/boox/minutes/new?id={{$d.ID}}">{{if eq $m.State "ready"}}Update…{{else}}Request again…{{end}}</a></div>{{end}}</div>
-{{if not $d.Has}}<div class="card"><p class="empty">No minutes for this notebook yet.</p>
+<div class="page-head"><h1>Audio Note Minutes {{template "help" "boox.minutes"}}</h1>{{if $d.Has}}<div class="toolbar"><a class="button secondary" href="/boox/minutes/new?id={{$d.ID}}">{{if eq $m.State "ready"}}Update…{{else}}Request again…{{end}}</a></div>{{end}}</div>
+{{if not $d.Has}}<div class="card"><p class="empty">No Audio Note Minutes for this notebook yet.</p>
 <p>{{if $d.Recordings}}It has {{$d.Recordings}} recording{{if ne $d.Recordings 1}}s{{end}}.{{else}}It has no recordings, so minutes would come from handwriting alone.{{end}}</p>
 <p><a class="button" href="/boox/minutes/new?id={{$d.ID}}">Summarize this note…</a></p></div>
 {{else}}
@@ -63,7 +63,7 @@ type minutesRequestView struct {
 }
 
 var minutesRequestTemplate = template.Must(template.New("minutes-new").Funcs(web.Funcs()).Parse(`{{define "content"}}{{$d:=.Data}}
-<p class="crumbs"><a href="/boox">Notebooks</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">Minutes</a> /</p>
+<p class="crumbs"><a href="/boox">Notebooks</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">Audio Note Minutes</a> /</p>
 <h1>Summarize this note {{template "help" "boox.minutes"}}</h1>
 {{if not $d.Enabled}}<div class="callout"><p>Set up transcription and a summary model in <a href="/settings/recognition#minutes">Settings → Recognition</a> first.</p></div>{{else}}
 <form method="post" action="/boox/minutes/new"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="request" value="{{$d.Request}}">
@@ -111,7 +111,7 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 	if has && (stored.State == "queued" || stored.State == "processing") {
 		d.Progress = s.minutesProgress(r, n, stored)
 	}
-	s.renderPage(w, r, minutesTemplate, "Minutes · "+n.Meta.Title, d)
+	s.renderPage(w, r, minutesTemplate, "Audio Note Minutes · "+n.Meta.Title, d)
 }
 
 func (s Service) minutesProgress(r *http.Request, n notebookSnapshot, m minutes.Stored) string {
@@ -193,7 +193,7 @@ func (s Service) minutesRequestHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, back+"&notice="+url.QueryEscape(e.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/boox/minutes?id="+url.QueryEscape(id)+"&notice="+url.QueryEscape("Minutes requested. Recordings are transcribed first; this page shows progress."), http.StatusSeeOther)
+	http.Redirect(w, r, "/boox/minutes?id="+url.QueryEscape(id)+"&notice="+url.QueryEscape("Audio Note Minutes requested. Recordings are transcribed first; this page shows progress."), http.StatusSeeOther)
 }
 
 func (s Service) minutesControlHTTP(w http.ResponseWriter, r *http.Request) {

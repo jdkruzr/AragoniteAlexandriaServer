@@ -238,7 +238,7 @@ func (s Store) View(ctx context.Context) (View, error) {
 	}
 	rows, e := s.DB.QueryContext(ctx, `WITH eligible AS (
  SELECT * FROM alexandria_search_live WHERE btrim(body_text)<>''
- ), kinds(source,kind,label) AS (VALUES ('client','Notebook page','Alexandria Client pages'),('boox','Recognized page','BOOX notebook pages'),('boox','Reading','BOOX reading records'),('boox','Minutes','BOOX note minutes'))
+ ), kinds(source,kind,label) AS (VALUES ('client','Notebook page','Alexandria Client pages'),('boox','Recognized page','BOOX notebook pages'),('boox','Reading','BOOX reading records'),('boox','Minutes','BOOX Audio Note Minutes'))
  SELECT k.label,
  (SELECT count(*) FROM eligible c WHERE c.source=k.source AND c.kind=k.kind),
  (SELECT count(*) FROM eligible c WHERE c.source=k.source AND c.kind=k.kind AND EXISTS(SELECT 1 FROM alexandria_embedding_vectors v JOIN alexandria_embedding_generation g ON g.id=v.generation AND g.state='active' WHERE v.note_key=c.note_key AND v.page=c.page AND v.body_hash=md5(c.body_text))),

@@ -210,7 +210,7 @@ func text(s string, out any) *mcp.CallToolResult {
 func registerNoteTools(server *mcp.Server, d Deps) {
 	mcp.AddTool[searchNotesInput, any](server, &mcp.Tool{
 		Name:        "search_notes",
-		Description: "Search Alexandria Client page text and BOOX recognized pages, reading text and note minutes (including recording transcripts). Optional: mode (hybrid/keyword), limit, source or sources (client/forestnote, boox). Defaults to all sources. Folder, location, device_model, dates and sort are accepted but not implemented. BOOX results provide web links; the client-only image/page tools do not accept BOOX paths.",
+		Description: "Search Alexandria Client page text and BOOX recognized pages, reading text and Audio Note Minutes (including recording transcripts). Optional: mode (hybrid/keyword), limit, source or sources (client/forestnote, boox). Defaults to all sources. Folder, location, device_model, dates and sort are accepted but not implemented. BOOX results provide web links; the client-only image/page tools do not accept BOOX paths.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in searchNotesInput) (*mcp.CallToolResult, any, error) {
 		if in.Query == "" {
 			return nil, nil, fmt.Errorf("query is required")
@@ -275,7 +275,7 @@ func registerNoteTools(server *mcp.Server, d Deps) {
 
 	mcp.AddTool[getNoteMinutesInput, any](server, &mcp.Tool{
 		Name:        "get_note_minutes",
-		Description: "Get the minutes for a BOOX note: topic, keywords, key points (each marked as from the recording, the handwritten notes or both), conclusion, metadata about the notebook and its recordings (titles, start times, lengths), and the recording transcripts. note_path is a boox-minutes:{notebook_id} path from search_notes, or a BOOX notebook ID. Set include_transcripts=false to omit transcripts.",
+		Description: "Get the Audio Note Minutes for a BOOX note: topic, keywords, key points (each marked as from the recording, the handwritten notes or both), conclusion, metadata about the notebook and its recordings (titles, start times, lengths), and the recording transcripts. note_path is a boox-minutes:{notebook_id} path from search_notes, or a BOOX notebook ID. Set include_transcripts=false to omit transcripts.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getNoteMinutesInput) (*mcp.CallToolResult, any, error) {
 		id := strings.TrimPrefix(in.NotePath, "boox-minutes:")
 		if id == "" || strings.ContainsAny(id, "/:") {

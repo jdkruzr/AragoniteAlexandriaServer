@@ -10,7 +10,7 @@
 <li><a href="#search">Search</a></li>
 <li><a href="#semantic">Search by meaning</a></li>
 <li><a href="#recognition">Handwriting recognition</a></li>
-{{if $d.NativeBOOX}}<li><a href="#minutes">Note minutes</a></li>{{end}}
+{{if $d.NativeBOOX}}<li><a href="#minutes">Audio Note Minutes</a></li>{{end}}
 <li><a href="#deleting">Deleting and recovering</a></li>
 <li><a href="#tasks">Tasks and CalDAV</a></li>
 <li><a href="#api">API and MCP access</a></li>
@@ -73,13 +73,13 @@
 </dl>
 </section>
 
-{{if $d.NativeBOOX}}<section id="minutes"><h2>Note minutes</h2>
-<p>Minutes summarize a BOOX note from its recordings <em>and</em> its handwriting. Talk Insights on the device only hears the audio; here, what you wrote down counts as much as what was said.</p>
+{{if $d.NativeBOOX}}<section id="minutes"><h2>Audio Note Minutes</h2>
+<p>Audio Note Minutes summarize a BOOX note from its recordings <em>and</em> its handwriting. Talk Insights on the device only hears the audio; here, what you wrote down counts as much as what was said.</p>
 <dl>
 <dt>What you get</dt><dd>The overall topic, 4–6 keywords, up to five key points (each marked as coming from the recording, your notes or both) and a conclusion. Each note also lists its recordings with start time and length, and the full timestamped transcripts.</dd>
 <dt>How it works</dt><dd>Open a notebook and choose <strong>Summarize this note…</strong>. You'll see the recordings and how many pages have recognized text before anything is sent. Each recording is transcribed, then a summary model writes the minutes.</dd>
 <dt>Pages without text</dt><dd>You can include unrecognized pages; they're sent to your recognition provider first (charges may apply) and the minutes wait for them. Otherwise they're left out and listed.</dd>
-<dt>Providers</dt><dd>Set up in <a href="/settings/recognition">Settings → Recognition</a> under Note minutes. Transcription uses any OpenAI-compatible speech-to-text server, including a self-hosted Whisper. The summary model can be a local OpenAI-compatible server or an Anthropic model.</dd>
+<dt>Providers</dt><dd>Set up in <a href="/settings/recognition">Settings → Recognition</a> under Audio Note Minutes. Transcription uses any OpenAI-compatible speech-to-text server, including a self-hosted Whisper. The summary model can be a local OpenAI-compatible server or an Anthropic model.</dd>
 <dt>Keeping up to date</dt><dd>Minutes are marked out of date when a recording or recognized page changes. Updating is always your choice; unchanged recordings aren't transcribed again.</dd>
 <dt>Where results go</dt><dd>They stay on this server, appear in search and are available to MCP clients through <code>get_note_minutes</code>. They are never written to your BOOX notebooks.</dd>
 </dl>
