@@ -119,6 +119,15 @@ Sending again follows "native wins":
 
 While a send is still publishing, the card hides the button.
 
+**Automatic sending (2026-10-14):** Settings → Recognition → Audio Note
+Minutes → "When minutes are ready" (`SummaryConfig.SendToBOOX`, stored in the
+provider settings JSON, no migration) makes the worker run the same send as
+soon as minutes become ready. The send's request ID is derived from the minutes
+request, so a replay never duplicates it. If the send fails (folder gone,
+BOOX not enrolled), the minutes stay ready and the failure shows on the minutes
+page; Send to BOOX retries by hand. Turning it on doesn't send minutes that
+already exist. The Summarize review page says when automatic sending is on.
+
 
 - Alexandria Client notebooks have no audio.
 - The recognition jobs list doesn't show minutes; progress is on the minutes

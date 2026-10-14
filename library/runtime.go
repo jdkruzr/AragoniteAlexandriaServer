@@ -566,7 +566,7 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 			}
 		case 4:
 			if r.cfg.NativeBOOX != nil {
-				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID}
+				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Minutes: minutesConfig(snapshot)}
 				if err = native.ResolveIdentity(ctx); err == nil {
 					// Queued work fails with guidance when its provider is off.
 					var stt *speech.Client
@@ -656,7 +656,7 @@ func (r *Runtime) pageConfiguration(ctx context.Context, db pg.DB) (notes.Pipeli
 
 func minutesConfig(v providers.Snapshot) boox.MinutesConfig {
 	t, m := v.Config.Transcription, v.Config.Summary
-	return boox.MinutesConfig{Enabled: t.Enabled && m.Enabled, Transcriber: t.Model, Summarizer: m.Model, Identity: v.TranscriptionIdentity()}
+	return boox.MinutesConfig{Enabled: t.Enabled && m.Enabled, Transcriber: t.Model, Summarizer: m.Model, Identity: v.TranscriptionIdentity(), AutoSend: m.SendToBOOX}
 }
 
 func (r *Runtime) recognitionCatalog(db pg.DB) recognition.Catalog {

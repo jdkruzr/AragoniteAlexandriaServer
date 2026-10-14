@@ -135,8 +135,25 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 		t.Fatal(found, e)
 	}
 	s.DB.ExecContext(ctx, `UPDATE alexandria_note_minutes SET next_at=now()`)
+	// With automatic sending on, finished minutes go straight to BOOX.
+	s.Minutes.AutoSend = true
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_identity SET native_uid=$1 WHERE id=1`, s.uid()); e != nil {
+		t.Fatal(e)
+	}
 	if found, e := s.ProcessMinutes(ctx, client, summary, "synthetic-llm", "t1"); e != nil || !found {
 		t.Fatal("summary", found, e)
+	}
+	var sentTitle, sendRequest string
+	if e := s.DB.QueryRowContext(ctx, `SELECT payload->>'title',payload->>'request' FROM boox_operation WHERE kind='create_text_note' AND payload->>'minutesOf'='note'`).Scan(&sentTitle, &sendRequest); e != nil || !strings.HasSuffix(sentTitle, "_Minutes") {
+		t.Fatal("minutes not sent automatically", sentTitle, e)
+	}
+	if e := s.SendMinutesToBOOX(ctx, "note", sendRequest); e != nil { // a replay is a no-op
+		t.Fatal(e)
+	}
+	var sends int
+	s.DB.QueryRowContext(ctx, `SELECT count(*) FROM boox_operation WHERE kind='create_text_note' AND payload->>'minutesOf'='note'`).Scan(&sends)
+	if sends != 1 {
+		t.Fatal("automatic send repeated", sends)
 	}
 	if len(summary.prompts) != 1 || !strings.Contains(summary.prompts[0], "synthetic quasar transcript") || !strings.Contains(summary.prompts[0], "nebula survey") || !strings.Contains(summary.prompts[0], "Recording 1: Standup, started 2026-10-13 21:50:41 UTC, length 1:01") {
 		t.Fatal("prompt lacks notes, transcript or metadata", summary.prompts)

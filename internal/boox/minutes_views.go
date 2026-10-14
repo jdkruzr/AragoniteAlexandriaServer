@@ -51,6 +51,7 @@ var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).P
 <dt>Written</dt><dd>{{if $m.FinishedAt.Valid}}{{utc $m.FinishedAt.Time}}{{else}}—{{end}}</dd>
 </dl></section>
 {{if $d.Sendable}}<section class="card" id="send"><h2>On your BOOX {{template "help" "boox.minutesnote"}}</h2>
+{{if and (eq $m.State "ready") $m.Detail}}<p class="callout danger" role="status">{{$m.Detail}}</p>{{end}}
 {{with $d.Sent}}<p>{{if eq .Status "pending"}}<span class="badge partial">Sending</span> “{{.Title}}” is on its way to your devices.
 {{else if eq .Status "failed"}}<span class="badge bad">Not sent</span> “{{.Title}}” couldn't be sent ({{.Code}}).
 {{else if eq .Status "untouched"}}Sent {{utc .At}} as “{{.Title}}”. Sending again replaces it.
@@ -69,11 +70,11 @@ var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).P
 {{end}}{{end}}`))
 
 type minutesRequestView struct {
-	ID, Title, Version, Request          string
-	Transcriber, Summarizer              string
-	Enabled, RecognitionEnabled          bool
-	Recordings                           []minutes.Source
-	Pages, WithText, Missing, InProgress int
+	ID, Title, Version, Request           string
+	Transcriber, Summarizer               string
+	Enabled, RecognitionEnabled, AutoSend bool
+	Recordings                            []minutes.Source
+	Pages, WithText, Missing, InProgress  int
 }
 
 var minutesRequestTemplate = template.Must(template.New("minutes-new").Funcs(web.Funcs()).Parse(`{{define "content"}}{{$d:=.Data}}
@@ -94,6 +95,7 @@ var minutesRequestTemplate = template.Must(template.New("minutes-new").Funcs(web
 <section class="card"><h2>Send</h2>
 <p>Transcription: <strong>{{$d.Transcriber}}</strong> · Summary: <strong>{{$d.Summarizer}}</strong></p>
 <label class="confirm"><input type="checkbox" name="confirm" required> Send the recordings and this notebook's text to these providers</label>
+{{if $d.AutoSend}}<p class="small muted">When they're ready, the minutes are also sent to your BOOX as “{{$d.Title}}_Minutes”. Change this in <a href="/settings/recognition#minutes">Settings → Recognition</a>.</p>{{end}}
 <p><button>Summarize</button></p>
 </section></form>{{end}}{{end}}`))
 
@@ -179,7 +181,7 @@ func (s Service) minutesRequestPage(w http.ResponseWriter, r *http.Request) {
 		failure(w, e)
 		return
 	}
-	d := minutesRequestView{ID: id, Title: n.Meta.Title, Version: n.Version, Request: uuid.NewString(), Transcriber: s.Minutes.Transcriber, Summarizer: s.Minutes.Summarizer, Enabled: s.Minutes.Enabled, RecognitionEnabled: s.RecognitionEnabled, Recordings: s.recordings(r.Context(), n), Pages: len(pages)}
+	d := minutesRequestView{ID: id, Title: n.Meta.Title, Version: n.Version, Request: uuid.NewString(), Transcriber: s.Minutes.Transcriber, Summarizer: s.Minutes.Summarizer, Enabled: s.Minutes.Enabled, AutoSend: s.Minutes.AutoSend, RecognitionEnabled: s.RecognitionEnabled, Recordings: s.recordings(r.Context(), n), Pages: len(pages)}
 	for _, p := range pages {
 		switch {
 		case p.State == "ready":

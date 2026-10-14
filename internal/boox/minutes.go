@@ -29,6 +29,7 @@ type MinutesConfig struct {
 	Enabled                 bool
 	Transcriber, Summarizer string // model names, shown before the owner confirms
 	Identity                string // transcription settings identity
+	AutoSend                bool   // send finished minutes to BOOX
 }
 
 // Recordings are notebook audio files in resource/data. Titles, start times and
@@ -498,5 +499,13 @@ func (s Service) processSummary(ctx context.Context, summary minutes.Completer, 
 	points, _ := json.Marshal(m.KeyPoints)
 	metaJSON, _ := json.Marshal(meta)
 	_, e = s.DB.ExecContext(ctx, `UPDATE alexandria_note_minutes SET state='ready',topic=$4,keywords=$5,key_points=$6,conclusion=$7,metadata=$8,model=$9,input_hash=$10,detail='',attempts=0,finished_at=now(),lease_token='',lease_until=NULL,updated_at=now()`+where, id, token, request, m.Topic, keywords, points, m.Conclusion, metaJSON, model, inputHash)
+	if e == nil && s.Minutes.AutoSend {
+		// The minutes stand on their own; a failed send is reported on the
+		// minutes page and the owner can press Send to BOOX.
+		send := uuid.NewSHA1(uuid.NameSpaceOID, []byte("minutes-autosend:"+request)).String()
+		if err := s.SendMinutesToBOOX(ctx, id, send); err != nil {
+			_, e = s.DB.ExecContext(ctx, `UPDATE alexandria_note_minutes SET detail=$3 WHERE source='boox' AND notebook_id=$1 AND request_id=$2 AND state='ready'`, id, request, autoSendFailed(err))
+		}
+	}
 	return true, e
 }

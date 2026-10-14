@@ -55,6 +55,9 @@
 <label><input type="checkbox" name="s_vllm" {{if $p.Config.Summary.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
 </div></details>
 </fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>When minutes are ready {{template "help" "minutes.autosend"}}</legend>
+<label><input type="checkbox" name="s_boox" {{if $p.Config.Summary.SendToBOOX}}checked{{end}}> Send them to BOOX automatically</label>
+</fieldset>
 <p class="hint">{{if $p.HasTranscriptionKey}}A transcription key is saved.{{else}}No transcription key is saved.{{end}} {{if $p.HasSummaryKey}}A summary key is saved.{{else}}No summary key is saved.{{end}}</p>
 <div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save</button><button name="action" value="test_transcription" class="secondary">Test transcription</button><button name="action" value="test_summary" class="secondary">Test summary</button></div>
 </form>
