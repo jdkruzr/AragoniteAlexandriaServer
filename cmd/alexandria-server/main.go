@@ -489,7 +489,12 @@ func runBOOXCoverage() error {
 	if err = db.QueryRowContext(ctx, `SELECT library_id::text FROM alexandria_library_runtime WHERE singleton`).Scan(&id); err != nil {
 		return err
 	}
-	native := boox.Service{Config: boox.Config{Database: cfg.BOOXDatabase}, DB: db, Objects: store, LibraryID: id}
+	// The runtime stores each library's objects under its own scope.
+	objects, err := blob.ForLibrary(store, id)
+	if err != nil {
+		return err
+	}
+	native := boox.Service{Config: boox.Config{Database: cfg.BOOXDatabase}, DB: db, Objects: objects, LibraryID: id}
 	if err = native.ResolveIdentity(ctx); err != nil {
 		return err
 	}
