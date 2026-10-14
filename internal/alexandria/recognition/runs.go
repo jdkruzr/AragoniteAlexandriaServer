@@ -27,6 +27,7 @@ type Run struct {
 	Counts                                                                           map[string]int
 	Total, Prepared, Pages, Queued, Skipped, Cursor, Excluded, Unavailable, Awaiting int
 	Ready, Processing, Pending, Failed, Blocked, Paused, Cancelled, Finished         int
+	SkippedForGood                                                                   int // pages the owner skipped
 	// PerMinute is the recognition pace over the last ten minutes, and ETA
 	// the projected finish of the remaining pages at that pace (zero if unknown).
 	PerMinute float64
@@ -172,6 +173,14 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 		detail = "Page catalog unavailable or incomplete. Retry preparation after synchronization."
 	}
 	if state == "preparing" && catErr == nil {
+		var skippedNotebook bool
+		if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM alexandria_recognition_skip WHERE source=$1 AND notebook_id=$2)`, source, nid).Scan(&skippedNotebook); err != nil {
+			return false, err
+		}
+		if skippedNotebook {
+			next = "excluded"
+			detail = "Skipped in recognition."
+		}
 		if len(n.Pages) == 0 {
 			next = "unavailable"
 			detail = "No pages are available for recognition."
@@ -199,7 +208,7 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 			chunk := n
 			chunk.Pages = n.Pages[cursor:end]
 			_, queued, err = queueTx(ctx, tx, source, chunk, 1, len(chunk.Pages), force, batch, true)
-			if errors.Is(err, ErrAlreadyActive) {
+			if errors.Is(err, ErrAlreadyActive) || errors.Is(err, ErrNotebookSkipped) {
 				err = nil
 				queued = 0
 			}
@@ -291,7 +300,8 @@ func (s Store) GetRun(ctx context.Context, id string) (Run, error) {
 	r.Blocked = r.Counts["blocked"]
 	r.Paused = r.Counts["paused"]
 	r.Cancelled = r.Counts["cancelled"]
-	r.Finished = r.Ready + r.Failed + r.Blocked + r.Cancelled
+	r.SkippedForGood = r.Counts["skipped"]
+	r.Finished = r.Ready + r.Failed + r.Blocked + r.Cancelled + r.SkippedForGood
 	if err = rows.Err(); err != nil {
 		return r, err
 	}

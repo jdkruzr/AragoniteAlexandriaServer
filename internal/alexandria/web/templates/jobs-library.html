@@ -54,6 +54,7 @@
 <tr><th scope="row">Failed</th><td>{{if $r.Failed}}<a href="/jobs?run={{$r.ID}}&amp;state=failed">{{num $r.Failed}}</a>{{else}}0{{end}}</td></tr>
 <tr><th scope="row">Blocked</th><td>{{if $r.Blocked}}<a href="/jobs?run={{$r.ID}}&amp;state=blocked">{{num $r.Blocked}}</a>{{else}}0{{end}}</td></tr>
 <tr><th scope="row">Cancelled</th><td>{{num $r.Cancelled}}</td></tr>
+<tr><th scope="row">Skipped by you</th><td>{{num $r.SkippedForGood}}</td></tr>
 <tr><th scope="row">Left in earlier jobs</th><td>{{num $r.Skipped}}</td></tr>
 </tbody></table></div>
 <div class="table-scroll run-box"><table class="run-status keep-cols"><thead><tr><th scope="col">Notebooks</th><th scope="col">Count</th></tr></thead><tbody>

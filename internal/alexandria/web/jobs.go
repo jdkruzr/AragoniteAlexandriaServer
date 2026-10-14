@@ -61,7 +61,7 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 		total, done := 0, 0
 		for state, count := range v.Counts {
 			total += count
-			if state == "ready" || state == "failed" || state == "blocked" || state == "cancelled" {
+			if state == "ready" || state == "failed" || state == "blocked" || state == "cancelled" || state == "skipped" {
 				done += count
 			}
 		}
@@ -103,7 +103,11 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			q.Set("history", "1")
 		}
 		dest := "/jobs?" + q.Encode()
-		n, e := store.RetryMatching(r.Context(), f, expect)
+		action := r.Form.Get("action")
+		if action == "" {
+			action = "retry"
+		}
+		n, e := store.ActOnMatching(r.Context(), f, expect, action)
 		if errors.Is(e, recognition.ErrSelectionChanged) {
 			back(w, r, dest, e.Error())
 			return
@@ -112,7 +116,30 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			d.fail(w, e)
 			return
 		}
+		if action == "skip" {
+			back(w, r, dest, fmt.Sprintf("Skipped %d jobs. They stay out of recognition until you un-skip them.", n))
+			return
+		}
 		back(w, r, dest, fmt.Sprintf("Queued %d jobs again. Charges from your provider may apply.", n))
+	})
+	mux.HandleFunc("POST /jobs/skip-notebook", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		if r.ParseForm() != nil {
+			http.Error(w, "Invalid form", 400)
+			return
+		}
+		source, id, skip := r.Form.Get("source"), r.Form.Get("notebook"), r.Form.Get("skip") == "1"
+		n, e := store.SkipNotebook(r.Context(), source, id, skip)
+		if e != nil {
+			d.fail(w, e)
+			return
+		}
+		dest := "/jobs/new?source=" + url.QueryEscape(source) + "&notebook=" + url.QueryEscape(id)
+		if skip {
+			back(w, r, dest, fmt.Sprintf("This notebook is now skipped in recognition (%d pages skipped). Recognized pages keep their text.", n))
+			return
+		}
+		back(w, r, dest, fmt.Sprintf("This notebook is no longer skipped (%d pages released). Pages you skipped one by one stay skipped.", n))
 	})
 	mux.HandleFunc("GET /jobs/new", func(w http.ResponseWriter, r *http.Request) {
 		source, id := r.URL.Query().Get("source"), r.URL.Query().Get("notebook")
@@ -125,6 +152,12 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			}
 			data["Notebook"] = n
 			data["Count"] = len(n.Pages)
+			skipped, e := store.NotebookSkipped(r.Context(), source, id)
+			if e != nil {
+				d.fail(w, e)
+				return
+			}
+			data["Skipped"] = skipped
 			// Optional prefill, e.g. "recognize this page" from a viewer.
 			from, _ := strconv.Atoi(r.URL.Query().Get("from"))
 			to, _ := strconv.Atoi(r.URL.Query().Get("to"))
