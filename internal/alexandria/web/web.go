@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -166,6 +167,10 @@ type page struct {
 	Base         string // public origin, for copyable URLs
 	Data         any
 	Notice       string
+	// Live is the update interval in seconds for a page with ongoing work.
+	// live.js refreshes its data-live-region elements in place; without
+	// JavaScript a <noscript> meta refresh reloads the whole page.
+	Live int
 }
 
 func (d Deps) render(w http.ResponseWriter, r *http.Request, name, title, section string, data any) {
@@ -188,7 +193,11 @@ func (d Deps) RenderContent(w http.ResponseWriter, r *http.Request, content *tem
 func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template.Template, err error, title, section string, data any) {
 	var buf bytes.Buffer
 	if err == nil {
-		err = t.ExecuteTemplate(&buf, "layout.html", page{SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: title, Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
+		// Handlers ask for updates with a Refresh header; turn it into live
+		// regions so browsers don't reload the whole page.
+		live, _ := strconv.Atoi(w.Header().Get("Refresh"))
+		w.Header().Del("Refresh")
+		err = t.ExecuteTemplate(&buf, "layout.html", page{Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: title, Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
 			Notice: r.URL.Query().Get("notice")})
 	}
 	if err != nil {

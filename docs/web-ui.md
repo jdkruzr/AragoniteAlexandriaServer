@@ -33,6 +33,19 @@ templates in `internal/boox/*.go`, grafted into the same layout by
   settings revision rejects stale submissions. A hidden `page` field returns the
   user to the submitting tab.
 
+### Live progress
+
+A page with ongoing work sets a `Refresh: N` header in its handler as usual.
+The renderer turns it into `<meta name="alexandria-live" content="N">` plus a
+`<noscript>` meta refresh, and removes the header. `static/live.js` then
+fetches the same URL every N seconds and swaps only elements marked
+`data-live-region` (each needs an `id`); scroll, open `<details>`, typing and
+focus are kept. Give a region `data-live-key` when its layout depends on a
+stage (a run's state): a changed key reloads the page once. Polling stops when
+the fetched page no longer has the live meta, and pauses in hidden tabs.
+Keep large, filterable tables (the run's notebook list) outside regions. The
+HTML stays authoritative, so agents and `curl` see everything without JS.
+
 ## Writing copy
 
 - One plain sentence inline at most, and only if it changes what the reader

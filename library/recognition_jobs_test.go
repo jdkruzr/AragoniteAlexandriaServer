@@ -169,8 +169,14 @@ func TestLibraryRecognitionReviewUIAndOwnerBoundary(t *testing.T) {
 		t.Fatal(got.Code, got.Body.String())
 	}
 	progress := b.do("GET", path, "", nil, true)
-	if progress.Code != 200 || !strings.Contains(progress.Body.String(), "Retry failed and blocked pages") || progress.Header().Get("Refresh") != "5" {
+	if progress.Code != 200 || !strings.Contains(progress.Body.String(), "Retry failed and blocked pages") {
 		t.Fatal(progress.Code, progress.Body.String())
+	}
+	// Progress updates in place: no full-page Refresh header, a live meta
+	// for live.js, a no-JavaScript fallback, and the region to update.
+	body := progress.Body.String()
+	if progress.Header().Get("Refresh") != "" || !strings.Contains(body, `<meta name="alexandria-live" content="5">`) || !strings.Contains(body, `<noscript><meta http-equiv="refresh" content="5"></noscript>`) || !strings.Contains(body, `id="run-progress" data-live-region`) {
+		t.Fatal(progress.Header(), body)
 	}
 	if got := b.do("GET", "/jobs?run="+id, "", nil, true); got.Code != 200 {
 		t.Fatal(got.Code, got.Body.String())
