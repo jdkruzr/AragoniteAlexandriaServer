@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	ocrapi "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
@@ -176,7 +177,7 @@ func TestPageRecognitionConfigurationWarningsAndRetry(t *testing.T) {
 	o.fail = false
 	s.ProcessPageIndex(ctx, o, "")
 	s.DB.QueryRowContext(ctx, `SELECT state,detail FROM boox_page_index`).Scan(&state, &detail)
-	if state != "blocked" || !strings.Contains(detail, "coverage") || o.calls != 1 {
+	if state != "blocked" || !strings.Contains(detail, "preview is incomplete: Page template") || o.calls != 1 {
 		t.Fatal("incomplete page recognized", state, detail, o.calls)
 	}
 }
@@ -335,5 +336,47 @@ func TestBlankPageSkipsRecognition(t *testing.T) {
 	s.DB.QueryRowContext(ctx, `SELECT state,text,detail FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &text, &detail)
 	if state != "ready" || text != "" || !strings.HasPrefix(detail, "No handwriting") || ocr.calls != 0 {
 		t.Fatalf("%s %q %q calls=%d", state, text, detail, ocr.calls)
+	}
+}
+
+func TestBlockedDetailNamesWarnings(t *testing.T) {
+	d := blockedDetail([]string{"Native shape type 77 is not rendered yet.", "Native shape type 77 is not rendered yet.", "A shape references an unknown layer."})
+	if d != "Not sent for recognition because the preview is incomplete: Native shape type 77 is not rendered yet. A shape references an unknown layer." {
+		t.Fatal(d)
+	}
+	if long := blockedDetail([]string{strings.Repeat("é", 400)}); len(long) > 610 || !utf8.ValidString(long) {
+		t.Fatal(len(long))
+	}
+}
+
+func TestBlockedCoverageReportsOffendingShapes(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	odd := &pb.ShapeInfoProto{UniqueId: "odd", ShapeType: 77, Text: "private words", Extra: `{"mystery":1}`}
+	b, _ := proto.Marshal(&pb.ShapeInfoProtoList{Proto: []*pb.ShapeInfoProto{odd}})
+	var z bytes.Buffer
+	w := zip.NewWriter(&z)
+	f, _ := w.Create("shapes")
+	f.Write(b)
+	w.Close()
+	putNoteBlob(t, s, "shape/page#odd#2.zip", z.Bytes())
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	ocr := &testOCR{}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found || ocr.calls != 0 {
+		t.Fatal(found, e, ocr.calls)
+	}
+	var detail string
+	s.DB.QueryRowContext(ctx, `SELECT detail FROM boox_page_index WHERE state='blocked'`).Scan(&detail)
+	if !strings.Contains(detail, "Native shape type 77") {
+		t.Fatal("detail", detail)
+	}
+	report, e := s.BlockedCoverage(ctx)
+	if e != nil || len(report) != 1 || report[0].Page != 1 || len(report[0].Issues) != 1 || report[0].Issues[0].ShapeType != 77 || report[0].ShapeTypes["6"] != 1 {
+		t.Fatalf("%+v %v", report, e)
+	}
+	if raw, _ := json.Marshal(report); bytes.Contains(raw, []byte("private")) {
+		t.Fatal("report leaked text")
 	}
 }

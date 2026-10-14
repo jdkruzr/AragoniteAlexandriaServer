@@ -118,7 +118,7 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 	// A text notebook's notice is about its typed page, not this one.
 	warnings := slices.DeleteFunc(slices.Clone(p.Warnings), func(w string) bool { return w == booxpage.RichTextNotebookWarning })
 	if len(warnings) > 0 {
-		return true, finish("blocked", "", "Resolve preview coverage warnings before recognition.", n.Version, oldHash, oldOCR, "")
+		return true, finish("blocked", "", blockedDetail(warnings), n.Version, oldHash, oldOCR, "")
 	}
 	// Typed text belongs to the notebook; it's kept with its first handwriting
 	// page so search finds it. It's read from the notebook, never recognized.
@@ -206,4 +206,20 @@ func (s Service) typedText(ctx context.Context, n notebookSnapshot) string {
 		}
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+// blockedDetail names what the preview couldn't reproduce, so a blocked page
+// says why. Duplicate warnings are listed once.
+func blockedDetail(warnings []string) string {
+	var unique []string
+	for _, w := range warnings {
+		if !slices.Contains(unique, w) {
+			unique = append(unique, w)
+		}
+	}
+	detail := "Not sent for recognition because the preview is incomplete: " + strings.Join(unique, " ")
+	if len(detail) > 600 {
+		detail = strings.ToValidUTF8(detail[:600], "") + "…"
+	}
+	return detail
 }

@@ -179,7 +179,21 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		}
 		return a.UniqueId < b.UniqueId
 	})
+	// Attribute each new warning to the shape being processed; the check runs
+	// at the next iteration because the loop body exits with continue.
+	var current *pb.ShapeInfoProto
+	before := len(warnings)
+	attribute := func() {
+		if current != nil {
+			for _, w := range warnings[before:] {
+				p.Issues = append(p.Issues, Issue{ShapeID: current.UniqueId, ShapeType: current.ShapeType, Warning: w, Summary: summarize(current)})
+			}
+		}
+		before = len(warnings)
+	}
 	for _, sp := range ordered {
+		attribute()
+		current = sp
 		if sp.ShapeStatus != 0 || hidden[sp.Zorder] {
 			continue
 		}
@@ -409,6 +423,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		}
 		p.Shapes = append(p.Shapes, s)
 	}
+	attribute()
 	sort.Slice(p.Shapes, func(i, j int) bool {
 		a, b := p.Shapes[i], p.Shapes[j]
 		if layerOrder[a.ZOrder] != layerOrder[b.ZOrder] {
