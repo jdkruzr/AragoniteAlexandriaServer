@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"sort"
 	"strings"
@@ -139,13 +138,8 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 			if f.UncompressedSize64 > 16<<20 {
 				return nil, nil, fmt.Errorf("shape archive exceeds preview limit")
 			}
-			r, e := f.Open()
+			b, e := readEntry(f, 16<<20)
 			if e != nil {
-				return nil, nil, e
-			}
-			b, e := io.ReadAll(io.LimitReader(r, (16<<20)+1))
-			r.Close()
-			if e != nil || len(b) > 16<<20 {
 				return nil, nil, fmt.Errorf("unreadable shape archive")
 			}
 			decodedBytes += len(b)
