@@ -16,6 +16,7 @@ type CoveragePage struct {
 	CanvasExpand            string
 	IndexWarning, Error     string
 	Warnings                []string
+	DrawWarnings            []string       // template, background and drawing
 	ShapeTypes              map[string]int // rendered shapes by type
 	Issues                  []booxpage.Issue
 }
@@ -66,6 +67,11 @@ func (s Service) PageCoverage(ctx context.Context, notebook, page string) Covera
 		return c
 	}
 	c.Warnings, c.Issues = warnings, p.Issues
+	if _, tw, err := booxpage.Preview(p, s.snapshotLoader(ctx, n)); err != nil {
+		c.Error = "drawing: " + err.Error()
+	} else {
+		c.DrawWarnings = tw
+	}
 	for _, sh := range p.Shapes {
 		c.ShapeTypes[fmt.Sprint(sh.ShapeType)]++
 	}

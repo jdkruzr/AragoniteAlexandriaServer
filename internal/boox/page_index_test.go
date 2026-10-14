@@ -373,7 +373,7 @@ func TestBlockedCoverageReportsOffendingShapes(t *testing.T) {
 		t.Fatal("detail", detail)
 	}
 	report, e := s.BlockedCoverage(ctx)
-	if e != nil || len(report) != 1 || report[0].Page != 1 || len(report[0].Issues) != 1 || report[0].Issues[0].ShapeType != 77 || report[0].ShapeTypes["6"] != 1 {
+	if e != nil || len(report) != 1 || report[0].Page != 1 || len(report[0].Issues) != 1 || report[0].Issues[0].ShapeType != 77 || report[0].ShapeTypes["6"] != 1 || report[0].Error != "" {
 		t.Fatalf("%+v %v", report, e)
 	}
 	if raw, _ := json.Marshal(report); bytes.Contains(raw, []byte("private")) {
