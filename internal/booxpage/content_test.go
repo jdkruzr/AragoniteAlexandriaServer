@@ -103,19 +103,31 @@ func TestTextBoxesGrowAndVerticalText(t *testing.T) {
 	if e := drawTextShape(dc, tall); e != nil || inked(dc, 10, 32, 90, 60) == 0 {
 		t.Fatal("second line clipped", e)
 	}
-	sp := &pb.ShapeInfoProto{UniqueId: "v", ShapeType: 16, Color: -16777216, Text: "VERTICAL", BoundingRect: `{"left":160,"top":10,"right":190,"bottom":80}`, TextStyle: `{"textSize":16,"textSpacing":1,"orientation":1,"vertical":true}`}
-	raw := shapeZip(t, sp)
-	p, w, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip"}, func(string) ([]byte, error) { return raw, nil })
-	if e != nil || len(w) > 0 || len(p.Notices) != 2 {
-		t.Fatal(e, w, p.Notices)
+	vertical := func(text string) (*gg.Context, *Page) {
+		t.Helper()
+		sp := &pb.ShapeInfoProto{UniqueId: "v", ShapeType: 16, Color: -16777216, Text: text, BoundingRect: `{"left":160,"top":10,"right":190,"bottom":80}`, TextStyle: `{"textSize":16,"textSpacing":1,"orientation":1,"vertical":true}`}
+		raw := shapeZip(t, sp)
+		p, w, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip"}, func(string) ([]byte, error) { return raw, nil })
+		if e != nil || len(w) > 0 || len(p.Notices) != 2 {
+			t.Fatal(e, w, p.Notices)
+		}
+		dc := gg.NewContext(200, 200)
+		if e = drawTextShape(dc, p.Shapes[0]); e != nil {
+			t.Fatal(e)
+		}
+		return dc, p
 	}
-	dc = gg.NewContext(200, 200)
-	if e = drawTextShape(dc, p.Shapes[0]); e != nil {
-		t.Fatal(e)
+	// Latin text turns sideways: "10G Ethernet" wraps into two columns, the
+	// first ("10G", short) at the right edge and "Ethernet" running further
+	// down the column to its left.
+	dc, _ = vertical("10G Ethernet")
+	if inked(dc, 172, 10, 190, 40) == 0 || inked(dc, 172, 50, 190, 80) != 0 || inked(dc, 150, 50, 170, 80) == 0 || inked(dc, 0, 0, 140, 200) != 0 {
+		t.Fatal("sideways columns misplaced")
 	}
-	// Eight letters, four to a 70 px column: two columns, the first at the right
-	// edge and the second to its left.
-	if inked(dc, 172, 10, 190, 80) == 0 || inked(dc, 150, 10, 170, 80) == 0 || inked(dc, 0, 0, 140, 200) != 0 {
-		t.Fatal("vertical columns misplaced")
+	// CJK characters stand upright, four to a 70 px column.
+	dc, _ = vertical("縦書きの文字です")
+	if inked(dc, 0, 0, 140, 200) != 0 {
+		t.Fatal("upright columns misplaced")
 	}
+
 }

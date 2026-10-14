@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"unicode"
 
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
@@ -132,6 +133,9 @@ func drawVerticalText(dc *gg.Context, s *Shape, face font.Face, lineHeight, asce
 	if column < lineHeight {
 		column = lineHeight
 	}
+	if !hasCJK(s.Text) {
+		return drawSidewaysText(dc, s, face, lineHeight, ascent, column, w, h, color)
+	}
 	perColumn := max(int(column/lineHeight), 1)
 	var columns [][]rune
 	for _, para := range strings.Split(s.Text, "\n") {
@@ -163,6 +167,46 @@ func drawVerticalText(dc *gg.Context, s *Shape, face font.Face, lineHeight, asce
 		}
 	}
 	return placeImage(dc, grown(s, w, h, true), box.Image())
+}
+
+// drawSidewaysText lays out text without CJK characters as vertical layouts
+// do: the line runs top to bottom, turned 90° clockwise, and further lines
+// form columns to its left.
+func drawSidewaysText(dc *gg.Context, s *Shape, face font.Face, lineHeight, ascent, column float64, w, h int, color func(*gg.Context)) error {
+	st := s.TextStyle
+	measure := gg.NewContext(1, 1)
+	measure.SetFontFace(face)
+	lines := measure.WordWrap(s.Text, column)
+	if need := int(math.Ceil(lineHeight * float64(len(lines)))); need > w && need <= 8192 && int64(need)*int64(h) <= 20e6 {
+		w = need
+	}
+	// A word longer than the column runs past it rather than being cut.
+	for _, line := range lines {
+		lw, _ := measure.MeasureString(line)
+		if need := int(math.Ceil(lw)) + st.PaddingStart + st.PaddingEnd; need > h && need <= 8192 && int64(w)*int64(need) <= 20e6 {
+			h = need
+		}
+	}
+	box := gg.NewContext(w, h)
+	box.SetFontFace(face)
+	color(box)
+	// Rotating 90° clockwise maps (x, y) to (w-y, x): the first line lands at
+	// the right edge, reading downward.
+	box.Translate(float64(w), 0)
+	box.Rotate(math.Pi / 2)
+	for i, line := range lines {
+		box.DrawString(line, float64(st.PaddingStart), ascent+float64(i)*lineHeight)
+	}
+	return placeImage(dc, grown(s, w, h, true), box.Image())
+}
+
+func hasCJK(text string) bool {
+	for _, r := range text {
+		if unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Hangul) {
+			return true
+		}
+	}
+	return false
 }
 
 // grown returns the shape with its bounds widened to w×h pixels: leftward
