@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"image/png"
 	"math"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -51,6 +52,37 @@ func pointFixture(id string) []byte {
 	b = append(b, entry...)
 	return binary.BigEndian.AppendUint32(b, uint32(xref))
 }
+
+// pointFile builds a V1 point file holding one two-point stroke per ID.
+func pointFile(strokes map[string]float32) []byte {
+	b := make([]byte, 76)
+	binary.BigEndian.PutUint16(b[2:4], 1)
+	ids := make([]string, 0, len(strokes))
+	for id := range strokes {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	var xref []byte
+	for _, id := range ids {
+		block := make([]byte, 36)
+		for i := 0; i < 2; i++ {
+			p := block[4+i*16:]
+			binary.BigEndian.PutUint32(p, math.Float32bits(strokes[id]+float32(20*i)))
+			binary.BigEndian.PutUint32(p[4:], math.Float32bits(strokes[id]+float32(20*i)))
+			binary.BigEndian.PutUint16(p[10:], 2000)
+		}
+		entry := bytes.Repeat([]byte{' '}, 44)
+		copy(entry, id)
+		binary.BigEndian.PutUint32(entry[36:], uint32(len(b)))
+		binary.BigEndian.PutUint32(entry[40:], uint32(len(block)))
+		b = append(b, block...)
+		xref = append(xref, entry...)
+	}
+	off := len(b)
+	b = append(b, xref...)
+	return binary.BigEndian.AppendUint32(b, uint32(off))
+}
+
 func metaFixture() Metadata {
 	m := Metadata{UniqueID: "note"}
 	m.PageNameList = json.RawMessage(`{"pageNameList":["page"]}`)
@@ -300,6 +332,23 @@ func TestZeroFilledSessionsAreRecoveredFromOrphanedPoints(t *testing.T) {
 	if _, _, e := Preview(p, func(string) ([]byte, error) { return nil, errors.New("no template") }); e != nil {
 		t.Fatal(e)
 	}
+
+	// A tombstone in an intact archive keeps an erased stroke erased even
+	// when its points share a file with lost strokes.
+	blobs["point/page#rc#points"] = pointFile(map[string]float32{lost: 10, "00000000-0000-0000-0000-00000000000e": 50})
+	blobs["shape/page#s5#950.zip"] = shapeZip(t, &pb.ShapeInfoProto{UniqueId: lost, ShapeType: 2, RevisionId: "rc", ShapeStatus: 1, CreatedAt: 300, UpdatedAt: 950})
+	keys = append(keys, "shape/page#s5#950.zip")
+	p, _, e = ShapePage(metaFixture(), "page", keys, load)
+	if e != nil || len(p.Shapes) != 4 {
+		t.Fatal(e, len(p.Shapes))
+	}
+	for _, s := range p.Shapes {
+		if s.UniqueID == lost {
+			t.Fatal("erased stroke recovered")
+		}
+	}
+	keys = keys[:len(keys)-1]
+	blobs["point/page#rc#points"] = pointFixture(lost)
 
 	// Without an empty archive, an unreferenced point file is not drawn:
 	// that is how erased ink looks too.

@@ -9,19 +9,17 @@ import (
 	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
 )
 
-// The firmware writes one shape archive and one point file per pen session.
-// When a session's archive is zero-filled on the device, its point file
-// survives with no shape referring to it. recoverEmptySessions draws those
+// The firmware writes one shape archive and one point file per pen session,
+// and matches points to shapes by shape ID across all of a page's point
+// files. When a session's archive is zero-filled on the device, its strokes'
+// points survive with no shape of that ID. recoverEmptySessions draws those
 // orphaned strokes with the pen that was in use just before the gap. It only
-// runs when an archive is known to be empty, so ink erased in an intact
-// session stays erased: its shape still refers to the point file.
+// runs when an archive is known to be empty. Erasing writes a tombstone shape
+// with the same ID into a later archive, so erased ink in an intact archive
+// stays erased.
 func recoverEmptySessions(id string, keys []string, load Load, winners map[string]*pb.ShapeInfoProto, emptyAt int64, totalPoints *int) ([]*Shape, error) {
-	referenced := map[string]bool{}
 	var pen *pb.ShapeInfoProto
 	for _, sp := range winners {
-		if sp.RevisionId != "" {
-			referenced[sp.RevisionId] = true
-		}
 		if !scribbleTypes[sp.ShapeType] || sp.ShapeStatus != 0 || (emptyAt > 0 && sp.CreatedAt > emptyAt) {
 			continue
 		}
@@ -40,7 +38,7 @@ func recoverEmptySessions(id string, keys []string, load Load, winners map[strin
 			continue
 		}
 		rev, ok = strings.CutSuffix(rev, "#points")
-		if !ok || rev == "" || referenced[rev] {
+		if !ok || rev == "" {
 			continue
 		}
 		b, err := load(key)
@@ -53,7 +51,9 @@ func recoverEmptySessions(id string, keys []string, load Load, winners map[strin
 		}
 		ids := make([]string, 0, len(strokes))
 		for sid := range strokes {
-			ids = append(ids, sid)
+			if winners[sid] == nil {
+				ids = append(ids, sid)
+			}
 		}
 		sort.Strings(ids)
 		for _, sid := range ids {
