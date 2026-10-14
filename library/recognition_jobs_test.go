@@ -113,14 +113,11 @@ func TestLibraryRecognitionReviewUIAndOwnerBoundary(t *testing.T) {
 	}
 	path := "/jobs/library?id=" + id
 	review := b.do("GET", path, "", nil, true)
-	if review.Code != 200 || !strings.Contains(review.Body.String(), "Queue included notebooks") || !strings.Contains(review.Body.String(), "1,000,000 JPEG bytes") {
+	if review.Code != 200 || !strings.Contains(review.Body.String(), "Send 1 page to ") || !strings.Contains(review.Body.String(), "1,000,000 JPEG bytes") {
 		t.Fatal(review.Code, review.Body.String())
 	}
+	// The send button names the pages and model, so pressing it confirms.
 	form = url.Values{"action": {"queue"}, "id": {id}}
-	if got := b.do("POST", "/jobs/library", form.Encode(), sameSite, true); got.Code != 400 {
-		t.Fatal("missing confirmation", got.Code)
-	}
-	form.Set("confirm", "on")
 	if got := b.do("POST", "/jobs/library", form.Encode(), sameSite, true); got.Code != 303 {
 		t.Fatal(got.Code, got.Body.String())
 	}

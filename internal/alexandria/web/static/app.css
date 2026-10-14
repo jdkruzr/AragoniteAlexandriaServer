@@ -215,6 +215,12 @@ figcaption { font-size:.85rem; color:var(--muted); margin-top:.35rem; }
 form.stack.library-review { max-width:none; }
 .library-review label { display:flex; align-items:baseline; gap:.5rem; }
 .recognition-notebooks { min-width:38rem; }
+.run-box { max-width:34rem; }
+.run-tables { display:grid; grid-template-columns:repeat(auto-fit, minmax(16rem, 1fr)); gap:0 1rem; max-width:52rem; }
+.run-tables .run-box { max-width:none; }
+.run-status th[scope="row"] { font-weight:500; width:11rem; }
+.run-status thead th + th, .run-status td { font-variant-numeric:tabular-nums; }
+.filter { display:flex; flex-direction:column; gap:.25rem; margin:.5rem 0; max-width:24rem; }
 .recognition-notebooks th { white-space:nowrap; }
 .recognition-notebooks td:nth-child(2) { overflow-wrap:anywhere; }
 progress { display:block; width:100%; max-width:44rem; height:1.1rem; accent-color:var(--accent); }

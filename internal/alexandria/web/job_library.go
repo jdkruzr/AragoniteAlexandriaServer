@@ -16,7 +16,7 @@ func (d Deps) libraryJobRoutes(mux *http.ServeMux) {
 		if source == "" {
 			source = "client"
 		}
-		data := map[string]any{"Token": uuid.NewString(), "Enabled": d.Status.OCR != "", "NativeBOOX": d.Status.NativeBOOX}
+		data := map[string]any{"Token": uuid.NewString(), "Enabled": d.Status.OCR != "", "Model": d.Status.OCR, "NativeBOOX": d.Status.NativeBOOX}
 		if id := r.URL.Query().Get("id"); id != "" {
 			v, err := store.GetRun(r.Context(), id)
 			if err != nil {
@@ -84,8 +84,10 @@ func (d Deps) libraryJobRoutes(mux *http.ServeMux) {
 					http.Error(w, "BOOX source unavailable", 400)
 					return
 				}
-				if d.Status.OCR == "" || r.PostForm.Get("confirm") != "on" {
-					http.Error(w, "Enable recognition and confirm sending these pages to your provider.", 400)
+				// The send button names the page count and model; pressing it is
+				// the confirmation.
+				if d.Status.OCR == "" {
+					http.Error(w, "Enable recognition before sending these pages to your provider.", 400)
 					return
 				}
 				err = store.ApproveRun(r.Context(), id, r.PostForm["exclude"], r.PostForm.Get("force") == "on")

@@ -27,6 +27,21 @@ type Run struct {
 	Counts                                                                           map[string]int
 	Total, Prepared, Pages, Queued, Skipped, Cursor, Excluded, Unavailable, Awaiting int
 	Ready, Processing, Pending, Failed, Blocked, Paused, Cancelled, Finished         int
+	// PerMinute is the recognition pace over the last ten minutes, and ETA
+	// the projected finish of the remaining pages at that pace (zero if unknown).
+	PerMinute float64
+	ETA       time.Time
+}
+
+// Remaining is the work that hasn't reached an outcome yet.
+func (r Run) Remaining() int { return r.Awaiting + r.Pending + r.Processing }
+
+// Percent is the share of reviewed pages with an outcome.
+func (r Run) Percent() int {
+	if total := r.WorkTotal(); total > 0 {
+		return r.Finished * 100 / total
+	}
+	return 0
 }
 
 // CreateRun takes a bounded inventory of one source, excluding
@@ -277,7 +292,23 @@ func (s Store) GetRun(ctx context.Context, id string) (Run, error) {
 	r.Paused = r.Counts["paused"]
 	r.Cancelled = r.Counts["cancelled"]
 	r.Finished = r.Ready + r.Failed + r.Blocked + r.Cancelled
-	return r, rows.Err()
+	if err = rows.Err(); err != nil {
+		return r, err
+	}
+	// Measure from the first outcome when the run is younger than the window.
+	var recent int
+	var seconds float64
+	var now time.Time
+	if err = s.DB.QueryRowContext(ctx, `SELECT count(*),coalesce(extract(epoch FROM now()-greatest(min(j.finished_at),now()-interval '10 minutes')),0),now() FROM alexandria_recognition_job j JOIN alexandria_recognition_batch b ON b.id=j.batch_id WHERE b.run_id=$1 AND j.state='ready' AND j.finished_at>now()-interval '10 minutes'`, id).Scan(&recent, &seconds, &now); err != nil {
+		return r, err
+	}
+	if recent > 1 && seconds >= 30 {
+		r.PerMinute = float64(recent) / seconds * 60
+		if left := r.Remaining(); left > 0 && r.State == "queued" {
+			r.ETA = now.Add(time.Duration(float64(left) / r.PerMinute * float64(time.Minute)))
+		}
+	}
+	return r, nil
 }
 func (s Store) RecentRuns(ctx context.Context) ([]Run, error) {
 	rows, err := s.DB.QueryContext(ctx, `SELECT r.id::text,r.state,r.created_at,r.source,

@@ -14,29 +14,62 @@
 <p><strong>Source: {{$r.SourceLabel}}</strong> · <a href="/jobs/library?source={{$r.Source}}">New library review</a></p>
 <p>Started {{$r.Created.UTC.Format "2006-01-02 15:04:05"}} UTC · <strong>{{$r.Label}}</strong> · <a href="/jobs/library?id={{$r.ID}}">Refresh</a></p>
 {{if eq $r.State "preparing"}}<h2>Preparing the review</h2><progress value="{{$r.Prepared}}" max="{{if $r.Total}}{{$r.Total}}{{else}}1{{end}}">{{$r.Prepared}} / {{$r.Total}}</progress><p>{{$r.Prepared}} of {{$r.Total}} notebook catalogs checked. This continues if you close the browser. Status refreshes every five seconds.</p>{{end}}
-{{if eq $r.State "review"}}<h2>Review before starting</h2><p><strong>{{$r.Total}}</strong> notebooks checked · <strong>{{$r.Pages}}</strong> pages found · {{$r.Unavailable}} notebooks unavailable</p>
-{{if $r.Unavailable}}<form method="post" action="/jobs/library"><input type="hidden" name="id" value="{{$r.ID}}"><button name="action" value="retry_catalog" class="secondary">Retry unavailable catalogs</button></form>{{end}}
+{{if eq $r.State "review"}}<h2>Review before starting</h2>
 <form class="stack library-review" method="post" action="/jobs/library" id="library-review">
 <input type="hidden" name="id" value="{{$r.ID}}">
-<p>Every available notebook is included. Tick <strong>Exclude</strong> beside any you want to leave out.</p>
-<div class="table-scroll"><table class="recognition-notebooks"><thead><tr><th>Exclude</th><th>Notebook</th><th>Pages</th><th>Availability</th></tr></thead><tbody>{{range $r.Notebooks}}<tr><td>{{if eq .State "ready"}}<input type="checkbox" name="exclude" value="{{.ID}}" aria-label="Exclude {{.Title}}" data-pages="{{.Pages}}">{{end}}</td><td><a href="{{$r.NotebookURL .ID}}">{{.Title}}</a></td><td>{{.Pages}}</td><td>{{if eq .State "ready"}}Available{{else}}Unavailable{{end}}{{if .Detail}} — {{.Detail}}{{end}}</td></tr>{{end}}</tbody></table></div>
-{{if $r.Awaiting}}<p id="library-selection" role="status" aria-live="polite">All available notebooks are included unless excluded above.</p>
-<label><input type="checkbox" name="force">Recognize again even if a matching result is cached</label>
-<p class="small muted">Pages already in progress keep their jobs. Pages added after this review need a new review. {{if eq $r.Source "client"}}Recognized text can sync back to Client devices.{{else}}Recognized text stays on the server; your BOOX notebooks are unchanged.{{end}} {{template "help" "recognition.images"}}</p>
-<label class="confirm"><input type="checkbox" name="confirm" required>Send the included pages to my configured recognition provider. Provider charges may apply.</label>
-<button name="action" value="queue" {{if not $d.Enabled}}disabled{{end}}>Queue included notebooks</button>
-{{else}}<p class="empty">No available pages to queue. Sync notebooks from this source, or retry any unavailable catalogs above.</p>{{end}}
-</form><script src="/static/recognition.js" defer></script>
+<section class="card stack">
+<div class="table-scroll run-box"><table class="run-status keep-cols"><tbody>
+<tr><th scope="row">Notebooks checked</th><td>{{num $r.Total}}</td></tr>
+<tr><th scope="row">Pages found</th><td>{{num $r.Pages}}</td></tr>
+<tr><th scope="row">Notebooks unavailable</th><td>{{num $r.Unavailable}}</td></tr>
+</tbody></table></div>
+{{if $r.Awaiting}}<p id="library-selection" role="status" aria-live="polite">Every available notebook is included. Exclude any below.</p>
+<label><input type="checkbox" name="force"> Recognize again even if a matching result is cached</label>
+<div class="actions"><button name="action" value="queue" id="library-send" data-model="{{$d.Model}}" {{if not $d.Enabled}}disabled{{end}}>Send {{num $r.Awaiting}} {{if eq $r.Awaiting 1}}page{{else}}pages{{end}} to {{if $d.Model}}{{$d.Model}}{{else}}recognition{{end}}</button></div>
+<p class="small muted">Pressing the button sends the included pages to your recognition provider; charges from your provider may apply. Pages already in progress keep their jobs. Pages added after this review need a new review. {{if eq $r.Source "client"}}Recognized text can sync back to Client devices.{{else}}Recognized text stays on the server; your BOOX notebooks are unchanged.{{end}} {{template "help" "recognition.images"}}</p>
+{{else}}<p class="empty">No available pages to queue. Sync notebooks from this source, or retry any unavailable catalogs below.</p>{{end}}
+</section>
+<details class="more"><summary>Exclude notebooks ({{num $r.Total}})</summary>
+<label class="filter">Find a notebook <input type="search" data-filter="library-notebooks" autocomplete="off"></label>
+<div class="table-scroll"><table class="recognition-notebooks" id="library-notebooks"><thead><tr><th>Exclude</th><th>Notebook</th><th>Pages</th><th>Availability</th></tr></thead><tbody>{{range $r.Notebooks}}<tr><td>{{if eq .State "ready"}}<input type="checkbox" name="exclude" value="{{.ID}}" aria-label="Exclude {{.Title}}" data-pages="{{.Pages}}">{{end}}</td><td><a href="{{$r.NotebookURL .ID}}">{{.Title}}</a></td><td>{{.Pages}}</td><td>{{if eq .State "ready"}}Available{{else}}Unavailable{{end}}{{if .Detail}} — {{.Detail}}{{end}}</td></tr>{{end}}</tbody></table></div>
+</details>
+</form>
+{{if $r.Unavailable}}<form method="post" action="/jobs/library"><input type="hidden" name="id" value="{{$r.ID}}"><button name="action" value="retry_catalog" class="secondary">Retry unavailable catalogs</button></form>{{end}}
+<script src="/static/recognition.js" defer></script>
 {{else if ne $r.State "preparing"}}
 <h2>Library batch progress</h2>
-<progress value="{{$r.Finished}}" max="{{if $r.WorkTotal}}{{$r.WorkTotal}}{{else}}1{{end}}">{{$r.Finished}} / {{$r.Queued}}</progress>
-<p><strong>{{$r.Ready}} ready</strong> · {{$r.Pending}} queued · {{$r.Processing}} processing · {{$r.Paused}} paused · {{$r.Failed}} failed · {{$r.Blocked}} blocked · {{$r.Cancelled}} cancelled</p>
-<p>{{$r.Finished}} of {{$r.Queued}} dispatched pages have an outcome; failed, blocked and cancelled pages are not successful transcriptions. {{$r.Awaiting}} reviewed pages have not been dispatched. {{$r.Skipped}} active/paused pages were left in existing jobs; {{$r.Excluded}} notebooks excluded; {{$r.Unavailable}} unavailable.</p>
-{{if and (eq $r.State "queued") (eq $r.Awaiting 0) (eq $r.Pending 0) (eq $r.Processing 0)}}<p class="coverage">No runnable work remains in this library batch. Review any failed, blocked, paused or unavailable items below.</p>{{end}}
-<p><a href="/jobs?run={{$r.ID}}&amp;live=1">All page jobs</a> · <a href="/jobs?run={{$r.ID}}&amp;state=failed">Failures</a> · <a href="/jobs?run={{$r.ID}}&amp;state=blocked">Blocked pages</a></p>
+<progress value="{{$r.Finished}}" max="{{if $r.WorkTotal}}{{$r.WorkTotal}}{{else}}1{{end}}">{{$r.Percent}}%</progress>
+<div class="table-scroll run-box"><table class="run-status keep-cols"><tbody>
+<tr><th scope="row">Done</th><td>{{num $r.Finished}} of {{num $r.WorkTotal}} pages ({{$r.Percent}}%)</td></tr>
+<tr><th scope="row">Pace</th><td>{{if $r.PerMinute}}{{printf "%.1f" $r.PerMinute}} pages a minute (last 10 minutes){{else}}Measuring…{{end}}</td></tr>
+<tr><th scope="row">Time left</th><td>{{if not $r.ETA.IsZero}}About {{until $r.ETA}} · finishes around {{utc $r.ETA}}{{else if eq $r.Remaining 0}}None{{else}}—{{end}}</td></tr>
+</tbody></table></div>
+<div class="run-tables">
+<div class="table-scroll run-box"><table class="run-status keep-cols"><thead><tr><th scope="col">Pages</th><th scope="col">Count</th></tr></thead><tbody>
+<tr><th scope="row">Recognized</th><td>{{num $r.Ready}}</td></tr>
+<tr><th scope="row">Recognizing now</th><td>{{num $r.Processing}}</td></tr>
+<tr><th scope="row">Queued</th><td>{{num $r.Pending}}</td></tr>
+<tr><th scope="row">Not yet dispatched</th><td>{{num $r.Awaiting}}</td></tr>
+<tr><th scope="row">Paused</th><td>{{num $r.Paused}}</td></tr>
+<tr><th scope="row">Failed</th><td>{{if $r.Failed}}<a href="/jobs?run={{$r.ID}}&amp;state=failed">{{num $r.Failed}}</a>{{else}}0{{end}}</td></tr>
+<tr><th scope="row">Blocked</th><td>{{if $r.Blocked}}<a href="/jobs?run={{$r.ID}}&amp;state=blocked">{{num $r.Blocked}}</a>{{else}}0{{end}}</td></tr>
+<tr><th scope="row">Cancelled</th><td>{{num $r.Cancelled}}</td></tr>
+<tr><th scope="row">Left in earlier jobs</th><td>{{num $r.Skipped}}</td></tr>
+</tbody></table></div>
+<div class="table-scroll run-box"><table class="run-status keep-cols"><thead><tr><th scope="col">Notebooks</th><th scope="col">Count</th></tr></thead><tbody>
+<tr><th scope="row">In this batch</th><td>{{num $r.Total}}</td></tr>
+<tr><th scope="row">Excluded</th><td>{{num $r.Excluded}}</td></tr>
+<tr><th scope="row">Unavailable</th><td>{{num $r.Unavailable}}</td></tr>
+</tbody></table></div>
+</div>
+{{if and (eq $r.State "queued") (eq $r.Remaining 0)}}<p class="coverage">No runnable work remains in this library batch. Review any failed, blocked, paused or unavailable items below.</p>{{end}}
 <form class="actions" method="post" action="/jobs/library"><input type="hidden" name="id" value="{{$r.ID}}">{{if eq $r.State "queued"}}<button name="action" value="pause" class="secondary">Pause library batch</button><button name="action" value="retry" class="secondary">Retry failed and blocked pages</button>{{end}}{{if eq $r.State "paused"}}<button name="action" value="resume">Resume library batch</button>{{end}}{{if ne $r.State "cancelled"}}<button name="action" value="cancel" class="destructive">Cancel unfinished</button>{{end}}</form>
-<p class="small muted">A request already sent to the provider may still finish and be billed after pausing or cancelling; its late result is discarded. {{template "help" "recognition.controls"}} Unavailable notebooks need a <a href="/jobs/library?source={{$r.Source}}">new library review</a>.</p>
-<div class="table-scroll"><table class="recognition-notebooks"><thead><tr><th>Notebook</th><th>Pages</th><th>Dispatched / skipped</th><th>Status</th></tr></thead><tbody>{{range $r.Notebooks}}<tr><td><a href="{{$r.NotebookURL .ID}}">{{.Title}}</a>{{if .Queued}} · <a href="/jobs?batch={{.Batch}}&amp;live=1">Page jobs</a>{{end}}</td><td>{{.Pages}}</td><td>{{.Queued}} / {{.Skipped}}</td><td>{{if eq .State "ready"}}Awaiting dispatch{{else if eq .State "queued"}}Dispatched{{else if eq .State "excluded"}}Excluded{{else if eq .State "pending"}}Catalog pending{{else}}Unavailable{{end}}{{if .Detail}} — {{.Detail}}{{end}}</td></tr>{{end}}</tbody></table></div>
+<p class="small muted"><a href="/jobs?run={{$r.ID}}&amp;live=1">All page jobs</a>. A request already sent to the provider may still finish and be billed after pausing or cancelling; its late result is discarded. {{template "help" "recognition.controls"}} Unavailable notebooks need a <a href="/jobs/library?source={{$r.Source}}">new library review</a>.</p>
+<details class="more"><summary>Notebooks ({{num $r.Total}})</summary>
+<label class="filter">Find a notebook <input type="search" data-filter="run-notebooks" autocomplete="off"></label>
+<div class="table-scroll"><table class="recognition-notebooks" id="run-notebooks"><thead><tr><th>Notebook</th><th>Pages</th><th>Dispatched / skipped</th><th>Status</th></tr></thead><tbody>{{range $r.Notebooks}}<tr><td><a href="{{$r.NotebookURL .ID}}">{{.Title}}</a>{{if .Queued}} · <a href="/jobs?batch={{.Batch}}&amp;live=1">Page jobs</a>{{end}}</td><td>{{.Pages}}</td><td>{{.Queued}} / {{.Skipped}}</td><td>{{if eq .State "ready"}}Awaiting dispatch{{else if eq .State "queued"}}Dispatched{{else if eq .State "excluded"}}Excluded{{else if eq .State "pending"}}Catalog pending{{else}}Unavailable{{end}}{{if .Detail}} — {{.Detail}}{{end}}</td></tr>{{end}}</tbody></table></div>
+</details>
+<script src="/static/recognition.js" defer></script>
 {{end}}
 {{if or (eq $r.State "preparing") (eq $r.State "review")}}<form method="post" action="/jobs/library"><input type="hidden" name="id" value="{{$r.ID}}"><button name="action" value="cancel" class="secondary">Cancel review</button></form>{{end}}
 {{end}}{{end}}
