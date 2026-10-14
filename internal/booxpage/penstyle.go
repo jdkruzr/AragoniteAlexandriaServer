@@ -18,8 +18,9 @@ var penStyles = map[int32]penStyle{
 	4: {PressureExponent: 0.4, MinWidthFactor: 0.2, MaxWidthFactor: 1.2, AlphaMultiplier: 1.0},
 	// Brush (type 5): very wide range, strong response
 	5: {PressureExponent: 0.3, MinWidthFactor: 0.1, MaxWidthFactor: 1.5, AlphaMultiplier: 1.0},
-	// Marker (type 15): wide, semi-transparent
-	15: {PressureExponent: 0.9, MinWidthFactor: 0.8, MaxWidthFactor: 1.2, AlphaMultiplier: 0.4},
+	// Marker (type 15): wide and opaque; under the writing it blends with
+	// darken (renderMarker), as the firmware's MarkerScribbleShape does.
+	15: {PressureExponent: 0.9, MinWidthFactor: 0.8, MaxWidthFactor: 1.2, AlphaMultiplier: 1.0},
 	// Neo brush (type 21): wide brush
 	21: {PressureExponent: 0.3, MinWidthFactor: 0.15, MaxWidthFactor: 1.6, AlphaMultiplier: 1.0},
 	// Charcoal (type 22): textured, moderate

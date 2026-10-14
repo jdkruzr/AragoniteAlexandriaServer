@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/fogleman/gg"
 	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
 	"google.golang.org/protobuf/proto"
 	"image/png"
@@ -392,5 +393,31 @@ func TestShapeLimitCountsDistinctShapesNotRewrites(t *testing.T) {
 	}
 	if _, _, e := ShapePage(metaFixture(), "page", keys, func(string) ([]byte, error) { return page, nil }); e != nil {
 		t.Fatal(e)
+	}
+}
+
+func TestMarkerUnderWritingDarkens(t *testing.T) {
+	dc := gg.NewContext(100, 60)
+	dc.SetRGB(1, 1, 1)
+	dc.Clear()
+	ink := &Shape{ShapeType: 2, Color: -16777216, Thickness: 6, Points: []TinyPoint{{X: 10, Y: 30, Pressure: 4095}, {X: 90, Y: 30, Pressure: 4095}}}
+	renderShape(dc, ink)
+	// Seen on device: an opaque yellow marker (0xfff0ff00) over writing.
+	marker := &Shape{ShapeType: shapeMarker, Color: int32(-0x0f0100) /* 0xfff0ff00 */, Thickness: 20, UnderContent: true, Points: []TinyPoint{{X: 10, Y: 30, Pressure: 4095}, {X: 90, Y: 30, Pressure: 4095}}}
+	renderShape(dc, marker)
+	r, g, b, _ := dc.Image().At(50, 30).RGBA()
+	if r > 0x2000 || g > 0x2000 || b > 0x2000 {
+		t.Fatal("ink hidden under the marker", r>>8, g>>8, b>>8)
+	}
+	r, g, b, _ = dc.Image().At(50, 23).RGBA()
+	if r>>8 != 0xf0 || g>>8 != 0xff || b>>8 > 2 {
+		t.Fatal("paper under the marker isn't marker-colored", r>>8, g>>8, b>>8)
+	}
+	// Set over the writing, a marker paints over it.
+	over := *marker
+	over.UnderContent = false
+	renderShape(dc, &over)
+	if r, _, _, _ := dc.Image().At(50, 30).RGBA(); r>>8 < 0xe0 {
+		t.Fatal("over-content marker didn't cover", r>>8)
 	}
 }

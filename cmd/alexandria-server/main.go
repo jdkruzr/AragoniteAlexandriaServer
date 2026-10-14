@@ -473,6 +473,8 @@ func writeExclusive(path string, body []byte) error {
 func runBOOXCoverage(args []string) error {
 	set := flag.NewFlagSet("boox-coverage", flag.ContinueOnError)
 	render := set.String("render", "", "also write each blocked page's preview PNG into this existing private directory")
+	notebook := set.String("notebook", "", "report this notebook's page instead of every blocked page (with -page)")
+	page := set.String("page", "", "the page ID to report with -notebook")
 	if err := set.Parse(args); err != nil {
 		return err
 	}
@@ -504,8 +506,13 @@ func runBOOXCoverage(args []string) error {
 	if err = native.ResolveIdentity(ctx); err != nil {
 		return err
 	}
-	report, err := native.BlockedCoverage(ctx, *render != "")
-	if err != nil {
+	var report []boox.CoveragePage
+	if *notebook != "" || *page != "" {
+		if *notebook == "" || *page == "" {
+			return errors.New("boox-coverage: -notebook and -page go together")
+		}
+		report = []boox.CoveragePage{native.PageCoverage(ctx, *notebook, *page, *render != "")}
+	} else if report, err = native.BlockedCoverage(ctx, *render != ""); err != nil {
 		return err
 	}
 	for _, c := range report {

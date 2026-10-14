@@ -210,6 +210,9 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 			continue
 		}
 
+		// Markers lie under the writing unless the owner set them over it
+		// (KEY_UNDER_CONTENT, default true for markers in the firmware).
+		underContent := sp.ShapeType == shapeMarker
 		if sp.OptionsRepo != "" {
 			var options struct{ Repo map[string]json.RawMessage }
 			if json.Unmarshal([]byte(sp.OptionsRepo), &options) != nil {
@@ -220,6 +223,11 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 			if raw, ok := options.Repo["KEY_IS_VISIBLE"]; ok {
 				if json.Unmarshal(raw, &visible) != nil {
 					return nil, nil, fmt.Errorf("unsupported visibility option")
+				}
+			}
+			if raw, ok := options.Repo["KEY_UNDER_CONTENT"]; ok {
+				if json.Unmarshal(raw, &underContent) != nil {
+					return nil, nil, fmt.Errorf("unsupported under-content option")
 				}
 			}
 			if raw, ok := options.Repo["KEY_IS_TRANSPARENT"]; ok {
@@ -240,7 +248,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				warnings = append(warnings, "A shape references an unknown layer.")
 			}
 		}
-		s := &Shape{UniqueID: sp.UniqueId, ShapeType: sp.ShapeType, Color: sp.Color, FillColor: sp.FillColor, Thickness: sp.Thickness, ZOrder: sp.Zorder, Text: sp.Text, RevisionID: sp.RevisionId}
+		s := &Shape{UniqueID: sp.UniqueId, ShapeType: sp.ShapeType, Color: sp.Color, FillColor: sp.FillColor, Thickness: sp.Thickness, ZOrder: sp.Zorder, Text: sp.Text, RevisionID: sp.RevisionId, UnderContent: underContent && sp.ShapeType == shapeMarker}
 		if sp.BoundingRect != "" {
 			if json.Unmarshal([]byte(sp.BoundingRect), &s.BoundingRect) != nil {
 				return nil, nil, fmt.Errorf("invalid shape bounds")
