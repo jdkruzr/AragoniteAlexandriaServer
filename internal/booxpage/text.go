@@ -171,22 +171,33 @@ func drawVerticalText(dc *gg.Context, s *Shape, face font.Face, lineHeight, asce
 
 // drawSidewaysText lays out text without CJK characters as vertical layouts
 // do: the line runs top to bottom, turned 90° clockwise, and further lines
-// form columns to its left.
+// form columns to its left. The stored size can't fit the stored box, so the
+// font shrinks until the columns do.
 func drawSidewaysText(dc *gg.Context, s *Shape, face font.Face, lineHeight, ascent, column float64, w, h int, color func(*gg.Context)) error {
 	st := s.TextStyle
-	measure := gg.NewContext(1, 1)
-	measure.SetFontFace(face)
-	lines := measure.WordWrap(s.Text, column)
-	if need := int(math.Ceil(lineHeight * float64(len(lines)))); need > w && need <= 8192 && int64(need)*int64(h) <= 20e6 {
-		w = need
+	f := regularTextFont
+	if st.TextBold {
+		f = boldTextFont
 	}
-	// A word longer than the column runs past it rather than being cut.
-	for _, line := range lines {
-		lw, _ := measure.MeasureString(line)
-		if need := int(math.Ceil(lw)) + st.PaddingStart + st.PaddingEnd; need > h && need <= 8192 && int64(w)*int64(need) <= 20e6 {
-			h = need
+	var lines []string
+	for size := st.TextSize; ; size *= 0.9 {
+		face = truetype.NewFace(f, &truetype.Options{Size: size})
+		lineHeight = float64(face.Metrics().Height) / 64
+		ascent = float64(face.Metrics().Ascent) / 64
+		measure := gg.NewContext(1, 1)
+		measure.SetFontFace(face)
+		lines = measure.WordWrap(s.Text, column)
+		longest := 0.0
+		for _, line := range lines {
+			lw, _ := measure.MeasureString(line)
+			longest = max(longest, lw)
 		}
+		if size < 8 || longest <= column && lineHeight*float64(len(lines)) <= float64(w) {
+			break
+		}
+		face.Close()
 	}
+	defer face.Close()
 	box := gg.NewContext(w, h)
 	box.SetFontFace(face)
 	color(box)
@@ -197,7 +208,7 @@ func drawSidewaysText(dc *gg.Context, s *Shape, face font.Face, lineHeight, asce
 	for i, line := range lines {
 		box.DrawString(line, float64(st.PaddingStart), ascent+float64(i)*lineHeight)
 	}
-	return placeImage(dc, grown(s, w, h, true), box.Image())
+	return placeImage(dc, s, box.Image())
 }
 
 func hasCJK(text string) bool {

@@ -117,11 +117,11 @@ func TestTextBoxesGrowAndVerticalText(t *testing.T) {
 		}
 		return dc, p
 	}
-	// Latin text turns sideways: "10G Ethernet" wraps into two columns, the
-	// first ("10G", short) at the right edge and "Ethernet" running further
-	// down the column to its left.
+	// Latin text turns sideways and shrinks to fit the box: "10G Ethernet"
+	// becomes two columns inside it, "10G" (short) at the right edge and
+	// "Ethernet" running further down to its left.
 	dc, _ = vertical("10G Ethernet")
-	if inked(dc, 172, 10, 190, 40) == 0 || inked(dc, 172, 50, 190, 80) != 0 || inked(dc, 150, 50, 170, 80) == 0 || inked(dc, 0, 0, 140, 200) != 0 {
+	if inked(dc, 176, 10, 190, 40) == 0 || inked(dc, 176, 50, 190, 80) != 0 || inked(dc, 160, 50, 175, 80) == 0 || inked(dc, 0, 0, 159, 200) != 0 || inked(dc, 0, 81, 200, 200) != 0 {
 		t.Fatal("sideways columns misplaced")
 	}
 	// CJK characters stand upright, four to a 70 px column.
