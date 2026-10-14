@@ -8,6 +8,7 @@ import (
 
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/net/html"
@@ -75,20 +76,33 @@ func drawTextShape(dc *gg.Context, s *Shape) error {
 	}
 	face := truetype.NewFace(f, &truetype.Options{Size: st.TextSize})
 	defer face.Close()
-	box := gg.NewContext(w, h)
-	box.SetFontFace(face)
-	r, g, bl, a := decodeARGB(s.Color)
-	box.SetRGBA(r, g, bl, a)
-	inner := float64(w - st.PaddingStart - st.PaddingEnd)
-	if inner <= 0 {
-		return fmt.Errorf("Text padding exceeds bounds.")
-	}
 	spacing := st.TextSpacing
 	if spacing <= 0 {
 		spacing = 1
 	}
-	y := float64(face.Metrics().Ascent) / 64
-	for _, line := range box.WordWrap(s.Text, inner) {
+	lineHeight := float64(face.Metrics().Height) / 64 * spacing
+	ascent := float64(face.Metrics().Ascent) / 64
+	r, g, bl, a := decodeARGB(s.Color)
+	if st.Orientation == 1 {
+		return drawVerticalText(dc, s, face, lineHeight, ascent, w, h, func(c *gg.Context) { c.SetRGBA(r, g, bl, a) })
+	}
+	measure := gg.NewContext(1, 1)
+	measure.SetFontFace(face)
+	inner := float64(w - st.PaddingStart - st.PaddingEnd)
+	if inner <= 0 {
+		return fmt.Errorf("Text padding exceeds bounds.")
+	}
+	lines := measure.WordWrap(s.Text, inner)
+	// The editor grows a text box to fit its text, so the stored bounds can be
+	// shorter than the text. Extend the box downward rather than clipping.
+	if need := int(math.Ceil(ascent + lineHeight*float64(max(len(lines)-1, 0)) + float64(face.Metrics().Descent)/64)); need > h && need <= 8192 && int64(w)*int64(need) <= 20e6 {
+		h = need
+	}
+	box := gg.NewContext(w, h)
+	box.SetFontFace(face)
+	box.SetRGBA(r, g, bl, a)
+	y := ascent
+	for _, line := range lines {
 		if y > float64(h)+st.TextSize {
 			break
 		}
@@ -105,9 +119,63 @@ func drawTextShape(dc *gg.Context, s *Shape) error {
 			box.DrawLine(x, y+2, x+tw, y+2)
 			box.Stroke()
 		}
-		y += float64(face.Metrics().Height) / 64 * spacing
+		y += lineHeight
 	}
-	return placeImage(dc, s, box.Image())
+	return placeImage(dc, grown(s, w, h, false), box.Image())
+}
+
+// drawVerticalText stacks upright characters top to bottom, starting a new
+// column to the left when one is full, like the editor's vertical layout.
+func drawVerticalText(dc *gg.Context, s *Shape, face font.Face, lineHeight, ascent float64, w, h int, color func(*gg.Context)) error {
+	st := s.TextStyle
+	column := float64(h - st.PaddingStart - st.PaddingEnd)
+	if column < lineHeight {
+		column = lineHeight
+	}
+	perColumn := max(int(column/lineHeight), 1)
+	var columns [][]rune
+	for _, para := range strings.Split(s.Text, "\n") {
+		runes := []rune(para)
+		if len(runes) == 0 {
+			columns = append(columns, nil)
+		}
+		for len(runes) > 0 {
+			n := min(perColumn, len(runes))
+			columns = append(columns, runes[:n])
+			runes = runes[n:]
+		}
+	}
+	if need := int(math.Ceil(lineHeight * float64(len(columns)))); need > w && need <= 8192 && int64(need)*int64(h) <= 20e6 {
+		w = need
+	}
+	box := gg.NewContext(w, h)
+	box.SetFontFace(face)
+	color(box)
+	for i, col := range columns {
+		cx := float64(w) - (float64(i)+0.5)*lineHeight
+		y := float64(st.PaddingStart) + ascent
+		for _, r := range col {
+			if cx < -lineHeight || y > float64(h)+lineHeight {
+				break
+			}
+			box.DrawStringAnchored(string(r), cx, y, 0.5, 0)
+			y += lineHeight
+		}
+	}
+	return placeImage(dc, grown(s, w, h, true), box.Image())
+}
+
+// grown returns the shape with its bounds widened to w×h pixels: leftward
+// for vertical text, whose columns run right to left, otherwise downward.
+func grown(s *Shape, w, h int, leftward bool) *Shape {
+	b := *s.BoundingRect
+	if leftward {
+		b.Left = b.Right - float64(w)
+	}
+	b.Bottom = b.Top + float64(h)
+	copy := *s
+	copy.BoundingRect = &b
+	return &copy
 }
 
 // RichTextNotebookWarning is the notebook-level notice for text notebooks.

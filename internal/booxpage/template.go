@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -57,8 +58,8 @@ func drawTemplate(dc *gg.Context, raw []byte, load Load) error {
 			ImageAttr struct{ RelativePath string }
 		}
 	}
-	if json.Unmarshal(raw, &t) != nil {
-		return fmt.Errorf("Template metadata is unreadable.")
+	if err := json.Unmarshal(raw, &t); err != nil {
+		return fmt.Errorf("Template metadata is unreadable (%s).", templateProblem(err))
 	}
 	m := t.Properties.PageMargins
 	if m.Degree != 0 || t.Properties.UseFixedRatio {
@@ -237,4 +238,17 @@ func placeImage(dc *gg.Context, s *Shape, img image.Image) error {
 	}
 	draw.BiLinear.Transform(dst, mat, img, img.Bounds(), draw.Over, nil)
 	return nil
+}
+
+// templateProblem names the field that failed to decode, without its value.
+func templateProblem(err error) string {
+	var typeErr *json.UnmarshalTypeError
+	if errors.As(err, &typeErr) {
+		return fmt.Sprintf("%s is %s, expected %s", typeErr.Field, typeErr.Value, typeErr.Type)
+	}
+	var syntax *json.SyntaxError
+	if errors.As(err, &syntax) {
+		return fmt.Sprintf("invalid JSON at byte %d", syntax.Offset)
+	}
+	return "unexpected format"
 }

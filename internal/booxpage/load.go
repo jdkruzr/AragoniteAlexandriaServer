@@ -98,7 +98,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		warnings = append(warnings, "Meeting notebook: audio and transcript layout are not reproduced.")
 	}
 	if meta.ActiveScene == 4 {
-		warnings = append(warnings, "Draft notebook layout has not been qualified.")
+		p.Notices = append(p.Notices, "Draft notebook: the preview grows to fit ink beyond the page.")
 	}
 	if meta.NotePageInfo.CanvasExpandType != "" && meta.NotePageInfo.CanvasExpandType != "DEFAULT" {
 		warnings = append(warnings, "Expanded canvas layout has not been qualified; this preview may be cropped.")
@@ -375,11 +375,14 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 			if s.Text != "" {
 				p.Texts = append(p.Texts, s.Text)
 			}
-			if json.Unmarshal([]byte(sp.TextStyle), &s.TextStyle) != nil || !finite(s.TextStyle.TextSize) || s.TextStyle.TextSize <= 0 || s.TextStyle.TextSize > 1000 || !finite(s.TextStyle.TextSpacing) || s.TextStyle.TextSpacing < 0 || s.TextStyle.TextSpacing > 100 || s.TextStyle.Orientation != 0 || s.TextStyle.TextBorder != 0 || s.TextStyle.PaddingStart < 0 || s.TextStyle.PaddingEnd < 0 {
+			if json.Unmarshal([]byte(sp.TextStyle), &s.TextStyle) != nil || !finite(s.TextStyle.TextSize) || s.TextStyle.TextSize <= 0 || s.TextStyle.TextSize > 1000 || !finite(s.TextStyle.TextSpacing) || s.TextStyle.TextSpacing < 0 || s.TextStyle.TextSpacing > 100 || s.TextStyle.Orientation < 0 || s.TextStyle.Orientation > 1 || s.TextStyle.TextBorder != 0 || s.TextStyle.PaddingStart < 0 || s.TextStyle.PaddingEnd < 0 {
 				warnings = append(warnings, "Text styling is unsupported; readable text is shown separately.")
 				continue
 			}
 			p.Notices = append(p.Notices, "Text uses a substitute font; native typography and rich spans may differ.")
+			if s.TextStyle.Orientation == 1 {
+				p.Notices = append(p.Notices, "Vertical text is drawn top to bottom in right-to-left columns; spacing may differ.")
+			}
 		} else if s.ShapeType == 29 {
 			var extra struct{ TextContent string }
 			_ = json.Unmarshal([]byte(sp.Extra), &extra)
@@ -418,6 +421,14 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				return nil, nil, fmt.Errorf("image reference unavailable")
 			}
 			s.ImagePath = "resource/data/" + strings.TrimPrefix(ref.RelativePath, "/")
+		} else if s.ShapeType == shapeBookmark {
+			// A navigation marker, not content; keep its label as page text.
+			var extra struct{ TextContent string }
+			if json.Unmarshal([]byte(sp.Extra), &extra) == nil && strings.TrimSpace(extra.TextContent) != "" {
+				p.Texts = append(p.Texts, extra.TextContent)
+			}
+			p.Notices = append(p.Notices, "Bookmarks aren't drawn.")
+			continue
 		} else if !geometricTypes[s.ShapeType] {
 			if (s.ShapeType == 6 || s.ShapeType == 16 || s.ShapeType == 29) && s.Text != "" {
 				p.Texts = append(p.Texts, s.Text)
@@ -428,6 +439,15 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		p.Shapes = append(p.Shapes, s)
 	}
 	attribute()
+	// Draft notebooks share one canvas whose ink can run past the stored page
+	// size; grow the page to fit rather than crop it.
+	if meta.ActiveScene == 4 {
+		for _, sh := range p.Shapes {
+			if b := sh.BoundingRect; b != nil && b.Right <= 20000 && b.Bottom <= 20000 {
+				p.Width, p.Height = max(p.Width, math.Ceil(b.Right)+20), max(p.Height, math.Ceil(b.Bottom)+20)
+			}
+		}
+	}
 	sort.Slice(p.Shapes, func(i, j int) bool {
 		a, b := p.Shapes[i], p.Shapes[j]
 		if layerOrder[a.ZOrder] != layerOrder[b.ZOrder] {
