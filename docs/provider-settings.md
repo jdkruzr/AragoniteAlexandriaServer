@@ -247,7 +247,7 @@ Progress distinguishes preparation, undispatched pages, queued, processing,
 ready, failed, blocked, paused and cancelled work. Failed/blocked/cancelled outcomes
 never count as successful recognition. Library and page-job views offer live
 refresh; Jobs links recent library batches. Global Jobs hides superseded attempts
-by default, with **Include superseded attempts** for history. Batch views preserve
+by default, with **Show earlier attempts at the same page** for history. Batch views preserve
 their own outcomes; retry moves the replacement attempt into the same batch.
 
 **Pause library batch**, **Resume library batch**, **Retry failed and blocked
