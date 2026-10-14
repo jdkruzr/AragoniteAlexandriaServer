@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"image/png"
+	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 )
@@ -28,6 +29,10 @@ type CoveragePage struct {
 	ShapeTypes              map[string]int // rendered shapes by type
 	Issues                  []booxpage.Issue
 	PNG                     []byte `json:"-"` // the preview, when requested
+	// The recognition worker's own render path (time limit and all), which
+	// can fail where the unbounded drawing above succeeds.
+	WorkerError  string
+	WorkerMillis int64
 }
 
 // BlockedCoverage reports every page whose recognition is blocked or failed. It is
@@ -96,6 +101,13 @@ func (s Service) PageCoverage(ctx context.Context, notebook, page string, withPN
 				c.PNG = b.Bytes()
 			}
 		}
+	}
+	if c.Page > 0 {
+		start := time.Now()
+		if _, e := s.renderPreview(ctx, n, c.Page); e != nil {
+			c.WorkerError = e.Error()
+		}
+		c.WorkerMillis = time.Since(start).Milliseconds()
 	}
 	first := true
 	for _, sh := range p.Shapes {
