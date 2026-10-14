@@ -422,6 +422,33 @@ func TestPreviewErrorsBlockUnlessFilesAreMissing(t *testing.T) {
 	}
 }
 
+func TestBusyPreviewRetriesInsteadOfBlocking(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	// Someone browsing holds every preview slot while the worker runs.
+	for range cap(previewSlots) {
+		previewSlots <- struct{}{}
+	}
+	defer func() {
+		for range cap(previewSlots) {
+			<-previewSlots
+		}
+	}()
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	ocr := &testOCR{}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state, detail string
+	var attempts int
+	s.DB.QueryRowContext(ctx, `SELECT state,detail,attempts FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &detail, &attempts)
+	if state != "queued" || !strings.Contains(detail, "too busy") || attempts != 1 || ocr.calls != 0 {
+		t.Fatal(state, detail, attempts, ocr.calls)
+	}
+}
+
 func TestBlockedDetailNamesWarnings(t *testing.T) {
 	d := blockedDetail([]string{"Native shape type 77 is not rendered yet.", "Native shape type 77 is not rendered yet.", "A shape references an unknown layer."})
 	if d != "Not sent for recognition because the preview is incomplete: Native shape type 77 is not rendered yet. A shape references an unknown layer." {

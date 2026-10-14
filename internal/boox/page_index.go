@@ -119,6 +119,10 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		if errors.Is(e, booxpage.ErrUnavailable) || ctx.Err() != nil {
 			return deferFailure("Page files aren't all readable yet: " + limitDetail(e.Error()))
 		}
+		// A busy or slow server isn't the page's fault either.
+		if errors.Is(e, errPreviewBusy) || errors.Is(e, context.DeadlineExceeded) {
+			return deferFailure("The server was too busy to draw this page; retrying: " + limitDetail(e.Error()))
+		}
 		return true, finish("blocked", "", "Not sent for recognition because the page can't be previewed: "+limitDetail(e.Error()), n.Version, oldHash, oldOCR, "")
 	}
 	// A text notebook's notice is about its typed page, not this one.
