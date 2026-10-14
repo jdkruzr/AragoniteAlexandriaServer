@@ -3,6 +3,7 @@ package boox
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"image/png"
 
@@ -20,7 +21,8 @@ type CoveragePage struct {
 	Width, Height           float64    // page size
 	InkBounds               [4]float64 // left, top, right, bottom of rendered shapes' boxes
 	Background              *booxpage.Background
-	BackgroundLive          bool // the background file is held by the server
+	BackgroundLive          bool   // the background file is held by the server
+	BackgroundHead          string // first bytes of an unreadable template, hex
 	Warnings                []string
 	DrawWarnings            []string       // template, background and drawing
 	ShapeTypes              map[string]int // rendered shapes by type
@@ -76,6 +78,12 @@ func (s Service) PageCoverage(ctx context.Context, notebook, page string, withPN
 	c.Warnings, c.Issues, c.Width, c.Height, c.Background = warnings, p.Issues, p.Width, p.Height, p.Background
 	if p.Background != nil {
 		_, c.BackgroundLive = n.Assets[p.Background.Path]
+		// Templates are stock layouts, not page content.
+		if c.BackgroundLive && p.Background.Kind == "geo_layout" {
+			if raw, err := s.snapshotLoader(ctx, n)(p.Background.Path); err == nil && (len(raw) == 0 || raw[0] != '{') {
+				c.BackgroundHead = hex.EncodeToString(raw[:min(len(raw), 64)])
+			}
+		}
 	}
 	img, tw, err := booxpage.Preview(p, s.snapshotLoader(ctx, n))
 	if err != nil {

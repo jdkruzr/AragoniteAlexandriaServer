@@ -75,6 +75,11 @@ func backgroundFor(meta Metadata, id string, keys []string, load Load) (*Backgro
 func drawBackground(dc *gg.Context, p *Page, load Load) error {
 	if p.Background != nil && (p.Background.Kind == "pdf" || p.Background.Kind == "import_pdf") {
 		raw, e := load(p.Background.Path)
+		if e != nil && strings.HasPrefix(p.Background.Path, "resource/data/") {
+			// PDF templates are stored with the notebook's templates, though the
+			// page still names them as a resource.
+			raw, e = load("note/templateRes/" + path.Base(p.Background.Path))
+		}
 		if e != nil {
 			return fmt.Errorf("The page PDF has not arrived or failed verification.")
 		}
