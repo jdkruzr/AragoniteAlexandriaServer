@@ -75,6 +75,24 @@ func TestRecognitionJobsOwnerControlsAndQueueReview(t *testing.T) {
 	if err = db.QueryRowContext(ctx, `SELECT state FROM alexandria_page_dirty`).Scan(&state); err != nil || state != "paused" {
 		t.Fatal(state, err)
 	}
+	// A failed-jobs list offers one button for the whole list.
+	if _, err = db.ExecContext(ctx, `UPDATE alexandria_page_dirty SET state='failed',detail='Synthetic failure'`); err != nil {
+		t.Fatal(err)
+	}
+	list := b.do("GET", "/jobs?state=failed", "", nil, true)
+	if list.Code != 200 || !strings.Contains(list.Body.String(), `id="jobs-retry-matching"`) || !strings.Contains(list.Body.String(), "Retry this job") {
+		t.Fatal(list.Code, list.Body.String())
+	}
+	retry := url.Values{"state": {"failed"}, "expect": {"1"}}
+	if got := b.do("POST", "/jobs/retry", retry.Encode(), nil, true); got.Code != 403 {
+		t.Fatal("CSRF", got.Code)
+	}
+	if got := b.do("POST", "/jobs/retry", retry.Encode(), sameSite, true); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "state=failed") {
+		t.Fatal(got.Code, got.Header())
+	}
+	if err = db.QueryRowContext(ctx, `SELECT state FROM alexandria_page_dirty`).Scan(&state); err != nil || state != "queued" {
+		t.Fatal(state, err)
+	}
 }
 
 func TestLibraryRecognitionReviewUIAndOwnerBoundary(t *testing.T) {

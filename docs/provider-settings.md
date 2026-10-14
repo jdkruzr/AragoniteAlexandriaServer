@@ -249,6 +249,8 @@ never count as successful recognition. Library and page-job views offer live
 refresh; Jobs links recent library batches. Global Jobs hides superseded attempts
 by default, with **Show earlier attempts at the same page** for history. Batch views preserve
 their own outcomes; retry moves the replacement attempt into the same batch.
+Filtering to failed or blocked offers **Retry these N jobs**, which retries the
+whole filtered list (not only the 50 shown) and refuses if the count changed.
 
 **Pause library batch**, **Resume library batch**, **Retry failed and blocked
 pages**, and **Cancel unfinished** apply across its dispatched notebooks. Pause

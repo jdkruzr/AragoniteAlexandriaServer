@@ -61,32 +61,42 @@ type View struct {
 	BatchTitle string
 }
 
-func (s Store) List(ctx context.Context, f Filter) (View, error) {
-	v := View{Counts: map[string]int{}}
+// where validates a filter and returns the shared FROM/WHERE clause; its
+// parameters are $1 source, $2 batch, $3 run.
+func (f Filter) where() (string, error) {
 	if f.Source != "" && f.Source != "boox" && f.Source != "client" {
-		return v, errors.New("Unknown source")
+		return "", errors.New("Unknown source")
 	}
 	switch f.State {
 	case "", "queued", "processing", "ready", "blocked", "failed", "paused", "cancelled":
 	default:
-		return v, errors.New("Unknown status")
+		return "", errors.New("Unknown status")
 	}
 	if f.Run != "" {
 		if _, e := uuid.Parse(f.Run); e != nil {
-			return v, errors.New("Invalid library run")
+			return "", errors.New("Invalid library run")
 		}
 	}
 	if f.Batch != "" {
 		if _, e := uuid.Parse(f.Batch); e != nil {
-			return v, errors.New("Invalid batch")
+			return "", errors.New("Invalid batch")
 		}
 	}
 	if f.Offset < 0 || f.Offset > 1000000 {
-		return v, errors.New("Invalid page")
+		return "", errors.New("Invalid page")
 	}
 	where := ` FROM alexandria_recognition_job j WHERE ($1='' OR source=$1) AND ($2='' OR batch_id::text=$2) AND ($3='' OR batch_id IN (SELECT id FROM alexandria_recognition_batch WHERE run_id::text=$3))`
 	if f.Batch == "" && f.Run == "" && !f.History {
 		where += " AND superseded_by IS NULL"
+	}
+	return where, nil
+}
+
+func (s Store) List(ctx context.Context, f Filter) (View, error) {
+	v := View{Counts: map[string]int{}}
+	where, e := f.where()
+	if e != nil {
+		return v, e
 	}
 	rows, e := s.DB.QueryContext(ctx, `SELECT state,count(*)`+where+` GROUP BY state`, f.Source, f.Batch, f.Run)
 	if e != nil {
@@ -262,32 +272,76 @@ func (s Store) Control(ctx context.Context, id string, batch bool, action string
 	}
 	return count, tx.Commit()
 }
+
+type controlTarget struct{ id, source string }
+
 func controlTx(ctx context.Context, tx *sql.Tx, id string, batch bool, action, allowed string) (int64, error) {
 	selector := "id"
 	if batch {
 		selector = "batch_id"
 	}
-	rows, e := tx.QueryContext(ctx, `SELECT id::text,source FROM alexandria_recognition_job WHERE `+selector+`=$1 AND state IN (`+allowed+`) ORDER BY source,page_id`, id)
+	targets, e := controlTargets(ctx, tx, `SELECT id::text,source FROM alexandria_recognition_job WHERE `+selector+`=$1 AND state IN (`+allowed+`) ORDER BY source,page_id`, id)
 	if e != nil {
 		return 0, e
 	}
-	type target struct{ id, source string }
-	var targets []target
+	return applyControl(ctx, tx, targets, action, allowed)
+}
+
+func controlTargets(ctx context.Context, tx *sql.Tx, query string, args ...any) ([]controlTarget, error) {
+	rows, e := tx.QueryContext(ctx, query, args...)
+	if e != nil {
+		return nil, e
+	}
+	defer rows.Close()
+	var targets []controlTarget
 	for rows.Next() {
-		var t target
+		var t controlTarget
 		if e = rows.Scan(&t.id, &t.source); e != nil {
-			break
+			return nil, e
 		}
 		targets = append(targets, t)
 	}
-	re := rows.Err()
-	rows.Close()
+	return targets, rows.Err()
+}
+
+// ErrSelectionChanged means the jobs matching a filter changed between
+// showing a count and acting on it.
+var ErrSelectionChanged = errors.New("The list of jobs changed. Review it again before retrying.")
+
+// RetryMatching retries every failed or blocked job the filter lists, but only
+// if that is still exactly the number the owner was shown.
+func (s Store) RetryMatching(ctx context.Context, f Filter, expect int) (int64, error) {
+	if f.State != "failed" && f.State != "blocked" {
+		return 0, errors.New("Only failed or blocked jobs can be retried together.")
+	}
+	where, e := f.where()
 	if e != nil {
 		return 0, e
 	}
-	if re != nil {
-		return 0, re
+	if expect < 1 || expect > 10000 {
+		return 0, errors.New("Too many jobs to retry at once; narrow the list.")
 	}
+	tx, e := s.DB.BeginTx(ctx, nil)
+	if e != nil {
+		return 0, e
+	}
+	defer tx.Rollback()
+	targets, e := controlTargets(ctx, tx, `SELECT id::text,source`+where+` AND state=$4 ORDER BY source,page_id FOR UPDATE`, f.Source, f.Batch, f.Run, f.State)
+	if e != nil {
+		return 0, e
+	}
+	if len(targets) != expect {
+		return 0, ErrSelectionChanged
+	}
+	n, e := applyControl(ctx, tx, targets, "retry", "'failed','blocked'")
+	if e != nil {
+		return 0, e
+	}
+	return n, tx.Commit()
+}
+
+func applyControl(ctx context.Context, tx *sql.Tx, targets []controlTarget, action, allowed string) (int64, error) {
+	var e error
 	state := "queued"
 	if action == "pause" {
 		state = "paused"

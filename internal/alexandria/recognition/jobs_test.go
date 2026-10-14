@@ -112,3 +112,48 @@ func TestClientQueueHistoryAndCancellationSurviveSourceUpdates(t *testing.T) {
 		t.Fatal(v, e)
 	}
 }
+
+func TestRetryMatchingRetriesTheWholeFilteredList(t *testing.T) {
+	ctx := context.Background()
+	db := testenv.Database(t).DB
+	s := Store{DB: db}
+	n := Notebook{ID: "synthetic", Title: "Test notebook"}
+	for i := 1; i <= 60; i++ {
+		n.Pages = append(n.Pages, Page{ID: fmt.Sprintf("p%03d", i), Number: i})
+	}
+	if _, _, e := s.Queue(ctx, "boox", n, 1, 60, false, uuid.NewString()); e != nil {
+		t.Fatal(e)
+	}
+	// More than one page of results: the button acts on all of them.
+	if _, e := db.ExecContext(ctx, `UPDATE boox_page_index SET state='blocked',detail='Synthetic preview gap' WHERE page_number<=55`); e != nil {
+		t.Fatal(e)
+	}
+	f := Filter{State: "blocked"}
+	v, e := s.List(ctx, f)
+	if e != nil || v.Total != 55 || len(v.Jobs) != 50 {
+		t.Fatal(v.Total, len(v.Jobs), e)
+	}
+	if _, e = s.RetryMatching(ctx, f, 54); e != ErrSelectionChanged {
+		t.Fatal("stale count accepted", e)
+	}
+	if _, e = s.RetryMatching(ctx, Filter{State: "ready"}, 5); e == nil {
+		t.Fatal("ready jobs retried")
+	}
+	if count, e := s.RetryMatching(ctx, f, 55); e != nil || count != 55 {
+		t.Fatal(count, e)
+	}
+	if v, e = s.List(ctx, f); e != nil || v.Total != 0 {
+		t.Fatal(v.Total, e)
+	}
+	if v, e = s.List(ctx, Filter{}); e != nil || v.Counts["queued"] != 60 {
+		t.Fatal(v.Counts, e)
+	}
+	// Earlier attempts are history: retrying them again changes nothing.
+	h := Filter{State: "blocked", History: true}
+	if v, e = s.List(ctx, h); e != nil || v.Total != 55 {
+		t.Fatal(v.Total, e)
+	}
+	if count, e := s.RetryMatching(ctx, h, 55); e != nil || count != 0 {
+		t.Fatal(count, e)
+	}
+}
