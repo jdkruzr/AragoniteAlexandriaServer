@@ -5,8 +5,9 @@
 Minutes will use this path to publish `<title>_Minutes` beside the source note.
 The owner-only test form is `/boox/text-notes/new`, linked from BOOX settings.
 
-**Device status:** unqualified until the paired experiment below is recorded.
-Server publication is not the same as device delivery or rendering.
+**Device status (2026-10-13):** qualified on Lumi (Go 10.3) and Palma 2 Pro
+for headings and paragraphs; see the experiment below. Bullet lists and bold
+lead-ins have not yet been seen on a device.
 
 ## Reference file set
 
@@ -48,14 +49,26 @@ the native owner:
 then writes the commit and the type-6 NOTE_TREE message, exactly as other note
 operations do. A missing or deleted folder is rejected.
 
-## Device experiment (pending)
+## Device experiment, 2026-10-13
 
-1. Use the test form to create a synthetic note in a real folder.
-2. **Lumi, then Palma:** check that it appears in the right folder with its
-   title (the importer may add a numeric suffix), and opens with the text after
-   a cold Notes start.
-3. Compare each device's next upload against the server's copy.
-4. If the note is listed but empty, try the Notes cloud sync button. That's the
-   known recovery when a new notebook's files haven't arrived.
-5. Then remove one optional file at a time (thumbnail, template) to find the
-   minimum set.
+The owner submitted "Oh hey there" (notebook root) from the test form at 22:29
+CDT. Operation `f6a7c30f…` reached `published` in 1.8 s.
+
+- **Delivery:** both tablets' native provider listed `00e22405-…` with the
+  title, root parent, `activeScene` 1, `status` 1, `type` 1. No sync button was
+  needed. Eight of the nine files are byte-identical (sha256) to the server's
+  on both devices. Neither device stores the server's blank thumbnail as a file;
+  they show an empty tile until they draw their own.
+- **Rendering:** after force-stopping the Notes editor process, the note opened
+  on Lumi and on Palma with the title as heading 1, a paragraph, a second
+  heading and three paragraphs. The owner typed `* ` bullets, which the form then
+  read as paragraphs, so lists are still unverified. The form now accepts `- `,
+  `* ` and `• `.
+- **Opening is a write.** Each device saved a fresh `pageModel/pb/<uuidv7>`
+  when the note was opened (Lumi 22:55:56, Palma 22:56:34). Each is identical to
+  the server's apart from timestamps. The record went from version 1 (server)
+  to 2 (Lumi) to 3 (Palma) without any edits. So "untouched on the device" can't
+  mean "record version unchanged". For Audio Note Minutes resends, compare the
+  live `resource/data/<res>.html` body with the one the server published.
+- **Minimum file set:** not pursued. The full nine-file set works on both
+  devices without the sync button, and removing files would only add risk.

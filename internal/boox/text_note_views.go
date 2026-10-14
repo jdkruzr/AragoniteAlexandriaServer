@@ -22,7 +22,7 @@ var textNoteTemplate = template.Must(template.New("text-note").Funcs(web.Funcs()
 <label>Folder <select name="parent"><option value="">Notebook root</option>{{range $d.Folders}}<option value="{{.ID}}">{{.Title}}</option>{{end}}</select></label>
 <label>Title <input name="title" required maxlength="200" value="{{$d.Title}}"></label>
 <label>Text <textarea name="text" rows="10" required></textarea></label>
-<p class="small muted">One block per line. Start a line with "# " for a heading or "- " for a bullet.</p>
+<p class="small muted">One block per line. Start a line with "# " for a heading, or "- " or "* " for a bullet.</p>
 <label class="confirm"><input type="checkbox" name="confirm" required> Create this notebook on every connected BOOX device. Nothing existing is changed.</label>
 <p><button>Create text note</button></p></form>{{end}}`))
 
@@ -38,8 +38,10 @@ func textBlocks(text string) []TextBlock {
 		switch {
 		case strings.HasPrefix(line, "# "):
 			out = append(out, TextBlock{Kind: "heading", Text: line[2:]})
-		case strings.HasPrefix(line, "- "):
+		case strings.HasPrefix(line, "- "), strings.HasPrefix(line, "* "):
 			out = append(out, TextBlock{Kind: "bullet", Text: line[2:]})
+		case strings.HasPrefix(line, "• "):
+			out = append(out, TextBlock{Kind: "bullet", Text: strings.TrimPrefix(line, "• ")})
 		case line != "":
 			out = append(out, TextBlock{Text: line})
 		}
