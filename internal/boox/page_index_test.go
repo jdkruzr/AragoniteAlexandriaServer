@@ -449,6 +449,71 @@ func TestBusyPreviewRetriesInsteadOfBlocking(t *testing.T) {
 	}
 }
 
+func TestRerunKeepsPagesInSearchWithoutReembedding(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	if found, e := s.ProcessPageIndex(ctx, &testOCR{}, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	searchable := func() string {
+		t.Helper()
+		var body string
+		if e := s.DB.QueryRowContext(ctx, `SELECT body_text FROM alexandria_note_content WHERE source='boox-page'`).Scan(&body); e != nil {
+			return ""
+		}
+		return body
+	}
+	if searchable() != "synthetic quasar transcript" {
+		t.Fatal("first result not searchable", searchable())
+	}
+	// An index is building, as during a library re-run.
+	if _, e := s.DB.ExecContext(ctx, `INSERT INTO alexandria_embedding_generation(id,endpoint,model,state) VALUES('g','http://embedder','m','building'); DELETE FROM alexandria_embedding_work`); e != nil {
+		t.Fatal(e)
+	}
+	work := func() int {
+		t.Helper()
+		var n int
+		s.DB.QueryRowContext(ctx, `SELECT count(*) FROM alexandria_embedding_work`).Scan(&n)
+		return n
+	}
+	// Re-queue (a library re-run), then a transient failure: the page keeps
+	// its text in search and nothing is re-embedded.
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	if searchable() != "synthetic quasar transcript" {
+		t.Fatal("re-queue took the page out of search", searchable())
+	}
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET ocr_hash=''`); e != nil {
+		t.Fatal(e)
+	}
+	if found, e := s.ProcessPageIndex(ctx, &testOCR{fail: true}, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	if searchable() != "synthetic quasar transcript" {
+		t.Fatal("transient failure took the page out of search", searchable())
+	}
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET next_at=now()`); e != nil {
+		t.Fatal(e)
+	}
+	if found, e := s.ProcessPageIndex(ctx, &testOCR{}, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	if searchable() != "synthetic quasar transcript" || work() != 0 {
+		t.Fatal("unchanged text re-embedded", searchable(), work())
+	}
+	// A real change on the device still clears it until it's recognized again.
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET revision='2-b' WHERE document_id='note'`); e != nil {
+		t.Fatal(e)
+	}
+	if searchable() != "" {
+		t.Fatal("stale text survived a change on the device", searchable())
+	}
+}
+
 func TestBlockedDetailNamesWarnings(t *testing.T) {
 	d := blockedDetail([]string{"Native shape type 77 is not rendered yet.", "Native shape type 77 is not rendered yet.", "A shape references an unknown layer."})
 	if d != "Not sent for recognition because the preview is incomplete: Native shape type 77 is not rendered yet. A shape references an unknown layer." {
