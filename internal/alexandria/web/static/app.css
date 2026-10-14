@@ -249,3 +249,19 @@ progress { display:block; width:100%; max-width:44rem; height:1.1rem; accent-col
   .dated-list { min-width:40rem; }
   .menu .menu-items { left:0; right:auto; }
 }
+
+/* Note minutes */
+.tags { display:flex; flex-wrap:wrap; gap:.4rem; margin:.25rem 0 1rem; }
+.tag { background:var(--accent-soft); color:var(--ink); border-radius:999px; padding:.15rem .7rem; font-size:.9rem; }
+ol.points { padding-left:1.25rem; }
+ol.points li { margin:.5rem 0; }
+ol.points .badge { font-size:.75rem; vertical-align:.1em; }
+dl.meta { display:grid; grid-template-columns:auto 1fr; gap:.35rem 1rem; margin:0; }
+dl.meta dt { color:var(--muted); }
+dl.meta dd { margin:0; overflow-wrap:anywhere; }
+.recording + .recording { border-top:1px solid var(--line); margin-top:1rem; padding-top:1rem; }
+.recording h3 { margin-bottom:.15rem; }
+.recording audio { width:100%; max-width:32rem; margin:.5rem 0; }
+dl.transcript { display:grid; grid-template-columns:auto 1fr; gap:.25rem .75rem; margin:.5rem 0 0; }
+dl.transcript dt { color:var(--faint); font-variant-numeric:tabular-nums; }
+dl.transcript dd { margin:0; }

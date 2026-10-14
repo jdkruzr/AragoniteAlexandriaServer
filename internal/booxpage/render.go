@@ -27,6 +27,8 @@ func renderShape(dc *gg.Context, s *Shape) {
 		renderScribble(dc, s)
 	} else if geometricTypes[s.ShapeType] {
 		renderGeometric(dc, s)
+	} else if s.ShapeType == shapeAudio {
+		renderAudio(dc, s)
 	}
 	// ShapePage classifies unsupported types; Preview separately composes images.
 }

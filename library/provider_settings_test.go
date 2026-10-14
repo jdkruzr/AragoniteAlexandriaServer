@@ -34,6 +34,9 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 			t.Fatal("bearer token admitted owner settings", path, got.Code)
 		}
 	}
+	if got := b.do("POST", "/settings/minutes", "revision=1&action=save", map[string]string{"Authorization": "Bearer " + token, "Origin": sameSite["Origin"], "Sec-Fetch-Site": "same-origin"}, false); got.Code != 401 {
+		t.Fatal("bearer token admitted minutes settings", got.Code)
+	}
 	form := url.Values{"revision": {"1"}, "action": {"save"}, "ocr_enabled": {"on"}, "ocr_format": {"openai"}, "ocr_url": {"http://localhost:9999"}, "ocr_model": {"synthetic-vision"}, "embed_model": {"synthetic"}, "api_key": {"private-secret-value"}, "key_action": {"replace"}, "anthropic_workspace": {"wrkspc_test123"}}
 	if got := b.do("POST", "/settings/providers", form.Encode(), nil, true); got.Code != 403 {
 		t.Fatal("CSRF", got.Code)
@@ -94,6 +97,22 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	p, _, _, e = r.pageConfiguration(ctx, db)
 	if e != nil || p.OCR != nil || p.OCRIdentity != oldIdentity {
 		t.Fatal("disable changed recognition identity", e)
+	}
+	// The minutes form saves only its providers, under the same revision check.
+	minutesForm := url.Values{"revision": {"4"}, "action": {"save"}, "t_enabled": {"on"}, "t_url": {"http://whisper.local:8090"}, "t_model": {"synthetic-whisper"}, "t_key_action": {"keep"},
+		"s_enabled": {"on"}, "s_format": {"openai"}, "s_url": {"http://llm.local"}, "s_model": {"synthetic-llm"}, "s_key": {"private-summary-key"}, "s_key_action": {"keep"}}
+	if got := b.do("POST", "/settings/minutes", minutesForm.Encode(), sameSite, true); got.Code != 303 {
+		t.Fatal("minutes save", got.Code, got.Body.String())
+	}
+	_, _, snap, e = r.pageConfiguration(ctx, db)
+	if e != nil || snap.Revision != 5 || snap.Config.OCR.Model != "synthetic-vision" || snap.Config.Embedding.Model != "synthetic-2" || snap.Config.Summary.Model != "synthetic-llm" || snap.SummaryKey != "private-summary-key" || snap.APIKey != "private-secret-value" {
+		t.Fatal("minutes save changed other providers", e, snap.Revision)
+	}
+	if page := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); strings.Contains(page, "private-summary-key") || !strings.Contains(page, "A summary key is saved") || !strings.Contains(page, `value="synthetic-whisper"`) {
+		t.Fatal("minutes settings view")
+	}
+	if got := b.do("POST", "/settings/minutes", minutesForm.Encode(), sameSite, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Settings changed in another session") {
+		t.Fatal("stale minutes form accepted", got.Code)
 	}
 	// Enabling/saving never queues existing content for paid processing.
 	var count int

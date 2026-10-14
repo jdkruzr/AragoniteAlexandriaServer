@@ -19,6 +19,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech"
 )
 
 type OCRConfig struct {
@@ -31,9 +32,25 @@ type EmbedConfig struct {
 	Enabled    bool
 	URL, Model string
 }
+
+// TranscriptionConfig is an OpenAI-compatible /v1/audio/transcriptions endpoint.
+type TranscriptionConfig struct {
+	Enabled              bool
+	URL, Model, Language string
+}
+
+// SummaryConfig is the text model that writes note minutes.
+type SummaryConfig struct {
+	Enabled             bool
+	URL, Model, Format  string
+	AnthropicWorkspace  string `json:",omitempty"`
+	VLLMDisableThinking bool
+}
 type Config struct {
-	OCR       OCRConfig
-	Embedding EmbedConfig
+	OCR           OCRConfig
+	Embedding     EmbedConfig
+	Transcription TranscriptionConfig
+	Summary       SummaryConfig
 }
 
 // Bootstrap values seed the database only once. Locked explicitly disables editing.
@@ -52,6 +69,9 @@ type Snapshot struct {
 	Revision int64
 	Config   Config
 	APIKey   string `json:"-"`
+	// Each provider has its own credential; ciphertexts are bound to their purpose.
+	TranscriptionKey string `json:"-"`
+	SummaryKey       string `json:"-"`
 }
 type Coverage struct {
 	Label                            string
@@ -67,6 +87,8 @@ type View struct {
 	Revision                int64
 	Config                  Config
 	HasKey, Locked, CanSave bool
+	HasTranscriptionKey     bool
+	HasSummaryKey           bool
 	ActiveModel, IndexState string
 	Pending, Failed         int
 }
@@ -83,7 +105,16 @@ func (s Store) crypt() (cipher.AEAD, error) {
 	}
 	return cipher.NewGCM(b)
 }
-func (s Store) seal(key string) ([]byte, error) {
+
+// Purposes bind each sealed credential to its column. The OCR purpose predates
+// the others and keeps its original label.
+const (
+	purposeOCR           = "provider-key-v1"
+	purposeTranscription = "transcription-key-v1"
+	purposeSummary       = "summary-key-v1"
+)
+
+func (s Store) seal(key string, purpose ...string) ([]byte, error) {
 	if key == "" {
 		return []byte{}, nil
 	}
@@ -95,9 +126,15 @@ func (s Store) seal(key string) ([]byte, error) {
 	if _, e = rand.Read(n); e != nil {
 		return nil, e
 	}
-	return a.Seal(n, n, []byte(key), []byte(s.LibraryID+":provider-key-v1")), nil
+	return a.Seal(n, n, []byte(key), s.aad(purpose)), nil
 }
-func (s Store) open(b []byte) (string, error) {
+func (s Store) aad(purpose []string) []byte {
+	if len(purpose) == 0 {
+		return []byte(s.LibraryID + ":" + purposeOCR)
+	}
+	return []byte(s.LibraryID + ":" + purpose[0])
+}
+func (s Store) open(b []byte, purpose ...string) (string, error) {
 	if len(b) == 0 {
 		return "", nil
 	}
@@ -108,7 +145,7 @@ func (s Store) open(b []byte) (string, error) {
 	if len(b) < a.NonceSize() {
 		return "", errors.New("Provider credential cannot be decrypted.")
 	}
-	v, e := a.Open(nil, b[:a.NonceSize()], b[a.NonceSize():], []byte(s.LibraryID+":provider-key-v1"))
+	v, e := a.Open(nil, b[:a.NonceSize()], b[a.NonceSize():], s.aad(purpose))
 	if e != nil {
 		return "", errors.New("Provider credential cannot be decrypted.")
 	}
@@ -160,15 +197,21 @@ func (s Store) Ensure(ctx context.Context) error {
 }
 func (s Store) Load(ctx context.Context) (Snapshot, error) {
 	var v Snapshot
-	var raw, b []byte
-	e := s.DB.QueryRowContext(ctx, `SELECT revision,config,credential FROM alexandria_provider_settings WHERE singleton`).Scan(&v.Revision, &raw, &b)
+	var raw, b, tb, sb []byte
+	e := s.DB.QueryRowContext(ctx, `SELECT revision,config,credential,transcription_credential,summary_credential FROM alexandria_provider_settings WHERE singleton`).Scan(&v.Revision, &raw, &b, &tb, &sb)
 	if e != nil {
 		return v, e
 	}
 	if e = json.Unmarshal(raw, &v.Config); e != nil {
 		return v, e
 	}
-	v.APIKey, e = s.open(b)
+	if v.APIKey, e = s.open(b); e != nil {
+		return v, e
+	}
+	if v.TranscriptionKey, e = s.open(tb, purposeTranscription); e != nil {
+		return v, e
+	}
+	v.SummaryKey, e = s.open(sb, purposeSummary)
 	return v, e
 }
 func (s Store) View(ctx context.Context) (View, error) {
@@ -176,7 +219,7 @@ func (s Store) View(ctx context.Context) (View, error) {
 	if e != nil {
 		return View{}, e
 	}
-	out := View{SavedEmbedding: v.Config.Embedding, Revision: v.Revision, Config: v.Config, HasKey: v.APIKey != "", Locked: s.Bootstrap.Locked, CanSave: len(s.Bootstrap.Key) == 32 && !s.Bootstrap.Locked}
+	out := View{SavedEmbedding: v.Config.Embedding, Revision: v.Revision, Config: v.Config, HasKey: v.APIKey != "", HasTranscriptionKey: v.TranscriptionKey != "", HasSummaryKey: v.SummaryKey != "", Locked: s.Bootstrap.Locked, CanSave: len(s.Bootstrap.Key) == 32 && !s.Bootstrap.Locked}
 	e = s.DB.QueryRowContext(ctx, `SELECT model FROM alexandria_embedding_generation WHERE state='active'`).Scan(&out.ActiveModel)
 	if e != nil && !errors.Is(e, sql.ErrNoRows) {
 		return out, e
@@ -195,7 +238,7 @@ func (s Store) View(ctx context.Context) (View, error) {
 	}
 	rows, e := s.DB.QueryContext(ctx, `WITH eligible AS (
  SELECT * FROM alexandria_search_live WHERE btrim(body_text)<>''
- ), kinds(source,kind,label) AS (VALUES ('client','Notebook page','Alexandria Client pages'),('boox','Recognized page','BOOX notebook pages'),('boox','Reading','BOOX reading records'))
+ ), kinds(source,kind,label) AS (VALUES ('client','Notebook page','Alexandria Client pages'),('boox','Recognized page','BOOX notebook pages'),('boox','Reading','BOOX reading records'),('boox','Minutes','BOOX note minutes'))
  SELECT k.label,
  (SELECT count(*) FROM eligible c WHERE c.source=k.source AND c.kind=k.kind),
  (SELECT count(*) FROM eligible c WHERE c.source=k.source AND c.kind=k.kind AND EXISTS(SELECT 1 FROM alexandria_embedding_vectors v JOIN alexandria_embedding_generation g ON g.id=v.generation AND g.state='active' WHERE v.note_key=c.note_key AND v.page=c.page AND v.body_hash=md5(c.body_text))),
@@ -251,6 +294,33 @@ func Validate(c Config) error {
 	if e := endpoint(c.Embedding.URL); e != nil {
 		return e
 	}
+	if e := endpoint(c.Transcription.URL); e != nil {
+		return e
+	}
+	if e := endpoint(c.Summary.URL); e != nil {
+		return e
+	}
+	if id := c.Summary.AnthropicWorkspace; id != "" && (len(id) > 128 || !strings.HasPrefix(id, "wrkspc_") || strings.Trim(id[len("wrkspc_"):], "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != "" || len(id) == len("wrkspc_")) {
+		return errors.New("Enter a valid Anthropic workspace ID (wrkspc_…).")
+	}
+	if c.Summary.Format != "" && c.Summary.Format != "anthropic" && c.Summary.Format != "openai" {
+		return errors.New("Choose Anthropic Messages or OpenAI Chat Completions for the summary model.")
+	}
+	if c.Summary.VLLMDisableThinking && c.Summary.Format != "openai" {
+		return errors.New("The vLLM option requires OpenAI format.")
+	}
+	if c.Transcription.Enabled && (c.Transcription.URL == "" || strings.TrimSpace(c.Transcription.Model) == "") {
+		return errors.New("Transcription needs an endpoint and model.")
+	}
+	if c.Summary.Enabled && (c.Summary.URL == "" || strings.TrimSpace(c.Summary.Model) == "" || c.Summary.Format == "") {
+		return errors.New("The summary model needs an endpoint, model and API format.")
+	}
+	if l := c.Transcription.Language; len(l) > 8 || strings.Trim(l, "abcdefghijklmnopqrstuvwxyz") != "" {
+		return errors.New("Leave the language empty to detect it, or enter a code such as en.")
+	}
+	if len(c.Transcription.Model) > 256 || len(c.Summary.Model) > 256 {
+		return errors.New("Model exceeds the settings limit.")
+	}
 	if c.OCR.Format != "anthropic" && c.OCR.Format != "openai" {
 		return errors.New("Choose Anthropic Messages or OpenAI Chat Completions.")
 	}
@@ -279,33 +349,80 @@ func (s Store) Candidate(ctx context.Context, revision int64, c Config, key, act
 	if v.Revision != revision {
 		return v, ErrStale
 	}
+	// The recognition and search forms don't carry the minutes providers.
+	c.Transcription, c.Summary = v.Config.Transcription, v.Config.Summary
 	c.OCR.AnthropicWorkspace = strings.TrimSpace(c.OCR.AnthropicWorkspace)
 	c.OCR.URL = strings.TrimRight(strings.TrimSpace(c.OCR.URL), "/")
 	c.Embedding.URL = strings.TrimRight(strings.TrimSpace(c.Embedding.URL), "/")
 	if e = Validate(c); e != nil {
 		return v, e
 	}
+	if e = keyChange(&v.APIKey, key, action, c.OCR.URL != v.Config.OCR.URL, "recognition"); e != nil {
+		return v, e
+	}
+	v.Config = c
+	return v, nil
+}
+
+// KeyChange is one provider credential edit from a settings form.
+type KeyChange struct{ Key, Action string }
+
+// MinutesCandidate validates the transcription and summary providers, keeping
+// the recognition and search settings exactly as saved.
+func (s Store) MinutesCandidate(ctx context.Context, revision int64, t TranscriptionConfig, m SummaryConfig, tk, mk KeyChange) (Snapshot, error) {
+	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
+		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")
+	}
+	v, e := s.Load(ctx)
+	if e != nil {
+		return v, e
+	}
+	if v.Revision != revision {
+		return v, ErrStale
+	}
+	t.URL = strings.TrimRight(strings.TrimSpace(t.URL), "/")
+	t.Model, t.Language = strings.TrimSpace(t.Model), strings.ToLower(strings.TrimSpace(t.Language))
+	m.URL = strings.TrimRight(strings.TrimSpace(m.URL), "/")
+	m.Model, m.AnthropicWorkspace = strings.TrimSpace(m.Model), strings.TrimSpace(m.AnthropicWorkspace)
+	if m.Format != "anthropic" {
+		m.AnthropicWorkspace = ""
+	}
+	c := v.Config
+	c.Transcription, c.Summary = t, m
+	if e = Validate(c); e != nil {
+		return v, e
+	}
+	if e = keyChange(&v.TranscriptionKey, tk.Key, tk.Action, t.URL != v.Config.Transcription.URL, "transcription"); e != nil {
+		return v, e
+	}
+	if e = keyChange(&v.SummaryKey, mk.Key, mk.Action, m.URL != v.Config.Summary.URL, "summary"); e != nil {
+		return v, e
+	}
+	v.Config = c
+	return v, nil
+}
+
+func keyChange(saved *string, key, action string, moved bool, what string) error {
 	// Typing a key is an explicit replacement; never silently discard it.
 	if action == "keep" && strings.TrimSpace(key) != "" {
 		action = "replace"
 	}
 	switch action {
 	case "keep":
-		if v.APIKey != "" && c.OCR.URL != v.Config.OCR.URL {
-			return v, errors.New("Re-enter or clear the API key when changing the recognition endpoint.")
+		if *saved != "" && moved {
+			return fmt.Errorf("Re-enter or clear the API key when changing the %s endpoint.", what)
 		}
 	case "replace":
 		if strings.TrimSpace(key) == "" || len(key) > 8192 {
-			return v, errors.New("Enter a replacement API key.")
+			return errors.New("Enter a replacement API key.")
 		}
-		v.APIKey = strings.TrimSpace(key)
+		*saved = strings.TrimSpace(key)
 	case "clear":
-		v.APIKey = ""
+		*saved = ""
 	default:
-		return v, errors.New("Invalid API key action.")
+		return errors.New("Invalid API key action.")
 	}
-	v.Config = c
-	return v, nil
+	return nil
 }
 func (s Store) Save(ctx context.Context, v Snapshot) error {
 	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
@@ -318,13 +435,21 @@ func (s Store) Save(ctx context.Context, v Snapshot) error {
 	if e != nil {
 		return e
 	}
+	tb, e := s.seal(v.TranscriptionKey, purposeTranscription)
+	if e != nil {
+		return e
+	}
+	sb, e := s.seal(v.SummaryKey, purposeSummary)
+	if e != nil {
+		return e
+	}
 	raw, _ := json.Marshal(v.Config)
 	tx, e := s.DB.BeginTx(ctx, nil)
 	if e != nil {
 		return e
 	}
 	defer tx.Rollback()
-	r, e := tx.ExecContext(ctx, `UPDATE alexandria_provider_settings SET config=$1,credential=$2,revision=revision+1,updated_at=now() WHERE singleton AND revision=$3`, raw, b, v.Revision)
+	r, e := tx.ExecContext(ctx, `UPDATE alexandria_provider_settings SET config=$1,credential=$2,transcription_credential=$4,summary_credential=$5,revision=revision+1,updated_at=now() WHERE singleton AND revision=$3`, raw, b, v.Revision, tb, sb)
 	if e != nil {
 		return e
 	}
@@ -343,6 +468,32 @@ func (v Snapshot) OCRClient() *ocr.OCRClient {
 		opts = append(opts, ocr.WithVLLMDisableThinking())
 	}
 	return ocr.NewOCRClient(v.Config.OCR.URL, v.APIKey, v.Config.OCR.Model, v.Config.OCR.Format, opts...)
+}
+func (v Snapshot) SpeechClient() *speech.Client {
+	c := v.Config.Transcription
+	return speech.New(c.URL, v.TranscriptionKey, c.Model, c.Language)
+}
+
+// SummaryClient reuses the recognition transport for text-only completions.
+func (v Snapshot) SummaryClient() *ocr.OCRClient {
+	c := v.Config.Summary
+	opts := []ocr.Option{ocr.WithAnthropicWorkspace(c.AnthropicWorkspace)}
+	if c.VLLMDisableThinking {
+		opts = append(opts, ocr.WithVLLMDisableThinking())
+	}
+	return ocr.NewOCRClient(c.URL, v.SummaryKey, c.Model, c.Format, opts...)
+}
+
+// TranscriptionIdentity changes when a setting that affects transcripts changes.
+func (v Snapshot) TranscriptionIdentity() string {
+	c := v.Config.Transcription
+	c.Enabled = false
+	return identity(c)
+}
+func identity(c any) string {
+	b, _ := json.Marshal(c)
+	h := sha256.Sum256(b)
+	return hex.EncodeToString(h[:])
 }
 func (v Snapshot) OCRIdentity() string {
 	c := v.Config.OCR

@@ -269,6 +269,8 @@ func (s Service) snapshotLoader(ctx context.Context, n notebookSnapshot) booxpag
 
 type notebookView struct {
 	RecognitionEnabled                                            bool
+	Recordings                                                    int
+	MinutesState, MinutesTopic                                    string
 	RecognitionState, RecognitionDetail, RecognizedText           string
 	Texts                                                         []string
 	ID, Title, Parent, Page, Version, Image, Previous, Next, Zoom string
@@ -285,6 +287,7 @@ var notebookTemplate = template.Must(template.New("notebook").Parse(`{{define "c
 {{if $d.Texts}}<section class="card"><h2>Page text</h2><p class="small muted">Text from the page; original layout is not reproduced.</p>{{range $d.Texts}}<pre>{{.}}</pre>{{end}}</section>{{end}}
 </div>
 <aside>{{if $d.Page}}<section class="card"><h2>Handwriting recognition {{template "help" "recognition.where"}}</h2>{{if $d.RecognitionState}}<p><span class="badge">{{$d.RecognitionState}}</span> {{$d.RecognitionDetail}}</p>{{else}}<p class="muted">This page hasn't been recognized.</p>{{end}}{{if $d.RecognizedText}}<pre>{{$d.RecognizedText}}</pre>{{end}}{{if $d.RecognitionEnabled}}<form method="post" action="/boox/recognize"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="page" value="{{$d.Number}}"><p class="small muted">Sends this page to your recognition provider.</p><button>Recognize this page</button></form>{{else}}<p class="small muted">Set up a provider in <a href="/settings/recognition">Settings → Recognition</a> to recognize handwriting.</p>{{end}}<div class="card-foot"><a href="/jobs/new?source=boox&amp;notebook={{$d.ID}}">Choose pages…</a><a href="/jobs?source=boox">Jobs</a></div></section>{{end}}
+{{if or $d.Recordings $d.MinutesState}}<section class="card"><h2>Minutes {{template "help" "boox.minutes"}}</h2>{{if $d.MinutesTopic}}<p><strong>{{$d.MinutesTopic}}</strong></p>{{end}}{{if eq $d.MinutesState "queued" "processing"}}<p><span class="badge partial">In progress</span></p>{{else if eq $d.MinutesState "failed" "cancelled"}}<p><span class="badge bad">{{if eq $d.MinutesState "failed"}}Failed{{else}}Cancelled{{end}}</span></p>{{else if not $d.MinutesState}}<p class="muted">{{$d.Recordings}} recording{{if ne $d.Recordings 1}}s{{end}} in this notebook.</p>{{end}}<p>{{if $d.MinutesState}}<a class="button secondary" href="/boox/minutes?id={{$d.ID}}">Open minutes</a>{{else}}<a class="button secondary" href="/boox/minutes/new?id={{$d.ID}}">Summarize this note…</a>{{end}}</p></section>{{end}}
 <details class="more"><summary>Source and history</summary>{{if not $d.Deleted}}<p><a href="/boox/audio?document={{$d.ID}}">Recover audio…</a></p>{{end}}<p class="small muted">Shared by every device on this BOOX account; the server can't tell which device wrote a page.</p><p><a href="/api/v1/boox/admin/history?documentId={{$d.ID}}">Observed native versions</a> {{template "help" "boox.history"}}</p></details>
 </aside></div>{{end}}`))
 
@@ -346,6 +349,11 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(booxpage.PageIDs(n.Meta.RichTextPageNameList)) > 0 {
 		d.Warnings = append(d.Warnings, "This notebook also has rich-text pages; their layout is not rendered yet.")
+	}
+	d.Recordings = len(audioKeys(n))
+	if err := s.DB.QueryRowContext(r.Context(), `SELECT state,topic FROM alexandria_note_minutes WHERE source='boox' AND notebook_id=$1`, d.ID).Scan(&d.MinutesState, &d.MinutesTopic); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		failure(w, err)
+		return
 	}
 	if d.Page != "" {
 		err := s.DB.QueryRowContext(r.Context(), `SELECT state,detail,text FROM boox_page_index WHERE notebook_id=$1 AND page_id=$2`, d.ID, d.Page).Scan(&d.RecognitionState, &d.RecognitionDetail, &d.RecognizedText)

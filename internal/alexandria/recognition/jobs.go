@@ -156,6 +156,24 @@ func (s Store) Queue(ctx context.Context, source string, n Notebook, from, to in
 	return batch, count, tx.Commit()
 }
 
+// QueuePagesTx schedules selected pages into one batch inside the caller's
+// transaction (minutes requests recognize missing pages with their recordings).
+// Pages already queued or running are left to their existing jobs.
+func QueuePagesTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, numbers []int, request string) (int, error) {
+	total := 0
+	for _, num := range numbers {
+		if num < 1 || num > len(n.Pages) {
+			return 0, errors.New("Invalid page selection")
+		}
+		_, count, e := queueTx(ctx, tx, source, n, num, num, false, request, true)
+		if e != nil && !errors.Is(e, ErrAlreadyActive) {
+			return 0, e
+		}
+		total += count
+	}
+	return total, nil
+}
+
 func queueTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, from, to int, force bool, request string, appendBatch bool) (string, int, error) {
 	if _, e := uuid.Parse(request); e != nil {
 		return "", 0, errors.New("Invalid request token")

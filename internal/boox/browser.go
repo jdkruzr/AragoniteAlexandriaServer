@@ -40,7 +40,7 @@ var devicesTemplate = template.Must(template.New("devices").Parse(`{{define "con
 
 func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *template.Template, title string, data any) {
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}}.RenderContent(w, r, content, title, "boox", data)
 }
 
@@ -64,6 +64,25 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			return
 		case "/boox/activity":
 			s.browse(w, r)
+			return
+		case "/boox/minutes":
+			s.minutesPage(w, r)
+			return
+		case "/boox/minutes/new":
+			s.minutesRequestPage(w, r)
+			return
+		case "/boox/minutes/audio":
+			s.minutesAudio(w, r)
+			return
+		}
+	}
+	if r.Method == "POST" {
+		switch r.URL.Path {
+		case "/boox/minutes/new":
+			s.minutesRequestHTTP(w, r)
+			return
+		case "/boox/minutes/control":
+			s.minutesControlHTTP(w, r)
 			return
 		}
 	}

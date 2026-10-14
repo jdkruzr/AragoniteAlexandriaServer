@@ -214,6 +214,8 @@ func (s Searcher) SearchScoped(ctx context.Context, query string, limit int, hyb
 			h.URL = "/files/forestnote?notebook=" + url.QueryEscape(h.NotebookID) + "&page=" + url.QueryEscape(h.PageID) + "#page-" + url.PathEscape(h.PageID)
 		} else if h.Kind == "Reading" {
 			h.URL = "/boox/reading?record=" + url.QueryEscape(h.NotebookID)
+		} else if h.Kind == "Minutes" {
+			h.URL = "/boox/minutes?id=" + url.QueryEscape(h.NotebookID)
 		} else {
 			h.URL = "/boox/notebook?id=" + url.QueryEscape(h.NotebookID) + "&page=" + strconv.Itoa(h.PageNumber) + "&page_id=" + url.QueryEscape(h.PageID)
 		}

@@ -3,6 +3,7 @@ package providers
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed"
@@ -13,7 +14,9 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"math"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -49,13 +52,55 @@ func (v Snapshot) TestConnection(ctx context.Context, kind string) error {
 		if e != nil || len(v) == 0 {
 			return errors.New("Embedding test failed. Check the Ollama endpoint and model.")
 		}
+	case "transcription":
+		if v.Config.Transcription.URL == "" || v.Config.Transcription.Model == "" {
+			return errors.New("Enter the transcription endpoint and model first.")
+		}
+		// One second of a synthetic tone; any successful response passes.
+		if _, e := v.SpeechClient().Transcribe(ctx, "alexandria-test.wav", testTone()); e != nil {
+			return providerError("Transcription", e)
+		}
+	case "summary":
+		if v.Config.Summary.URL == "" || v.Config.Summary.Model == "" {
+			return errors.New("Enter the summary endpoint and model first.")
+		}
+		text, e := v.SummaryClient().Complete(ctx, "You are a connection test.", "Reply with the single word OK.", 64)
+		if e != nil {
+			return providerError("Summary model", e)
+		}
+		if strings.TrimSpace(text) == "" {
+			return errors.New("Summary model responded, but returned no text. Check the model and API format.")
+		}
 	default:
 		return errors.New("Unknown connection test.")
 	}
 	return nil
 }
 
-func recognitionError(err error) error {
+func recognitionError(err error) error { return providerError("Recognition", err) }
+
+// testTone is a 16 kHz mono 16-bit WAV of one second at 440 Hz.
+func testTone() []byte {
+	const rate, n = 16000, 16000
+	var b bytes.Buffer
+	b.WriteString("RIFF")
+	binary.Write(&b, binary.LittleEndian, uint32(36+n*2))
+	b.WriteString("WAVEfmt ")
+	binary.Write(&b, binary.LittleEndian, struct {
+		Size                 uint32
+		Format, Channels     uint16
+		Rate, ByteRate       uint32
+		Align, BitsPerSample uint16
+	}{16, 1, 1, rate, rate * 2, 2, 16})
+	b.WriteString("data")
+	binary.Write(&b, binary.LittleEndian, uint32(n*2))
+	for i := 0; i < n; i++ {
+		binary.Write(&b, binary.LittleEndian, int16(8000*math.Sin(2*math.Pi*440*float64(i)/rate)))
+	}
+	return b.Bytes()
+}
+
+func providerError(label string, err error) error {
 	var status *ocr.HTTPError
 	if errors.As(err, &status) {
 		if status.WorkspaceRequired {
@@ -74,19 +119,22 @@ func recognitionError(err error) error {
 		case 301, 302, 303, 307, 308:
 			hint = "The endpoint redirects requests. Enter its final base URL; credentials are not forwarded through redirects."
 		}
-		return fmt.Errorf("Recognition test failed (HTTP %d). %s", status.Status, hint)
+		return fmt.Errorf("%s test failed (HTTP %d). %s", label, status.Status, hint)
 	}
 	var network net.Error
 	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &network) && network.Timeout()) {
-		return errors.New("Recognition test timed out after 30 seconds. The endpoint may be slow or unreachable.")
+		return fmt.Errorf("%s test timed out after 30 seconds. The endpoint may be slow or unreachable.", label)
 	}
 	var dns *net.DNSError
 	if errors.As(err, &dns) {
-		return errors.New("Recognition server hostname could not be resolved. Check the endpoint URL and server DNS.")
+		return fmt.Errorf("%s server hostname could not be resolved. Check the endpoint URL and server DNS.", label)
 	}
 	var op *net.OpError
 	if errors.As(err, &op) {
-		return errors.New("Could not connect to the recognition endpoint. Check its address, port and network access from Alexandria.")
+		return fmt.Errorf("Could not connect to the %s endpoint. Check its address, port and network access from Alexandria.", strings.ToLower(label))
+	}
+	if label != "Recognition" {
+		return fmt.Errorf("%s test failed. Check TLS, the model name and the selected API format.", label)
 	}
 	return errors.New("Recognition test failed. Check TLS, model image support and the selected API format.")
 }

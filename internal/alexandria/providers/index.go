@@ -70,7 +70,7 @@ func (s Store) buildIndex(ctx context.Context, revision int64, enable bool) erro
 	if _, e = tx.ExecContext(ctx, `INSERT INTO alexandria_embedding_generation(id,endpoint,model,state) VALUES($1,$2,$3,'building')`, id, c.Embedding.URL, c.Embedding.Model); e != nil {
 		return e
 	}
-	if _, e = tx.ExecContext(ctx, `INSERT INTO alexandria_embedding_work(generation,note_key,page) SELECT $1,note_key,page FROM alexandria_note_content WHERE source IN ('forestnote','boox-page','boox-reading')`, id); e != nil {
+	if _, e = tx.ExecContext(ctx, `INSERT INTO alexandria_embedding_work(generation,note_key,page) SELECT $1,note_key,page FROM alexandria_note_content WHERE source IN ('forestnote','boox-page','boox-reading','boox-minutes')`, id); e != nil {
 		return e
 	}
 	if e = activate(ctx, tx, id); e != nil {

@@ -30,6 +30,35 @@
 <div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save</button><button name="action" value="test_ocr" class="secondary">Test without saving</button>{{template "help" "recognition.tests"}}</div>
 </form>
 </section>
+<section class="card" id="minutes">
+<h2>Note minutes {{template "help" "minutes.providers"}}</h2>
+<p>Transcribe a BOOX note's recordings and summarize them together with its handwriting. Nothing is sent until you summarize a note and confirm.</p>
+<form method="post" action="/settings/minutes" class="stack">
+<input type="hidden" name="revision" value="{{$p.Revision}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Transcription</legend>
+<label><input type="checkbox" name="t_enabled" {{if $p.Config.Transcription.Enabled}}checked{{end}}> Enable transcription</label>
+<div class="field"><span><label for="t-url">Base URL</label> {{template "help" "minutes.transcription"}}</span><input id="t-url" type="url" name="t_url" value="{{$p.Config.Transcription.URL}}" maxlength="2048" placeholder="http://whisper.local:8090"></div>
+<label>Model <input name="t_model" value="{{$p.Config.Transcription.Model}}" maxlength="256" placeholder="whisper-large-v3-turbo"></label>
+<label>Language <input name="t_language" value="{{$p.Config.Transcription.Language}}" maxlength="8" placeholder="Detect automatically"></label>
+<label>API key <input type="password" name="t_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasTranscriptionKey}}Saved — leave blank to keep{{else}}Optional for local servers{{end}}"></label>
+<label>Key action <select name="t_key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
+</fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Summary model</legend>
+<label><input type="checkbox" name="s_enabled" {{if $p.Config.Summary.Enabled}}checked{{end}}> Enable summaries</label>
+<label>API format <select name="s_format"><option value="openai" {{if eq $p.Config.Summary.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option><option value="anthropic" {{if eq $p.Config.Summary.Format "anthropic"}}selected{{end}}>Anthropic Messages</option></select></label>
+<div class="field"><span><label for="s-url">Base URL</label> {{template "help" "minutes.summary"}}</span><input id="s-url" type="url" name="s_url" value="{{$p.Config.Summary.URL}}" maxlength="2048" placeholder="http://llm.local:8080"></div>
+<label>Model <input name="s_model" value="{{$p.Config.Summary.Model}}" maxlength="256"></label>
+<label>API key <input type="password" name="s_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasSummaryKey}}Saved — leave blank to keep{{else}}Never displayed after saving{{end}}"></label>
+<label>Key action <select name="s_key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
+<details class="more"><summary>More options</summary><div class="stack">
+<label>Anthropic workspace ID (optional) <input name="s_workspace" value="{{$p.Config.Summary.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></label>
+<label><input type="checkbox" name="s_vllm" {{if $p.Config.Summary.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
+</div></details>
+</fieldset>
+<p class="hint">{{if $p.HasTranscriptionKey}}A transcription key is saved.{{else}}No transcription key is saved.{{end}} {{if $p.HasSummaryKey}}A summary key is saved.{{else}}No summary key is saved.{{end}}</p>
+<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save</button><button name="action" value="test_transcription" class="secondary">Test transcription</button><button name="action" value="test_summary" class="secondary">Test summary</button></div>
+</form>
+</section>
 <section class="card">
 <h2>Reprocess recognized pages {{template "help" "recognition.reprocess"}}</h2>
 <p>Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages.</p>
