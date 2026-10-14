@@ -98,6 +98,12 @@ func drawBackground(dc *gg.Context, p *Page, load Load) error {
 	if e != nil {
 		return fmt.Errorf("Page template is unavailable; the background may be missing.")
 	}
+	// Some notebooks carry template files that are all zeros on the device
+	// itself. A template is only ruling, so draw the page without it.
+	if len(bytes.Trim(raw, "\x00")) == 0 {
+		p.Notices = append(p.Notices, "The page template is empty on the device; the page is drawn without its background.")
+		return nil
+	}
 	return drawTemplate(dc, raw, load)
 }
 
