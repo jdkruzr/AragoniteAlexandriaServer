@@ -252,6 +252,20 @@ their own outcomes; retry moves the replacement attempt into the same batch.
 Filtering to failed or blocked offers **Retry these N jobs**, which retries the
 whole filtered list (not only the 50 shown) and refuses if the count changed.
 
+**Skipping** keeps pages out of recognition until the owner un-skips them
+(migration 0027). A page can be skipped from its job row (queued, paused,
+failed, blocked or cancelled) or with **Skip them** next to the bulk retry; it
+is un-skipped from the row under the *skipped* filter. A notebook is skipped
+from its **Choose pages…** screen: its unrecognized pages are skipped,
+recognized pages keep their text, and triggers skip pages that are added or
+changed later (BOOX invalidation, Client sync inserts and edits). Library runs
+list a skipped notebook as excluded, and queueing it is refused. Neither a
+change on the device, a library run, **Retry**, Client *reprocess* nor a
+page's **Recognize this page** button undoes a skip. Letting a notebook back
+in turns the pages its skip covered into *cancelled* (recognize them on
+request); pages skipped one by one stay skipped. Skipped pages count as
+finished in job and run progress.
+
 **Pause library batch**, **Resume library batch**, **Retry failed and blocked
 pages**, and **Cancel unfinished** apply across its dispatched notebooks. Pause
 and cancellation also fence undispatched work and in-flight catalog completion.
