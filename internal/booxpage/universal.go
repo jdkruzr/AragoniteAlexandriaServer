@@ -15,7 +15,7 @@ type feature struct {
 		Features    []feature
 	}
 	Properties struct {
-		WaveAttr   struct{ WavyLength, WavyPeak, WavyOffset float64 }
+		WaveAttr   struct{ WavyLength, WavyPeak float64 }
 		SubType    string
 		StrokeAttr struct {
 			Color       int32
@@ -197,25 +197,17 @@ func parseFeatures(features []feature, depth int, budget *int) ([]featurePath, e
 			}
 		case "WaveLine":
 			wave := p.WaveAttr
-			if len(pts) < 2 || !finite(wave.WavyLength) || !finite(wave.WavyPeak) || !finite(wave.WavyOffset) || wave.WavyLength < 1 || math.Abs(wave.WavyPeak) > 10000 || math.Abs(wave.WavyOffset) > 10000 {
+			if len(pts) < 2 || !finite(wave.WavyLength) || !finite(wave.WavyPeak) || wave.WavyLength < 0 || math.Abs(wave.WavyPeak) > 10000 {
 				return nil, fmt.Errorf("Invalid wave geometry.")
 			}
-			a, b := pts[0], pts[len(pts)-1]
-			dx, dy := b[0]-a[0], b[1]-a[1]
-			length := math.Hypot(dx, dy)
-			if length == 0 {
+			wavy, e := wavePoints(pts[0], pts[len(pts)-1], wave.WavyLength, wave.WavyPeak, path.Width)
+			if e != nil {
+				return nil, e
+			}
+			if len(wavy) == 0 {
 				continue
 			}
-			steps := max(2, int(math.Ceil(length/wave.WavyLength))*180)
-			if steps > 10000 {
-				return nil, fmt.Errorf("Wave exceeds preview limits.")
-			}
-			ux, uy := dx/length, dy/length
-			for i := 0; i <= steps; i++ {
-				d := length * float64(i) / float64(steps)
-				h := math.Sin(2*math.Pi*d/wave.WavyLength+wave.WavyOffset) * wave.WavyPeak
-				path.Points = append(path.Points, []float64{a[0] + d*ux - h*uy, a[1] + d*uy + h*ux})
-			}
+			path.Points = wavy
 		case "Curve":
 			if len(pts) != 3 {
 				return nil, fmt.Errorf("Invalid curve controls.")
@@ -288,4 +280,59 @@ func renderUniversal(dc *gg.Context, s *Shape) {
 		}
 		dc.Pop()
 	}
+}
+
+// wavePoints follows the firmware's WaveLine.loadRenderPath: periods of
+// wavelength wavyLength+2w made of two quadratic curves with control height
+// wavyPeak+w/2, cut to the line's length measured along the curve, then
+// turned to the line's angle about its start. The firmware ignores wavyOffset.
+func wavePoints(a, b []float64, wavyLength, wavyPeak, width float64) ([][]float64, error) {
+	dist := math.Hypot(b[0]-a[0], b[1]-a[1])
+	period := wavyLength + 2*width
+	peak := wavyPeak + width/2
+	if dist == 0 || period <= 0 {
+		return nil, nil
+	}
+	n := int(math.Ceil(dist / period))
+	const per = 16 // flattening steps per quadratic curve
+	if n > 1000 {
+		return nil, fmt.Errorf("Wave exceeds preview limits.")
+	}
+	pts := [][]float64{{0, 0}}
+	x := 0.
+	for i := 0; i < n; i++ {
+		for _, h := range []float64{peak, -peak} {
+			for k := 1; k <= per; k++ {
+				t := float64(k) / per
+				// Quadratic from (x,0) via (x+period/4,h) to (x+period/2,0).
+				pts = append(pts, []float64{x + period/2*t, 2 * (1 - t) * t * h})
+			}
+			x += period / 2
+		}
+	}
+	total := 0.
+	for i := 1; i < len(pts); i++ {
+		total += math.Hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1])
+	}
+	keep := total * dist / (float64(n) * period)
+	out := [][]float64{pts[0]}
+	run := 0.
+	for i := 1; i < len(pts); i++ {
+		seg := math.Hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1])
+		if run+seg >= keep {
+			t := 0.
+			if seg > 0 {
+				t = (keep - run) / seg
+			}
+			out = append(out, []float64{pts[i-1][0] + (pts[i][0]-pts[i-1][0])*t, pts[i-1][1] + (pts[i][1]-pts[i-1][1])*t})
+			break
+		}
+		run += seg
+		out = append(out, pts[i])
+	}
+	c, s := (b[0]-a[0])/dist, (b[1]-a[1])/dist
+	for _, p := range out {
+		p[0], p[1] = a[0]+p[0]*c-p[1]*s, a[1]+p[0]*s+p[1]*c
+	}
+	return out, nil
 }

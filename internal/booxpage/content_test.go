@@ -6,6 +6,7 @@ import (
 	"github.com/fogleman/gg"
 	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
 	"image"
+	"math"
 	"strings"
 	"testing"
 )
@@ -48,6 +49,42 @@ func TestOvalRadiusDrawsAsAPlainOval(t *testing.T) {
 	}
 	if !bytes.Equal(draw(oval(1)), draw(oval(0))) {
 		t.Fatal("radius changed the oval")
+	}
+}
+func TestWaveFollowsFirmwareConstruction(t *testing.T) {
+	// Width 2: period 16+4=20, control height 10+1=11, so the curve peaks
+	// at 5.5. 100 units is exactly five periods and ends on the end point.
+	pts, e := wavePoints([]float64{0, 0}, []float64{100, 0}, 16, 10, 2)
+	if e != nil || len(pts) < 2 {
+		t.Fatal(e, len(pts))
+	}
+	hi, lo := 0., 0.
+	for _, p := range pts {
+		hi, lo = max(hi, p[1]), min(lo, p[1])
+	}
+	end := pts[len(pts)-1]
+	if math.Abs(hi-5.5) > 0.05 || math.Abs(lo+5.5) > 0.05 || math.Abs(end[0]-100) > 0.01 || math.Abs(end[1]) > 0.01 || pts[8][1] <= 0 {
+		t.Fatal(hi, lo, end, pts[8])
+	}
+	// A vertical line turns the wave about its start.
+	pts, _ = wavePoints([]float64{10, 10}, []float64{10, 110}, 16, 10, 2)
+	if end = pts[len(pts)-1]; math.Abs(end[0]-10) > 0.01 || math.Abs(end[1]-110) > 0.01 {
+		t.Fatal(end)
+	}
+	// Seen on device: a 0.43-unit line with wavyLength 0.22 and a 157-unit
+	// peak. The firmware cuts its one period to the line's share of the
+	// curve, so only a short stub is drawn, never the full 160-unit swing.
+	pts, e = wavePoints([]float64{0, 0}, []float64{0.41192627, 0.13441467}, 0.21665096, 156.68134, 11.163106)
+	if e != nil || len(pts) < 2 {
+		t.Fatal(e, pts)
+	}
+	for _, p := range pts {
+		if math.Hypot(p[0], p[1]) > 10 {
+			t.Fatal("stub overshoots", p)
+		}
+	}
+	if _, e = wavePoints([]float64{0, 0}, []float64{1e6, 0}, 0, 1, 0.1); e == nil {
+		t.Fatal("unbounded wave accepted")
 	}
 }
 func TestTextExtractionAndPositioning(t *testing.T) {
