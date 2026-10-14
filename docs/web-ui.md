@@ -44,6 +44,12 @@ templates in `internal/boox/*.go`, grafted into the same layout by
   a tip.
 - Avoid internal vocabulary in the UI: say "version", not "revision" or
   "projection"; never "Couchbase". Keep exact identifiers in Diagnostics.
+- Capitalize feature names: Audio Note Minutes, Talk Insights.
+- **Strings for translation (2026-10-13):** there is no i18n layer yet, and
+  UltraBridge didn't have one either. To keep a later extraction bounded, new
+  user-facing text goes in templates or `help.go`, not in Go handler code. A
+  redirect notice is a short key, or a constant next to its template. Format
+  dates and durations through the layout functions (`utc`, `clock`), not ad hoc.
 - Button hierarchy: one primary action per area (default `button`), then
   `.secondary`, `.quiet` for minor actions, `.destructive` for deletion.
 
