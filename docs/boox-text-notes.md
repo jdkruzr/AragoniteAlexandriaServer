@@ -1,8 +1,8 @@
 # Server-created BOOX text notes
 
 2026-10-13. The server can create a **new** native text notebook
-(`internal/boox/text_note.go`). It never edits an existing notebook. Audio Note
-Minutes will use this path to publish `<title>_Minutes` beside the source note.
+(`internal/boox/text_note.go`). It never edits an existing notebook; resending minutes may retire its own earlier, untouched copy. Audio Note
+Minutes uses this path for **Send to BOOX** ([details](note-minutes.md#send-to-boox)).
 The owner-only test form is `/boox/text-notes/new`, linked from BOOX settings.
 
 **Device status (2026-10-13):** qualified on Lumi (Go 10.3) and Palma 2 Pro

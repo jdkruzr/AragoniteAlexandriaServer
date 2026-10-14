@@ -81,7 +81,7 @@
 <dt>Pages without text</dt><dd>You can include unrecognized pages; they're sent to your recognition provider first (charges may apply) and the minutes wait for them. Otherwise they're left out and listed.</dd>
 <dt>Providers</dt><dd>Set up in <a href="/settings/recognition">Settings → Recognition</a> under Audio Note Minutes. Transcription uses any OpenAI-compatible speech-to-text server, including a self-hosted Whisper. The summary model can be a local OpenAI-compatible server or an Anthropic model.</dd>
 <dt>Keeping up to date</dt><dd>Minutes are marked out of date when a recording or recognized page changes. Updating is always your choice; unchanged recordings aren't transcribed again.</dd>
-<dt>Where results go</dt><dd>They stay on this server, appear in search and are available to MCP clients through <code>get_note_minutes</code>. They are never written to your BOOX notebooks.</dd>
+<dt>Where results go</dt><dd>They stay on this server, appear in search and are available to MCP clients through <code>get_note_minutes</code>. Nothing is written to your BOOX until you choose <strong>Send to BOOX</strong>, which creates a separate text note named <em>title</em><code>_Minutes</code> in the same folder. Your original notebook is never changed. Sending again replaces that note if it's untouched; if you've edited it, a new one is added instead.</dd>
 </dl>
 </section>
 
