@@ -261,3 +261,18 @@ func TestMeetingNotebookPagesAreNotBlocked(t *testing.T) {
 		t.Fatal(e, w, p.Notices)
 	}
 }
+
+func TestZeroFilledShapeArchiveIsSkippedWithNotice(t *testing.T) {
+	box := &pb.ShapeInfoProto{UniqueId: "box", ShapeType: 1, Color: -16777216, Thickness: 2, BoundingRect: `{"left":10,"top":10,"right":40,"bottom":40}`, CreatedAt: 1}
+	good := shapeZip(t, box)
+	blobs := map[string][]byte{"shape/page#a.zip": good, "shape/page#b.zip": make([]byte, 4875), "shape/page#c.zip": make([]byte, 1962)}
+	load := func(k string) ([]byte, error) { return blobs[k], nil }
+	p, w, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip", "shape/page#b.zip", "shape/page#c.zip"}, load)
+	if e != nil || len(w) != 0 || len(p.Shapes) != 1 || len(p.Notices) != 1 || !strings.HasPrefix(p.Notices[0], "2 pen sessions") {
+		t.Fatal(e, w, p.Notices)
+	}
+	blobs["shape/page#b.zip"] = []byte("\x00\x01not a zip")
+	if _, _, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip", "shape/page#b.zip"}, load); e == nil {
+		t.Fatal("garbage archive accepted")
+	}
+}

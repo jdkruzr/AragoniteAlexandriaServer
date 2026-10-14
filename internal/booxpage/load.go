@@ -109,6 +109,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 	sort.Strings(keys)
 	count := 0
 	decodedBytes := 0
+	emptySessions := 0
 	for _, key := range keys {
 		if !strings.HasPrefix(key, "shape/"+id+"#") || !strings.HasSuffix(key, ".zip") {
 			continue
@@ -116,6 +117,12 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		raw, err := load(key)
 		if err != nil {
 			return nil, nil, fmt.Errorf("shape archive unavailable or failed verification")
+		}
+		// The firmware sometimes leaves a pen session's archive all zeros on
+		// the device; the rest of the page is still good.
+		if len(raw) > 0 && len(bytes.Trim(raw, "\x00")) == 0 {
+			emptySessions++
+			continue
 		}
 		z, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
 		if err != nil {
@@ -161,6 +168,11 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				}
 			}
 		}
+	}
+	if emptySessions == 1 {
+		p.Notices = append(p.Notices, "1 pen session on this page is empty on the device; its ink is missing here.")
+	} else if emptySessions > 1 {
+		p.Notices = append(p.Notices, fmt.Sprintf("%d pen sessions on this page are empty on the device; their ink is missing here.", emptySessions))
 	}
 	layerOrder := map[int32]int{}
 	hidden := map[int32]bool{}
