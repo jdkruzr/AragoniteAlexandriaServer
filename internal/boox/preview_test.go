@@ -77,6 +77,7 @@ func TestBOOXViewsRender(t *testing.T) {
 		{"boox-minutes-failed", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Has: true, Stored: failed, Recordings: 2}},
 		{"boox-minutes-empty", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Recordings: 1}},
 		{"boox-minutes-new", "/boox/minutes/new", "Summarize", minutesRequestTemplate, minutesRequestView{ID: "b", Title: "Synthetic meeting", Version: "v", Request: "r", Transcriber: "whisper-large-v3-turbo", Summarizer: "synthetic-llm", Enabled: true, RecognitionEnabled: true, Recordings: []minutes.Source{recs[0].Source, {Key: "resource/data/c.mp3", Title: "c", Bytes: 2048}}, Pages: 4, WithText: 1, Missing: 2, InProgress: 1}},
+		{"boox-text-note", "/boox/text-notes/new", "Create a test text note", textNoteTemplate, textNoteView{Request: "r", Title: "Synthetic_Minutes", ID: "op", State: "published", Folders: []struct{ ID, Title string }{{"f1", "Work"}, {"f2", "Personal"}}}},
 		{"boox-minutes-new-off", "/boox/minutes/new", "Summarize", minutesRequestTemplate, minutesRequestView{ID: "b", Title: "Synthetic meeting"}},
 	}
 	dir := os.Getenv("ALEXANDRIA_UI_PREVIEW_DIR")
