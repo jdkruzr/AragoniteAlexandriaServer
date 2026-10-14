@@ -21,9 +21,9 @@ templates in `internal/boox/*.go`, grafted into the same layout by
   shows all pages.
   Diagnostics (`/boox/activity`) is linked from BOOX Settings rather than tabbed.
 - **BOOX minutes** (`/boox/minutes?id=`, review at `/boox/minutes/new`, audio at
-  `/boox/minutes/audio`) open from a Minutes card in the notebook reader's side
+  `/boox/minutes/audio`) open from the Audio Note Minutes card in the notebook reader's side
   panel. BOOX pages allow `media-src 'self'` for the recording player. See
-  [note minutes](note-minutes.md).
+  [Audio Note Minutes](note-minutes.md).
 - **Settings tabs:** Account (`/settings`), Search (`/settings/search`),
   Recognition (`/settings/recognition`), Tasks & integrations
   (`/settings/integrations`). All four require an account (Basic) login, like the

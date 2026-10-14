@@ -95,7 +95,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			switch f("action") {
 			case "save":
 				if e = d.Providers.Save(r.Context(), candidate); e == nil {
-					back(w, r, "/settings/recognition", "Note minutes settings saved. Nothing was transcribed or summarized.")
+					back(w, r, "/settings/recognition", "Audio Note Minutes settings saved. Nothing was transcribed or summarized.")
 					return
 				}
 			case "test_transcription":

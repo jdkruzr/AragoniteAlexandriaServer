@@ -1,4 +1,4 @@
-# Note minutes
+# Audio Note Minutes
 
 2026-10-13. On request, Alexandria transcribes a BOOX note's recordings and
 writes minutes from the transcripts **together with the note's recognized
