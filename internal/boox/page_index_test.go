@@ -383,6 +383,45 @@ func TestRetryLimitKeepsTheLastProblem(t *testing.T) {
 	}
 }
 
+func TestPreviewErrorsBlockUnlessFilesAreMissing(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	// Malformed data won't change by waiting: block at once, with the reason.
+	putNoteBlob(t, s, "shape/page#bad#3.zip", []byte("\x01not an archive"))
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	ocr := &testOCR{}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state, detail string
+	var attempts int
+	s.DB.QueryRowContext(ctx, `SELECT state,detail,attempts FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &detail, &attempts)
+	if state != "blocked" || detail != "Not sent for recognition because the page can't be previewed: invalid shape archive" || attempts != 0 || ocr.calls != 0 {
+		t.Fatal(state, detail, attempts, ocr.calls)
+	}
+	// A stroke whose point file hasn't arrived may yet: keep retrying.
+	stroke := &pb.ShapeInfoProto{UniqueId: "00000000-0000-0000-0000-00000000000a", ShapeType: 2, Color: -16777216, Thickness: 2, RevisionId: "later", CreatedAt: 5}
+	b, _ := proto.Marshal(&pb.ShapeInfoProtoList{Proto: []*pb.ShapeInfoProto{stroke}})
+	var z bytes.Buffer
+	w := zip.NewWriter(&z)
+	f, _ := w.Create("shapes")
+	f.Write(b)
+	w.Close()
+	putNoteBlob(t, s, "shape/page#bad#3.zip", z.Bytes())
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	s.DB.QueryRowContext(ctx, `SELECT state,detail,attempts FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &detail, &attempts)
+	if state != "queued" || !strings.Contains(detail, "stroke points have not arrived") || attempts != 1 || ocr.calls != 0 {
+		t.Fatal(state, detail, attempts, ocr.calls)
+	}
+}
+
 func TestBlockedDetailNamesWarnings(t *testing.T) {
 	d := blockedDetail([]string{"Native shape type 77 is not rendered yet.", "Native shape type 77 is not rendered yet.", "A shape references an unknown layer."})
 	if d != "Not sent for recognition because the preview is incomplete: Native shape type 77 is not rendered yet. A shape references an unknown layer." {

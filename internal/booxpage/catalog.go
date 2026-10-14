@@ -21,7 +21,7 @@ func ResolvePages(meta Metadata, keys []string, load Load) (Metadata, error) {
 		}
 		b, e := load(key)
 		if e != nil {
-			return meta, fmt.Errorf("Page index resources are unavailable.")
+			return meta, unavailable("Page index resources are unavailable.")
 		}
 		var list pb.VirtualPageList
 		if proto.Unmarshal(b, &list) != nil {
@@ -91,7 +91,7 @@ func ResolvePages(meta Metadata, keys []string, load Load) (Metadata, error) {
 		}
 		b, e := load(key)
 		if e != nil {
-			return meta, fmt.Errorf("Page layer metadata is unavailable.")
+			return meta, unavailable("Page layer metadata is unavailable.")
 		}
 		var list pb.NotePageModelList
 		if proto.Unmarshal(b, &list) != nil {

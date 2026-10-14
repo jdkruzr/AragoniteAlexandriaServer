@@ -37,7 +37,7 @@ func backgroundFor(meta Metadata, id string, keys []string, load Load) (*Backgro
 		}
 		raw, e := load(key)
 		if e != nil {
-			return nil, fmt.Errorf("virtual page metadata unavailable")
+			return nil, unavailable("virtual page metadata unavailable")
 		}
 		var list pb.VirtualPageList
 		if proto.Unmarshal(raw, &list) != nil {

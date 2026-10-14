@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
@@ -113,7 +114,12 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 	}
 	p, e := s.renderPreview(ctx, n, num)
 	if e != nil {
-		return deferFailure("Page resources cannot be rendered yet.")
+		// Missing files may still arrive; anything else is the page's own
+		// data, and any change to that re-queues the page, so block now.
+		if errors.Is(e, booxpage.ErrUnavailable) || ctx.Err() != nil {
+			return deferFailure("Page files aren't all readable yet: " + limitDetail(e.Error()))
+		}
+		return true, finish("blocked", "", "Not sent for recognition because the page can't be previewed: "+limitDetail(e.Error()), n.Version, oldHash, oldOCR, "")
 	}
 	// A text notebook's notice is about its typed page, not this one.
 	warnings := slices.DeleteFunc(slices.Clone(p.Warnings), func(w string) bool { return w == booxpage.RichTextNotebookWarning })
@@ -206,6 +212,18 @@ func (s Service) typedText(ctx context.Context, n notebookSnapshot) string {
 		}
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+// limitDetail bounds an error message for a job's detail.
+func limitDetail(s string) string {
+	if len(s) <= 300 {
+		return s
+	}
+	cut := 300
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut] + "…"
 }
 
 // blockedDetail names what the preview couldn't reproduce, so a blocked page

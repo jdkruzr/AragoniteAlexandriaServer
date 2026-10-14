@@ -116,7 +116,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		}
 		raw, err := load(key)
 		if err != nil {
-			return nil, nil, fmt.Errorf("shape archive unavailable or failed verification")
+			return nil, nil, unavailable("shape archive unavailable or failed verification")
 		}
 		// The firmware sometimes leaves a pen session's archive all zeros on
 		// the device; the rest of the page is still good.
@@ -292,7 +292,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				if !ok {
 					b, e := load(key)
 					if e != nil {
-						return nil, nil, fmt.Errorf("stroke points have not arrived or failed verification")
+						return nil, nil, unavailable("stroke points have not arrived or failed verification")
 					}
 					pt, e = parsePointFile(b)
 					if e != nil {
