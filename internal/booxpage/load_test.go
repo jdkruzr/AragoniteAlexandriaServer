@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"image/png"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -184,5 +185,29 @@ func TestLegacyWrappedMatrixRendersSameAsArray(t *testing.T) {
 	b := render(`{"empty":false,"values":[1,0,8,0,1,12,0,0,1]}`)
 	if !bytes.Equal(a, b) {
 		t.Fatal("firmware transform representation changed geometry")
+	}
+}
+
+func TestIssuesNameTheShapeWithoutContent(t *testing.T) {
+	ok := &pb.ShapeInfoProto{UniqueId: "audio", ShapeType: shapeAudio, BoundingRect: `{"left":10,"top":10,"right":60,"bottom":30}`, Resource: `{"relativePath":"/a.mp3"}`, CreatedAt: 1}
+	odd := &pb.ShapeInfoProto{UniqueId: "odd", ShapeType: 77, Text: "private words", BoundingRect: `{"left":0,"top":0,"right":40,"bottom":10}`, Extra: `{"mystery":{"depth":1},"plain":2}`, CreatedAt: 2}
+	assets := map[string][]byte{"shape/page#a.zip": shapeZip(t, ok, odd)}
+	load := func(k string) ([]byte, error) {
+		if b, found := assets[k]; found {
+			return b, nil
+		}
+		return nil, errors.New("missing")
+	}
+	p, w, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip"}, load)
+	if e != nil || len(w) != 1 || len(p.Issues) != 1 {
+		t.Fatal(p.Issues, w, e)
+	}
+	i := p.Issues[0]
+	if i.ShapeID != "odd" || i.ShapeType != 77 || i.Warning != w[0] || i.Summary.Width != 40 || i.Summary.TextRunes != 13 ||
+		strings.Join(i.Summary.ExtraKeys, ",") != "mystery,mystery.depth,plain" || strings.Join(i.Summary.Fields, ",") != "boundingRect,extra,text" {
+		t.Fatalf("%+v", i)
+	}
+	if b, _ := json.Marshal(p.Issues); bytes.Contains(b, []byte("private")) {
+		t.Fatal("issue leaked shape text")
 	}
 }

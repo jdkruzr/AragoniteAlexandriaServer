@@ -12,6 +12,26 @@ type Page struct {
 	Texts      []string
 	Audio      []AudioRef // recordings placed on this page
 	Shapes     []*Shape   // ordered by zorder
+	Issues     []Issue    // shapes that raised a coverage warning
+}
+
+// Issue names a shape the preview could not reproduce. Summary describes
+// its structure only: field and attribute names, never text or ink.
+type Issue struct {
+	ShapeID   string
+	ShapeType int32
+	Warning   string
+	Summary   ShapeSummary
+}
+
+type ShapeSummary struct {
+	CreatedAt, UpdatedAt                 int64
+	Width, Height                        float64
+	Fields                               []string // non-empty proto fields
+	ExtraKeys, ResourceKeys, OptionKeys  []string // top-level JSON keys
+	ConnectionKeys, CreateArgKeys        []string
+	ResourceExtension                    string
+	TextRunes, RichTextBytes, PointBytes int
 }
 
 // Shape represents a single shape (stroke, geometry, text, etc.) on a page.

@@ -72,6 +72,8 @@ func run(args []string, logger *slog.Logger) error {
 			}
 			native := boox.Config{PublicURL: cfg.PublicURL, GatewayPublicURL: cfg.BOOXGatewayPublicURL, GatewayAdminURL: cfg.BOOXGatewayAdminURL, GatewayUsername: cfg.BOOXGatewayUsername, GatewayPassword: cfg.BOOXGatewayPassword, Database: cfg.BOOXDatabase}
 			return native.Configure(ctx, id)
+		case "boox-coverage":
+			return runBOOXCoverage()
 		case "migrate":
 			return runMigrate(logger)
 		case "bootstrap-runtime":
@@ -463,4 +465,39 @@ func writeExclusive(path string, body []byte) error {
 		return fmt.Errorf("write manifest: %w", err)
 	}
 	return nil
+}
+
+// runBOOXCoverage prints, as JSON, why blocked BOOX pages couldn't be
+// previewed. Read-only; output names shape structure, never page content.
+func runBOOXCoverage() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	db, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	store, err := blob.NewS3(ctx, blob.S3Config{Endpoint: cfg.ObjectEndpoint, Region: cfg.ObjectRegion, Bucket: cfg.ObjectBucket, AccessKey: cfg.ObjectAccessKey, SecretKey: cfg.ObjectSecretKey, PathStyle: cfg.ObjectPathStyle})
+	if err != nil {
+		return err
+	}
+	var id string
+	if err = db.QueryRowContext(ctx, `SELECT library_id::text FROM alexandria_library_runtime WHERE singleton`).Scan(&id); err != nil {
+		return err
+	}
+	native := boox.Service{Config: boox.Config{Database: cfg.BOOXDatabase}, DB: db, Objects: store, LibraryID: id}
+	if err = native.ResolveIdentity(ctx); err != nil {
+		return err
+	}
+	report, err := native.BlockedCoverage(ctx)
+	if err != nil {
+		return err
+	}
+	out := json.NewEncoder(os.Stdout)
+	out.SetIndent("", "  ")
+	return out.Encode(report)
 }
