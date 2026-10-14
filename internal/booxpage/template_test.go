@@ -162,3 +162,15 @@ func TestPDFTemplateFoundWithNotebookTemplates(t *testing.T) {
 		t.Fatal("template PDF not drawn")
 	}
 }
+
+func TestZeroFilledTemplateIsSkippedWithNotice(t *testing.T) {
+	p := &Page{PageID: "page", Width: 50, Height: 50}
+	load := func(k string) ([]byte, error) { return make([]byte, 498), nil }
+	if e := drawBackground(gg.NewContext(50, 50), p, load); e != nil || len(p.Notices) != 1 {
+		t.Fatal(e, p.Notices)
+	}
+	garbage := func(k string) ([]byte, error) { return []byte("\x01\x02"), nil }
+	if e := drawBackground(gg.NewContext(50, 50), &Page{PageID: "page"}, garbage); e == nil {
+		t.Fatal("unreadable template accepted")
+	}
+}
