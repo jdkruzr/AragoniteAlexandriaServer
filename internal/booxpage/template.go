@@ -176,6 +176,25 @@ func drawLineSVG(dc *gg.Context, b []byte) error {
 				if len(lines) > 10000 {
 					return fmt.Errorf("Template exceeds preview limits.")
 				}
+			case "rect":
+				// Grid templates draw each cell as its own rectangle; outline
+				// it as four lines.
+				if attrs["class"] != "cls-1" || len(attrs) != 5 {
+					return fmt.Errorf("Template rectangle style is unsupported.")
+				}
+				r := []float64{}
+				for _, key := range []string{"x", "y", "width", "height"} {
+					v, e := strconv.ParseFloat(attrs[key], 64)
+					if e != nil || !finite(v) || v < 0 || v > 1e6 {
+						return fmt.Errorf("Template rectangle coordinate is unsupported.")
+					}
+					r = append(r, v)
+				}
+				x, y, x2, y2 := r[0], r[1], r[0]+r[2], r[1]+r[3]
+				lines = append(lines, line{x, y, x2, y}, line{x2, y, x2, y2}, line{x2, y2, x, y2}, line{x, y2, x, y})
+				if len(lines) > 10000 {
+					return fmt.Errorf("Template exceeds preview limits.")
+				}
 			default:
 				return fmt.Errorf("This SVG template is not supported yet.")
 			}
