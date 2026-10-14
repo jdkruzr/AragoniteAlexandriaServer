@@ -13,9 +13,9 @@ import (
 	"unicode/utf8"
 )
 
-// PromptVersion is part of every input hash: changing the prompt or the
-// response contract marks existing minutes as out of date.
-const PromptVersion = "minutes-v1"
+// PromptVersion and the system prompt are part of every input hash: changing
+// either marks existing minutes as out of date.
+const PromptVersion = "minutes-v2"
 
 // MaxPromptRunes bounds a request (~100k tokens); longer transcripts are cut.
 const MaxPromptRunes = 400_000
@@ -66,18 +66,36 @@ type Completer interface {
 	Complete(ctx context.Context, system, prompt string, maxTokens int) (string, error)
 }
 
-const system = `You write concise meeting minutes for the author of a handwritten notebook.
+// DefaultInstructions is the editable part of the system prompt. The owner
+// can replace it in Settings; ResponseFormat is always appended because
+// Parse depends on it.
+const DefaultInstructions = `You write concise meeting minutes for the author of a handwritten notebook.
 You receive two kinds of input:
 - RECORDINGS: speech-to-text transcripts of audio captured in the notebook (the discussion).
 - HANDWRITTEN NOTES: text recognized from the author's handwriting (what the author chose to write down).
 Combine both. Treat the notes as the author's emphasis and the recordings as the fuller record. When they disagree, prefer the recording for what was said and mention the notes' version only if it matters. Recognition and transcription contain errors; correct obvious misspellings of names and terms consistently. Never invent facts that appear in neither input.
-Respond with one JSON object and nothing else:
-{"topic": string, "keywords": [string], "key_points": [{"text": string, "from": "recording"|"notes"|"both"}], "conclusion": string}
-- topic: the overall subject in at most 12 words.
-- keywords: 4 to 6 short keywords or names that were discussed or noted.
-- key_points: 1 to 5 of the most important points, each one or two sentences, most important first; "from" says which input supports it.
-- conclusion: two to four sentences: the outcome, decisions, open questions or next steps.
+- The topic is the overall subject in at most 12 words.
+- Keywords are short keywords or names that were discussed or noted.
+- Each key point is one or two sentences, most important first.
+- The conclusion is two to four sentences: the outcome, decisions, open questions or next steps.
 Write in the main language of the inputs.`
+
+// ResponseFormat is the fixed contract that Parse enforces.
+const ResponseFormat = `Respond with one JSON object and nothing else:
+{"topic": string, "keywords": [string], "key_points": [{"text": string, "from": "recording"|"notes"|"both"}], "conclusion": string}
+Give 4 to 6 keywords and 1 to 5 key_points. "from" says which input supports each point.`
+
+// MaxInstructionRunes bounds custom instructions.
+const MaxInstructionRunes = 16000
+
+// System is the full system prompt for the given instructions; blank means
+// DefaultInstructions.
+func System(instructions string) string {
+	if strings.TrimSpace(instructions) == "" {
+		instructions = DefaultInstructions
+	}
+	return strings.TrimSpace(instructions) + "\n\n" + ResponseFormat
+}
 
 // Prompt formats the user message. Times are UTC; offsets inside a recording
 // are relative to its start.
@@ -243,8 +261,8 @@ func clean(s string, max int) string {
 
 // Summarize asks once, then once more with the format restated if the answer
 // doesn't fit the contract. The second answer is accepted leniently.
-func Summarize(ctx context.Context, c Completer, in Input) (Minutes, error) {
-	prompt := Prompt(in)
+func Summarize(ctx context.Context, c Completer, instructions string, in Input) (Minutes, error) {
+	system, prompt := System(instructions), Prompt(in)
 	raw, err := c.Complete(ctx, system, prompt, 2048)
 	if err != nil {
 		return Minutes{}, err

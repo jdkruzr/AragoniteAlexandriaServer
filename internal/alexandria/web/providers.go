@@ -77,7 +77,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			http.Error(w, "Provider settings are unavailable in this deployment.", 503)
 			return
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, 32768)
+		r.Body = http.MaxBytesReader(w, r.Body, 256<<10)
 		if r.ParseForm() != nil {
 			http.Error(w, "Invalid settings form.", 400)
 			return
@@ -89,7 +89,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		}
 		f := r.Form.Get
 		t := providers.TranscriptionConfig{Enabled: f("t_enabled") == "on", URL: f("t_url"), Model: f("t_model"), Language: f("t_language")}
-		m := providers.SummaryConfig{Enabled: f("s_enabled") == "on", URL: f("s_url"), Model: f("s_model"), Format: f("s_format"), AnthropicWorkspace: f("s_workspace"), VLLMDisableThinking: f("s_vllm") == "on", SendToBOOX: f("s_boox") == "on"}
+		m := providers.SummaryConfig{Enabled: f("s_enabled") == "on", URL: f("s_url"), Model: f("s_model"), Format: f("s_format"), AnthropicWorkspace: f("s_workspace"), VLLMDisableThinking: f("s_vllm") == "on", SendToBOOX: f("s_boox") == "on", Instructions: f("s_instructions")}
 		candidate, e := d.Providers.MinutesCandidate(r.Context(), rev, t, m, providers.KeyChange{Key: f("t_key"), Action: f("t_key_action")}, providers.KeyChange{Key: f("s_key"), Action: f("s_key_action")})
 		if e == nil {
 			switch f("action") {

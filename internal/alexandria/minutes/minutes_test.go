@@ -54,12 +54,11 @@ func TestPromptCombinesNotesAndRecordings(t *testing.T) {
 }
 
 type scripted struct {
-	answers []string
-	prompts []string
+	answers, systems, prompts []string
 }
 
-func (s *scripted) Complete(_ context.Context, _, prompt string, _ int) (string, error) {
-	s.prompts = append(s.prompts, prompt)
+func (s *scripted) Complete(_ context.Context, system, prompt string, _ int) (string, error) {
+	s.systems, s.prompts = append(s.systems, system), append(s.prompts, prompt)
 	a := s.answers[0]
 	s.answers = s.answers[1:]
 	return a, nil
@@ -67,12 +66,19 @@ func (s *scripted) Complete(_ context.Context, _, prompt string, _ int) (string,
 
 func TestSummarizeRepairsOnce(t *testing.T) {
 	c := &scripted{answers: []string{"Here are your minutes!", `{"topic":"T","keywords":["k"],"key_points":[{"text":"p","from":"notes"}],"conclusion":"c"}`}}
-	m, err := Summarize(context.Background(), c, Input{Title: "x"})
+	m, err := Summarize(context.Background(), c, "", Input{Title: "x"})
 	if err != nil || m.Topic != "T" || len(c.prompts) != 2 || !strings.Contains(c.prompts[1], "did not follow the required JSON format") {
 		t.Fatal(m, err, c.prompts)
 	}
+	if c.systems[0] != DefaultInstructions+"\n\n"+ResponseFormat {
+		t.Fatal("default system prompt", c.systems[0])
+	}
 	c = &scripted{answers: []string{"nope", "still nope"}}
-	if _, err = Summarize(context.Background(), c, Input{}); err != ErrFormat {
+	if _, err = Summarize(context.Background(), c, "  Be terse.\n", Input{}); err != ErrFormat {
 		t.Fatal("unusable answers accepted", err)
+	}
+	// Custom instructions replace the default; the format is always appended.
+	if c.systems[1] != "Be terse.\n\n"+ResponseFormat || strings.Contains(c.systems[1], "meeting minutes") {
+		t.Fatal("custom system prompt", c.systems[1])
 	}
 }

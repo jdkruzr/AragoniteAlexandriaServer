@@ -12,6 +12,7 @@ import (
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
@@ -619,6 +620,7 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 			}
 		}
 		data["Providers"], data["DefaultOCRPrompt"] = providerView, notes.DefaultPrompt
+		data["DefaultMinutesInstructions"], data["MinutesFormat"] = minutes.DefaultInstructions, minutes.ResponseFormat
 	}
 	name, title := "settings", "Account"
 	switch tab {

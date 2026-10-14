@@ -36,7 +36,7 @@ var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).P
 {{else}}
 {{if eq $m.State "queued" "processing"}}<div class="callout" role="status"><p><span class="badge partial">In progress</span> {{if $d.Progress}}{{$d.Progress}}{{else}}Waiting to start.{{end}}</p>{{if $m.Topic}}<p class="small">The minutes below are from the previous request.</p>{{end}}<form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="cancel"><button class="quiet">Cancel</button></form></div>
 {{else if eq $m.State "failed" "cancelled"}}<div class="callout danger" role="status"><p><span class="badge bad">{{if eq $m.State "failed"}}Failed{{else}}Cancelled{{end}}</span> {{$m.Detail}}</p><form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="retry"><button class="secondary">Retry</button></form></div>
-{{else if $d.Stale}}<p class="callout">The notebook has changed since these minutes were written. <a href="/boox/minutes/new?id={{$d.ID}}">Update…</a></p>{{end}}
+{{else if $d.Stale}}<p class="callout">The notebook or the summary instructions have changed since these minutes were written. <a href="/boox/minutes/new?id={{$d.ID}}">Update…</a></p>{{end}}
 {{if $m.Topic}}<div class="reader-layout"><div>
 <section class="card minutes"><h2>{{$m.Topic}}</h2>
 <p class="tags" aria-label="Keywords">{{range $m.Keywords}}<span class="tag">{{.}}</span>{{end}}</p>
@@ -129,7 +129,7 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 			failure(w, e)
 			return
 		}
-		d.Stale = minutesInputHash(recordingIDs(n), pages) != stored.InputHash
+		d.Stale = minutesInputHash(recordingIDs(n), pages, s.Minutes.Instructions) != stored.InputHash
 	}
 	if has && (stored.State == "queued" || stored.State == "processing") {
 		d.Progress = s.minutesProgress(r, n, stored)
