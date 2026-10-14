@@ -30,10 +30,10 @@ type CoveragePage struct {
 	PNG                     []byte `json:"-"` // the preview, when requested
 }
 
-// BlockedCoverage reports every page whose recognition is blocked. It is
+// BlockedCoverage reports every page whose recognition is blocked or failed. It is
 // read-only: it renders nothing to cache and changes no job.
 func (s Service) BlockedCoverage(ctx context.Context, withPNG bool) ([]CoveragePage, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT notebook_id,page_id FROM boox_page_index WHERE state='blocked' ORDER BY notebook_id,page_number LIMIT 500`)
+	rows, err := s.DB.QueryContext(ctx, `SELECT notebook_id,page_id FROM boox_page_index WHERE state IN ('blocked','failed') ORDER BY notebook_id,page_number LIMIT 500`)
 	if err != nil {
 		return nil, err
 	}
