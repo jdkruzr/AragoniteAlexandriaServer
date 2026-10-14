@@ -632,5 +632,8 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 		name, title = "settings-integrations", "Tasks & integrations"
 	}
 	w.Header().Set("Cache-Control", "no-store")
+	if pv, ok := data["Providers"].(*providers.View); ok && tab == "search" && pv != nil && pv.IndexState != "" && pv.SavedEmbedding.Enabled {
+		w.Header().Set("Refresh", "15")
+	}
 	d.render(w, r, name, title, "settings", data)
 }

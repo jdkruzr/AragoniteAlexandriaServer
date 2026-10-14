@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"net/url"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed"
@@ -99,6 +100,22 @@ type View struct {
 	HasSummaryKey           bool
 	ActiveModel, IndexState string
 	Pending, Failed         int
+	// A build in progress: records embedded into it so far and still to go,
+	// with its average pace since it started.
+	BuildDone, BuildPending int
+	BuildPerMinute          float64
+	BuildETA                time.Time
+}
+
+// BuildTotal is a build's record count, done or not.
+func (v View) BuildTotal() int { return v.BuildDone + v.BuildPending }
+
+// BuildPercent is the share of a build's records embedded so far.
+func (v View) BuildPercent() int {
+	if total := v.BuildTotal(); total > 0 {
+		return v.BuildDone * 100 / total
+	}
+	return 0
 }
 
 var ErrStale = errors.New("Settings changed in another session. Reload before saving.")
@@ -235,6 +252,22 @@ func (s Store) View(ctx context.Context) (View, error) {
 	e = s.DB.QueryRowContext(ctx, `SELECT state FROM alexandria_embedding_generation WHERE state='building' ORDER BY created_at DESC LIMIT 1`).Scan(&out.IndexState)
 	if e != nil && !errors.Is(e, sql.ErrNoRows) {
 		return out, e
+	}
+	if out.IndexState != "" {
+		var started, now time.Time
+		e = s.DB.QueryRowContext(ctx, `SELECT g.created_at,now(),
+ (SELECT count(DISTINCT (v.note_key,v.page)) FROM alexandria_embedding_vectors v WHERE v.generation=g.id),
+ (SELECT count(*) FROM alexandria_embedding_work w WHERE w.generation=g.id)
+ FROM alexandria_embedding_generation g WHERE g.state='building' ORDER BY g.created_at DESC LIMIT 1`).Scan(&started, &now, &out.BuildDone, &out.BuildPending)
+		if e != nil && !errors.Is(e, sql.ErrNoRows) {
+			return out, e
+		}
+		// An average since the start: a replacement build that reused vectors
+		// from the previous index looks faster than it is at first.
+		if minutes := now.Sub(started).Minutes(); minutes >= 1 && out.BuildDone > 0 {
+			out.BuildPerMinute = float64(out.BuildDone) / minutes
+			out.BuildETA = now.Add(time.Duration(float64(out.BuildPending) / out.BuildPerMinute * float64(time.Minute)))
+		}
 	}
 	e = s.DB.QueryRowContext(ctx, `SELECT count(*),count(*) FILTER(WHERE w.failed) FROM alexandria_embedding_work w JOIN alexandria_embedding_generation g ON g.id=w.generation WHERE g.state IN ('active','building')`).Scan(&out.Pending, &out.Failed)
 	if e != nil {
