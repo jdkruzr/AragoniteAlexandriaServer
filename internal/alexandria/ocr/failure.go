@@ -25,3 +25,9 @@ func Failure(err error) (bool, string) {
 	}
 	return true, "Recognition or page processing failed; waiting to retry."
 }
+
+// GaveUp is the detail for work that stopped retrying. It keeps the last
+// problem, since the cause may be the page or the server, not the provider.
+func GaveUp(last string) string {
+	return "Stopped after 5 attempts. Last problem: " + last + " Retry once that's resolved."
+}

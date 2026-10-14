@@ -86,7 +86,7 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		if attempts >= 4 || len(terminal) > 0 && terminal[0] {
 			state = "failed"
 			if len(terminal) == 0 || !terminal[0] {
-				detail = "Retry limit reached. Check the provider and page, then retry."
+				detail = ocrapi.GaveUp(detail)
 			}
 		}
 		_, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET state=$4,detail=$5,updated_at=now(),attempts=attempts+1,next_at=now()+$6::interval,lease_until=NULL,lease_token='',text='' WHERE notebook_id=$1 AND page_id=$2 AND lease_token=$3 AND request_version=$7`, id, page, token, state, detail, fmt.Sprintf("%d seconds", int(delay.Seconds())), version)

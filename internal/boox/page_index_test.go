@@ -362,6 +362,27 @@ func TestPageWithNoFilesStaysBlockedWithAPlainReason(t *testing.T) {
 	}
 }
 
+func TestRetryLimitKeepsTheLastProblem(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	// The fifth failure stops retrying; it must say what went wrong, not
+	// blame the provider, and must not leak the provider's raw error.
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_page_index SET attempts=4`); e != nil {
+		t.Fatal(e)
+	}
+	if found, e := s.ProcessPageIndex(ctx, &testOCR{fail: true}, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state, detail string
+	s.DB.QueryRowContext(ctx, `SELECT state,detail FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &detail)
+	if state != "failed" || !strings.HasPrefix(detail, "Stopped after 5 attempts. Last problem: ") || len(detail) < 60 || strings.Contains(detail, "private") {
+		t.Fatal(state, detail)
+	}
+}
+
 func TestBlockedDetailNamesWarnings(t *testing.T) {
 	d := blockedDetail([]string{"Native shape type 77 is not rendered yet.", "Native shape type 77 is not rendered yet.", "A shape references an unknown layer."})
 	if d != "Not sent for recognition because the preview is incomplete: Native shape type 77 is not rendered yet. A shape references an unknown layer." {
