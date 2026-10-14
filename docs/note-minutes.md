@@ -11,8 +11,9 @@ handwriting**:
 
 The firmware's Talk Insights (`meeting`/`minutes` in the decompiled note app)
 sends only the speech transcript to BOOX's cloud, gets back HTML, and never uses
-the handwriting. Nothing here writes a Talk Insights file or touches
-Couchbase or the device.
+the handwriting. Nothing here writes a Talk Insights file or changes the
+source notebook. Minutes reach a device only when you choose **Send to BOOX**
+(below).
 
 ## Native format (verified 2026-10-13 against a real note)
 
@@ -96,7 +97,28 @@ MCP `get_note_minutes` takes a `boox-minutes:<id>` path or notebook ID and
 returns the structured minutes, metadata and transcripts
 (`include_transcripts=false` omits them). Deleted notebooks return nothing.
 
-## Not yet
+## Send to BOOX
+
+The minutes page's **On your BOOX** card creates a new native text note named
+`<notebook title>_Minutes` in the source notebook's folder, through the
+qualified [text note](boox-text-notes.md) path. The wording is
+`minutesNoteTemplate` in `internal/boox/minutes_send.go`: topic and keywords in
+bold lead-ins, key points as bullets with their source, the conclusion, and an
+"About these minutes" section. The operation payload records `minutesOf`.
+
+Sending again follows "native wins":
+- **Untouched** (title and folder unchanged, and every live file under the note
+  except `pageModel/` byte-identical to what was published): the new note is
+  queued, then a `set_note_status` retirement of the old one, fenced on the
+  record revision seen. If a device changes the old note first, the Gateway
+  revision check blocks the retirement and both notes stay. Opening a note
+  rewrites only its page model, so opening doesn't count as a change.
+- **Changed** (edited text, handwriting on the blank page, renamed or moved):
+  a new note is added and the old one is left alone.
+- **Deleted on a device:** a new note is added.
+
+While a send is still publishing, the card hides the button.
+
 
 - Alexandria Client notebooks have no audio.
 - The recognition jobs list doesn't show minutes; progress is on the minutes

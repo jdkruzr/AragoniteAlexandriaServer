@@ -21,6 +21,10 @@ type minutesView struct {
 	Has, Stale, Enabled bool
 	Recordings          int
 	Stored              minutes.Stored
+	// Sending to BOOX; Sendable is false for a deleted notebook.
+	Sendable                       bool
+	NoteTitle, Folder, SendRequest string
+	Sent                           *sentNote
 }
 
 var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).Parse(`{{define "content"}}{{$d:=.Data}}{{$m:=$d.Stored}}
@@ -45,7 +49,17 @@ var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).P
 <dt>Recordings</dt><dd>{{len $m.Metadata.Recordings}}{{range $m.Metadata.Recordings}}<br>{{.Title}}: {{utc .RecordedAt}}, {{clock .DurationMS}}{{end}}</dd>
 <dt>Written by</dt><dd>{{$m.Model}}{{if $m.Metadata.Transcriber}}, from {{$m.Metadata.Transcriber}} transcripts{{end}}</dd>
 <dt>Written</dt><dd>{{if $m.FinishedAt.Valid}}{{utc $m.FinishedAt.Time}}{{else}}—{{end}}</dd>
-</dl></section></aside></div>{{end}}
+</dl></section>
+{{if $d.Sendable}}<section class="card" id="send"><h2>On your BOOX {{template "help" "boox.minutesnote"}}</h2>
+{{with $d.Sent}}<p>{{if eq .Status "pending"}}<span class="badge partial">Sending</span> “{{.Title}}” is on its way to your devices.
+{{else if eq .Status "failed"}}<span class="badge bad">Not sent</span> “{{.Title}}” couldn't be sent ({{.Code}}).
+{{else if eq .Status "untouched"}}Sent {{utc .At}} as “{{.Title}}”. Sending again replaces it.
+{{else if eq .Status "changed"}}“{{.Title}}” was changed on a device, so sending again creates a new note and leaves that one alone.
+{{else}}“{{.Title}}” was deleted on a device. Sending again creates a new note.{{end}}</p>{{end}}
+{{if not (and $d.Sent (eq $d.Sent.Status "pending"))}}<form method="post" action="/boox/minutes/send"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="request" value="{{$d.SendRequest}}">
+<label class="confirm"><input type="checkbox" name="confirm" required> Create “{{$d.NoteTitle}}” in {{if $d.Folder}}{{$d.Folder}}{{else}}the notebook root{{end}} on every connected BOOX device{{if and $d.Sent (eq $d.Sent.Status "untouched")}}, and delete the earlier copy{{end}}</label>
+<p><button class="secondary">Send to BOOX</button></p></form>{{end}}
+</section>{{end}}</aside></div>{{end}}
 {{if $m.Recordings}}<section class="card"><h2>Recordings</h2>
 {{range $m.Recordings}}<article class="recording"><h3>{{.Title}}</h3>
 <p class="small muted">{{if not .RecordedAt.IsZero}}Recorded {{utc .RecordedAt}} · {{end}}{{clock .DurationMS}}{{if .Language}} · {{.Language}}{{end}} · {{if eq .State "ready"}}Transcribed{{else if eq .State "failed"}}Transcription failed: {{.Detail}}{{else if eq .State "missing"}}Not transcribed{{else}}Transcribing…{{end}}</p>
@@ -100,6 +114,13 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := minutesView{ID: id, Title: n.Meta.Title, Has: has, Stored: stored, Enabled: s.Minutes.Enabled, Recordings: len(audioKeys(n))}
+	if has && stored.Topic != "" && n.Meta.Status == 1 {
+		d.Sendable, d.NoteTitle, d.Folder, d.SendRequest = true, n.Meta.Title+"_Minutes", s.folderTitle(r.Context(), n.Meta.ParentUniqueID), uuid.NewString()
+		if d.Sent, e = s.sentMinutesNote(r.Context(), id); e != nil {
+			failure(w, e)
+			return
+		}
+	}
 	if has && stored.State == "ready" {
 		pages, e := s.pageTexts(r.Context(), n)
 		if e != nil {

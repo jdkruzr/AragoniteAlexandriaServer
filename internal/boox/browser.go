@@ -84,6 +84,9 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		case "/boox/minutes/control":
 			s.minutesControlHTTP(w, r)
 			return
+		case "/boox/minutes/send":
+			s.minutesSendHTTP(w, r)
+			return
 		}
 	}
 	switch r.URL.Path {

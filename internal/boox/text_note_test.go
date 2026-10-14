@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"google.golang.org/protobuf/encoding/protowire"
 )
 
@@ -185,4 +187,116 @@ func TestTextNotePublicationDurableAndIdempotent(t *testing.T) {
 	if commit["documentUniqueId"] != doc || commit["dbId"] != s.uid()+"-NOTE_TREE" {
 		t.Fatal("commit", commit)
 	}
+}
+
+func TestMinutesNoteBlocks(t *testing.T) {
+	start := time.Date(2026, 10, 13, 16, 53, 0, 0, time.UTC)
+	m := minutes.Stored{Model: "synthetic-llm", FinishedAt: sql.NullTime{Time: start.Add(time.Hour), Valid: true},
+		Minutes: minutes.Minutes{Topic: "Synthetic planning", Keywords: []string{"schedule", "Friday"}, Conclusion: "Ship Friday.",
+			KeyPoints: []minutes.Point{{Text: "Testing finishes Thursday.", From: "both"}, {Text: "Notes need an owner.", From: "notes"}}},
+		Metadata: minutes.Metadata{Title: "Synthetic meeting", Folder: "Work", PageCount: 2, PagesWithText: 1, Transcriber: "whisper",
+			Recordings: []minutes.RecordingSummary{{Title: "Recording1", RecordedAt: start, DurationMS: 185400}}}}
+	blocks, e := minutesNoteBlocks(m)
+	if e != nil {
+		t.Fatal(e)
+	}
+	var got []string
+	for _, b := range blocks {
+		got = append(got, b.Kind+"|"+b.Label+"|"+b.Text)
+	}
+	want := []string{
+		"|Topic:|Synthetic planning", "|Keywords:|schedule, Friday",
+		"heading||Key points", "bullet||Testing finishes Thursday. (recording and notes)", "bullet||Notes need an owner. (notes)",
+		"heading||Conclusion", "||Ship Friday.",
+		"heading||About these minutes", "|Notebook:|Synthetic meeting in Work", "|Pages:|1 of 2 with handwriting text", "|Recordings:|1",
+		"bullet||Recording1: 2026-10-13 16:53 UTC, 3:05", "|Written by:|synthetic-llm, from whisper transcripts, 2026-10-13 17:53 UTC",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("got\n%s", strings.Join(got, "\n"))
+	}
+}
+
+func TestMinutesNoteResendPolicy(t *testing.T) {
+	s := testService(t)
+	ctx := context.Background()
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_identity SET native_uid=$1 WHERE id=1`, s.uid()); e != nil {
+		t.Fatal(e)
+	}
+	folder, _ := json.Marshal(map[string]any{"_id": "folder1", "uniqueId": "folder1", "type": 0, "status": 1, "title": "Work", "user": s.uid(), "dbId": s.uid() + "-NOTE_TREE"})
+	if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('folder1','1-a','note','<nil>/0',$1,$2)`, s.uid(), folder); e != nil {
+		t.Fatal(e)
+	}
+	note := TextNote{Parent: "folder1", Title: "Meeting_Minutes", Blocks: []TextBlock{{Text: "x"}}, Request: "r1", MinutesOf: "nb1"}
+	first, e := s.QueueTextNote(ctx, note)
+	if e != nil {
+		t.Fatal(e)
+	}
+	var doc string
+	var raw []byte
+	s.DB.QueryRowContext(ctx, `SELECT document_id,payload->'metadata' FROM boox_operation WHERE id=$1`, first).Scan(&doc, &raw)
+	status := func(want string) *sentNote {
+		t.Helper()
+		n, e := s.sentMinutesNote(ctx, "nb1")
+		if e != nil || n == nil || n.Status != want || n.Doc != doc {
+			t.Fatalf("want %s, got %+v %v", want, n, e)
+		}
+		return n
+	}
+	status("pending")
+	s.DB.ExecContext(ctx, `UPDATE boox_operation SET state='published' WHERE id=$1`, first)
+	status("pending") // not observed yet
+	if _, e = s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'3-opened','notebook','1',$2,$3)`, doc, s.uid(), raw); e != nil {
+		t.Fatal(e)
+	}
+	status("untouched")
+	bind := func(key string, body string) {
+		t.Helper()
+		var v int64
+		if e := s.DB.QueryRowContext(ctx, `INSERT INTO boox_blob_version(native_key,sha256,md5,bytes) VALUES($1,$2,$3,1) RETURNING id`, key, hash([]byte(body)), strings.Repeat("0", 32)).Scan(&v); e != nil {
+			t.Fatal(e)
+		}
+		if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_blob_live(native_key,version_id) VALUES($1,$2) ON CONFLICT(native_key) DO UPDATE SET version_id=excluded.version_id`, key, v); e != nil {
+			t.Fatal(e)
+		}
+	}
+	prefix := s.uid() + "/note/" + doc + "/"
+	bind(prefix+"pageModel/pb/opened-on-device", "model")
+	bind(s.uid()+"/note/"+doc+".png", "device thumbnail")
+	sent := status("untouched")
+
+	// Untouched: the new note is queued first, then the old one retired.
+	note.Request, note.Replace = "r2", &NoteRevision{ID: sent.Doc, Revision: sent.Revision}
+	second, e := s.QueueTextNote(ctx, note)
+	if e != nil {
+		t.Fatal(e)
+	}
+	var retired, expected string
+	if e = s.DB.QueryRowContext(ctx, `SELECT r.document_id,r.expected_revision FROM boox_operation r JOIN boox_operation c ON c.id::text=$1 WHERE r.kind='set_note_status' AND r.payload->>'replacedBy'=$1 AND r.created_at>c.created_at AND r.payload->>'status'='0'`, second).Scan(&retired, &expected); e != nil || retired != doc || expected != "3-opened" {
+		t.Fatal("retirement", retired, expected, e)
+	}
+
+	// A stale revision never retires: the device's version wins.
+	note.Request, note.Replace = "r3", &NoteRevision{ID: doc, Revision: "1-old"}
+	third, _ := s.QueueTextNote(ctx, note)
+	var n int
+	s.DB.QueryRowContext(ctx, `SELECT count(*) FROM boox_operation WHERE payload->>'replacedBy'=$1`, third).Scan(&n)
+	if n != 0 {
+		t.Fatal("stale revision retired a note")
+	}
+
+	// Detection for the first note, with later sends set aside.
+	s.DB.ExecContext(ctx, `DELETE FROM boox_operation WHERE id<>$1`, first)
+	// Ink on the blank handwriting page arrives as new shape and point files.
+	var scribble string
+	s.DB.QueryRowContext(ctx, `SELECT body->'pageNameList'->'pageNameList'->>0 FROM boox_projection WHERE document_id=$1`, doc).Scan(&scribble)
+	bind(prefix+"shape/"+scribble+"#ink#1.zip", "a stroke")
+	status("changed")
+	s.DB.ExecContext(ctx, `DELETE FROM boox_blob_live WHERE native_key=$1`, prefix+"shape/"+scribble+"#ink#1.zip")
+	status("untouched")
+	var res string
+	s.DB.QueryRowContext(ctx, `SELECT a->>'Key' FROM boox_operation, jsonb_array_elements(payload->'assets') a WHERE id=$1 AND a->>'Key' LIKE '%/resource/data/%'`, first).Scan(&res)
+	bind(res, "edited on a device")
+	status("changed")
+	s.DB.ExecContext(ctx, `UPDATE boox_projection SET body=jsonb_set(body,'{status}','0') WHERE document_id=$1`, doc)
+	status("deleted")
 }

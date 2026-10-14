@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"math"
@@ -42,7 +43,14 @@ type TextNote struct {
 	Title   string
 	Blocks  []TextBlock
 	Request string // idempotency key chosen by the caller
+	// MinutesOf names the notebook whose Audio Note Minutes this note carries.
+	MinutesOf string
+	// Replace retires an earlier server-created note once this one is queued,
+	// but only if the record is still at Revision.
+	Replace *NoteRevision
 }
+
+type NoteRevision struct{ ID, Revision string }
 
 type textIDs struct {
 	Doc, Scribble, Rich, Shape, ShapeRev, PointRev, Resource, ResourceRev, VirtualPage, PageModel, VirtualDoc, AudioSet string
@@ -382,9 +390,25 @@ func (s Service) QueueTextNote(ctx context.Context, n TextNote) (string, error) 
 			return "", e
 		}
 	}
-	payload, _ := json.Marshal(map[string]any{"generation": generation, "nativeUid": s.uid(), "request": n.Request, "metadata": record, "updatedAt": record["updatedAt"], "assets": binds, "title": n.Title, "parent": n.Parent})
+	payload, _ := json.Marshal(map[string]any{"generation": generation, "nativeUid": s.uid(), "request": n.Request, "metadata": record, "updatedAt": record["updatedAt"], "assets": binds, "title": n.Title, "parent": n.Parent, "minutesOf": n.MinutesOf})
 	if _, e = tx.ExecContext(ctx, `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,payload,state) VALUES($1,$2,'create_text_note',$3,'',$4,'queued')`, id, idem, ids.Doc, payload); e != nil {
 		return "", e
+	}
+	if n.Replace != nil {
+		// Native wins: retire the old note only if no device has changed it
+		// since the caller looked. The journal re-checks the revision with the
+		// Gateway, and clock_timestamp orders it after the new note.
+		var raw []byte
+		e = tx.QueryRowContext(ctx, `SELECT body FROM boox_projection WHERE document_id=$1 AND revision=$2 FOR SHARE`, n.Replace.ID, n.Replace.Revision).Scan(&raw)
+		var body map[string]any
+		if e == nil && nativeJSON(raw, &body) == nil && noteMetadata(body, s.uid()) && fmt.Sprint(body["status"]) == "1" {
+			retire, _ := json.Marshal(map[string]any{"status": 0, "generation": generation, "updatedAt": time.Now().UnixMilli(), "replacedBy": id, "minutesOf": n.MinutesOf})
+			if _, e = tx.ExecContext(ctx, `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,payload,state,created_at) VALUES($1,$2,'set_note_status',$3,$4,$5,'queued',clock_timestamp())`, uuid.NewString(), "text-note-replace:"+id, n.Replace.ID, n.Replace.Revision, retire); e != nil {
+				return "", e
+			}
+		} else if e != nil && !errors.Is(e, sql.ErrNoRows) {
+			return "", e
+		}
 	}
 	return id, tx.Commit()
 }
