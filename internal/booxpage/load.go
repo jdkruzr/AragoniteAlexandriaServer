@@ -265,7 +265,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		if !finite(float64(s.Thickness)) || s.Thickness < 0 || s.Thickness > 10000 {
 			return nil, nil, fmt.Errorf("invalid pen width")
 		}
-		if scribbleTypes[s.ShapeType] || s.ShapeType == 37 {
+		if scribbleTypes[s.ShapeType] || s.ShapeType == 37 || polygonSides[s.ShapeType] > 0 {
 			if len(sp.PointList) > 0 {
 				if (len(sp.PointList)-4)%16 != 0 {
 					return nil, nil, fmt.Errorf("invalid inline points")
@@ -296,6 +296,10 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 			}
 			if s.ShapeType == 37 && len(s.Points)%2 != 0 {
 				return nil, nil, fmt.Errorf("invalid fill rectangle points")
+			}
+			if polygonSides[s.ShapeType] > 0 && len(s.Points) < 2 {
+				warnings = append(warnings, "A regular polygon is missing its corner points.")
+				continue
 			}
 			totalPoints += len(s.Points)
 			if totalPoints > 500000 {

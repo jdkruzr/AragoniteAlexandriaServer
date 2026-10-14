@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -73,7 +74,7 @@ func run(args []string, logger *slog.Logger) error {
 			native := boox.Config{PublicURL: cfg.PublicURL, GatewayPublicURL: cfg.BOOXGatewayPublicURL, GatewayAdminURL: cfg.BOOXGatewayAdminURL, GatewayUsername: cfg.BOOXGatewayUsername, GatewayPassword: cfg.BOOXGatewayPassword, Database: cfg.BOOXDatabase}
 			return native.Configure(ctx, id)
 		case "boox-coverage":
-			return runBOOXCoverage()
+			return runBOOXCoverage(args[1:])
 		case "migrate":
 			return runMigrate(logger)
 		case "bootstrap-runtime":
@@ -469,7 +470,12 @@ func writeExclusive(path string, body []byte) error {
 
 // runBOOXCoverage prints, as JSON, why blocked BOOX pages couldn't be
 // previewed. Read-only; output names shape structure, never page content.
-func runBOOXCoverage() error {
+func runBOOXCoverage(args []string) error {
+	set := flag.NewFlagSet("boox-coverage", flag.ContinueOnError)
+	render := set.String("render", "", "also write each blocked page's preview PNG into this existing private directory")
+	if err := set.Parse(args); err != nil {
+		return err
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -498,9 +504,16 @@ func runBOOXCoverage() error {
 	if err = native.ResolveIdentity(ctx); err != nil {
 		return err
 	}
-	report, err := native.BlockedCoverage(ctx)
+	report, err := native.BlockedCoverage(ctx, *render != "")
 	if err != nil {
 		return err
+	}
+	for _, c := range report {
+		if *render != "" && c.PNG != nil {
+			if err = os.WriteFile(filepath.Join(*render, fmt.Sprintf("%s-p%d.png", c.Notebook, c.Page)), c.PNG, 0o600); err != nil {
+				return err
+			}
+		}
 	}
 	out := json.NewEncoder(os.Stdout)
 	out.SetIndent("", "  ")

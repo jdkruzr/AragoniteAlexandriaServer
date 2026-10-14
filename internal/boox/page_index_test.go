@@ -372,7 +372,7 @@ func TestBlockedCoverageReportsOffendingShapes(t *testing.T) {
 	if !strings.Contains(detail, "Native shape type 77") {
 		t.Fatal("detail", detail)
 	}
-	report, e := s.BlockedCoverage(ctx)
+	report, e := s.BlockedCoverage(ctx, false)
 	if e != nil || len(report) != 1 || report[0].Page != 1 || len(report[0].Issues) != 1 || report[0].Issues[0].ShapeType != 77 || report[0].ShapeTypes["6"] != 1 || report[0].Error != "" {
 		t.Fatalf("%+v %v", report, e)
 	}
