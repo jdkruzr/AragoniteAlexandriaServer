@@ -110,6 +110,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 	count := 0
 	decodedBytes := 0
 	emptySessions := 0
+	var emptyAt int64 // earliest zeroed session, from the archive name
 	for _, key := range keys {
 		if !strings.HasPrefix(key, "shape/"+id+"#") || !strings.HasSuffix(key, ".zip") {
 			continue
@@ -122,6 +123,9 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		// the device; the rest of the page is still good.
 		if len(raw) > 0 && len(bytes.Trim(raw, "\x00")) == 0 {
 			emptySessions++
+			if at := sessionTime(key); emptyAt == 0 || (at > 0 && at < emptyAt) {
+				emptyAt = at
+			}
 			continue
 		}
 		z, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
@@ -168,11 +172,6 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				}
 			}
 		}
-	}
-	if emptySessions == 1 {
-		p.Notices = append(p.Notices, "1 pen session on this page is empty on the device; its ink is missing here.")
-	} else if emptySessions > 1 {
-		p.Notices = append(p.Notices, fmt.Sprintf("%d pen sessions on this page are empty on the device; their ink is missing here.", emptySessions))
 	}
 	layerOrder := map[int32]int{}
 	hidden := map[int32]bool{}
@@ -473,6 +472,21 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		}
 		return a.UniqueID < b.UniqueID
 	})
+	if emptySessions > 0 {
+		recovered, err := recoverEmptySessions(id, keys, load, winners, emptyAt, &totalPoints)
+		if err != nil {
+			return nil, nil, err
+		}
+		p.Shapes = append(p.Shapes, recovered...)
+		switch {
+		case len(recovered) > 0:
+			p.Notices = append(p.Notices, "Some pen sessions on this page are empty on the device; their strokes were recovered from point data with the pen used just before, so color and width may differ.")
+		case emptySessions == 1:
+			p.Notices = append(p.Notices, "1 pen session on this page is empty on the device; its ink is missing here.")
+		default:
+			p.Notices = append(p.Notices, fmt.Sprintf("%d pen sessions on this page are empty on the device; their ink is missing here.", emptySessions))
+		}
+	}
 	textBytes := 0
 	for _, text := range p.Texts {
 		textBytes += len(text)
