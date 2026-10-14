@@ -35,7 +35,7 @@ func (s Service) QueuePage(ctx context.Context, id string, num int) error {
 		return errors.New("page unavailable")
 	}
 	_, e = s.DB.ExecContext(ctx, `INSERT INTO boox_page_index(notebook_id,page_id,page_number) VALUES($1,$2,$3)
- ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,text='',detail='',updated_at=now() WHERE boox_page_index.state NOT IN ('processing','paused')`, id, ids[num-1], num)
+ ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,text='',detail='',updated_at=now() WHERE boox_page_index.state NOT IN ('processing','paused','skipped')`, id, ids[num-1], num)
 	return e
 }
 func (s Service) queuePageHTTP(w http.ResponseWriter, r *http.Request) {

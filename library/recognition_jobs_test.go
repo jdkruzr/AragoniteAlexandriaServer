@@ -93,6 +93,35 @@ func TestRecognitionJobsOwnerControlsAndQueueReview(t *testing.T) {
 	if err = db.QueryRowContext(ctx, `SELECT state FROM alexandria_page_dirty`).Scan(&state); err != nil || state != "queued" {
 		t.Fatal(state, err)
 	}
+	// Skip a page, then find it under the skipped filter with an Un-skip button.
+	var job string
+	if err = db.QueryRowContext(ctx, `SELECT job_id::text FROM alexandria_page_dirty`).Scan(&job); err != nil {
+		t.Fatal(err)
+	}
+	if got := b.do("POST", "/jobs/control", url.Values{"id": {job}, "action": {"skip"}}.Encode(), sameSite, true); got.Code != 303 {
+		t.Fatal(got.Code)
+	}
+	if list := b.do("GET", "/jobs?state=skipped", "", nil, true); list.Code != 200 || !strings.Contains(list.Body.String(), `value="unskip"`) {
+		t.Fatal(list.Code, list.Body.String())
+	}
+	// Skip the whole notebook from its Choose pages screen, then let it back in.
+	skipNB := url.Values{"source": {"client"}, "notebook": {nb}, "skip": {"1"}}
+	if got := b.do("POST", "/jobs/skip-notebook", skipNB.Encode(), nil, true); got.Code != 403 {
+		t.Fatal("CSRF", got.Code)
+	}
+	if got := b.do("POST", "/jobs/skip-notebook", skipNB.Encode(), sameSite, true); got.Code != 303 {
+		t.Fatal(got.Code)
+	}
+	if page := b.do("GET", "/jobs/new?source=client&notebook="+nb, "", nil, true); page.Code != 200 || !strings.Contains(page.Body.String(), `id="notebook-skipped"`) || strings.Contains(page.Body.String(), "Queue selected pages") {
+		t.Fatal(page.Code, page.Body.String())
+	}
+	skipNB.Set("skip", "0")
+	if got := b.do("POST", "/jobs/skip-notebook", skipNB.Encode(), sameSite, true); got.Code != 303 {
+		t.Fatal(got.Code)
+	}
+	if page := b.do("GET", "/jobs/new?source=client&notebook="+nb, "", nil, true); !strings.Contains(page.Body.String(), `id="notebook-skip"`) {
+		t.Fatal(page.Body.String())
+	}
 }
 
 func TestLibraryRecognitionReviewUIAndOwnerBoundary(t *testing.T) {

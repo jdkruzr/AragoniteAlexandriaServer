@@ -68,7 +68,7 @@ func (f Filter) where() (string, error) {
 		return "", errors.New("Unknown source")
 	}
 	switch f.State {
-	case "", "queued", "processing", "ready", "blocked", "failed", "paused", "cancelled":
+	case "", "queued", "processing", "ready", "blocked", "failed", "paused", "cancelled", "skipped":
 	default:
 		return "", errors.New("Unknown status")
 	}
@@ -143,6 +143,17 @@ func (s Store) List(ctx context.Context, f Filter) (View, error) {
 	return v, rows.Err()
 }
 
+// ErrNotebookSkipped means the owner keeps this notebook out of recognition.
+var ErrNotebookSkipped = errors.New("This notebook is skipped in recognition. Stop skipping it to queue its pages.")
+
+// Details shown on skipped pages. Un-skipping a notebook releases only the
+// pages it skipped, so the notebook's detail must stay exactly this text
+// (migration 0027 writes it too).
+const (
+	NotebookSkippedDetail = "Notebook is skipped in recognition."
+	PageSkippedDetail     = "Skipped by the owner; it won't be recognized until un-skipped."
+)
+
 var ErrAlreadyActive = errors.New("Selected pages already have queued, running or paused jobs. Manage those jobs instead.")
 
 // Queue atomically schedules a reviewed page selection. Active work is reused;
@@ -176,6 +187,9 @@ func QueuePagesTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, nu
 			return 0, errors.New("Invalid page selection")
 		}
 		_, count, e := queueTx(ctx, tx, source, n, num, num, false, request, true)
+		if errors.Is(e, ErrNotebookSkipped) {
+			return total, nil
+		}
 		if e != nil && !errors.Is(e, ErrAlreadyActive) {
 			return 0, e
 		}
@@ -187,6 +201,13 @@ func QueuePagesTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, nu
 func queueTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, from, to int, force bool, request string, appendBatch bool) (string, int, error) {
 	if _, e := uuid.Parse(request); e != nil {
 		return "", 0, errors.New("Invalid request token")
+	}
+	var skipped bool
+	if e := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM alexandria_recognition_skip WHERE source=$1 AND notebook_id=$2)`, source, n.ID).Scan(&skipped); e != nil {
+		return "", 0, e
+	}
+	if skipped {
+		return "", 0, ErrNotebookSkipped
 	}
 	batch := request
 	inserted, e := tx.ExecContext(ctx, `INSERT INTO alexandria_recognition_batch(id,source,notebook_id,title) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING`, batch, source, n.ID, n.Title)
@@ -258,6 +279,10 @@ func (s Store) Control(ctx context.Context, id string, batch bool, action string
 		allowed = "'queued','processing','paused','failed','blocked'"
 	case "retry":
 		allowed = "'failed','blocked'"
+	case "skip":
+		allowed = "'queued','paused','failed','blocked','cancelled'"
+	case "unskip":
+		allowed = "'skipped'"
 	default:
 		return 0, errors.New("Unknown action")
 	}
@@ -311,8 +336,17 @@ var ErrSelectionChanged = errors.New("The list of jobs changed. Review it again 
 // RetryMatching retries every failed or blocked job the filter lists, but only
 // if that is still exactly the number the owner was shown.
 func (s Store) RetryMatching(ctx context.Context, f Filter, expect int) (int64, error) {
+	return s.ActOnMatching(ctx, f, expect, "retry")
+}
+
+// ActOnMatching retries or skips every failed or blocked job the filter
+// lists, but only if that is still exactly the number the owner was shown.
+func (s Store) ActOnMatching(ctx context.Context, f Filter, expect int, action string) (int64, error) {
 	if f.State != "failed" && f.State != "blocked" {
-		return 0, errors.New("Only failed or blocked jobs can be retried together.")
+		return 0, errors.New("Only failed or blocked jobs can be retried or skipped together.")
+	}
+	if action != "retry" && action != "skip" {
+		return 0, errors.New("Unknown action")
 	}
 	where, e := f.where()
 	if e != nil {
@@ -333,7 +367,7 @@ func (s Store) RetryMatching(ctx context.Context, f Filter, expect int) (int64, 
 	if len(targets) != expect {
 		return 0, ErrSelectionChanged
 	}
-	n, e := applyControl(ctx, tx, targets, "retry", "'failed','blocked'")
+	n, e := applyControl(ctx, tx, targets, action, "'failed','blocked'")
 	if e != nil {
 		return 0, e
 	}
@@ -343,11 +377,16 @@ func (s Store) RetryMatching(ctx context.Context, f Filter, expect int) (int64, 
 func applyControl(ctx context.Context, tx *sql.Tx, targets []controlTarget, action, allowed string) (int64, error) {
 	var e error
 	state := "queued"
-	if action == "pause" {
+	detail := "Owner requested " + action + "."
+	switch action {
+	case "pause":
 		state = "paused"
-	}
-	if action == "cancel" {
+	case "cancel":
 		state = "cancelled"
+	case "skip":
+		state, detail = "skipped", PageSkippedDetail
+	case "unskip":
+		detail = "Owner un-skipped this page."
 	}
 	var count int64
 	for _, t := range targets {
@@ -363,7 +402,7 @@ func applyControl(ctx context.Context, tx *sql.Tx, targets []controlTarget, acti
 			return 0, e
 		}
 		var newID string
-		e = tx.QueryRowContext(ctx, `UPDATE `+table+` SET state=$2,detail=$3,lease_until=NULL,next_at=now(),attempts=CASE WHEN $2='queued' THEN 0 ELSE attempts END`+extra+` WHERE job_id=$1 AND state IN (`+allowed+`) RETURNING job_id::text`, t.id, state, "Owner requested "+action+".").Scan(&newID)
+		e = tx.QueryRowContext(ctx, `UPDATE `+table+` SET state=$2,detail=$3,lease_until=NULL,next_at=now(),attempts=CASE WHEN $2='queued' THEN 0 ELSE attempts END`+extra+` WHERE job_id=$1 AND state IN (`+allowed+`) RETURNING job_id::text`, t.id, state, detail).Scan(&newID)
 		if errors.Is(e, sql.ErrNoRows) {
 			continue
 		}

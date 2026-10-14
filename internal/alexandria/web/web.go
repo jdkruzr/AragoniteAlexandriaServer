@@ -36,7 +36,7 @@ var funcs = template.FuncMap{
 	"tip":     tip,
 	"version": func() string { return Version },
 	"listJobStates": func() []string {
-		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled"}
+		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled", "skipped"}
 	},
 	"ms": func(ms int64) string {
 		if ms <= 0 {
