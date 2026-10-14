@@ -15,9 +15,11 @@ import (
 type previewResult struct {
 	PNG      []byte
 	Warnings []string
-	Notices  []string
-	Texts    []string
-	Access   time.Time
+	// Blank means the page has no shapes: nothing for recognition to read.
+	Blank   bool
+	Notices []string
+	Texts   []string
+	Access  time.Time
 }
 
 // Derived previews are disposable and bounded. Immutable input keys include
@@ -102,7 +104,7 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 	if e = png.Encode(&b, img); e != nil {
 		return previewResult{}, e
 	}
-	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices}
+	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices, Blank: len(p.Shapes) == 0}
 	// A transient object/index read failure must not pin a partial page (or a
 	// metadata-only page number) after the immutable resources become readable.
 	if len(v.Warnings) == 0 {

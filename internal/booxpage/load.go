@@ -92,7 +92,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 		return nil, nil, fmt.Errorf("this notebook uses an unsupported native layout")
 	}
 	if meta.ActiveScene == 1 {
-		warnings = append(warnings, "Rich-text notebook: available text is shown separately; native layout is not reproduced.")
+		warnings = append(warnings, RichTextNotebookWarning)
 	}
 	if meta.ActiveScene == 2 {
 		warnings = append(warnings, "Meeting notebook: audio and transcript layout are not reproduced.")
@@ -370,7 +370,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				var ref struct{ RelativePath string }
 				if json.Unmarshal([]byte(sp.Resource), &ref) == nil && ref.RelativePath != "" {
 					if b, e := load("resource/data/" + strings.TrimPrefix(ref.RelativePath, "/")); e == nil && len(b) <= 1<<20 {
-						text = plainHTML(string(b))
+						text = RichText(b)
 					}
 				}
 			}

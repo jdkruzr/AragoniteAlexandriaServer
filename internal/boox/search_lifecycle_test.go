@@ -248,13 +248,11 @@ func TestNotebookSearchInvalidationAndLateRecognition(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/during-recognition=%v", tc.name, during), func(t *testing.T) {
 				s := indexFixture(t)
 				ctx := context.Background()
-				var original []byte
-				var key string
-				var version int64
+				var original, live []byte
 				if err := s.DB.QueryRowContext(ctx, `SELECT body FROM boox_projection WHERE document_id='note'`).Scan(&original); err != nil {
 					t.Fatal(err)
 				}
-				if err := s.DB.QueryRowContext(ctx, `SELECT native_key,version_id FROM boox_blob_live`).Scan(&key, &version); err != nil {
+				if err := s.DB.QueryRowContext(ctx, `SELECT jsonb_agg(jsonb_build_array(native_key,version_id)) FROM boox_blob_live`).Scan(&live); err != nil {
 					t.Fatal(err)
 				}
 				run := func(o *testOCR, prompt string) {
@@ -311,7 +309,7 @@ func TestNotebookSearchInvalidationAndLateRecognition(t *testing.T) {
 				if _, err := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('note','restored','notebook','1',$1,$2) ON CONFLICT(document_id) DO UPDATE SET body=excluded.body,revision=excluded.revision`, s.uid(), original); err != nil {
 					t.Fatal(err)
 				}
-				if _, err := s.DB.ExecContext(ctx, `INSERT INTO boox_blob_live(native_key,version_id) VALUES($1,$2) ON CONFLICT(native_key) DO UPDATE SET version_id=excluded.version_id`, key, version); err != nil {
+				if _, err := s.DB.ExecContext(ctx, `INSERT INTO boox_blob_live(native_key,version_id) SELECT e->>0,(e->>1)::bigint FROM jsonb_array_elements($1::jsonb) e ON CONFLICT(native_key) DO UPDATE SET version_id=excluded.version_id`, live); err != nil {
 					t.Fatal(err)
 				}
 				if err := s.QueuePage(ctx, "note", 1); err != nil {

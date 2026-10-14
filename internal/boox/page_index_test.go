@@ -1,6 +1,7 @@
 package boox
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -8,11 +9,15 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	ocrapi "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
+	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type testOCR struct {
@@ -54,7 +59,26 @@ func indexFixture(t *testing.T) Service {
 	if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_blob_live(native_key,version_id) VALUES($1,$2)`, k, v); e != nil {
 		t.Fatal(e)
 	}
+	// One typed-text shape, so the page isn't blank and goes to the model.
+	putNoteBlob(t, s, "shape/page#ink#1.zip", inkShapeZip(t))
 	return s
+}
+
+func inkShapeZip(t *testing.T) []byte {
+	t.Helper()
+	shape := &pb.ShapeInfoProto{UniqueId: "ink", ShapeType: 6, Text: "synthetic", BoundingRect: `{"left":10,"top":10,"right":90,"bottom":30}`, MatrixValues: `{"values":[1,0,0,0,1,0,0,0,1]}`, TextStyle: `{"textSize":10,"textSpacing":1}`, Color: -16777216}
+	b, e := proto.Marshal(&pb.ShapeInfoProtoList{Proto: []*pb.ShapeInfoProto{shape}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	var out bytes.Buffer
+	z := zip.NewWriter(&out)
+	f, _ := z.Create("shapes")
+	f.Write(b)
+	if e = z.Close(); e != nil {
+		t.Fatal(e)
+	}
+	return out.Bytes()
 }
 func TestPageRecognitionCacheInvalidationAndSearch(t *testing.T) {
 	s := indexFixture(t)
@@ -240,5 +264,76 @@ func TestBOOXPermanentFailureAndExpiredLeaseRecovery(t *testing.T) {
 	}
 	if found, e := s.ProcessPageIndex(ctx, rejectedOCR{}, ""); e != nil || found {
 		t.Fatal("permanent failure was retried", found, e)
+	}
+}
+
+// A text notebook's blank handwriting page is never sent to the model; its
+// typed text is kept with that page so search finds it.
+func TestTextNotebookTypedTextIsSearchableWithoutRecognition(t *testing.T) {
+	s := testService(t)
+	ctx := context.Background()
+	ids := newTextIDs()
+	ids.Doc = "note"
+	record, assets, e := buildTextNote(s.uid(), TextNote{Title: "Synthetic plan", Blocks: []TextBlock{{Kind: "heading", Text: "Goals"}, {Kind: "bullet", Text: "launch the zeppelin"}, {Label: "Owner:", Text: "nobody"}}}, ids, time.UnixMilli(1791669879703))
+	if e != nil {
+		t.Fatal(e)
+	}
+	raw, _ := json.Marshal(record)
+	if _, e = s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('note','1-a','notebook','1',$1,$2)`, s.uid(), raw); e != nil {
+		t.Fatal(e)
+	}
+	for _, a := range assets {
+		if rel, ok := strings.CutPrefix(a.Key, s.uid()+"/note/note/"); ok {
+			putNoteBlob(t, s, rel, a.Body)
+		}
+	}
+	if e = s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	ocr := &testOCR{}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state, text, detail string
+	s.DB.QueryRowContext(ctx, `SELECT state,text,detail FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &text, &detail)
+	want := "Synthetic plan\nGoals\n• launch the zeppelin\nOwner: nobody"
+	if state != "ready" || text != want || !strings.Contains(detail, "Typed text") || ocr.calls != 0 {
+		t.Fatalf("%s %q %q calls=%d", state, text, detail, ocr.calls)
+	}
+	d := web.Deps{DB: s.DB, Search: notes.Searcher{DB: s.DB}, Status: web.Status{NativeBOOX: true}}
+	w := httptest.NewRecorder()
+	web.Handler(d).ServeHTTP(w, httptest.NewRequest("GET", "/search?q=zeppelin&source=boox", nil))
+	if !strings.Contains(w.Body.String(), "Synthetic plan") {
+		t.Fatal("typed text not searchable")
+	}
+}
+
+func TestRichTextReadsEditorDocuments(t *testing.T) {
+	got := booxpage.RichText(richTextDocument("Title", []TextBlock{{Text: "para"}, {Kind: "bullet", Text: "one"}, {Kind: "bullet", Label: "Two:", Text: "b"}}))
+	if got != "Title\npara\n• one\n• Two: b" {
+		t.Fatalf("%q", got)
+	}
+	if booxpage.RichText([]byte("<p>old</p><p>html</p>")) != "old\n\nhtml" {
+		t.Fatal("html fallback", booxpage.RichText([]byte("<p>old</p><p>html</p>")))
+	}
+}
+
+func TestBlankPageSkipsRecognition(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	if _, e := s.DB.ExecContext(ctx, `DELETE FROM boox_blob_live WHERE native_key LIKE '%/shape/%'`); e != nil {
+		t.Fatal(e)
+	}
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	ocr := &testOCR{}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state, text, detail string
+	s.DB.QueryRowContext(ctx, `SELECT state,text,detail FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &text, &detail)
+	if state != "ready" || text != "" || !strings.HasPrefix(detail, "No handwriting") || ocr.calls != 0 {
+		t.Fatalf("%s %q %q calls=%d", state, text, detail, ocr.calls)
 	}
 }

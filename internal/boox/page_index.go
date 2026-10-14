@@ -11,6 +11,7 @@ import (
 	"image/png"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -114,8 +115,23 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 	if e != nil {
 		return deferFailure("Page resources cannot be rendered yet.")
 	}
-	if len(p.Warnings) > 0 {
+	// A text notebook's notice is about its typed page, not this one.
+	warnings := slices.DeleteFunc(slices.Clone(p.Warnings), func(w string) bool { return w == booxpage.RichTextNotebookWarning })
+	if len(warnings) > 0 {
 		return true, finish("blocked", "", "Resolve preview coverage warnings before recognition.", n.Version, oldHash, oldOCR, "")
+	}
+	// Typed text belongs to the notebook; it's kept with its first handwriting
+	// page so search finds it. It's read from the notebook, never recognized.
+	typed := ""
+	if n.Meta.ActiveScene == 1 && num == 1 {
+		typed = s.typedText(ctx, n)
+	}
+	if p.Blank {
+		detail := "No handwriting on this page; nothing was sent for recognition."
+		if typed != "" {
+			detail = "Typed text from this text notebook; nothing was sent for recognition."
+		}
+		return true, finish("ready", typed, detail, n.Version, oldHash, oldOCR, "")
 	}
 	if ocr == nil {
 		return true, finish("blocked", "", "Configure an OCR provider, then run recognition again.", n.Version, oldHash, oldOCR, "")
@@ -162,7 +178,32 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		return deferFailure("Page changed during recognition; retrying.")
 	}
 	body := strings.TrimSpace(text)
+	if typed != "" {
+		body = strings.TrimSpace(typed + "\n\n" + body)
+	}
 	// Text extracted from unsupported shapes is never silently appended to a
 	// supposedly complete OCR result: those pages were blocked by warnings above.
 	return true, finish("ready", body, "Server-recognized text; original native content is unchanged.", n.Version, inputHash, text, ocr.Model())
+}
+
+// typedText is the readable text of a text notebook's typed pages, from its
+// editor resources in key order, capped at 1 MiB.
+func (s Service) typedText(ctx context.Context, n notebookSnapshot) string {
+	load := s.snapshotLoader(ctx, n)
+	var parts []string
+	total := 0
+	for _, k := range n.Keys {
+		if !strings.HasPrefix(k, "resource/data/") || !strings.HasSuffix(k, ".html") || n.Assets[k].Bytes > 1<<20 {
+			continue
+		}
+		b, e := load(k)
+		if e != nil {
+			continue
+		}
+		if t := booxpage.RichText(b); t != "" && total+len(t) <= 1<<20 {
+			parts = append(parts, t)
+			total += len(t)
+		}
+	}
+	return strings.Join(parts, "\n\n")
 }
