@@ -1,9 +1,11 @@
 package booxpage
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/fogleman/gg"
 	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
+	"image"
 	"strings"
 	"testing"
 )
@@ -25,6 +27,27 @@ func TestUniversalGeometryAndUnknownRefusal(t *testing.T) {
 	bad := strings.Replace(string(extra), "Rectangle", "AlienQuadrilateral", 1)
 	if _, e = parseUniversal(bad); e == nil {
 		t.Fatal("unknown geometry silently replaced")
+	}
+}
+func TestOvalRadiusDrawsAsAPlainOval(t *testing.T) {
+	// Seen on device: a filled oval with radius 1, which the firmware ignores.
+	oval := func(radius float64) []featurePath {
+		f := map[string]any{"geometry": map[string]any{"type": "MultiPoint", "coordinates": [][]float64{{0, 0}, {200, 200}}}, "properties": map[string]any{"subType": "Oval", "radius": radius, "strokeAttr": map[string]any{"enableColor": true, "color": -40605, "width": 4, "roundCorner": true}, "fillAttr": map[string]any{"enableColor": true, "color": -65536}}}
+		b, _ := json.Marshal(map[string]any{"features": []any{f}})
+		extra, _ := json.Marshal(map[string]string{"featureCollection": string(b)})
+		paths, e := parseUniversal(string(extra))
+		if e != nil {
+			t.Fatal(e)
+		}
+		return paths
+	}
+	draw := func(paths []featurePath) []byte {
+		dc := gg.NewContext(100, 100)
+		renderUniversal(dc, &Shape{Features: paths, MatrixValues: []float64{0.4, 0, 10, 0, 0.4, 10, 0, 0, 1}})
+		return dc.Image().(*image.RGBA).Pix
+	}
+	if !bytes.Equal(draw(oval(1)), draw(oval(0))) {
+		t.Fatal("radius changed the oval")
 	}
 }
 func TestTextExtractionAndPositioning(t *testing.T) {

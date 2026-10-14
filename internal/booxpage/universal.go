@@ -17,7 +17,6 @@ type feature struct {
 	Properties struct {
 		WaveAttr   struct{ WavyLength, WavyPeak, WavyOffset float64 }
 		SubType    string
-		Radius     float64
 		StrokeAttr struct {
 			Color       int32
 			Width       float64
@@ -67,9 +66,8 @@ func parseFeatures(features []feature, depth int, budget *int) ([]featurePath, e
 	count := 0
 	for _, f := range features {
 		p := f.Properties
-		if p.Radius != 0 {
-			return nil, fmt.Errorf("Rounded universal geometry is not rendered yet.")
-		}
+		// Radius is stored on some features, but the firmware's renderers
+		// never read it (Oval draws a plain addOval), so it changes nothing.
 		path := featurePath{Stroke: p.StrokeAttr.Color, Fill: p.FillAttr.Color, Width: p.StrokeAttr.Width, DoStroke: p.StrokeAttr.EnableColor, DoFill: p.FillAttr.EnableColor, Dash: p.LineStyle.DashLineIntervals, Phase: p.LineStyle.Phase}
 		for _, v := range append([]float64{path.Width, path.Phase}, path.Dash...) {
 			if !finite(v) || v < 0 || v > 10000 {
