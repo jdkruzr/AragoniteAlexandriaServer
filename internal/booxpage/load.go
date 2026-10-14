@@ -381,7 +381,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 			}
 			p.Notices = append(p.Notices, "Text uses a substitute font; native typography and rich spans may differ.")
 			if s.TextStyle.Orientation == 1 {
-				p.Notices = append(p.Notices, "Vertical text is drawn top to bottom in right-to-left columns; spacing may differ.")
+				p.Notices = append(p.Notices, "Vertical text is drawn top to bottom in right-to-left columns, Latin text turned sideways; spacing may differ.")
 			}
 		} else if s.ShapeType == 29 {
 			var extra struct{ TextContent string }
