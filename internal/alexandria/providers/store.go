@@ -45,6 +45,9 @@ type SummaryConfig struct {
 	URL, Model, Format  string
 	AnthropicWorkspace  string `json:",omitempty"`
 	VLLMDisableThinking bool
+	// SendToBOOX sends every finished BOOX minutes note to the devices, as
+	// if the owner had pressed Send to BOOX.
+	SendToBOOX bool `json:",omitempty"`
 }
 type Config struct {
 	OCR           OCRConfig

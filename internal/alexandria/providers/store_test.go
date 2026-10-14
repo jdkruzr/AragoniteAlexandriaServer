@@ -343,7 +343,7 @@ func TestMinutesProvidersKeepSeparateCredentialsAndRecognitionSettings(t *testin
 	}
 	v, _ = s.Load(ctx)
 	t1 := TranscriptionConfig{Enabled: true, URL: " http://whisper.local:8090/ ", Model: "whisper", Language: "EN"}
-	m1 := SummaryConfig{Enabled: true, URL: "http://llm.local", Model: "qwen", Format: "openai", VLLMDisableThinking: true, AnthropicWorkspace: "wrkspc_ignored"}
+	m1 := SummaryConfig{Enabled: true, URL: "http://llm.local", Model: "qwen", Format: "openai", VLLMDisableThinking: true, AnthropicWorkspace: "wrkspc_ignored", SendToBOOX: true}
 	c, e = s.MinutesCandidate(ctx, v.Revision, t1, m1, KeyChange{"private-stt-key", "keep"}, KeyChange{"private-llm-key", "replace"})
 	if e != nil {
 		t.Fatal(e)
@@ -374,7 +374,7 @@ func TestMinutesProvidersKeepSeparateCredentialsAndRecognitionSettings(t *testin
 		t.Fatal(e)
 	}
 	got, _ = s.Load(ctx)
-	if got.Config.Transcription.Model != "whisper" || got.Config.Summary.Model != "qwen" || got.SummaryKey != "private-llm-key" || got.Config.OCR.Model != "vision-2" {
+	if got.Config.Transcription.Model != "whisper" || got.Config.Summary.Model != "qwen" || !got.Config.Summary.SendToBOOX || got.SummaryKey != "private-llm-key" || got.Config.OCR.Model != "vision-2" {
 		t.Fatalf("recognition save dropped minutes settings %+v", got.Config)
 	}
 	view, _ := s.View(ctx)

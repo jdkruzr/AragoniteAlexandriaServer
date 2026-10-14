@@ -164,38 +164,10 @@ func (s Service) minutesSendHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Reload the page and try again.", http.StatusBadRequest)
 		return
 	}
-	n, e := s.notebookSnapshot(r.Context(), id)
-	if errors.Is(e, sql.ErrNoRows) || e == nil && n.Meta.Status != 1 {
+	if e := s.SendMinutesToBOOX(r.Context(), id, r.Form.Get("request")); errors.Is(e, sql.ErrNoRows) {
 		http.NotFound(w, r)
 		return
-	} else if e != nil {
-		failure(w, e)
-		return
-	}
-	stored, has, e := minutes.Load(r.Context(), s.DB, "boox", id)
-	if e != nil {
-		failure(w, e)
-		return
-	}
-	if !has || stored.Topic == "" {
-		http.NotFound(w, r)
-		return
-	}
-	blocks, e := minutesNoteBlocks(stored)
-	if e != nil {
-		failure(w, e)
-		return
-	}
-	note := TextNote{Parent: n.Meta.ParentUniqueID, Title: n.Meta.Title + "_Minutes", Blocks: blocks, Request: r.Form.Get("request"), MinutesOf: id}
-	sent, e := s.sentMinutesNote(r.Context(), id)
-	if e != nil {
-		failure(w, e)
-		return
-	}
-	if sent != nil && sent.Status == "untouched" {
-		note.Replace = &NoteRevision{ID: sent.Doc, Revision: sent.Revision}
-	}
-	if _, e = s.QueueTextNote(r.Context(), note); errors.Is(e, errTextNoteFolder) || errors.Is(e, errBookEnrollment) {
+	} else if errors.Is(e, errTextNoteFolder) || errors.Is(e, errBookEnrollment) {
 		http.Redirect(w, r, back+"&notice="+url.QueryEscape(e.Error()), http.StatusSeeOther)
 		return
 	} else if e != nil {
@@ -203,4 +175,45 @@ func (s Service) minutesSendHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, back+"&notice="+url.QueryEscape(noticeMinutesSent), http.StatusSeeOther)
+}
+
+// SendMinutesToBOOX queues a notebook's ready minutes as a new text note,
+// replacing the previous one only while it is untouched. The request ID makes
+// it idempotent. sql.ErrNoRows means the notebook or its minutes are gone.
+func (s Service) SendMinutesToBOOX(ctx context.Context, id, request string) error {
+	n, e := s.notebookSnapshot(ctx, id)
+	if e == nil && n.Meta.Status != 1 {
+		e = sql.ErrNoRows
+	}
+	if e != nil {
+		return e
+	}
+	stored, has, e := minutes.Load(ctx, s.DB, "boox", id)
+	if e != nil {
+		return e
+	}
+	if !has || stored.Topic == "" {
+		return sql.ErrNoRows
+	}
+	blocks, e := minutesNoteBlocks(stored)
+	if e != nil {
+		return e
+	}
+	note := TextNote{Parent: n.Meta.ParentUniqueID, Title: n.Meta.Title + "_Minutes", Blocks: blocks, Request: request, MinutesOf: id}
+	sent, e := s.sentMinutesNote(ctx, id)
+	if e != nil {
+		return e
+	}
+	if sent != nil && sent.Status == "untouched" {
+		note.Replace = &NoteRevision{ID: sent.Doc, Revision: sent.Revision}
+	}
+	_, e = s.QueueTextNote(ctx, note)
+	return e
+}
+
+func autoSendFailed(e error) string {
+	if errors.Is(e, errTextNoteFolder) || errors.Is(e, errBookEnrollment) {
+		return "Couldn't send these minutes to BOOX automatically: " + e.Error()
+	}
+	return "Couldn't send these minutes to BOOX automatically. Use Send to BOOX to try again."
 }
