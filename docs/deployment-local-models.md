@@ -50,3 +50,12 @@ about 1.5 GB on that card.
 
 Rollback: `sudo systemctl disable --now whisper`. Nothing else on gpu-host was
 changed.
+
+## GPU power cap
+
+2026-10-14: both 3090s are capped at **200 W** (stock 350 W) by
+`gpu-power-cap.service` on gpu-host (`nvidia-smi -pm 1`, `nvidia-smi -pl 200`, runs
+at boot). The owner lowered it from 250 W because the room ran hot. Earlier
+versions of the unit are kept beside it as `.bak-250w` and `.bak-150w`. To change it, edit
+the `-pl` value, then `systemctl daemon-reload` and
+`systemctl restart gpu-power-cap.service`.
