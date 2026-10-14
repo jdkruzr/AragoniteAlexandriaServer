@@ -74,6 +74,10 @@ func storePreview(key string, v previewResult) {
 		delete(previews.Items, oldest)
 	}
 }
+
+// errPreviewBusy means every preview slot is in use; trying again shortly works.
+var errPreviewBusy = errors.New("preview workers are busy; reload shortly")
+
 func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int) (previewResult, error) {
 	key := s.previewKey(n.Meta.UniqueID, n.Version, num)
 	if p, ok := cachedPreview(key); ok {
@@ -83,7 +87,7 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 	case previewSlots <- struct{}{}:
 		defer func() { <-previewSlots }()
 	default:
-		return previewResult{}, errors.New("preview workers are busy; reload shortly")
+		return previewResult{}, errPreviewBusy
 	}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
