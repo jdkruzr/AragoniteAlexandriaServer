@@ -7,7 +7,7 @@
 <form class="inline" method="get" action="/jobs">
 {{if $f.Run}}<input type="hidden" name="run" value="{{$f.Run}}">{{end}}
 {{if $d.Live}}<input type="hidden" name="live" value="1">{{end}}{{if $f.Batch}}<input type="hidden" name="batch" value="{{$f.Batch}}">{{end}}
-<label><input type="checkbox" name="history" value="1" {{if $f.History}}checked{{end}}> Include superseded attempts</label>
+<label><input type="checkbox" name="history" value="1" {{if $f.History}}checked{{end}}> Show earlier attempts at the same page</label>
 <label>Source <select name="source"><option value="">All sources</option><option value="boox" {{if eq $f.Source "boox"}}selected{{end}}>BOOX</option><option value="client" {{if eq $f.Source "client"}}selected{{end}}>Alexandria Client</option></select></label>
 <label>Status <select name="state"><option value="">All statuses</option>{{range $state := (listJobStates)}}<option value="{{$state}}" {{if eq $f.State $state}}selected{{end}}>{{$state}}</option>{{end}}</select></label><button class="secondary">Filter</button></form>
 <p>{{$d.ProgressDone}} of {{$d.ProgressTotal}} jobs finished {{template "help" "recognition.counts"}}</p>
