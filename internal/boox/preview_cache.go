@@ -5,12 +5,18 @@ import (
 	"context"
 	"errors"
 	"image/png"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 )
+
+// NoPageFilesWarning keeps a page with nothing on the server blocked: it
+// may be empty on the device, or its files may still be on the way.
+const NoPageFilesWarning = "No files for this page have reached the server; it may be empty on the device, or still syncing."
 
 type previewResult struct {
 	PNG      []byte
@@ -103,6 +109,11 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 	var b bytes.Buffer
 	if e = png.Encode(&b, img); e != nil {
 		return previewResult{}, e
+	}
+	// With no shape files and no template, an empty page and one still
+	// syncing look the same; say so rather than blame the template.
+	if len(p.Shapes) == 0 && len(w) == 0 && len(tw) > 0 && !slices.ContainsFunc(n.Keys, func(k string) bool { return strings.HasPrefix(k, "shape/"+p.PageID+"#") }) {
+		tw = []string{NoPageFilesWarning}
 	}
 	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices, Blank: len(p.Shapes) == 0}
 	// A transient object/index read failure must not pin a partial page (or a
