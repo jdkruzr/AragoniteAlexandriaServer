@@ -543,12 +543,14 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 
 	n, idle := 0, 0
 	for turn := 0; n < max && idle < 5 && ctx.Err() == nil; turn++ {
-		pages, store, snapshot, err := r.pageConfiguration(ctx, conn)
+		pages, _, snapshot, err := r.pageConfiguration(ctx, conn)
 		if err != nil {
 			return n, err
 		}
 		found := false
-		switch turn % 5 {
+		// Embedding has its own loop (ProcessIndex): a slow embedder must not
+		// hold up recognition or library-run preparation.
+		switch turn % 4 {
 		case 0:
 			found, err = pages.Step(ctx, conn)
 		case 1:
@@ -558,13 +560,9 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 					found, err = native.ProcessPageIndex(ctx, pages.OCR, pages.Prompt)
 				}
 			}
-		case 3:
-			found, err = (recognition.Store{DB: conn}).StepRun(ctx, r.recognitionCatalog(conn), pages.OCR != nil)
 		case 2:
-			if store != nil && snapshot.Config.Embedding.Enabled {
-				found, err = store.ProcessIndex(ctx)
-			}
-		case 4:
+			found, err = (recognition.Store{DB: conn}).StepRun(ctx, r.recognitionCatalog(conn), pages.OCR != nil)
+		case 3:
 			if r.cfg.NativeBOOX != nil {
 				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Minutes: minutesConfig(snapshot)}
 				if err = native.ResolveIdentity(ctx); err == nil {
@@ -592,6 +590,32 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 		}
 	}
 
+	return n, nil
+}
+
+// ProcessIndex embeds up to max records for search by meaning. It runs in its
+// own loop beside ProcessPages, so a slow embedder doesn't hold up recognition.
+func (r *Runtime) ProcessIndex(ctx context.Context, max int) (int, error) {
+	conn, done, err := r.admit(ctx, Process)
+	if err != nil {
+		return 0, err
+	}
+	defer done()
+	n := 0
+	for n < max && ctx.Err() == nil {
+		_, store, snapshot, err := r.pageConfiguration(ctx, conn)
+		if err != nil {
+			return n, err
+		}
+		if store == nil || !snapshot.Config.Embedding.Enabled {
+			return n, nil
+		}
+		found, err := store.ProcessIndex(ctx)
+		if err != nil || !found {
+			return n, err
+		}
+		n++
+	}
 	return n, nil
 }
 

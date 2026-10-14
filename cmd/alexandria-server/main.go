@@ -349,22 +349,32 @@ func runService(logger *slog.Logger) error {
 		}
 	}
 
-	recognitionWork := func(ctx context.Context) error {
-		timer := time.NewTimer(0)
-		defer timer.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-timer.C:
-				_, err := runtime.ProcessPages(ctx, 8)
-				if err != nil && ctx.Err() == nil {
-					logger.Warn("recognition worker deferred", "error_code", "work_unavailable")
+	// A loop that found a full batch goes straight on; it waits for the poll
+	// interval only when it runs out of work or fails.
+	loop := func(name string, step func(context.Context, int) (int, error)) func(context.Context) error {
+		return func(ctx context.Context) error {
+			timer := time.NewTimer(0)
+			defer timer.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-timer.C:
+					n, err := step(ctx, 8)
+					if err != nil && ctx.Err() == nil {
+						logger.Warn(name+" worker deferred", "error_code", "work_unavailable")
+					}
+					if err == nil && n >= 8 {
+						timer.Reset(0)
+					} else {
+						timer.Reset(cfg.WorkerPoll)
+					}
 				}
-				timer.Reset(cfg.WorkerPoll)
 			}
 		}
 	}
+	recognitionWork := loop("recognition", runtime.ProcessPages)
+	indexWork := loop("index", runtime.ProcessIndex)
 
 	switch cfg.Role {
 	case config.RoleGateway:
@@ -377,7 +387,7 @@ func runService(logger *slog.Logger) error {
 			}
 			return runtime.RunJob(ctx, id, cfg.WorkerID)
 		}
-		return runComponents(ctx, cancel, work, recognitionWork)
+		return runComponents(ctx, cancel, work, recognitionWork, indexWork)
 	case config.RoleMaintenance:
 		if _, err := runtime.Reconcile(ctx); err != nil {
 			return err
@@ -385,7 +395,7 @@ func runService(logger *slog.Logger) error {
 		_, err := runtime.CollectAssets(ctx, 10000)
 		return err
 	case config.RoleAll:
-		return runComponents(ctx, cancel, gateway.Run, work, recognitionWork)
+		return runComponents(ctx, cancel, gateway.Run, work, recognitionWork, indexWork)
 	default:
 		return fmt.Errorf("unsupported role %q", cfg.Role)
 	}
