@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -83,6 +84,35 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			dest += "?batch=" + url.QueryEscape(r.Form.Get("id"))
 		}
 		back(w, r, dest, fmt.Sprintf("Updated %d jobs. Requests already sent to a provider may still incur charges.", n))
+	})
+	mux.HandleFunc("POST /jobs/retry", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		if r.ParseForm() != nil {
+			http.Error(w, "Invalid form", 400)
+			return
+		}
+		f := recognition.Filter{History: r.Form.Get("history") == "1", Source: r.Form.Get("source"), State: r.Form.Get("state"), Batch: r.Form.Get("batch"), Run: r.Form.Get("run")}
+		expect, _ := strconv.Atoi(r.Form.Get("expect"))
+		q := url.Values{}
+		for k, v := range map[string]string{"source": f.Source, "state": f.State, "batch": f.Batch, "run": f.Run} {
+			if v != "" {
+				q.Set(k, v)
+			}
+		}
+		if f.History {
+			q.Set("history", "1")
+		}
+		dest := "/jobs?" + q.Encode()
+		n, e := store.RetryMatching(r.Context(), f, expect)
+		if errors.Is(e, recognition.ErrSelectionChanged) {
+			back(w, r, dest, e.Error())
+			return
+		}
+		if e != nil {
+			d.fail(w, e)
+			return
+		}
+		back(w, r, dest, fmt.Sprintf("Queued %d jobs again. Charges from your provider may apply.", n))
 	})
 	mux.HandleFunc("GET /jobs/new", func(w http.ResponseWriter, r *http.Request) {
 		source, id := r.URL.Query().Get("source"), r.URL.Query().Get("notebook")
