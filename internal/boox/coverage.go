@@ -19,6 +19,8 @@ type CoveragePage struct {
 	IndexWarning, Error     string
 	Width, Height           float64    // page size
 	InkBounds               [4]float64 // left, top, right, bottom of rendered shapes' boxes
+	Background              *booxpage.Background
+	BackgroundLive          bool // the background file is held by the server
 	Warnings                []string
 	DrawWarnings            []string       // template, background and drawing
 	ShapeTypes              map[string]int // rendered shapes by type
@@ -71,7 +73,10 @@ func (s Service) PageCoverage(ctx context.Context, notebook, page string, withPN
 		c.Error = err.Error()
 		return c
 	}
-	c.Warnings, c.Issues, c.Width, c.Height = warnings, p.Issues, p.Width, p.Height
+	c.Warnings, c.Issues, c.Width, c.Height, c.Background = warnings, p.Issues, p.Width, p.Height, p.Background
+	if p.Background != nil {
+		_, c.BackgroundLive = n.Assets[p.Background.Path]
+	}
 	img, tw, err := booxpage.Preview(p, s.snapshotLoader(ctx, n))
 	if err != nil {
 		c.Error = "drawing: " + err.Error()

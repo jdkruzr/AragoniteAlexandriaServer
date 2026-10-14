@@ -236,3 +236,19 @@ func TestRegularPolygonFromPenPoints(t *testing.T) {
 		t.Fatal("one point made a polygon")
 	}
 }
+
+func TestDraftPagesGrowToFitInkAndBookmarksAreSkipped(t *testing.T) {
+	m := metaFixture()
+	m.ActiveScene = 4
+	low := &pb.ShapeInfoProto{UniqueId: "box", ShapeType: 1, Color: -16777216, Thickness: 2, BoundingRect: `{"left":10,"top":120,"right":40,"bottom":160}`, CreatedAt: 1}
+	mark := &pb.ShapeInfoProto{UniqueId: "mark", ShapeType: shapeBookmark, Extra: `{"textContent":"Todo"}`, BoundingRect: `{"left":0,"top":0,"right":10,"bottom":10}`, CreatedAt: 2}
+	raw := shapeZip(t, low, mark)
+	p, w, e := ShapePage(m, "page", []string{"shape/page#a.zip"}, func(string) ([]byte, error) { return raw, nil })
+	if e != nil || len(w) != 0 || p.Height != 180 || p.Width != 100 || len(p.Shapes) != 1 || len(p.Texts) != 1 || p.Texts[0] != "Todo" {
+		t.Fatal(e, w, p.Width, p.Height, p.Texts)
+	}
+	img, _, e := Preview(p, func(string) ([]byte, error) { return nil, errors.New("no template") })
+	if e != nil || img.Bounds().Dy() != 180 {
+		t.Fatal("preview cropped the draft page", e)
+	}
+}

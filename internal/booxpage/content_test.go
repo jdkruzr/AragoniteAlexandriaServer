@@ -83,3 +83,39 @@ func TestCrossPageReferenceAndDanglingTarget(t *testing.T) {
 		t.Fatal("dangling reference silently accepted", e, w)
 	}
 }
+
+func inked(dc *gg.Context, x0, y0, x1, y1 int) int {
+	n := 0
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			if _, _, _, a := dc.Image().At(x, y).RGBA(); a > 0 {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+func TestTextBoxesGrowAndVerticalText(t *testing.T) {
+	// Two lines in a box one line tall: the second line is drawn below it.
+	tall := &Shape{ShapeType: 16, Color: -16777216, Text: "Tenant WiFi", BoundingRect: &Rect{Left: 10, Top: 10, Right: 90, Bottom: 30}, TextStyle: textStyle{TextSize: 16, TextSpacing: 1}}
+	dc := gg.NewContext(200, 200)
+	if e := drawTextShape(dc, tall); e != nil || inked(dc, 10, 32, 90, 60) == 0 {
+		t.Fatal("second line clipped", e)
+	}
+	sp := &pb.ShapeInfoProto{UniqueId: "v", ShapeType: 16, Color: -16777216, Text: "VERTICAL", BoundingRect: `{"left":160,"top":10,"right":190,"bottom":80}`, TextStyle: `{"textSize":16,"textSpacing":1,"orientation":1,"vertical":true}`}
+	raw := shapeZip(t, sp)
+	p, w, e := ShapePage(metaFixture(), "page", []string{"shape/page#a.zip"}, func(string) ([]byte, error) { return raw, nil })
+	if e != nil || len(w) > 0 || len(p.Notices) != 2 {
+		t.Fatal(e, w, p.Notices)
+	}
+	dc = gg.NewContext(200, 200)
+	if e = drawTextShape(dc, p.Shapes[0]); e != nil {
+		t.Fatal(e)
+	}
+	// Eight letters, four to a 70 px column: two columns, the first at the right
+	// edge and the second to its left.
+	if inked(dc, 172, 10, 190, 80) == 0 || inked(dc, 150, 10, 170, 80) == 0 || inked(dc, 0, 0, 140, 200) != 0 {
+		t.Fatal("vertical columns misplaced")
+	}
+}

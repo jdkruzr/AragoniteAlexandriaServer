@@ -18,6 +18,9 @@ var geometricTypes = map[int32]bool{
 	0: true, 1: true, 7: true, 8: true, 24: true, 27: true, 28: true,
 }
 
+// shapeBookmark is the firmware's SHAPE_BOOKMARK marker.
+const shapeBookmark = 210
+
 // Regular polygons are built from their pen-down and pen-up points. The side
 // count isn't stored: type 24 is always the firmware's default pentagon.
 var polygonSides = map[int32]int{24: 5, 27: 6}
