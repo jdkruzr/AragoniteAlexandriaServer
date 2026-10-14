@@ -2,6 +2,7 @@
 package booxpage
 
 import (
+	"image"
 	"math"
 
 	"github.com/fogleman/gg"
@@ -21,6 +22,9 @@ var geometricTypes = map[int32]bool{
 // shapeBookmark is the firmware's SHAPE_BOOKMARK marker.
 const shapeBookmark = 210
 
+// shapeMarker is the firmware's marker pen (MarkerScribbleShape).
+const shapeMarker = 15
+
 // Regular polygons are built from their pen-down and pen-up points. The side
 // count isn't stored: type 24 is always the firmware's default pentagon.
 var polygonSides = map[int32]int{24: 5, 27: 6}
@@ -30,6 +34,8 @@ func renderShape(dc *gg.Context, s *Shape) {
 		renderFill(dc, s)
 	} else if s.ShapeType == 40 {
 		renderUniversal(dc, s)
+	} else if s.ShapeType == shapeMarker && s.UnderContent {
+		renderMarker(dc, s)
 	} else if scribbleTypes[s.ShapeType] {
 		renderScribble(dc, s)
 	} else if geometricTypes[s.ShapeType] {
@@ -121,4 +127,60 @@ func renderFill(dc *gg.Context, s *Shape) {
 	dc.FillPreserve()
 	dc.SetLineWidth(float64(s.Thickness))
 	dc.Stroke()
+}
+
+// renderMarker draws a marker beneath the writing the way the firmware does:
+// the opaque stroke is blended with PorterDuff DARKEN, so each channel keeps
+// the darker of page and marker. Ink stays readable and paper takes the
+// marker's color. The stroke is drawn on a layer covering only its bounds.
+func renderMarker(dc *gg.Context, s *Shape) {
+	if len(s.Points) == 0 {
+		return
+	}
+	mat := parseMatrix(s.MatrixValues)
+	ps := getPenStyle(s.ShapeType)
+	pad := ps.MaxWidthFactor*float64(s.Thickness) + 2 // widths aren't transformed
+	minX, minY, maxX, maxY := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
+	for _, p := range s.Points {
+		x, y := float64(p.X), float64(p.Y)
+		if mat != nil {
+			x, y = mat.transformPoint(x, y)
+		}
+		minX, minY, maxX, maxY = math.Min(minX, x), math.Min(minY, y), math.Max(maxX, x), math.Max(maxY, y)
+	}
+	page, ok := dc.Image().(*image.RGBA)
+	if !ok {
+		renderScribble(dc, s)
+		return
+	}
+	area := image.Rect(int(math.Floor(minX-pad)), int(math.Floor(minY-pad)), int(math.Ceil(maxX+pad)), int(math.Ceil(maxY+pad))).Intersect(page.Bounds())
+	if area.Empty() {
+		return
+	}
+	layer := gg.NewContext(area.Dx(), area.Dy())
+	layer.Translate(-float64(area.Min.X), -float64(area.Min.Y))
+	opaque := *s
+	opaque.UnderContent = false
+	renderScribble(layer, &opaque)
+	src := layer.Image().(*image.RGBA)
+	for y := area.Min.Y; y < area.Max.Y; y++ {
+		for x := area.Min.X; x < area.Max.X; x++ {
+			si := src.PixOffset(x-area.Min.X, y-area.Min.Y)
+			a := uint32(src.Pix[si+3])
+			if a == 0 {
+				continue
+			}
+			di := page.PixOffset(x, y)
+			// Uncovered canvas counts as white paper, as on a preview.
+			paper := 255 - uint32(page.Pix[di+3])
+			for c := 0; c < 3; c++ {
+				// Premultiplied: un-premultiply the marker, take the darker
+				// channel, and mix by the stroke's coverage at this pixel.
+				m := uint32(src.Pix[si+c]) * 255 / a
+				d := uint32(page.Pix[di+c]) + paper
+				page.Pix[di+c] = uint8((d*(255-a) + min(d, m)*a) / 255)
+			}
+			page.Pix[di+3] = 255
+		}
+	}
 }

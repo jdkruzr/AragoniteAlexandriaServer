@@ -51,6 +51,7 @@ type Shape struct {
 	ImagePath    string
 	RevisionID   string
 	Points       []TinyPoint // populated from point files or inline pointList
+	UnderContent bool        // a marker drawn beneath the writing (darken blend)
 }
 
 // Rect is a bounding rectangle parsed from JSON.
