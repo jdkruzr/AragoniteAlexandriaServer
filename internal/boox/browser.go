@@ -95,6 +95,8 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		s.readerRefreshHTTP(w, r)
 	case "/boox/books/upload":
 		s.uploadBookHTTP(w, r)
+	case "/boox/text-notes/new":
+		s.textNoteHTTP(w, r)
 	case "/boox/recognize":
 		s.queuePageHTTP(w, r)
 	case "/boox/enroll":

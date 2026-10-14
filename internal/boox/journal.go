@@ -161,8 +161,12 @@ func (s Service) PublishOne(ctx context.Context) (bool, error) {
 		return true, e
 	}
 	var live map[string]any
-	if kind == "upload_book" && state == "queued" {
-		live, e = s.publishBookRecord(ctx, tx, id, doc, payload)
+	if (kind == "upload_book" || kind == "create_text_note") && state == "queued" {
+		if kind == "upload_book" {
+			live, e = s.publishBookRecord(ctx, tx, id, doc, payload)
+		} else {
+			live, e = s.publishTextNoteRecord(ctx, tx, id, doc, payload)
+		}
 		if e != nil {
 			return true, e
 		}
