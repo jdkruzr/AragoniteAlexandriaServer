@@ -105,7 +105,7 @@ func TestToolsMatchUltraBridgeSurface(t *testing.T) {
 	for _, tool := range tools.Tools {
 		names = append(names, tool.Name)
 	}
-	for _, want := range []string{"search_notes", "get_note_pages", "get_note_image", "list_text_boxes", "edit_text_box",
+	for _, want := range []string{"search_notes", "get_note_minutes", "get_note_pages", "get_note_image", "list_text_boxes", "edit_text_box",
 		"list_tasks", "get_task", "create_task", "update_task", "complete_task", "delete_task", "purge_completed_tasks", "purge_deleted_tasks"} {
 		if !strings.Contains(strings.Join(names, ","), want) {
 			t.Fatalf("missing %s in %v", want, names)
@@ -239,5 +239,38 @@ func TestSearchNotesBOOXSourceAndLinks(t *testing.T) {
 	raw, _ = json.Marshal(result.StructuredContent)
 	if err = json.Unmarshal(raw, &out); err != nil || out.Count != 2 {
 		t.Fatal("global MCP", string(raw), err)
+	}
+}
+
+func TestNoteMinutesSearchAndTool(t *testing.T) {
+	db, client := setup(t)
+	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('nbm','1-a','notebook','1','test','{"uniqueId":"nbm","title":"Standup","type":1,"status":1,"pageNameList":[]}')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_transcription(source,notebook_id,resource_key,sha256,state,text,duration_ms) VALUES('boox','nbm','resource/data/a.mp3','s','ready','the comet launch slips a week',61000)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_note_minutes(source,notebook_id,request_id,state,recordings,topic,keywords,key_points,conclusion,metadata,model,input_hash,finished_at)
+ VALUES('boox','nbm',gen_random_uuid(),'ready','[{"key":"resource/data/a.mp3","sha256":"s","title":"Recording1","recorded_at":"2026-10-13T21:50:41Z","duration_ms":61000}]','Comet schedule','["comet","launch","delay","week"]','[{"text":"Launch slips a week.","from":"recording"}]','Plan for next week.','{"title":"Standup","page_count":0,"recordings":[]}','synthetic-llm','h',now())`); err != nil {
+		t.Fatal(err)
+	}
+	r := call(t, client, "search_notes", map[string]any{"query": "comet", "source": "boox"})
+	if r.IsError || !strings.Contains(textOf(r), "boox-minutes:nbm") || !strings.Contains(textOf(r), "/boox/minutes?id=nbm") {
+		t.Fatalf("minutes search: %s", textOf(r))
+	}
+	r = call(t, client, "get_note_minutes", map[string]any{"note_path": "boox-minutes:nbm"})
+	text := textOf(r)
+	if r.IsError || !strings.Contains(text, "Topic: Comet schedule") || !strings.Contains(text, "[recording]") || !strings.Contains(text, "the comet launch slips a week") || !strings.Contains(text, "2026-10-13T21:50:41Z") {
+		t.Fatalf("minutes tool: %s", text)
+	}
+	r = call(t, client, "get_note_minutes", map[string]any{"note_path": "nbm", "include_transcripts": false})
+	if r.IsError || strings.Contains(textOf(r), "slips a week\n") {
+		t.Fatalf("transcripts not omitted: %s", textOf(r))
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE boox_projection SET body=jsonb_set(body,'{status}','0') WHERE document_id='nbm'`); err != nil {
+		t.Fatal(err)
+	}
+	if r = call(t, client, "get_note_minutes", map[string]any{"note_path": "nbm"}); !r.IsError {
+		t.Fatal("deleted notebook's minutes returned")
 	}
 }

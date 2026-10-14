@@ -1,0 +1,23 @@
+[Unit]
+Description=Whisper speech-to-text (OpenAI-compatible) for Alexandria note minutes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ops
+Group=ops
+# WHISPER_API_KEY lives here, never on the command line.
+EnvironmentFile=/etc/whisper/whisper.env
+Environment=WHISPER_MODEL_DIR=/opt/whisper/models
+Environment=WHISPER_DEVICE=cpu
+Environment=WHISPER_COMPUTE_TYPE=int8
+Environment=WHISPER_CPU_THREADS=8
+WorkingDirectory=/opt/whisper
+ExecStart=/opt/whisper/env/bin/uvicorn server:app --host 0.0.0.0 --port 8090 --workers 1
+Nice=5
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

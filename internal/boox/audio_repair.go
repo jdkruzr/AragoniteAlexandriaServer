@@ -30,6 +30,58 @@ func repairONY1Audio(raw []byte) ([]byte, error) {
 	return fixed, err
 }
 
+// ony1Key reads the AES key and IV scattered through the 1024-byte header.
+func ony1Key(raw []byte) (key, iv []byte) {
+	key = make([]byte, 0, 32)
+	iv = make([]byte, 0, 16)
+	for _, base := range []int{32, 96, 160, 224} {
+		for _, off := range []int{0, 1, 3, 5, 7, 10, 13, 15} {
+			key = append(key, raw[base+off])
+		}
+	}
+	for _, base := range []int{512, 620, 752, 848} {
+		for _, off := range []int{0, 3, 6, 8} {
+			iv = append(iv, raw[base+off])
+		}
+	}
+	return key, iv
+}
+
+// audioPlaintext decrypts a recording in either live layout: the original
+// upload (duplicated IV block) or a published repair (without it). Bodies
+// without the ONY1 header are returned unchanged.
+func audioPlaintext(raw []byte) ([]byte, error) {
+	if !bytes.HasPrefix(raw, []byte{'O', 'N', 'Y', '1', 1}) {
+		return raw, nil
+	}
+	if _, original, _, err := audioEnvelope(raw); err == nil {
+		return original, nil
+	}
+	if len(raw) < 1040 || len(raw) > maxObject {
+		return nil, errAudioEnvelope
+	}
+	size := binary.BigEndian.Uint64(raw[5:13])
+	if size > maxObject {
+		return nil, errAudioEnvelope
+	}
+	expected := int(size)/aes.BlockSize*aes.BlockSize + aes.BlockSize
+	if len(raw) != 1024+expected {
+		return nil, errAudioEnvelope
+	}
+	key, iv := ony1Key(raw)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, errAudioEnvelope
+	}
+	plain := make([]byte, expected)
+	cipher.NewCBCDecrypter(block, iv).CryptBlocks(plain, raw[1024:])
+	pad := int(plain[len(plain)-1])
+	if pad < 1 || pad > 16 || len(plain)-pad != int(size) || !bytes.Equal(plain[len(plain)-pad:], bytes.Repeat([]byte{byte(pad)}, pad)) {
+		return nil, errAudioEnvelope
+	}
+	return plain[:size], nil
+}
+
 func audioEnvelope(raw []byte) (fixed, original, damaged []byte, err error) {
 	if len(raw) < 1056 || len(raw) > maxObject || !bytes.Equal(raw[:5], []byte{'O', 'N', 'Y', '1', 1}) {
 		return nil, nil, nil, errAudioEnvelope
@@ -42,18 +94,7 @@ func audioEnvelope(raw []byte) (fixed, original, damaged []byte, err error) {
 	if len(raw) != 1040+expected {
 		return nil, nil, nil, errAudioEnvelope
 	}
-	key := make([]byte, 0, 32)
-	iv := make([]byte, 0, 16)
-	for _, base := range []int{32, 96, 160, 224} {
-		for _, off := range []int{0, 1, 3, 5, 7, 10, 13, 15} {
-			key = append(key, raw[base+off])
-		}
-	}
-	for _, base := range []int{512, 620, 752, 848} {
-		for _, off := range []int{0, 3, 6, 8} {
-			iv = append(iv, raw[base+off])
-		}
-	}
+	key, iv := ony1Key(raw)
 	if !bytes.Equal(iv, raw[1024:1040]) {
 		return nil, nil, nil, errAudioEnvelope
 	}

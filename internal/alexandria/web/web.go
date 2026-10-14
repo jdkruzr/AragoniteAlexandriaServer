@@ -86,7 +86,34 @@ var funcs = template.FuncMap{
 		}
 		return *s
 	},
+	// clock formats milliseconds (int64) or seconds (float64) as m:ss or h:mm:ss.
+	"clock": func(v any) string {
+		var d time.Duration
+		switch n := v.(type) {
+		case int64:
+			d = time.Duration(n) * time.Millisecond
+		case float64:
+			d = time.Duration(n * float64(time.Second))
+		case time.Duration:
+			d = n
+		}
+		s := int(d.Round(time.Second) / time.Second)
+		if s >= 3600 {
+			return fmt.Sprintf("%d:%02d:%02d", s/3600, s/60%60, s%60)
+		}
+		return fmt.Sprintf("%d:%02d", s/60, s%60)
+	},
+	"utc": func(t time.Time) string {
+		if t.IsZero() {
+			return "—"
+		}
+		return t.UTC().Format("2006-01-02 15:04") + " UTC"
+	},
 }
+
+// Funcs are the layout's template functions. Content templates grafted into
+// the layout (BOOX views) parse with these so names resolve identically.
+func Funcs() template.FuncMap { return funcs }
 
 var layout = template.Must(template.New("layout.html").Funcs(funcs).ParseFS(assets, "templates/layout.html"))
 

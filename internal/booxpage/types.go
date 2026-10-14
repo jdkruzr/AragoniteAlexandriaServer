@@ -10,7 +10,8 @@ type Page struct {
 	Height     float64
 	OrderIndex float32 // from VirtualPage protobuf; used for sorting
 	Texts      []string
-	Shapes     []*Shape // ordered by zorder
+	Audio      []AudioRef // recordings placed on this page
+	Shapes     []*Shape   // ordered by zorder
 }
 
 // Shape represents a single shape (stroke, geometry, text, etc.) on a page.

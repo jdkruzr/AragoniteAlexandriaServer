@@ -19,6 +19,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
@@ -150,6 +151,35 @@ type editTextBoxOutput struct {
 	OK    bool   `json:"ok"`
 }
 
+type getNoteMinutesInput struct {
+	NotePath           string `json:"note_path" jsonschema:"boox-minutes:{notebook_id} path from search_notes, or a BOOX notebook ID"`
+	IncludeTranscripts *bool  `json:"include_transcripts,omitempty" jsonschema:"include recording transcripts (default true)"`
+}
+
+type noteTranscript struct {
+	Title      string `json:"title"`
+	RecordedAt string `json:"recorded_at,omitempty"`
+	DurationMS int64  `json:"duration_ms"`
+	Language   string `json:"language,omitempty"`
+	State      string `json:"state"`
+	Text       string `json:"text,omitempty"`
+}
+
+type noteMinutesOutput struct {
+	NotebookID string           `json:"notebook_id"`
+	State      string           `json:"state"`
+	Detail     string           `json:"detail,omitempty"`
+	Topic      string           `json:"topic"`
+	Keywords   []string         `json:"keywords"`
+	KeyPoints  []minutes.Point  `json:"key_points"`
+	Conclusion string           `json:"conclusion"`
+	Metadata   minutes.Metadata `json:"metadata"`
+	Model      string           `json:"model"`
+	Written    string           `json:"written,omitempty"`
+	DetailURL  string           `json:"detail_url"`
+	Recordings []noteTranscript `json:"recordings"`
+}
+
 // detailPath is the web page for a notebook page.
 func detailPath(notebookID, pageID string) string {
 	return "/files/forestnote?notebook=" + url.QueryEscape(notebookID) + "&page=" + url.QueryEscape(pageID)
@@ -180,7 +210,7 @@ func text(s string, out any) *mcp.CallToolResult {
 func registerNoteTools(server *mcp.Server, d Deps) {
 	mcp.AddTool[searchNotesInput, any](server, &mcp.Tool{
 		Name:        "search_notes",
-		Description: "Search Alexandria Client page text and BOOX recognized pages and reading text. Optional: mode (hybrid/keyword), limit, source or sources (client/forestnote, boox). Defaults to all sources. Folder, location, device_model, dates and sort are accepted but not implemented. BOOX results provide web links; the client-only image/page tools do not accept BOOX paths.",
+		Description: "Search Alexandria Client page text and BOOX recognized pages, reading text and note minutes (including recording transcripts). Optional: mode (hybrid/keyword), limit, source or sources (client/forestnote, boox). Defaults to all sources. Folder, location, device_model, dates and sort are accepted but not implemented. BOOX results provide web links; the client-only image/page tools do not accept BOOX paths.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in searchNotesInput) (*mcp.CallToolResult, any, error) {
 		if in.Query == "" {
 			return nil, nil, fmt.Errorf("query is required")
@@ -229,6 +259,9 @@ func registerNoteTools(server *mcp.Server, d Deps) {
 				if r.PageNumber > 0 {
 					m.Title = fmt.Sprintf("%s, page %d", r.NotebookName, r.PageNumber)
 				}
+				if r.Kind == "Minutes" {
+					m.ImageToolHint = fmt.Sprintf(`get_note_minutes {"note_path": %q}`, r.NoteKey)
+				}
 			}
 			out.Results = append(out.Results, m)
 			fmt.Fprintf(&sb, "--- Result %d ---\nNote: %s (page 0)\nTitle: %s\nSource type: %s\nURL: %s\nText:\n%s\n\n",
@@ -236,6 +269,55 @@ func registerNoteTools(server *mcp.Server, d Deps) {
 		}
 		if len(results) == 0 {
 			sb.WriteString("No results found.\n")
+		}
+		return text(sb.String(), out), out, nil
+	})
+
+	mcp.AddTool[getNoteMinutesInput, any](server, &mcp.Tool{
+		Name:        "get_note_minutes",
+		Description: "Get the minutes for a BOOX note: topic, keywords, key points (each marked as from the recording, the handwritten notes or both), conclusion, metadata about the notebook and its recordings (titles, start times, lengths), and the recording transcripts. note_path is a boox-minutes:{notebook_id} path from search_notes, or a BOOX notebook ID. Set include_transcripts=false to omit transcripts.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getNoteMinutesInput) (*mcp.CallToolResult, any, error) {
+		id := strings.TrimPrefix(in.NotePath, "boox-minutes:")
+		if id == "" || strings.ContainsAny(id, "/:") {
+			return nil, nil, fmt.Errorf("note_path is required")
+		}
+		var live bool
+		if err := d.DB.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM boox_search_notebooks WHERE document_id=$1)`, id).Scan(&live); err != nil {
+			return nil, nil, err
+		}
+		m, ok, err := minutes.Load(ctx, d.DB, "boox", id)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !live || !ok {
+			return nil, nil, fmt.Errorf("no minutes for note: %s", in.NotePath)
+		}
+		out := noteMinutesOutput{NotebookID: id, State: m.State, Detail: m.Detail, Topic: m.Topic, Keywords: m.Keywords, KeyPoints: m.KeyPoints, Conclusion: m.Conclusion, Metadata: m.Metadata, Model: m.Model, DetailURL: d.display("/boox/minutes?id=" + url.QueryEscape(id))}
+		if m.FinishedAt.Valid {
+			out.Written = m.FinishedAt.Time.UTC().Format(time.RFC3339)
+		}
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "Minutes for %s (%s)\nURL: %s\n", m.Metadata.Title, m.State, out.DetailURL)
+		if m.State != "ready" && m.Topic == "" {
+			fmt.Fprintf(&sb, "Not ready yet. %s\n", m.Detail)
+		} else {
+			fmt.Fprintf(&sb, "Topic: %s\nKeywords: %s\nKey points:\n", m.Topic, strings.Join(m.Keywords, ", "))
+			for i, p := range m.KeyPoints {
+				fmt.Fprintf(&sb, "%d. %s [%s]\n", i+1, p.Text, p.From)
+			}
+			fmt.Fprintf(&sb, "Conclusion: %s\n", m.Conclusion)
+		}
+		for _, r := range m.Recordings {
+			t := noteTranscript{Title: r.Title, DurationMS: r.DurationMS, Language: r.Language, State: r.State}
+			if !r.RecordedAt.IsZero() {
+				t.RecordedAt = r.RecordedAt.UTC().Format(time.RFC3339)
+			}
+			fmt.Fprintf(&sb, "\nRecording %q, started %s, %d ms\n", r.Title, t.RecordedAt, r.DurationMS)
+			if in.IncludeTranscripts == nil || *in.IncludeTranscripts {
+				t.Text = r.Text
+				sb.WriteString(r.Text + "\n")
+			}
+			out.Recordings = append(out.Recordings, t)
 		}
 		return text(sb.String(), out), out, nil
 	})

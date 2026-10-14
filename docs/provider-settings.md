@@ -314,3 +314,23 @@ controls are scoped to the saved source, including when two sources share IDs.
 Additive migration 0025 records the source and preserves existing reviews as
 BOOX reviews. Follow the application-stop migration procedure above and refresh
 runtime grants before restarting. No migration or deployment starts OCR.
+
+## Note minutes providers — 2026-10-13
+
+Migration 0026 adds two providers for [note minutes](note-minutes.md):
+
+- **Transcription:** any OpenAI-compatible `/v1/audio/transcriptions` endpoint,
+  with a model and an optional language.
+- **Summary model:** Anthropic Messages or OpenAI Chat Completions, with an
+  optional workspace and the vLLM no-thinking option.
+
+Each has its own credential column (`transcription_credential`,
+`summary_credential`). The AES-GCM additional data names its purpose
+(`transcription-key-v1`, `summary-key-v1`), so ciphertexts can't be swapped
+between columns. The OCR credential keeps its original `provider-key-v1` label.
+
+They are saved from their own form (`POST /settings/minutes`) under the same
+revision check and owner-only gate. The recognition and search forms carry over
+the saved minutes providers, so no hidden fields are needed. Connection tests
+send a synthetic one-second tone or a one-line prompt. No setting ever queues
+transcription or summaries.

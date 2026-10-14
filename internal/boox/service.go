@@ -21,6 +21,7 @@ type Service struct {
 	RecognitionEnabled  bool
 	RecognitionIdentity string
 	RecognitionRevision int64
+	Minutes             MinutesConfig
 	Config              Config
 	DB                  pg.DB
 	Objects             blob.Store

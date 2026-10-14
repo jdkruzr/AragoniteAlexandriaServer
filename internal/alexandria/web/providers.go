@@ -72,6 +72,55 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		}
 		back(w, r, "/settings/search", notice)
 	})
+	mux.HandleFunc("POST /settings/minutes", func(w http.ResponseWriter, r *http.Request) {
+		if d.Providers == nil {
+			http.Error(w, "Provider settings are unavailable in this deployment.", 503)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 32768)
+		if r.ParseForm() != nil {
+			http.Error(w, "Invalid settings form.", 400)
+			return
+		}
+		rev, e := strconv.ParseInt(r.Form.Get("revision"), 10, 64)
+		if e != nil {
+			http.Error(w, "Reload the Settings page.", 409)
+			return
+		}
+		f := r.Form.Get
+		t := providers.TranscriptionConfig{Enabled: f("t_enabled") == "on", URL: f("t_url"), Model: f("t_model"), Language: f("t_language")}
+		m := providers.SummaryConfig{Enabled: f("s_enabled") == "on", URL: f("s_url"), Model: f("s_model"), Format: f("s_format"), AnthropicWorkspace: f("s_workspace"), VLLMDisableThinking: f("s_vllm") == "on"}
+		candidate, e := d.Providers.MinutesCandidate(r.Context(), rev, t, m, providers.KeyChange{Key: f("t_key"), Action: f("t_key_action")}, providers.KeyChange{Key: f("s_key"), Action: f("s_key_action")})
+		if e == nil {
+			switch f("action") {
+			case "save":
+				if e = d.Providers.Save(r.Context(), candidate); e == nil {
+					back(w, r, "/settings/recognition", "Note minutes settings saved. Nothing was transcribed or summarized.")
+					return
+				}
+			case "test_transcription":
+				e = candidate.TestConnection(r.Context(), "transcription")
+			case "test_summary":
+				e = candidate.TestConnection(r.Context(), "summary")
+			default:
+				http.Error(w, "Unknown settings action.", 400)
+				return
+			}
+		}
+		view, loadErr := d.Providers.View(r.Context())
+		if loadErr != nil {
+			d.fail(w, loadErr)
+			return
+		}
+		view.Config.Transcription, view.Config.Summary = t, m
+		view.Revision = rev
+		notice := "Connection test passed. Settings have not been saved. Re-enter a replacement key before saving."
+		if e != nil {
+			notice = e.Error()
+		}
+		r.URL.RawQuery = url.Values{"notice": {notice}}.Encode()
+		d.settingsPage(w, r, "recognition", &view)
+	})
 	mux.HandleFunc("POST /settings/providers", func(w http.ResponseWriter, r *http.Request) {
 		if d.Providers == nil {
 			http.Error(w, "Provider settings are unavailable in this deployment.", 503)

@@ -33,6 +33,7 @@ type Metadata struct {
 	Title                string
 	ParentUniqueID       string
 	Type, Status         int
+	CreatedAt, UpdatedAt int64 // milliseconds since the epoch
 	ActiveScene          int
 	PageNameList         json.RawMessage
 	RichTextPageNameList json.RawMessage
@@ -385,6 +386,14 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				continue
 			}
 			s.Features = features
+		} else if s.ShapeType == shapeAudio {
+			ref, err := audioShape(sp.Resource)
+			if err != nil {
+				warnings = append(warnings, err.Error())
+				continue
+			}
+			ref.ShapeID = s.UniqueID
+			p.Audio = append(p.Audio, ref)
 		} else if s.ShapeType == 19 {
 			var ref struct{ RelativePath string }
 			if json.Unmarshal([]byte(sp.Resource), &ref) != nil || ref.RelativePath == "" {

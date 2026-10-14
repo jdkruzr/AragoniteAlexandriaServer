@@ -18,6 +18,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
@@ -26,6 +27,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
@@ -289,7 +291,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		return true
 	}
-	if strings.HasPrefix(req.URL.Path, "/jobs") || r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || req.URL.Path == "/settings/search" || req.URL.Path == "/settings/recognition" || req.URL.Path == "/settings/integrations" || strings.HasPrefix(req.URL.Path, "/settings/providers") || strings.HasPrefix(req.URL.Path, "/settings/semantic")) {
+	if strings.HasPrefix(req.URL.Path, "/jobs") || r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || req.URL.Path == "/settings/search" || req.URL.Path == "/settings/recognition" || req.URL.Path == "/settings/integrations" || strings.HasPrefix(req.URL.Path, "/settings/providers") || strings.HasPrefix(req.URL.Path, "/settings/semantic") || strings.HasPrefix(req.URL.Path, "/settings/minutes")) {
 		if e := r.account(conn)(req); e != nil {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
 			http.Error(w, "unauthorized", 401)
@@ -323,6 +325,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			native.RecognitionEnabled = pages.OCR != nil
+			native.Minutes = minutesConfig(providerSnapshot)
 			native.Admin(w, req)
 			return
 		}
@@ -539,13 +542,13 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 	defer done()
 
 	n, idle := 0, 0
-	for turn := 0; n < max && idle < 4 && ctx.Err() == nil; turn++ {
+	for turn := 0; n < max && idle < 5 && ctx.Err() == nil; turn++ {
 		pages, store, snapshot, err := r.pageConfiguration(ctx, conn)
 		if err != nil {
 			return n, err
 		}
 		found := false
-		switch turn % 4 {
+		switch turn % 5 {
 		case 0:
 			found, err = pages.Step(ctx, conn)
 		case 1:
@@ -560,6 +563,22 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 		case 2:
 			if store != nil && snapshot.Config.Embedding.Enabled {
 				found, err = store.ProcessIndex(ctx)
+			}
+		case 4:
+			if r.cfg.NativeBOOX != nil {
+				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID}
+				if err = native.ResolveIdentity(ctx); err == nil {
+					// Queued work fails with guidance when its provider is off.
+					var stt *speech.Client
+					var summary minutes.Completer
+					if snapshot.Config.Transcription.Enabled {
+						stt = snapshot.SpeechClient()
+					}
+					if snapshot.Config.Summary.Enabled {
+						summary = snapshot.SummaryClient()
+					}
+					found, err = native.ProcessMinutes(ctx, stt, summary, snapshot.Config.Summary.Model, snapshot.TranscriptionIdentity())
+				}
 			}
 		}
 		if err != nil {
@@ -633,6 +652,11 @@ func (r *Runtime) pageConfiguration(ctx context.Context, db pg.DB) (notes.Pipeli
 		p.OCR = v.OCRClient()
 	}
 	return p, s, v, nil
+}
+
+func minutesConfig(v providers.Snapshot) boox.MinutesConfig {
+	t, m := v.Config.Transcription, v.Config.Summary
+	return boox.MinutesConfig{Enabled: t.Enabled && m.Enabled, Transcriber: t.Model, Summarizer: m.Model, Identity: v.TranscriptionIdentity()}
 }
 
 func (r *Runtime) recognitionCatalog(db pg.DB) recognition.Catalog {

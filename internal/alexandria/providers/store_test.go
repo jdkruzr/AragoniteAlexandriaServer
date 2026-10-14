@@ -331,3 +331,114 @@ func TestWorkspaceValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestMinutesProvidersKeepSeparateCredentialsAndRecognitionSettings(t *testing.T) {
+	ctx := context.Background()
+	s := fixture(t)
+	v, _ := s.Load(ctx)
+	v.Config.OCR = OCRConfig{Enabled: true, URL: "http://ocr.local", Model: "vision", Format: "openai"}
+	c, e := s.Candidate(ctx, v.Revision, v.Config, "private-ocr-key", "keep")
+	if e != nil || s.Save(ctx, c) != nil {
+		t.Fatal(e)
+	}
+	v, _ = s.Load(ctx)
+	t1 := TranscriptionConfig{Enabled: true, URL: " http://whisper.local:8090/ ", Model: "whisper", Language: "EN"}
+	m1 := SummaryConfig{Enabled: true, URL: "http://llm.local", Model: "qwen", Format: "openai", VLLMDisableThinking: true, AnthropicWorkspace: "wrkspc_ignored"}
+	c, e = s.MinutesCandidate(ctx, v.Revision, t1, m1, KeyChange{"private-stt-key", "keep"}, KeyChange{"private-llm-key", "replace"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if c.Config.OCR != v.Config.OCR || c.APIKey != "private-ocr-key" || c.Config.Transcription.URL != "http://whisper.local:8090" || c.Config.Transcription.Language != "en" || c.Config.Summary.AnthropicWorkspace != "" {
+		t.Fatalf("candidate %+v", c.Config)
+	}
+	if e = s.Save(ctx, c); e != nil {
+		t.Fatal(e)
+	}
+	var tb, sb []byte
+	s.DB.QueryRowContext(ctx, `SELECT transcription_credential,summary_credential FROM alexandria_provider_settings`).Scan(&tb, &sb)
+	if bytes.Contains(tb, []byte("private")) || bytes.Contains(sb, []byte("private")) {
+		t.Fatal("plaintext credential")
+	}
+	// Ciphertexts are bound to their purpose: swapping columns must not decrypt.
+	if _, e = s.open(tb, purposeSummary); e == nil {
+		t.Fatal("credential purpose not bound")
+	}
+	got, e := s.Load(ctx)
+	if e != nil || got.APIKey != "private-ocr-key" || got.TranscriptionKey != "private-stt-key" || got.SummaryKey != "private-llm-key" {
+		t.Fatal("credentials", e)
+	}
+	// Saving the recognition form keeps the minutes providers.
+	got.Config.OCR.Model = "vision-2"
+	c, e = s.Candidate(ctx, got.Revision, Config{OCR: got.Config.OCR, Embedding: got.Config.Embedding}, "", "keep")
+	if e != nil || s.Save(ctx, c) != nil {
+		t.Fatal(e)
+	}
+	got, _ = s.Load(ctx)
+	if got.Config.Transcription.Model != "whisper" || got.Config.Summary.Model != "qwen" || got.SummaryKey != "private-llm-key" || got.Config.OCR.Model != "vision-2" {
+		t.Fatalf("recognition save dropped minutes settings %+v", got.Config)
+	}
+	view, _ := s.View(ctx)
+	if !view.HasTranscriptionKey || !view.HasSummaryKey {
+		t.Fatal("view key flags")
+	}
+	// Moving an endpoint requires an explicit key decision.
+	t2 := t1
+	t2.URL = "http://elsewhere.local"
+	if _, e = s.MinutesCandidate(ctx, got.Revision, t2, m1, KeyChange{"", "keep"}, KeyChange{"", "keep"}); e == nil || !strings.Contains(e.Error(), "transcription endpoint") {
+		t.Fatal("endpoint move kept key", e)
+	}
+	for _, bad := range []struct {
+		t TranscriptionConfig
+		m SummaryConfig
+	}{
+		{TranscriptionConfig{Enabled: true}, SummaryConfig{}},
+		{TranscriptionConfig{Language: "en-US"}, SummaryConfig{}},
+		{TranscriptionConfig{}, SummaryConfig{Enabled: true, URL: "http://x", Model: "m"}},
+		{TranscriptionConfig{}, SummaryConfig{Format: "anthropic", VLLMDisableThinking: true}},
+		{TranscriptionConfig{URL: "ftp://x"}, SummaryConfig{}},
+	} {
+		if _, e = s.MinutesCandidate(ctx, got.Revision, bad.t, bad.m, KeyChange{"", "keep"}, KeyChange{"", "keep"}); e == nil {
+			t.Fatalf("accepted %+v", bad)
+		}
+	}
+	if _, e = s.MinutesCandidate(ctx, got.Revision-1, t1, m1, KeyChange{"", "keep"}, KeyChange{"", "keep"}); e != ErrStale {
+		t.Fatal("stale revision", e)
+	}
+}
+
+func TestMinutesConnectionTestsUseSyntheticInputs(t *testing.T) {
+	var sawAudio, sawChat bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/audio/transcriptions":
+			f, h, err := r.FormFile("file")
+			if err == nil {
+				b := make([]byte, 4)
+				f.Read(b)
+				sawAudio = string(b) == "RIFF" && h.Size == 32044
+			}
+			w.Write([]byte(`{"text":"","segments":[]}`))
+		case "/v1/chat/completions":
+			var body struct {
+				Messages []struct{ Role string } `json:"messages"`
+			}
+			json.NewDecoder(r.Body).Decode(&body)
+			sawChat = len(body.Messages) == 2 && body.Messages[0].Role == "system"
+			w.Write([]byte(`{"choices":[{"message":{"content":"OK"}}]}`))
+		default:
+			http.Error(w, "private provider detail", 404)
+		}
+	}))
+	defer srv.Close()
+	v := Snapshot{Config: Config{Transcription: TranscriptionConfig{URL: srv.URL, Model: "w"}, Summary: SummaryConfig{URL: srv.URL, Model: "m", Format: "openai"}}}
+	if e := v.TestConnection(context.Background(), "transcription"); e != nil || !sawAudio {
+		t.Fatal(e, sawAudio)
+	}
+	if e := v.TestConnection(context.Background(), "summary"); e != nil || !sawChat {
+		t.Fatal(e, sawChat)
+	}
+	v.Config.Summary.Format = "anthropic"
+	if e := v.TestConnection(context.Background(), "summary"); e == nil || strings.Contains(e.Error(), "private") || !strings.Contains(e.Error(), "Summary model test failed (HTTP 404)") {
+		t.Fatal(e)
+	}
+}
