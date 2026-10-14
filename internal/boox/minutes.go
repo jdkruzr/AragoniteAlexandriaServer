@@ -323,7 +323,7 @@ func (s Service) processTranscription(ctx context.Context, stt *speech.Client, i
 		if terminal || attempts >= 4 {
 			state = "failed"
 			if !terminal {
-				detail = "Retry limit reached. Check the transcription provider, then retry."
+				detail = ocrapi.GaveUp(detail)
 			}
 		}
 		_, e := s.DB.ExecContext(ctx, `UPDATE alexandria_transcription SET state=$5,detail=$6,attempts=attempts+1,next_at=now()+$7::interval,lease_token='',lease_until=NULL,updated_at=now()`+where, id, key, sha, token, state, detail, backoff(attempts))
@@ -397,7 +397,7 @@ func (s Service) processSummary(ctx context.Context, summary minutes.Completer, 
 			return true, e
 		}
 		if !terminal {
-			detail = "Retry limit reached. Check the summary model, then retry."
+			detail = ocrapi.GaveUp(detail)
 		}
 		_, e := s.DB.ExecContext(ctx, `UPDATE alexandria_note_minutes SET state='failed',detail=$4,finished_at=now(),lease_token='',lease_until=NULL,updated_at=now()`+where, id, token, request, detail)
 		return true, e

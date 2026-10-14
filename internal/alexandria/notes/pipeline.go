@@ -105,7 +105,7 @@ func (p Pipeline) Step(ctx context.Context, db pg.DB) (bool, error) {
 		if !retry || attempts >= 4 {
 			state = "failed"
 			if retry {
-				detail = "Retry limit reached. Check the provider and page, then retry."
+				detail = ocrapi.GaveUp(detail)
 			}
 		}
 		// Back off and release the lease; permanent failures need intervention.
