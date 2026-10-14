@@ -11,8 +11,15 @@
 </dl>
 <p class="small muted">{{$p.Availability.Detail}} {{if $p.SavedEmbedding.Model}}Saved model: <code>{{$p.SavedEmbedding.Model}}</code>.{{end}}</p>
 {{if not $p.SavedEmbedding.Enabled}}<p>Turning this on sends your existing searchable text to the embedding provider to build an index.</p>{{end}}
-{{if or $p.ActiveModel $p.IndexState}}<p><strong>{{$p.IndexedPages}}</strong> records indexed · <strong>{{$p.Pending}}</strong> outstanding{{if $p.Failed}} · <strong>{{$p.Failed}}</strong> failed{{end}}{{if $p.ActiveModel}} · index model <code>{{$p.ActiveModel}}</code>{{end}}.
-{{if $p.IndexState}}{{if $p.ActiveModel}}The previous index stays available until the new build completes.{{else}}Results become available when this first build completes.{{end}}{{end}}</p>{{end}}
+{{if $p.IndexState}}<div class="run-box" id="semantic-build"><progress value="{{$p.BuildDone}}" max="{{if $p.BuildTotal}}{{$p.BuildTotal}}{{else}}1{{end}}">{{$p.BuildPercent}}%</progress>
+<div class="table-scroll"><table class="run-status keep-cols"><tbody>
+<tr><th scope="row">Embedded in this build</th><td>{{num $p.BuildDone}} of {{num $p.BuildTotal}} records ({{$p.BuildPercent}}%)</td></tr>
+<tr><th scope="row">Pace</th><td>{{if $p.BuildPerMinute}}{{printf "%.1f" $p.BuildPerMinute}} records a minute (average since the build started){{else}}Measuring…{{end}}</td></tr>
+<tr><th scope="row">Time left</th><td>{{if not $p.BuildETA.IsZero}}About {{until $p.BuildETA}} · finishes around {{utc $p.BuildETA}}{{else if $p.SavedEmbedding.Enabled}}—{{else}}Paused while semantic search is off{{end}}</td></tr>
+</tbody></table></div>
+<p class="small muted">This page refreshes every 15 seconds while the index builds.{{if not $p.ActiveModel}} Search by meaning starts working when this first build finishes; keyword search works meanwhile.{{end}}</p></div>{{end}}
+{{if or $p.ActiveModel $p.IndexState}}<p><strong>{{$p.IndexedPages}}</strong> records {{if $p.ActiveModel}}in the current index{{else}}searchable by meaning so far{{end}} · <strong>{{$p.Pending}}</strong> outstanding{{if $p.Failed}} · <strong>{{$p.Failed}}</strong> failed{{end}}{{if $p.ActiveModel}} · index model <code>{{$p.ActiveModel}}</code>{{end}}.
+{{if and $p.IndexState $p.ActiveModel}}The previous index stays available until the new build completes.{{end}}</p>{{end}}
 {{if and $p.ActiveModel (not $p.CanResume)}}<p class="coverage">The existing index was built with different provider settings. Build a replacement to use the saved provider.</p>{{end}}
 <form method="post" action="/settings/semantic" class="inline">
 <input type="hidden" name="revision" value="{{$p.Revision}}">

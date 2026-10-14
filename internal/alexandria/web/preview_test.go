@@ -29,6 +29,9 @@ type previewPage struct {
 
 func previewPages() []previewPage {
 	now := time.Now()
+	// A first build under way: nothing searchable by meaning yet.
+	building := &providers.View{Revision: 7, CanSave: true, IndexState: "building", BuildDone: 232, BuildPending: 1390, BuildPerMinute: 11.2, BuildETA: time.Date(2026, 10, 15, 0, 25, 0, 0, time.UTC),
+		SavedEmbedding: providers.EmbedConfig{Enabled: true, URL: "http://ollama:11434", Model: "nomic-embed-text:v1.5"}}
 	provider := &providers.View{Revision: 7, CanSave: true, HasKey: true,
 		Availability:   providers.Availability{Label: "Ready", Detail: "The saved Ollama provider is reachable and this model is installed.", Ready: true},
 		SavedEmbedding: providers.EmbedConfig{URL: "http://ollama:11434", Model: "nomic-embed-text:v1.5"},
@@ -56,6 +59,7 @@ func previewPages() []previewPage {
 			"Native":  []sourceMatch{{Title: "Synthetic trellis notes", Kind: "Notebook", URL: "#"}}}},
 		{"settings-account", "settings", "Account", "settings", "/settings", map[string]any{"LocalPasswords": true}},
 		{"settings-search", "settings-search", "Search by meaning", "settings", "/settings/search", map[string]any{"Providers": provider, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
+		{"settings-search-building", "settings-search", "Search by meaning", "settings", "/settings/search", map[string]any{"Providers": building, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
 		{"settings-recognition", "settings-recognition", "Handwriting recognition", "settings", "/settings/recognition", map[string]any{"Providers": provider, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
 		{"settings-integrations", "settings-integrations", "Tasks & integrations", "settings", "/settings/integrations", map[string]any{"Collection": "Tasks", "DueMode": "preserve", "CalDAV": "/caldav/user/calendars/tasks/", "Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", Created: now}}}},
 		{"jobs", "jobs", "Recognition jobs", "jobs", "/jobs", map[string]any{"View": jobs, "Filter": recognition.Filter{}, "ProgressTotal": 2, "ProgressDone": 2, "Start": 1, "End": 2, "Refresh": "/jobs", "LiveURL": "/jobs?live=1"}},

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
@@ -11,6 +12,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func fixture(t *testing.T) Store {
@@ -451,5 +453,43 @@ func TestMinutesConnectionTestsUseSyntheticInputs(t *testing.T) {
 	v.Config.Summary.Format = "anthropic"
 	if e := v.TestConnection(context.Background(), "summary"); e == nil || strings.Contains(e.Error(), "private") || !strings.Contains(e.Error(), "Summary model test failed (HTTP 404)") {
 		t.Fatal(e)
+	}
+}
+
+func TestFirstBuildReportsItsOwnProgress(t *testing.T) {
+	ctx := context.Background()
+	s := fixture(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{"embeddings": [][]float32{{1, 0, 0}}})
+	}))
+	defer srv.Close()
+	v, _ := s.Load(ctx)
+	v.Config.Embedding = EmbedConfig{Enabled: true, URL: srv.URL, Model: "first"}
+	if e := s.Save(ctx, v); e != nil {
+		t.Fatal(e)
+	}
+	for i := range 3 {
+		if _, e := s.DB.ExecContext(ctx, `INSERT INTO alexandria_note_content(note_key,page,body_text,source) VALUES($1,0,'synthetic searchable text','forestnote')`, fmt.Sprintf("forestnote://nb/p%d", i)); e != nil {
+			t.Fatal(e)
+		}
+	}
+	v, _ = s.Load(ctx)
+	if e := s.BuildIndex(ctx, v.Revision); e != nil {
+		t.Fatal(e)
+	}
+	if found, e := s.ProcessIndex(ctx); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	// Seen live: a first build said "0 records indexed" while it was well
+	// under way, because only an active index was counted.
+	if _, e := s.DB.ExecContext(ctx, `UPDATE alexandria_embedding_generation SET created_at=now()-interval '5 minutes' WHERE state='building'`); e != nil {
+		t.Fatal(e)
+	}
+	view, e := s.View(ctx)
+	if e != nil || view.IndexState != "building" || view.BuildDone != 1 || view.BuildPending != 2 || view.BuildPercent() != 33 || view.IndexedPages != 0 {
+		t.Fatal(e, view.IndexState, view.BuildDone, view.BuildPending, view.IndexedPages)
+	}
+	if view.BuildPerMinute < 0.15 || view.BuildPerMinute > 0.25 || view.BuildETA.Before(time.Now().Add(9*time.Minute)) {
+		t.Fatal(view.BuildPerMinute, view.BuildETA)
 	}
 }
