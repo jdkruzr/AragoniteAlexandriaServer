@@ -72,3 +72,11 @@ CDT. Operation `f6a7c30f…` reached `published` in 1.8 s.
   live `resource/data/<res>.html` body with the one the server published.
 - **Minimum file set:** not pursued. The full nine-file set works on both
   devices without the sync button, and removing files would only add risk.
+
+## Search
+
+2026-10-14: typed text in any BOOX text notebook (device-made or server-made)
+becomes searchable when its handwriting page is recognized, for example by a
+library run. `booxpage.RichText` reads the editor JSON; the text is stored on
+the first handwriting page without a model call. See
+[current state](current-state.md).

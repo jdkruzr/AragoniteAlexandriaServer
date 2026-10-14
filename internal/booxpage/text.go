@@ -1,6 +1,7 @@
 package booxpage
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -107,4 +108,58 @@ func drawTextShape(dc *gg.Context, s *Shape) error {
 		y += float64(face.Metrics().Height) / 64 * spacing
 	}
 	return placeImage(dc, s, box.Image())
+}
+
+// RichTextNotebookWarning is the notebook-level notice for text notebooks.
+// It describes the typed page, not their handwriting pages.
+const RichTextNotebookWarning = "Rich-text notebook: available text is shown separately; native layout is not reproduced."
+
+// RichText returns readable text from a text-notebook resource: the
+// editor's JSON document (docVersion 2), or HTML from older notes.
+func RichText(raw []byte) string {
+	var envelope struct {
+		Content *richNode `json:"content"`
+	}
+	if json.Unmarshal(raw, &envelope) != nil || envelope.Content == nil || envelope.Content.Type != "doc" {
+		return plainHTML(string(raw))
+	}
+	var out strings.Builder
+	envelope.Content.write(&out, 0)
+	lines := strings.Split(out.String(), "\n")
+	kept := lines[:0]
+	for _, l := range lines {
+		if l = strings.TrimRight(l, " "); strings.TrimSpace(l) != "" {
+			kept = append(kept, l)
+		}
+	}
+	return strings.Join(kept, "\n")
+}
+
+type richNode struct {
+	Type    string     `json:"type"`
+	Text    string     `json:"text"`
+	Content []richNode `json:"content"`
+}
+
+func (n richNode) write(out *strings.Builder, depth int) {
+	if depth > 64 {
+		return
+	}
+	switch n.Type {
+	case "text":
+		out.WriteString(n.Text)
+		return
+	case "hardBreak":
+		out.WriteByte('\n')
+		return
+	case "listItem":
+		out.WriteString("• ")
+	}
+	for _, c := range n.Content {
+		c.write(out, depth+1)
+	}
+	switch n.Type {
+	case "paragraph", "heading", "codeBlock", "blockquote":
+		out.WriteByte('\n')
+	}
 }
