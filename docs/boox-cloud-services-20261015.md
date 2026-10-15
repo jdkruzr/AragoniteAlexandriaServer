@@ -228,3 +228,10 @@ mode-5 odds itself or by anonymous pass-through (`updateLogs/privacy/updatedAt`,
   bridge (`downloadLibrary`, `addMaterials`, `checkLocalLibraries`,
   `createNote`; `MaterialCenterFragment$getOnyxWebViewCallback$1`), filled from
   the owner's uploaded templates or an anonymous mirror of Onyx's catalogue.
+
+## Feedback decision (owner, 2026-10-15)
+
+Feedback stays unsupported while synced to Alexandria; no relay will be built.
+Workarounds: the Onyx web app's feedback tool, or PowerSync **Return to previous
+server** to report from the Onyx account, then reconnect. The tablet shows
+"Failed to send." because `GET /api/1/encrypt/key` is refused.
