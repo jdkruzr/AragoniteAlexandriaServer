@@ -58,13 +58,28 @@ func hash(b []byte) string               { h := sha256.Sum256(b); return hex.Enc
 func tokenHash(s string) string          { return hash([]byte(s)) }
 func nativeUID(id string) string         { return "ps_" + strings.ReplaceAll(id, "-", "") }
 func (c Config) bucket(id string) string { return "ps-" + strings.ReplaceAll(id, "-", "") }
+
+// stockHosts are the cluster fields that stay on Onyx's US cloud: firmware
+// updates, device configuration, the unused log host and the shop. The
+// firmware never sends the account token to them, so the library's token
+// can't leak there. PowerSync accepts exactly these values and no others.
+var stockHosts = map[string]string{
+	"onyxCloudDataHostBaseUrl": "https://en-data.boox.com",
+	"onyxLogHostBaseUrl":       "https://en-lon.boox.com",
+	"shopBookUrl":              "https://push.boox.com",
+}
+
 func (c Config) profile(library, device, account, code, companion, uid string) map[string]any {
 	base := strings.TrimRight(c.PublicURL, "/")
 	wss := "wss" + strings.TrimPrefix(base, "https") + "/boox-neocloud"
 	h := map[string]string{}
-	for _, k := range []string{"onyxHostBaseUrl", "onyxCloudDataHostBaseUrl", "onyxLogHostBaseUrl", "onyxContentHostBaseUrl", "onyxSend2BooxHostBaseUrl", "shopBookUrl", "onyxMaterialHostBaseUrl"} {
+	for _, k := range []string{"onyxHostBaseUrl", "onyxContentHostBaseUrl", "onyxSend2BooxHostBaseUrl"} {
 		h[k] = base
 	}
+	for k, v := range stockHosts {
+		h[k] = v
+	}
+	h["onyxMaterialHostBaseUrl"] = base + templateHubPath
 	h["onyxCouchbaseWSSHost"] = wss
 	h["onyxMessageReplicator"] = wss
 	o := map[string]string{}
