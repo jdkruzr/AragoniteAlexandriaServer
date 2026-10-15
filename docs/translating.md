@@ -20,6 +20,11 @@ Edit the value in `active.<lang>.json`. Keep:
   text between tags, and leave `<code>` contents alone;
 - product and feature names: Alexandria, PowerSync, BOOX, Audio Note Minutes.
 
+The catalog test rejects any translation whose markup (tags and attributes,
+including link targets) or placeholders differ from the English message, so a
+translation can change wording but never what a page does. Review a
+contributed language file like any other change all the same.
+
 Plural messages are objects with one entry per plural form of the language
 (Spanish: `one`, `many`, `other`).
 
