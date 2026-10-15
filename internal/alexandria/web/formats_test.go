@@ -51,3 +51,13 @@ func TestFormatsFollowLanguage(t *testing.T) {
 		t.Errorf("numbers inside messages: %q", got)
 	}
 }
+
+// Values inside markup-carrying messages are escaped; the catalog's own
+// markup is kept.
+func TestHTMLMessagesEscapeValues(t *testing.T) {
+	th := htmlT(i18n.English)
+	got := string(th("Enter <code>{{.URL}}</code> now.", "URL", `<script>x</script>&`))
+	if got != "Enter <code>&lt;script&gt;x&lt;/script&gt;&amp;</code> now." {
+		t.Fatalf("%q", got)
+	}
+}

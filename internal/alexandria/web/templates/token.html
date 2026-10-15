@@ -1,6 +1,6 @@
 {{define "content"}}{{$d := .Data}}
 <h1>{{t "New API Token"}}</h1>
-<p>{{t "Copy this token for"}} <strong>{{$d.Label}}</strong> {{t "now. It won't be shown again."}}</p>
+<p>{{th "Copy this token for <strong>{{.Name}}</strong> now. It won't be shown again." "Name" $d.Label}}</p>
 <p><code class="secret">{{$d.Token}}</code></p>
 <p>{{th "<a class=\"button\" href=\"/settings/integrations\">Done</a>"}}</p>
 {{end}}

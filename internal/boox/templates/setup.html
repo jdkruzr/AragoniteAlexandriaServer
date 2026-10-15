@@ -4,7 +4,7 @@
 <section class="card">
 <ol>
 <li>{{th "Install <strong>PowerSync</strong> on the tablet."}}</li>
-<li>{{t "Enter"}} <code>{{.Base}}</code> {{t "as the server address."}}</li>
+<li>{{th "Enter <code>{{.URL}}</code> as the server address." "URL" .Base}}</li>
 <li>{{t "Create a code below and type it into PowerSync. It works once and expires after ten minutes."}}</li>
 </ol>
 {{if .Data}}<p>{{t "Enrollment code:"}}</p><code class="secret">{{.Data}}</code>{{end}}
