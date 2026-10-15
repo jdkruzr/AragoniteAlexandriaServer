@@ -7,7 +7,7 @@
   <button>{{t "Add task"}}</button>
 </form>
 {{end}}
-<h2>{{if $d.Trash}}{{t "Deleted"}}{{else}}{{t "to Do"}}{{end}}</h2>
+<h2>{{if $d.Trash}}{{t "Deleted"}}{{else}}{{t "To Do"}}{{end}}</h2>
 {{if not $d.Open}}<p class="empty">{{t "Nothing to do."}}</p>{{else}}<ul class="tasks">{{range $d.Open}}{{template "task" .}}{{end}}</ul>{{end}}
 {{if $d.Done}}
 <h2>{{t "Done"}}</h2>

@@ -1,7 +1,7 @@
 {{define "content"}}{{$d := .Data}}
 <div class="guide">
 <h1>{{t "Help"}}</h1>
-<p class="lede">{{t "How Alexandria works, what each setting does, and what it costs. Look for"}} <span class="badge">?</span> {{t "buttons throughout the app for short versions of these explanations."}}</p>
+<p class="lede">{{th "How Alexandria works, what each setting does, and what it costs. Look for <span class=\"badge\">?</span> buttons throughout the app for short versions of these explanations."}}</p>
 <ol class="guide-index">
 <li>{{th "<a href=\"#start\">Getting started</a>"}}</li>
 <li><a href="#client">Alexandria Client</a></li>
@@ -95,7 +95,7 @@
 </section>
 
 <section id="tasks"><h2>{{t "Tasks and CalDAV"}}</h2>
-<p><a href="/tasks">{{t "Tasks"}}</a> {{t "is one list across your library. Tasks made from Alexandria Client pages link back to their page."}}{{if $d.NativeBOOX}} {{t "BOOX task extraction is not available yet."}}{{end}}</p>
+<p>{{th "<a href=\"/tasks\">Tasks</a> is one list across your library. Tasks made from Alexandria Client pages link back to their page."}}{{if $d.NativeBOOX}} {{t "BOOX task extraction is not available yet."}}{{end}}</p>
 <p>{{th "Any CalDAV task app can sync the list using the address in <a href=\"/settings/integrations\">Settings → Tasks &amp; integrations</a> and your account. Choose <em>Date only</em> if your app mishandles due times."}}</p>
 </section>
 
@@ -111,7 +111,7 @@
 <p>{{t "For people running the server, and for automation working with a running copy:"}}</p>
 <ul>
 <li>{{th "The footer and the <code>alexandria-version</code> meta tag show the build that's running. The readiness endpoint is <code>/readyz</code>."}}</li>
-<li>{{t "Every"}} <span class="badge">?</span> {{t "button has a"}} <code>data-help</code> {{t "key matching the help registry in"}} <code>internal/alexandria/web/help.go</code>{{t ". Popover text is in the page HTML even while closed."}}</li>
+<li>{{th "Every <span class=\"badge\">?</span> button has a <code>data-help</code> key matching the help registry in <code>internal/alexandria/web/help.go</code>. Popover text is in the page HTML even while closed."}}</li>
 <li>{{th "Each page's <code>&lt;body&gt;</code> carries <code>data-section</code>, and the Settings, Client and BOOX tabs use <code>aria-current=\"page\"</code>."}}</li>
 {{if $d.NativeBOOX}}<li>{{th "<a href=\"/boox/activity\">BOOX diagnostics</a> lists the raw records the server has observed, with native IDs and revisions. Each record's <em>Observed versions</em> link opens its retained history as JSON from <code>/api/v1/boox/admin/history</code>."}}</li>{{end}}
 <li>{{t "Recognition job details include the encoded image size and model. Batches and library runs keep their history after they finish."}}</li>

@@ -135,7 +135,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 	if ok, err := s.ProcessIndex(ctx); err != nil || !ok {
 		t.Fatal(ok, err)
 	}
-	get("<strong>1</strong> records in the current index", "Build replacement index")
+	get("<strong>1</strong> record in the current index", "Build replacement index")
 	action("disable")
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM alexandria_embedding_vectors`).Scan(&n); err != nil || n != 1 {
 		t.Fatal("disable deleted vectors", n, err)

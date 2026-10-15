@@ -188,8 +188,29 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 	_, _ = buf.WriteTo(w)
 }
 
+// htmlT renders a message whose catalog text carries trusted inline markup.
+// Values inserted into it are not trusted: strings are HTML-escaped (a
+// notebook title or client name can't add markup); template.HTML values are
+// already safe and numbers are formatted by T.
 func htmlT(l i18n.Localizer) func(string, ...any) template.HTML {
-	return func(id string, args ...any) template.HTML { return template.HTML(l.T(id, args...)) }
+	return func(id string, args ...any) template.HTML {
+		safe := make([]any, len(args))
+		for i, a := range args {
+			switch v := a.(type) {
+			case template.HTML:
+				safe[i] = string(v)
+			case string:
+				if len(args) > 1 && i%2 == 0 {
+					safe[i] = v // a name in a name/value pair
+				} else {
+					safe[i] = template.HTMLEscapeString(v)
+				}
+			default:
+				safe[i] = a
+			}
+		}
+		return template.HTML(l.T(id, safe...))
+	}
 }
 
 // LanguageCookie holds the language chosen in Settings, per browser.
