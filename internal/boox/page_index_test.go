@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -511,6 +512,56 @@ func TestRerunKeepsPagesInSearchWithoutReembedding(t *testing.T) {
 	}
 	if searchable() != "" {
 		t.Fatal("stale text survived a change on the device", searchable())
+	}
+}
+
+// onePagePDF is a minimal valid one-page PDF with a line of text.
+func onePagePDF() []byte {
+	objs := []string{
+		"<< /Type /Catalog /Pages 2 0 R >>",
+		"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+		"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+		"<< /Length 44 >>\nstream\nBT /F1 18 Tf 20 250 Td (Dear son,) Tj ET\nendstream",
+		"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+	}
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n")
+	offsets := []int{}
+	for i, o := range objs {
+		offsets = append(offsets, b.Len())
+		fmt.Fprintf(&b, "%d 0 obj\n%s\nendobj\n", i+1, o)
+	}
+	xref := b.Len()
+	fmt.Fprintf(&b, "xref\n0 %d\n0000000000 65535 f \n", len(objs)+1)
+	for _, o := range offsets {
+		fmt.Fprintf(&b, "%010d 00000 n \n", o)
+	}
+	fmt.Fprintf(&b, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(objs)+1, xref)
+	return b.Bytes()
+}
+
+func TestImportedPDFPageWithoutInkIsRecognized(t *testing.T) {
+	// Seen live: a "PDF scribble" notebook whose letter is the imported PDF
+	// itself. With no ink on the page it was skipped as blank.
+	s := indexFixture(t)
+	ctx := context.Background()
+	if _, e := s.DB.ExecContext(ctx, `DELETE FROM boox_blob_live WHERE native_key LIKE '%/shape/%'`); e != nil {
+		t.Fatal(e)
+	}
+	vp, _ := proto.Marshal(&pb.VirtualPageList{Proto: []*pb.VirtualPage{{PageId: "page", ContentType: "import_pdf", ContentRelativePath: "document/note/resource/content/letter.pdf", ContentPageId: `{"pageIndex":0}`, UpdatedAt: 1}}})
+	putNoteBlob(t, s, "virtual/page/pb/doc", vp)
+	putNoteBlob(t, s, "resource/content/letter.pdf", onePagePDF())
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	ocr := &testOCR{}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state, text, detail string
+	s.DB.QueryRowContext(ctx, `SELECT state,text,detail FROM boox_page_index WHERE notebook_id='note'`).Scan(&state, &text, &detail)
+	if state != "ready" || ocr.calls != 1 || text != "synthetic quasar transcript" {
+		t.Fatalf("%s %q %q calls=%d", state, text, detail, ocr.calls)
 	}
 }
 

@@ -24,6 +24,13 @@ type Background struct {
 	Index      int
 }
 
+// IsDocument reports whether the background is an imported document (a PDF
+// the owner writes on) rather than a template. Its own text is page content,
+// so a page with no ink isn't blank when it has one.
+func (b *Background) IsDocument() bool {
+	return b != nil && b.Kind == "import_pdf"
+}
+
 // Virtual page metadata binds native page identity to its PDF or template.
 // It is a list protobuf, not a single VirtualPage; select by identity/version.
 func backgroundFor(meta Metadata, id string, keys []string, load Load) (*Background, error) {
