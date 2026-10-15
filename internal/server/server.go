@@ -59,10 +59,11 @@ func newGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Durat
 	spcMux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotImplemented, map[string]string{"error": "SPC protocol port not yet enabled"})
 	})
+	unknown := newUnknownRequests(logger)
 	return &Gateway{
 		db: db, shutdownTimeout: shutdownTimeout, logger: logger,
-		main: &http.Server{Addr: mainAddr, Handler: observe("main", mainMux, metrics), ReadHeaderTimeout: 10 * time.Second},
-		spc:  &http.Server{Addr: spcAddr, Handler: observe("spc", spcMux, metrics), ReadHeaderTimeout: 10 * time.Second},
+		main: &http.Server{Addr: mainAddr, Handler: observe("main", mainMux, metrics, unknown), ReadHeaderTimeout: 10 * time.Second},
+		spc:  &http.Server{Addr: spcAddr, Handler: observe("spc", spcMux, metrics, unknown), ReadHeaderTimeout: 10 * time.Second},
 	}
 }
 
@@ -117,7 +118,7 @@ func registerProbes(mux *http.ServeMux, db *sql.DB, readiness ...func(context.Co
 	})
 }
 
-func observe(listener string, next http.Handler, metrics *Metrics) http.Handler {
+func observe(listener string, next http.Handler, metrics *Metrics, unknown *unknownRequests) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
@@ -128,6 +129,7 @@ func observe(listener string, next http.Handler, metrics *Metrics) http.Handler 
 		}
 		metrics.Requests.WithLabelValues(listener, r.Method, route, strconv.Itoa(recorder.status)).Inc()
 		metrics.Duration.WithLabelValues(listener, r.Method, route).Observe(time.Since(start).Seconds())
+		unknown.note(listener, r, recorder.status)
 	})
 }
 
