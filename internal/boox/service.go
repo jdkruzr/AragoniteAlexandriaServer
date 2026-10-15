@@ -37,7 +37,7 @@ var errAuth = errors.New("invalid native capability")
 
 func (s Service) Owns(r *http.Request) bool {
 	p := r.URL.Path
-	return p == "/api/v1/boox/enroll" || strings.HasPrefix(p, "/api/v1/boox/device/") || strings.HasPrefix(p, "/boox-neocloud") || strings.HasPrefix(p, "/api/1/") || strings.HasPrefix(p, "/api/v2/") || strings.HasPrefix(p, "/api/users/") || strings.HasPrefix(p, "/api/token/") || strings.HasPrefix(p, "/api/config/") || strings.HasPrefix(p, "/api/statistics/") || strings.HasPrefix(p, "/api/devices/") || p == "/" && strings.HasPrefix(r.Header.Get("Authorization"), "OSS ") || strings.HasPrefix(p, "/"+s.uid()+"/") || p == "/"+s.Config.bucket(s.LibraryID) || strings.HasPrefix(p, "/"+s.Config.bucket(s.LibraryID)+"/")
+	return p == "/api/v1/boox/enroll" || p == templateHubPath || strings.HasPrefix(p, "/api/v1/boox/device/") || strings.HasPrefix(p, "/boox-neocloud") || strings.HasPrefix(p, "/api/1/") || strings.HasPrefix(p, "/api/v2/") || strings.HasPrefix(p, "/api/users/") || strings.HasPrefix(p, "/api/token/") || strings.HasPrefix(p, "/api/config/") || strings.HasPrefix(p, "/api/statistics/") || strings.HasPrefix(p, "/api/devices/") || p == "/" && strings.HasPrefix(r.Header.Get("Authorization"), "OSS ") || strings.HasPrefix(p, "/"+s.uid()+"/") || p == "/"+s.Config.bucket(s.LibraryID) || strings.HasPrefix(p, "/"+s.Config.bucket(s.LibraryID)+"/")
 }
 
 // Native HTTP GET is not always read-only: sessions and STS issue capabilities,
@@ -290,6 +290,10 @@ func (s Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.Path == "/api/v1/boox/enroll" {
 		s.enroll(w, r)
+		return
+	}
+	if r.URL.Path == templateHubPath {
+		templateHub(w, r)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/v1/boox/device/") {
