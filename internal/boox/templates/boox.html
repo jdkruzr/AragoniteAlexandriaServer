@@ -1,11 +1,11 @@
 {{define "content"}}{{$d:=.Data}}
-<p class="crumbs"><a href="/boox/settings">BOOX settings</a> /</p>
-<h1>BOOX Diagnostics {{template "help" "boox.diagnostics"}}</h1>
-<form class="search" method="get" action="/boox/activity"><label>Record type <select name="domain"><option value="">All types</option>{{range $d.Domains}}<option value="{{.}}" {{if eq . $d.Domain}}selected{{end}}>{{.}}</option>{{end}}</select></label><button class="secondary">Show</button></form>
-{{if not $d.Items}}<p class="empty">Nothing here yet. Records appear after a BOOX device syncs.</p>{{else}}
-<nav class="pagination" aria-label="Diagnostics pages"><span>{{$d.Start}}–{{$d.End}} of {{$d.Total}}</span>{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}">Next</a>{{end}}</nav>
-<div class="table-scroll"><table><thead><tr><th>Type</th><th>Title or Native ID</th><th>Revision</th><th>Metadata Editing</th><th>History {{template "help" "boox.history"}}</th></tr></thead><tbody>
-{{range $d.Items}}<tr><td>{{.Domain}}</td><td>{{.Title}}{{if ne .Title .ID}}<div class="muted small"><code>{{.ID}}</code></div>{{end}}</td><td class="small"><code>{{.Revision}}</code></td><td>{{if .Supported}}<span class="badge indexed">Supported</span>{{else}}<span class="badge blank">Unavailable</span>{{end}}</td><td><a href="/api/v1/boox/admin/history?documentId={{.ID}}">Observed versions</a></td></tr>{{end}}
+<p class="crumbs">{{th "<a href=\"/boox/settings\">BOOX settings</a> /"}}</p>
+<h1>{{t "BOOX Diagnostics"}} {{template "help" "boox.diagnostics"}}</h1>
+<form class="search" method="get" action="/boox/activity"><label>{{t "Record type"}} <select name="domain"><option value="">{{t "All types"}}</option>{{range $d.Domains}}<option value="{{.}}" {{if eq . $d.Domain}}selected{{end}}>{{.}}</option>{{end}}</select></label><button class="secondary">{{t "Show"}}</button></form>
+{{if not $d.Items}}<p class="empty">{{t "Nothing here yet. Records appear after a BOOX device syncs."}}</p>{{else}}
+<nav class="pagination" aria-label="{{t "Diagnostics pages"}}"><span>{{$d.Start}}–{{$d.End}} of {{$d.Total}}</span>{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}">{{t "Previous"}}</a>{{end}}{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}">{{t "Next"}}</a>{{end}}</nav>
+<div class="table-scroll"><table><thead><tr><th>{{t "Type"}}</th><th>{{t "Title or Native ID"}}</th><th>{{t "Revision"}}</th><th>{{t "Metadata Editing"}}</th><th>{{t "History"}} {{template "help" "boox.history"}}</th></tr></thead><tbody>
+{{range $d.Items}}<tr><td>{{.Domain}}</td><td>{{.Title}}{{if ne .Title .ID}}<div class="muted small"><code>{{.ID}}</code></div>{{end}}</td><td class="small"><code>{{.Revision}}</code></td><td>{{if .Supported}}<span class="badge indexed">{{t "Supported"}}</span>{{else}}<span class="badge blank">{{t "Unavailable"}}</span>{{end}}</td><td><a href="/api/v1/boox/admin/history?documentId={{.ID}}">{{t "Observed versions"}}</a></td></tr>{{end}}
 </tbody></table></div>
-<nav class="pagination" aria-label="Diagnostics pages"><span>{{$d.Start}}–{{$d.End}} of {{$d.Total}}</span>{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}">Next</a>{{end}}</nav>{{end}}
+<nav class="pagination" aria-label="{{t "Diagnostics pages"}}"><span>{{$d.Start}}–{{$d.End}} of {{$d.Total}}</span>{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}">{{t "Previous"}}</a>{{end}}{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}">{{t "Next"}}</a>{{end}}</nav>{{end}}
 {{end}}

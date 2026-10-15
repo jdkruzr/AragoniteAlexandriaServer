@@ -1,38 +1,38 @@
 {{define "content"}}{{$d := .Data}}
-<div class="page-head"><h1>Your Library</h1></div>
-<form class="search" method="get" action="/search" role="search"><input type="search" name="q" placeholder="Search notes, books and annotations" aria-label="Search your library" maxlength="256"><button>Search</button></form>
+<div class="page-head"><h1>{{t "Your Library"}}</h1></div>
+<form class="search" method="get" action="/search" role="search"><input type="search" name="q" placeholder="{{t "Search notes, books and annotations"}}" aria-label="{{t "Search your library"}}" maxlength="256"><button>{{t "Search"}}</button></form>
 
-{{if or $d.Failed $d.Blocked $d.ClientNeedsRestore}}<section class="callout" aria-label="Needs attention"><strong>Needs attention:</strong>
-{{if or $d.Failed $d.Blocked}}recognition jobs {{if $d.Failed}}<a href="/jobs?state=failed">{{$d.Failed}} failed</a>{{end}}{{if and $d.Failed $d.Blocked}} · {{end}}{{if $d.Blocked}}<a href="/jobs?state=blocked">{{$d.Blocked}} blocked</a>{{end}}{{end}}{{if $d.ClientNeedsRestore}}{{if or $d.Failed $d.Blocked}}; {{end}}<a href="/files/forestnote/devices">Client devices needing restore: {{$d.ClientNeedsRestore}}</a>{{end}}
+{{if or $d.Failed $d.Blocked $d.ClientNeedsRestore}}<section class="callout" aria-label="{{t "Needs attention"}}"><strong>{{t "Needs attention:"}}</strong>
+{{if or $d.Failed $d.Blocked}}{{t "Recognition jobs:"}} {{if $d.Failed}}<a href="/jobs?state=failed">{{t "{{.Count}} failed" $d.Failed}}</a>{{end}}{{if and $d.Failed $d.Blocked}} · {{end}}{{if $d.Blocked}}<a href="/jobs?state=blocked">{{t "{{.Count}} blocked" $d.Blocked}}</a>{{end}}{{end}}{{if $d.ClientNeedsRestore}}{{if or $d.Failed $d.Blocked}}; {{end}}<a href="/files/forestnote/devices">{{t "Client devices needing restore: {{.Count}}" $d.ClientNeedsRestore}}</a>{{end}}
 </section>{{end}}
 
-<h2>Sources</h2>
+<h2>{{t "Sources"}}</h2>
 <div class="cards">
 <section class="card" data-source="client">
 <h3><a href="/files/forestnote">Alexandria Client</a></h3>
 {{if or $d.Client.Devices $d.Client.Notebooks $d.Client.Books}}<div class="stats"><span><span class="stat">{{count $d.Client.Notebooks}}</span><br><span class="stat-label">notebooks</span></span><span><span class="stat">{{count $d.Client.Books}}</span><br><span class="stat-label">books</span></span><span><span class="stat">{{count $d.Client.Devices}}</span><br><span class="stat-label">devices</span></span></div>
-<p class="small muted">{{$d.Client.ActivityLabel}} {{ago $d.Client.LastActivity}}</p>{{else}}<p class="muted">No devices connected yet.</p>{{end}}
-<div class="card-foot"><a href="/files/forestnote">Notebooks</a><a href="/files/forestnote/books">Books</a><a href="/files/forestnote/devices">{{if $d.Client.Devices}}Devices{{else}}Connect a device{{end}}</a></div>
+<p class="small muted">{{t $d.Client.ActivityLabel}} {{ago $d.Client.LastActivity}}</p>{{else}}<p class="muted">{{t "No devices connected yet."}}</p>{{end}}
+<div class="card-foot"><a href="/files/forestnote">{{t "Notebooks"}}</a><a href="/files/forestnote/books">{{t "Books"}}</a><a href="/files/forestnote/devices">{{if $d.Client.Devices}}{{t "Devices"}}{{else}}{{t "Connect a device"}}{{end}}</a></div>
 </section>
 {{if $d.NativeBOOX}}<section class="card" data-source="boox">
 <h3><a href="/boox">BOOX</a> <span class="badge source">PowerSync</span></h3>
 {{with $d.BOOX}}<div class="stats"><span><span class="stat">{{count .Notebooks}}</span><br><span class="stat-label">notebooks</span></span><span><span class="stat">{{count .Books}}</span><br><span class="stat-label">books</span></span><span><span class="stat">{{count .Devices}}</span><br><span class="stat-label">devices</span></span></div>
-<p class="small muted">{{.ActivityLabel}} {{ago .LastActivity}}</p>{{else}}<p class="muted">Status unavailable right now.</p>{{end}}
-<div class="card-foot"><a href="/boox">Notebooks</a><a href="/boox/reading">Reading</a><a href="/boox/devices">Devices</a></div>
+<p class="small muted">{{t .ActivityLabel}} {{ago .LastActivity}}</p>{{else}}<p class="muted">{{t "Status unavailable right now."}}</p>{{end}}
+<div class="card-foot">{{th "<a href=\"/boox\">Notebooks</a><a href=\"/boox/reading\">Reading</a><a href=\"/boox/devices\">Devices</a>"}}</div>
 </section>{{end}}
 </div>
 
-<h2>Across Your Library</h2>
+<h2>{{t "Across Your Library"}}</h2>
 <div class="cards">
-<section class="card"><h3><a href="/jobs">Handwriting Recognition</a></h3>
-<p>{{if $d.OCR}}<span class="badge ok">On</span>{{else}}<span class="badge blank">Off</span>{{end}}
-{{if $d.JobsKnown}}{{if $d.Active}} {{$d.Active}} pages in progress{{if $d.Paused}} · {{$d.Paused}} paused{{end}}{{else if $d.Paused}} {{$d.Paused}} paused{{else}} <span class="muted">Nothing queued.</span>{{end}}{{end}}</p>
-<div class="card-foot"><a href="/jobs/library">Recognize a library…</a><a href="/settings/recognition">Settings</a></div></section>
-<section class="card"><h3><a href="/settings/search">Search by Meaning</a></h3>
-<p>{{if $d.Semantic}}<span class="badge ok">On</span>{{else}}<span class="badge blank">Off</span> <span class="muted">Keyword search is available.</span>{{end}}</p>
-<div class="card-foot"><a href="/search">Search</a><a href="/settings/search">Settings</a></div></section>
-<section class="card"><h3><a href="/tasks">Tasks</a></h3>
-<p class="muted">One list across your library, also available over CalDAV.</p>
-<div class="card-foot"><a href="/tasks">Open tasks</a><a href="/settings/integrations">CalDAV</a></div></section>
+<section class="card"><h3>{{th "<a href=\"/jobs\">Handwriting Recognition</a>"}}</h3>
+<p>{{if $d.OCR}}<span class="badge ok">{{t "On"}}</span>{{else}}<span class="badge blank">{{t "Off"}}</span>{{end}}
+{{if $d.JobsKnown}}{{if $d.Active}} {{t "{{.Count}} pages in progress" $d.Active}}{{if $d.Paused}} · {{t "{{.Count}} paused" $d.Paused}}{{end}}{{else if $d.Paused}} {{t "{{.Count}} paused" $d.Paused}}{{else}} <span class="muted">{{t "Nothing queued."}}</span>{{end}}{{end}}</p>
+<div class="card-foot">{{th "<a href=\"/jobs/library\">Recognize a library…</a><a href=\"/settings/recognition\">Settings</a>"}}</div></section>
+<section class="card"><h3>{{th "<a href=\"/settings/search\">Search by Meaning</a>"}}</h3>
+<p>{{if $d.Semantic}}<span class="badge ok">{{t "On"}}</span>{{else}}<span class="badge blank">{{t "Off"}}</span> <span class="muted">{{t "Keyword search is available."}}</span>{{end}}</p>
+<div class="card-foot">{{th "<a href=\"/search\">Search</a><a href=\"/settings/search\">Settings</a>"}}</div></section>
+<section class="card"><h3>{{th "<a href=\"/tasks\">Tasks</a>"}}</h3>
+<p class="muted">{{t "One list across your library, also available over CalDAV."}}</p>
+<div class="card-foot">{{th "<a href=\"/tasks\">Open tasks</a><a href=\"/settings/integrations\">CalDAV</a>"}}</div></section>
 </div>
 {{end}}

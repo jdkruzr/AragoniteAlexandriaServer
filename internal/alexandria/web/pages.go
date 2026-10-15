@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"errors"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -49,7 +50,7 @@ func (d Deps) notebookRoutes(mux *http.ServeMux) {
 				d.fail(w, err)
 				return
 			}
-			d.render(w, r, "notebook", name, "notebooks", notebookReader(id, name, pages, crumbs, q))
+			d.render(w, r, "notebook", Verbatim(name), "notebooks", notebookReader(id, name, pages, crumbs, q))
 			return
 		}
 		state := listing.Parse(q)
@@ -194,7 +195,7 @@ func (d Deps) bookRoutes(mux *http.ServeMux) {
 				d.fail(w, err)
 				return
 			}
-			d.render(w, r, "book", detail.Book.Title, "books", detail)
+			d.render(w, r, "book", Verbatim(detail.Book.Title), "books", detail)
 			return
 		}
 		list, err := library().ListBooks(r.Context())
@@ -459,6 +460,26 @@ type apiToken struct {
 
 func (d Deps) settingsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /settings/password", d.changePassword)
+	mux.HandleFunc("POST /settings/language", func(w http.ResponseWriter, r *http.Request) {
+		if !sameOrigin(d.PublicURL, r) {
+			http.Error(w, "Cross-site request refused.", http.StatusForbidden)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024)
+		if r.ParseForm() != nil {
+			http.Error(w, "Invalid settings form.", 400)
+			return
+		}
+		choice := r.Form.Get("language")
+		c := &http.Cookie{Name: LanguageCookie, Path: "/", HttpOnly: true, Secure: r.TLS != nil || strings.HasPrefix(d.PublicURL, "https://"), SameSite: http.SameSiteLaxMode}
+		if i18n.Supported(choice) {
+			c.Value, c.MaxAge = choice, 400*24*3600
+		} else {
+			c.MaxAge = -1 // browser default
+		}
+		http.SetCookie(w, c)
+		back(w, r, "/settings", i18n.M("Language saved."))
+	})
 	for _, tab := range []string{"account", "search", "recognition", "integrations"} {
 		path := "/settings/" + tab
 		if tab == "account" {
@@ -570,7 +591,10 @@ func compareTime(a, b int64, order string) int {
 // the submitted (unsaved) values.
 func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, override *providers.View) {
 	ctx := r.Context()
-	data := map[string]any{"LocalPasswords": d.LocalPasswords, "Status": d.Status}
+	data := map[string]any{"LocalPasswords": d.LocalPasswords, "Status": d.Status, "Languages": i18n.Choices()}
+	if c, err := r.Cookie(LanguageCookie); err == nil && i18n.Supported(c.Value) {
+		data["Language"] = c.Value
+	}
 	switch tab {
 	case "integrations":
 		collection, err := settings.Get(ctx, d.DB, settings.CalDAVCollectionName, "Tasks")
@@ -622,14 +646,14 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 		data["Providers"], data["DefaultOCRPrompt"] = providerView, notes.DefaultPrompt
 		data["DefaultMinutesInstructions"], data["MinutesFormat"] = minutes.DefaultInstructions, minutes.ResponseFormat
 	}
-	name, title := "settings", "Account"
+	name, title := "settings", i18n.M("Account")
 	switch tab {
 	case "search":
-		name, title = "settings-search", "Search by Meaning"
+		name, title = "settings-search", i18n.M("Search by Meaning")
 	case "recognition":
-		name, title = "settings-recognition", "Handwriting Recognition"
+		name, title = "settings-recognition", i18n.M("Handwriting Recognition")
 	case "integrations":
-		name, title = "settings-integrations", "Tasks & Integrations"
+		name, title = "settings-integrations", i18n.M("Tasks & Integrations")
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	if pv, ok := data["Providers"].(*providers.View); ok && tab == "search" && pv != nil && pv.IndexState != "" && pv.SavedEmbedding.Enabled {

@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-var booxSettings = template.Must(template.New("settings.html").ParseFS(templateFS, "templates/settings.html"))
+var booxSettings = template.Must(template.New("settings.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/settings.html"))
 
 type readingItem struct {
 	ID, Title, Quote, Note, Progress, Page, Kind string
@@ -22,7 +22,7 @@ type readingView struct {
 	Next, Previous string
 }
 
-var readingTemplate = template.Must(template.New("reading.html").Funcs(template.FuncMap{"ms": listview.Date}).ParseFS(templateFS, "templates/reading.html"))
+var readingTemplate = template.Must(template.New("reading.html").Funcs(listFuncs()).ParseFS(templateFS, "templates/reading.html"))
 
 func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	state := listview.Parse(r.URL.Query())

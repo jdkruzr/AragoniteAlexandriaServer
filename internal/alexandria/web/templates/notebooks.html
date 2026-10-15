@@ -1,9 +1,9 @@
 {{define "content"}}{{$d := .Data}}
-<div class="page-head"><h1>Notebooks</h1><a class="button secondary" href="/jobs/library?source=client">Recognize this library…</a></div>
-{{if $d.Crumbs}}<p class="crumbs"><a href="/files/forestnote">All notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}}</p>{{end}}
-{{if not $d.Entries}}<div class="card"><p class="empty">Nothing here yet. Notebooks appear after a device syncs.</p><p><a class="button" href="/files/forestnote/devices">Connect a device</a></p></div>{{else}}
+<div class="page-head"><h1>{{t "Notebooks"}}</h1><a class="button secondary" href="/jobs/library?source=client">{{t "Recognize this library…"}}</a></div>
+{{if $d.Crumbs}}<p class="crumbs"><a href="/files/forestnote">{{t "All notebooks"}}</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}}</p>{{end}}
+{{if not $d.Entries}}<div class="card"><p class="empty">{{t "Nothing here yet. Notebooks appear after a device syncs."}}</p><p>{{th "<a class=\"button\" href=\"/files/forestnote/devices\">Connect a device</a>"}}</p></div>{{else}}
 {{template "pagination" $d.Listing}}<div class="table-scroll"><table class="dated-list"><thead><tr>
-<th><a href="{{$d.Listing.SortURL "name"}}">Name{{$d.Listing.Indicator "name"}}</a></th><th><a href="{{$d.Listing.SortURL "pages"}}">Pages{{$d.Listing.Indicator "pages"}}</a></th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th><th>Search</th>
+<th><a href="{{$d.Listing.SortURL "name"}}">{{t "Name"}}{{$d.Listing.Indicator "name"}}</a></th><th><a href="{{$d.Listing.SortURL "pages"}}">{{t "Pages"}}{{$d.Listing.Indicator "pages"}}</a></th><th><a href="{{$d.Listing.SortURL "created"}}">{{t "Created (UTC)"}}{{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">{{t "Modified (UTC)"}}{{$d.Listing.Indicator "modified"}}</a></th><th>{{t "Search"}}</th>
 </tr></thead>
 <tbody>
 {{range $d.Entries}}
@@ -11,9 +11,9 @@
   {{if .IsFolder}}
   <td><a href="/files/forestnote?folder={{.ID}}">📁 {{.Name}}</a></td><td></td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td><td></td>
   {{else}}
-  <td><a href="/files/forestnote?notebook={{.ID}}">{{if .Name}}{{.Name}}{{else}}Untitled notebook{{end}}</a></td>
+  <td><a href="/files/forestnote?notebook={{.ID}}">{{if .Name}}{{.Name}}{{else}}{{t "Untitled notebook"}}{{end}}</a></td>
   <td>{{.PageCount}}</td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td>
-  <td><span class="badge {{.Status}}">{{if eq .Status "indexed"}}Searchable{{else if eq .Status "partial"}}Partly searchable{{else}}Empty{{end}}</span></td>
+  <td><span class="badge {{.Status}}">{{if eq .Status "indexed"}}{{t "Searchable"}}{{else if eq .Status "partial"}}{{t "Partly searchable"}}{{else}}{{t "Empty"}}{{end}}</span></td>
   {{end}}
 </tr>
 {{end}}

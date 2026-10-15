@@ -1,9 +1,9 @@
 {{define "content"}}
-<h1>Add a Source</h1>
-<p class="lede">Each source syncs in its own way and keeps its own devices. Search, tasks and recognition work across all of them.</p>
+<h1>{{t "Add a Source"}}</h1>
+<p class="lede">{{t "Each source syncs in its own way and keeps its own devices. Search, tasks and recognition work across all of them."}}</p>
 <div class="cards">
-<section class="card"><h2>Alexandria Client</h2><p>The Alexandria note-taking app. Notebooks, books and recognized text sync both ways.</p><div class="card-foot"><a class="button" href="/files/forestnote/devices">Connect a Client device</a></div></section>
-{{if .NativeBOOX}}<section class="card"><h2>BOOX</h2><p>BOOX tablets' built-in Notes and NeoReader, via the PowerSync app. Your notebooks keep their native format.</p><div class="card-foot"><a class="button" href="/boox/enroll">Connect a BOOX device</a></div></section>{{end}}
+<section class="card"><h2>Alexandria Client</h2><p>{{t "The Alexandria note-taking app. Notebooks, books and recognized text sync both ways."}}</p><div class="card-foot">{{th "<a class=\"button\" href=\"/files/forestnote/devices\">Connect a Client device</a>"}}</div></section>
+{{if .NativeBOOX}}<section class="card"><h2>BOOX</h2><p>{{t "BOOX tablets' built-in Notes and NeoReader, via the PowerSync app. Your notebooks keep their native format."}}</p><div class="card-foot">{{th "<a class=\"button\" href=\"/boox/enroll\">Connect a BOOX device</a>"}}</div></section>{{end}}
 </div>
-<p class="small muted">More source types will appear here as their connectors become available. <a href="/help#devices">About devices and sources</a></p>
+<p class="small muted">{{th "More source types will appear here as their connectors become available. <a href=\"/help#devices\">About devices and sources</a>"}}</p>
 {{end}}

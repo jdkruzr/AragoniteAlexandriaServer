@@ -140,7 +140,7 @@ type audioRecoveryAsset struct {
 	Version, Bytes int64
 }
 
-var audioRecoveryTemplate = template.Must(template.New("audio-recovery.html").ParseFS(templateFS, "templates/audio-recovery.html"))
+var audioRecoveryTemplate = template.Must(template.New("audio-recovery.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/audio-recovery.html"))
 
 func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 	d := audioRecoveryView{Document: r.URL.Query().Get("document"), Operation: r.URL.Query().Get("operation"), Key: uuid.NewString()}

@@ -11,10 +11,10 @@ import (
 	"strings"
 )
 
-var setupTemplate = template.Must(template.New("setup.html").ParseFS(templateFS, "templates/setup.html"))
+var setupTemplate = template.Must(template.New("setup.html").Funcs(web.Funcs()).ParseFS(templateFS, "templates/setup.html"))
 
 // Views are grafted into the shared layout, so they may only use its functions.
-var devicesTemplate = template.Must(template.New("devices.html").ParseFS(templateFS, "templates/devices.html"))
+var devicesTemplate = template.Must(template.New("devices.html").Funcs(web.Funcs()).ParseFS(templateFS, "templates/devices.html"))
 
 func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *template.Template, title string, data any) {
 	w.Header().Set("Cache-Control", "no-store")

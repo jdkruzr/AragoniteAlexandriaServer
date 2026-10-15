@@ -1,18 +1,18 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Search</h1>
+<h1>{{t "Search"}}</h1>
 <form class="search" method="get" action="/search" role="search">
-  <input type="search" name="q" value="{{$d.Query}}" placeholder="Search across your library" maxlength="256" aria-label="Search query" autofocus>
-  {{if $d.Semantic}}<select name="mode" aria-label="Match"><option value="">Words and meaning</option><option value="keyword" {{if eq $d.Mode "keyword"}}selected{{end}}>Exact words only</option></select>{{end}}
-  <select name="source" aria-label="Source"><option value="">All sources</option><option value="client" {{if eq $d.Source "client"}}selected{{end}}>Alexandria Client</option>{{if $d.BOOX}}<option value="boox" {{if eq $d.Source "boox"}}selected{{end}}>BOOX</option>{{end}}</select>
-  <button>Search</button>
+  <input type="search" name="q" value="{{$d.Query}}" placeholder="{{t "Search across your library"}}" maxlength="256" aria-label="{{t "Search query"}}" autofocus>
+  {{if $d.Semantic}}<select name="mode" aria-label="{{t "Match"}}"><option value="">{{t "Words and meaning"}}</option><option value="keyword" {{if eq $d.Mode "keyword"}}selected{{end}}>{{t "Exact words only"}}</option></select>{{end}}
+  <select name="source" aria-label="{{t "Source"}}"><option value="">{{t "All sources"}}</option><option value="client" {{if eq $d.Source "client"}}selected{{end}}>Alexandria Client</option>{{if $d.BOOX}}<option value="boox" {{if eq $d.Source "boox"}}selected{{end}}>BOOX</option>{{end}}</select>
+  <button>{{t "Search"}}</button>
 </form>
-<p class="small muted">What's searched? {{template "help" "search.coverage"}}{{if $d.Semantic}} · Matching {{template "help" "search.modes"}}{{end}}</p>
+<p class="small muted">{{t "What's searched?"}} {{template "help" "search.coverage"}}{{if $d.Semantic}} {{t "· Matching"}} {{template "help" "search.modes"}}{{end}}</p>
 {{if $d.Query}}
-<h2>Pages and Reading{{if $d.Results}} <span class="badge">{{len $d.Results}}</span>{{end}}</h2>
+<h2>{{t "Pages and Reading"}}{{if $d.Results}} <span class="badge">{{len $d.Results}}</span>{{end}}</h2>
 {{range $d.Results}}
-<article class="result"><span class="badge source">{{if eq .Source "boox"}}BOOX{{else}}Alexandria Client{{end}} · {{.Kind}}</span><p><a href="{{.URL}}">{{.NotebookName}}{{if .PageNumber}}, page {{.PageNumber}}{{end}}</a></p><p>{{.Snippet}}</p></article>
-{{else}}<p class="empty">No page text or BOOX reading records match. Pages that haven't been through handwriting recognition can only be found by title.</p>{{end}}
-{{if $d.Native}}<h2>BOOX Notebook Titles <span class="badge">{{len $d.Native}}</span></h2>{{range $d.Native}}<article class="result"><span class="badge source">BOOX · {{.Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p></article>{{end}}{{end}}
-{{if $d.Annotations}}<h2>Alexandria Client Book Annotations <span class="badge">{{len $d.Annotations}}</span></h2>{{range $d.Annotations}}<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}Untitled book{{end}}</a><p>{{.Snippet}}</p></article>{{end}}{{end}}
+<article class="result"><span class="badge source">{{if eq .Source "boox"}}BOOX{{else}}Alexandria Client{{end}} · {{t .Kind}}</span><p><a href="{{.URL}}">{{if .PageNumber}}{{t "{{.Name}}, page {{.Number}}" "Name" .NotebookName "Number" .PageNumber}}{{else}}{{.NotebookName}}{{end}}</a></p><p>{{.Snippet}}</p></article>
+{{else}}<p class="empty">{{t "No page text or BOOX reading records match. Pages that haven't been through handwriting recognition can only be found by title."}}</p>{{end}}
+{{if $d.Native}}<h2>{{t "BOOX Notebook Titles"}} <span class="badge">{{len $d.Native}}</span></h2>{{range $d.Native}}<article class="result"><span class="badge source">BOOX · {{t .Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p></article>{{end}}{{end}}
+{{if $d.Annotations}}<h2>{{t "Alexandria Client Book Annotations"}} <span class="badge">{{len $d.Annotations}}</span></h2>{{range $d.Annotations}}<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}{{t "Untitled book"}}{{end}}</a><p>{{.Snippet}}</p></article>{{end}}{{end}}
 {{end}}
 {{end}}

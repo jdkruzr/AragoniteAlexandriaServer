@@ -87,7 +87,7 @@ func activeReaderBook(body map[string]any, uid string) bool {
 
 type readerRefreshView struct{ Document, Revision, Key, Title, Operation, State, Error string }
 
-var readerRefreshTemplate = template.Must(template.New("reader-refresh.html").ParseFS(templateFS, "templates/reader-refresh.html"))
+var readerRefreshTemplate = template.Must(template.New("reader-refresh.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/reader-refresh.html"))
 
 func (s Service) readerRefreshHTTP(w http.ResponseWriter, r *http.Request) {
 	d := readerRefreshView{Document: r.URL.Query().Get("record"), Key: uuid.NewString()}

@@ -1,87 +1,87 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Handwriting Recognition</h1>
+<h1>{{t "Handwriting Recognition"}}</h1>
 {{if $d.Providers}}{{$p := $d.Providers}}
-<p class="lede">Turn handwriting into searchable text with a vision model you choose. Nothing is sent until you queue pages and confirm. {{template "help" "recognition.where"}}</p>
-<p class="actions"><a class="button" href="/jobs/library">Recognize a library…</a><a class="button secondary" href="/jobs">View recognition jobs</a></p>
+<p class="lede">{{t "Turn handwriting into searchable text with a vision model you choose. Nothing is sent until you queue pages and confirm."}} {{template "help" "recognition.where"}}</p>
+<p class="actions">{{th "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs\">View recognition jobs</a>"}}</p>
 <section class="card">
-<h2>Provider {{template "help" "recognition.provider"}}</h2>
-{{if $p.Locked}}<p class="coverage">Provider settings are locked by the deployment.</p>{{else if not $p.CanSave}}<p class="coverage">The deployment needs a settings encryption key before provider credentials can be saved.</p>{{end}}
+<h2>{{t "Provider"}} {{template "help" "recognition.provider"}}</h2>
+{{if $p.Locked}}<p class="coverage">{{t "Provider settings are locked by the deployment."}}</p>{{else if not $p.CanSave}}<p class="coverage">{{t "The deployment needs a settings encryption key before provider credentials can be saved."}}</p>{{end}}
 <form method="post" action="/settings/providers" class="stack">
 <input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition">
 {{/* The provider form saves both providers at once; carry the saved embedding settings unchanged. */}}
 {{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}<input type="hidden" name="embed_url" value="{{$p.Config.Embedding.URL}}"><input type="hidden" name="embed_model" value="{{$p.Config.Embedding.Model}}">
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Vision Model</legend>
-<label><input type="checkbox" name="ocr_enabled" {{if $p.Config.OCR.Enabled}}checked{{end}}> Enable recognition</label>
-<label>API format <select name="ocr_format"><option value="anthropic" {{if eq $p.Config.OCR.Format "anthropic"}}selected{{end}}>Anthropic Messages</option><option value="openai" {{if eq $p.Config.OCR.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option></select></label>
-<div class="field"><span><label for="ocr-url">Base URL</label> {{template "help" "recognition.url"}}</span><input id="ocr-url" type="url" name="ocr_url" value="{{$p.Config.OCR.URL}}" maxlength="2048" placeholder="https://api.example.com"></div>
-<label>Model <input name="ocr_model" value="{{$p.Config.OCR.Model}}" maxlength="256"></label>
-<label>API key <input type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasKey}}Saved — leave blank to keep{{else}}Never displayed after saving{{end}}"></label>
-<p class="hint">{{if $p.HasKey}}A key is saved.{{else}}No key is saved.{{end}}</p>
-<label>Key action <select name="key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
-<details class="more"><summary>More Options</summary>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Vision Model"}}</legend>
+<label><input type="checkbox" name="ocr_enabled" {{if $p.Config.OCR.Enabled}}checked{{end}}> {{t "Enable recognition"}}</label>
+<label>{{t "API format"}} <select name="ocr_format"><option value="anthropic" {{if eq $p.Config.OCR.Format "anthropic"}}selected{{end}}>{{t "Anthropic Messages"}}</option><option value="openai" {{if eq $p.Config.OCR.Format "openai"}}selected{{end}}>{{t "OpenAI Chat Completions"}}</option></select></label>
+<div class="field"><span><label for="ocr-url">{{t "Base URL"}}</label> {{template "help" "recognition.url"}}</span><input id="ocr-url" type="url" name="ocr_url" value="{{$p.Config.OCR.URL}}" maxlength="2048" placeholder="https://api.example.com"></div>
+<label>{{t "Model"}} <input name="ocr_model" value="{{$p.Config.OCR.Model}}" maxlength="256"></label>
+<label>{{t "API key"}} <input type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasKey}}Saved — leave blank to keep{{else}}Never displayed after saving{{end}}"></label>
+<p class="hint">{{if $p.HasKey}}{{t "A key is saved."}}{{else}}{{t "No key is saved."}}{{end}}</p>
+<label>{{t "Key action"}} <select name="key_action"><option value="keep">{{t "Use entered key, otherwise keep saved key"}}</option><option value="replace">{{t "Replace with entered key"}}</option><option value="clear">{{t "Clear saved key"}}</option></select></label>
+<details class="more"><summary>{{t "More Options"}}</summary>
 <div class="stack">
-<div class="field"><span><label for="anthropic-workspace">Anthropic workspace ID (optional)</label> {{template "help" "recognition.workspace"}}</span><input id="anthropic-workspace" name="anthropic_workspace" value="{{$p.Config.OCR.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></div>
-<div class="field"><span><label for="ocr-prompt">Recognition prompt</label> {{template "help" "recognition.prompt"}}</span><textarea id="ocr-prompt" name="ocr_prompt" rows="4" maxlength="16000" aria-describedby="ocr-prompt-help" placeholder="{{$d.DefaultOCRPrompt}}">{{$p.Config.OCR.Prompt}}</textarea></div>
-<p id="ocr-prompt-help" class="hint">Leave blank to use the default prompt: <q>{{$d.DefaultOCRPrompt}}</q></p>
-<label><input type="checkbox" name="vllm" {{if $p.Config.OCR.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
+<div class="field"><span><label for="anthropic-workspace">{{t "Anthropic workspace ID (optional)"}}</label> {{template "help" "recognition.workspace"}}</span><input id="anthropic-workspace" name="anthropic_workspace" value="{{$p.Config.OCR.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></div>
+<div class="field"><span><label for="ocr-prompt">{{t "Recognition prompt"}}</label> {{template "help" "recognition.prompt"}}</span><textarea id="ocr-prompt" name="ocr_prompt" rows="4" maxlength="16000" aria-describedby="ocr-prompt-help" placeholder="{{$d.DefaultOCRPrompt}}">{{$p.Config.OCR.Prompt}}</textarea></div>
+<p id="ocr-prompt-help" class="hint">{{t "Leave blank to use the default prompt:"}} <q>{{$d.DefaultOCRPrompt}}</q></p>
+<label><input type="checkbox" name="vllm" {{if $p.Config.OCR.VLLMDisableThinking}}checked{{end}}> {{t "vLLM only: disable thinking (OpenAI format)"}}</label>
 </div>
 </details>
 </fieldset>
-<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save</button><button name="action" value="test_ocr" class="secondary">Test without saving</button>{{template "help" "recognition.tests"}}</div>
+<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button name="action" value="test_ocr" class="secondary">{{t "Test without saving"}}</button>{{template "help" "recognition.tests"}}</div>
 </form>
 </section>
 <section class="card" id="minutes">
-<h2>Audio Note Minutes {{template "help" "minutes.providers"}}</h2>
-<p>Transcribe a BOOX note's recordings and summarize them together with its handwriting. Nothing is sent until you summarize a note and confirm.</p>
+<h2>{{t "Audio Note Minutes"}} {{template "help" "minutes.providers"}}</h2>
+<p>{{t "Transcribe a BOOX note's recordings and summarize them together with its handwriting. Nothing is sent until you summarize a note and confirm."}}</p>
 <form method="post" action="/settings/minutes" class="stack">
 <input type="hidden" name="revision" value="{{$p.Revision}}">
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Transcription</legend>
-<label><input type="checkbox" name="t_enabled" {{if $p.Config.Transcription.Enabled}}checked{{end}}> Enable transcription</label>
-<div class="field"><span><label for="t-url">Base URL</label> {{template "help" "minutes.transcription"}}</span><input id="t-url" type="url" name="t_url" value="{{$p.Config.Transcription.URL}}" maxlength="2048" placeholder="http://whisper.local:8090"></div>
-<label>Model <input name="t_model" value="{{$p.Config.Transcription.Model}}" maxlength="256" placeholder="whisper-large-v3-turbo"></label>
-<label>Language <input name="t_language" value="{{$p.Config.Transcription.Language}}" maxlength="8" placeholder="Detect automatically"></label>
-<label>API key <input type="password" name="t_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasTranscriptionKey}}Saved — leave blank to keep{{else}}Optional for local servers{{end}}"></label>
-<label>Key action <select name="t_key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Transcription"}}</legend>
+<label><input type="checkbox" name="t_enabled" {{if $p.Config.Transcription.Enabled}}checked{{end}}> {{t "Enable transcription"}}</label>
+<div class="field"><span><label for="t-url">{{t "Base URL"}}</label> {{template "help" "minutes.transcription"}}</span><input id="t-url" type="url" name="t_url" value="{{$p.Config.Transcription.URL}}" maxlength="2048" placeholder="http://whisper.local:8090"></div>
+<label>{{t "Model"}} <input name="t_model" value="{{$p.Config.Transcription.Model}}" maxlength="256" placeholder="whisper-large-v3-turbo"></label>
+<label>{{t "Language"}} <input name="t_language" value="{{$p.Config.Transcription.Language}}" maxlength="8" placeholder="{{t "Detect automatically"}}"></label>
+<label>{{t "API key"}} <input type="password" name="t_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasTranscriptionKey}}Saved — leave blank to keep{{else}}Optional for local servers{{end}}"></label>
+<label>{{t "Key action"}} <select name="t_key_action"><option value="keep">{{t "Use entered key, otherwise keep saved key"}}</option><option value="replace">{{t "Replace with entered key"}}</option><option value="clear">{{t "Clear saved key"}}</option></select></label>
 </fieldset>
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Summary Model</legend>
-<label><input type="checkbox" name="s_enabled" {{if $p.Config.Summary.Enabled}}checked{{end}}> Enable summaries</label>
-<label>API format <select name="s_format"><option value="openai" {{if eq $p.Config.Summary.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option><option value="anthropic" {{if eq $p.Config.Summary.Format "anthropic"}}selected{{end}}>Anthropic Messages</option></select></label>
-<div class="field"><span><label for="s-url">Base URL</label> {{template "help" "minutes.summary"}}</span><input id="s-url" type="url" name="s_url" value="{{$p.Config.Summary.URL}}" maxlength="2048" placeholder="http://llm.local:8080"></div>
-<label>Model <input name="s_model" value="{{$p.Config.Summary.Model}}" maxlength="256"></label>
-<label>API key <input type="password" name="s_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasSummaryKey}}Saved — leave blank to keep{{else}}Never displayed after saving{{end}}"></label>
-<label>Key action <select name="s_key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
-<details class="more"><summary>More Options</summary><div class="stack">
-<label>Anthropic workspace ID (optional) <input name="s_workspace" value="{{$p.Config.Summary.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></label>
-<label><input type="checkbox" name="s_vllm" {{if $p.Config.Summary.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Summary Model"}}</legend>
+<label><input type="checkbox" name="s_enabled" {{if $p.Config.Summary.Enabled}}checked{{end}}> {{t "Enable summaries"}}</label>
+<label>{{t "API format"}} <select name="s_format"><option value="openai" {{if eq $p.Config.Summary.Format "openai"}}selected{{end}}>{{t "OpenAI Chat Completions"}}</option><option value="anthropic" {{if eq $p.Config.Summary.Format "anthropic"}}selected{{end}}>{{t "Anthropic Messages"}}</option></select></label>
+<div class="field"><span><label for="s-url">{{t "Base URL"}}</label> {{template "help" "minutes.summary"}}</span><input id="s-url" type="url" name="s_url" value="{{$p.Config.Summary.URL}}" maxlength="2048" placeholder="http://llm.local:8080"></div>
+<label>{{t "Model"}} <input name="s_model" value="{{$p.Config.Summary.Model}}" maxlength="256"></label>
+<label>{{t "API key"}} <input type="password" name="s_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasSummaryKey}}Saved — leave blank to keep{{else}}Never displayed after saving{{end}}"></label>
+<label>{{t "Key action"}} <select name="s_key_action"><option value="keep">{{t "Use entered key, otherwise keep saved key"}}</option><option value="replace">{{t "Replace with entered key"}}</option><option value="clear">{{t "Clear saved key"}}</option></select></label>
+<details class="more"><summary>{{t "More Options"}}</summary><div class="stack">
+<label>{{t "Anthropic workspace ID (optional)"}} <input name="s_workspace" value="{{$p.Config.Summary.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></label>
+<label><input type="checkbox" name="s_vllm" {{if $p.Config.Summary.VLLMDisableThinking}}checked{{end}}> {{t "vLLM only: disable thinking (OpenAI format)"}}</label>
 </div></details>
 </fieldset>
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Summary Instructions {{template "help" "minutes.instructions"}}</legend>
-<textarea id="s-instructions" name="s_instructions" rows="12" maxlength="16000" aria-label="Summary instructions" aria-describedby="s-instructions-help">{{with $p.Config.Summary.Instructions}}{{.}}{{else}}{{$d.DefaultMinutesInstructions}}{{end}}</textarea>
-<p id="s-instructions-help" class="hint">{{if $p.Config.Summary.Instructions}}You're using your own instructions.{{else}}These are the built-in instructions.{{end}} Clear the box and save to go back to the built-in ones. Changing them marks existing minutes as out of date; nothing is rewritten until you summarize a note again.</p>
-<details class="more"><summary>Response Format (Always Added)</summary><pre>{{$d.MinutesFormat}}</pre></details>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Summary Instructions"}} {{template "help" "minutes.instructions"}}</legend>
+<textarea id="s-instructions" name="s_instructions" rows="12" maxlength="16000" aria-label="{{t "Summary instructions"}}" aria-describedby="s-instructions-help">{{with $p.Config.Summary.Instructions}}{{.}}{{else}}{{$d.DefaultMinutesInstructions}}{{end}}</textarea>
+<p id="s-instructions-help" class="hint">{{if $p.Config.Summary.Instructions}}{{t "You're using your own instructions."}}{{else}}{{t "These are the built-in instructions."}}{{end}} {{t "Clear the box and save to go back to the built-in ones. Changing them marks existing minutes as out of date; nothing is rewritten until you summarize a note again."}}</p>
+<details class="more"><summary>{{t "Response Format (Always Added)"}}</summary><pre>{{$d.MinutesFormat}}</pre></details>
 </fieldset>
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>When Minutes Are Ready {{template "help" "minutes.autosend"}}</legend>
-<label><input type="checkbox" name="s_boox" {{if $p.Config.Summary.SendToBOOX}}checked{{end}}> Send them to BOOX automatically</label>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "When Minutes Are Ready"}} {{template "help" "minutes.autosend"}}</legend>
+<label><input type="checkbox" name="s_boox" {{if $p.Config.Summary.SendToBOOX}}checked{{end}}> {{t "Send them to BOOX automatically"}}</label>
 </fieldset>
-<p class="hint">{{if $p.HasTranscriptionKey}}A transcription key is saved.{{else}}No transcription key is saved.{{end}} {{if $p.HasSummaryKey}}A summary key is saved.{{else}}No summary key is saved.{{end}}</p>
-<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save</button><button name="action" value="test_transcription" class="secondary">Test transcription</button><button name="action" value="test_summary" class="secondary">Test summary</button></div>
+<p class="hint">{{if $p.HasTranscriptionKey}}{{t "A transcription key is saved."}}{{else}}{{t "No transcription key is saved."}}{{end}} {{if $p.HasSummaryKey}}{{t "A summary key is saved."}}{{else}}{{t "No summary key is saved."}}{{end}}</p>
+<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button name="action" value="test_transcription" class="secondary">{{t "Test transcription"}}</button><button name="action" value="test_summary" class="secondary">{{t "Test summary"}}</button></div>
 </form>
 </section>
 <section class="card" id="automatic">
-<h2>Automatic Processing {{template "help" "recognition.automatic"}}</h2>
+<h2>{{t "Automatic Processing"}} {{template "help" "recognition.automatic"}}</h2>
 <form method="post" action="/settings/automatic" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}">
 <fieldset {{if not $p.CanSave}}disabled{{end}}>
-<label><input type="checkbox" name="a_recognize" {{if $p.Config.Automatic.Recognize}}checked{{end}}> Recognize new BOOX pages automatically</label>
-<label><input type="checkbox" name="a_summarize" {{if $p.Config.Automatic.Summarize}}checked{{end}}> Summarize notes with new recordings automatically</label>
+<label><input type="checkbox" name="a_recognize" {{if $p.Config.Automatic.Recognize}}checked{{end}}> {{t "Recognize new BOOX pages automatically"}}</label>
+<label><input type="checkbox" name="a_summarize" {{if $p.Config.Automatic.Summarize}}checked{{end}}> {{t "Summarize notes with new recordings automatically"}}</label>
 </fieldset>
-<p class="small muted">Applies to notebooks that change after you turn it on, once they've been quiet for a few minutes. Pages are sent to your recognition provider; charges may apply.{{if $p.Config.Automatic.On}} On since {{utc $p.Config.Automatic.Since}}.{{end}}</p>
-<p><button {{if not $p.CanSave}}disabled{{end}}>Save automatic processing</button></p>
+<p class="small muted">{{t "Applies to notebooks that change after you turn it on, once they've been quiet for a few minutes. Pages are sent to your recognition provider; charges may apply."}}{{if $p.Config.Automatic.On}} {{t "On since {{.When}}." "When" (utc $p.Config.Automatic.Since)}}{{end}}</p>
+<p><button {{if not $p.CanSave}}disabled{{end}}>{{t "Save automatic processing"}}</button></p>
 </form>
 </section>
 <section class="card">
-<h2>Reprocess Recognized Pages {{template "help" "recognition.reprocess"}}</h2>
-<p>Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages.</p>
-<form method="post" action="/settings/providers" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition"><label class="confirm"><input type="checkbox" name="confirm" required> I want these pages reprocessed, including any provider charges.</label><div><button name="action" value="reprocess" class="secondary" {{if not $p.CanSave}}disabled{{end}}>Reprocess previously requested pages</button></div></form>
+<h2>{{t "Reprocess Recognized Pages"}} {{template "help" "recognition.reprocess"}}</h2>
+<p>{{t "Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages."}}</p>
+<form method="post" action="/settings/providers" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition"><label class="confirm"><input type="checkbox" name="confirm" required> {{t "I want these pages reprocessed, including any provider charges."}}</label><div><button name="action" value="reprocess" class="secondary" {{if not $p.CanSave}}disabled{{end}}>{{t "Reprocess previously requested pages"}}</button></div></form>
 </section>
-{{else}}<p>Handwriting recognition is configured by this deployment.</p>{{end}}
+{{else}}<p>{{t "Handwriting recognition is configured by this deployment."}}</p>{{end}}
 {{end}}
