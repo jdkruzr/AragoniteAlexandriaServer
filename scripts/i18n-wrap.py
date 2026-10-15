@@ -24,9 +24,9 @@ def go_string(s):
 
 def translatable(text):
     t = " ".join(html.unescape(text).split())
-    if not re.search(r"[A-Za-z]{2}", t) or t in KEEP:
+    if not re.search(r"[A-Za-z]{2}", t) or t.strip(" ·—–:,;()") in KEEP:
         return None
-    if " " not in t and re.search(r"[/_=.@#:]|^[a-z0-9-]+$", t):  # paths, keys, code
+    if " " not in t and not re.fullmatch(r"[A-Z][a-z]+(/[A-Z][a-z]+)+", t) and re.search(r"[/_=.@#:]|^[a-z0-9-]+$", t):  # paths, keys, code (not "Page/Source")
         return None
     return t
 
@@ -49,10 +49,14 @@ def wrap_text(chunk, flagged, where):
             out.append(p)
             continue
         msg = translatable(p)
+        near = [parts[j] for j in (i - 1, i + 1) if 0 <= j < len(parts) and parts[j].startswith("{{")]
         if msg is None:
+            # A lone word between printed values ("{{.A}} of {{.B}}") is a
+            # sentence, not code: report it rather than skip it silently.
+            if re.fullmatch(r"\s*[a-z]{2,}\s*", p) and any(printing(ACTION.match(a).group(1)) for a in near if ACTION.match(a)):
+                flagged.append((where, chunk.strip()))
             out.append(p)
             continue
-        near = [parts[j] for j in (i - 1, i + 1) if 0 <= j < len(parts) and parts[j].startswith("{{")]
         if any(printing(ACTION.match(a).group(1)) for a in near if ACTION.match(a)):
             flagged.append((where, chunk.strip()))
             out.append(p)
@@ -73,12 +77,16 @@ def wrap_attrs(tag):
 
 def process(src, name):
     flagged, out, i = [], [], 0
-    token = re.compile(r"<(script|style|code|pre)\b.*?</\1>|<!--.*?-->|<(?:" + ACT + r"|[^>{]|\{(?!\{))*>", re.S | re.I)
+    # Template actions are matched first and kept whole, so markup inside an
+    # existing {{th "…"}} message is never mistaken for page markup.
+    token = re.compile(r"(?P<act>" + ACT + r")|<(script|style|code|pre)\b.*?</\2>|<!--.*?-->|<(?:" + ACT + r"|[^>{]|\{(?!\{))*>", re.S | re.I)
     for m in token.finditer(src):
+        if m.group("act"):
+            continue  # part of the surrounding text run; wrap_text skips actions
         text = src[i:m.start()]
         out.append(wrap_text(text, flagged, name))
         tag = m.group(0)
-        out.append(tag if m.group(1) or tag.startswith("<!--") else wrap_attrs(tag))
+        out.append(tag if m.group(2) or tag.startswith("<!--") else wrap_attrs(tag))
         i = m.end()
     out.append(wrap_text(src[i:], flagged, name))
     return "".join(out), flagged

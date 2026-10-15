@@ -6,7 +6,7 @@
 <p><a class="button" href="/boox/minutes/new?id={{$d.ID}}">{{t "Summarize this note…"}}</a></p></div>
 {{else}}
 {{if eq $m.State "queued" "processing"}}<div class="callout" role="status"><p><span class="badge partial">{{t "In progress"}}</span> {{if $d.Progress}}{{$d.Progress}}{{else}}{{t "Waiting to start."}}{{end}}</p>{{if $m.Topic}}<p class="small">{{t "The minutes below are from the previous request."}}</p>{{end}}<form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="cancel"><button class="quiet">{{t "Cancel"}}</button></form></div>
-{{else if eq $m.State "failed" "cancelled"}}<div class="callout danger" role="status"><p><span class="badge bad">{{if eq $m.State "failed"}}{{t "Failed"}}{{else}}{{t "Cancelled"}}{{end}}</span> {{$m.Detail}}</p><form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="retry"><button class="secondary">{{t "Retry"}}</button></form></div>
+{{else if eq $m.State "failed" "cancelled"}}<div class="callout danger" role="status"><p><span class="badge bad">{{if eq $m.State "failed"}}{{t "Failed"}}{{else}}{{t "Cancelled"}}{{end}}</span> {{td $m.Detail}}</p><form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="retry"><button class="secondary">{{t "Retry"}}</button></form></div>
 {{else if $d.Stale}}<p class="callout">{{t "The notebook or the summary instructions have changed since these minutes were written."}} <a href="/boox/minutes/new?id={{$d.ID}}">{{t "Update…"}}</a></p>{{end}}
 {{if $m.Topic}}<div class="reader-layout"><div>
 <section class="card minutes"><h2>{{$m.Topic}}</h2>
@@ -14,7 +14,7 @@
 <h3>{{t "Key Points"}}</h3><ol class="points">{{range $m.KeyPoints}}<li>{{.Text}} <span class="badge source">{{if eq .From "recording"}}{{t "Recording"}}{{else if eq .From "notes"}}{{t "Notes"}}{{else}}{{t "Recording + notes"}}{{end}}</span></li>{{end}}</ol>
 <h3>{{t "Conclusion"}}</h3><p>{{$m.Conclusion}}</p></section>
 </div><aside><section class="card"><h2>{{t "About These Minutes"}}</h2><dl class="meta">
-<dt>{{t "Notebook"}}</dt><dd>{{$m.Metadata.Title}}{{if $m.Metadata.Folder}} <span class="muted">in {{$m.Metadata.Folder}}</span>{{end}}</dd>
+<dt>{{t "Notebook"}}</dt><dd>{{$m.Metadata.Title}}{{if $m.Metadata.Folder}} <span class="muted">{{t "in {{.Folder}}" "Folder" $m.Metadata.Folder}}</span>{{end}}</dd>
 <dt>{{t "Created"}}</dt><dd>{{utc $m.Metadata.Created}}</dd>
 <dt>{{t "Pages"}}</dt><dd>{{t "{{.Done}} of {{.Total}} with handwriting text" "Done" $m.Metadata.PagesWithText "Total" $m.Metadata.PageCount}}</dd>
 <dt>{{t "Recordings"}}</dt><dd>{{len $m.Metadata.Recordings}}{{range $m.Metadata.Recordings}}<br>{{.Title}}: {{utc .RecordedAt}}, {{clock .DurationMS}}{{end}}</dd>
@@ -22,7 +22,7 @@
 <dt>{{t "Written"}}</dt><dd>{{if $m.FinishedAt.Valid}}{{utc $m.FinishedAt.Time}}{{else}}—{{end}}</dd>
 </dl></section>
 {{if $d.Sendable}}<section class="card" id="send"><h2>{{t "On Your BOOX"}} {{template "help" "boox.minutesnote"}}</h2>
-{{if and (eq $m.State "ready") $m.Detail}}<p class="callout danger" role="status">{{$m.Detail}}</p>{{end}}
+{{if and (eq $m.State "ready") $m.Detail}}<p class="callout danger" role="status">{{td $m.Detail}}</p>{{end}}
 {{with $d.Sent}}<p id="minutes-on-boox">{{if eq .Status "pending"}}<span class="badge partial">{{t "Sending"}}</span> {{t "“{{.Title}}” reaches your devices with their next sync." "Title" .Title}}
 {{else if eq .Status "failed"}}<span class="badge bad">{{t "Not sent"}}</span> {{t "“{{.Title}}” couldn't be sent ({{.Code}})." "Title" .Title "Code" .Code}}
 {{else if eq .Status "untouched"}}<span class="badge indexed">{{t "On your BOOX"}}</span> {{if $d.Folder}}{{t "“{{.Title}}” is in {{.Folder}}, sent {{.When}}." "Title" .Title "Folder" $d.Folder "When" (utc .At)}}{{else}}{{t "“{{.Title}}” is in the notebook root, sent {{.When}}." "Title" .Title "When" (utc .At)}}{{end}} {{t "It syncs like any other notebook; there's nothing more to do."}}

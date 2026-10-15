@@ -141,3 +141,20 @@ func Supported(tag string) bool {
 	}
 	return false
 }
+
+var known = loadKnown()
+
+func loadKnown() map[string]bool {
+	m := map[string]any{}
+	if b, err := locales.ReadFile("locales/active.en.json"); err == nil {
+		_ = json.Unmarshal(b, &m)
+	}
+	out := make(map[string]bool, len(m))
+	for k := range m {
+		out[k] = true
+	}
+	return out
+}
+
+// Known reports whether id is a message in the English source catalog.
+func Known(id string) bool { return known[id] }

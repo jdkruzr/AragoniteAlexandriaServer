@@ -9,7 +9,7 @@
 <tr>
   <td><strong>{{.DisplayName}}</strong><div class="muted small">{{.SiteID}}{{if .FirstSeenMs}} · {{t "since {{.When}}" "When" (ms .FirstSeenMs)}}{{end}}</div></td>
   <td>{{if .LastSeenMs}}{{ms .LastSeenMs}}{{else}}{{t "Never"}}{{end}}</td>
-  <td>{{.PendingOps}} changes</td>
+  <td>{{t "{{.Count}} changes" .PendingOps}}</td>
   <td>{{if .Revoked}}<span class="badge blank">{{t "Revoked"}}</span>{{else if .NeedsAdoption}}<span class="badge partial">{{t "Needs restore"}}</span>{{else if .Enrolled}}<span class="badge indexed">{{t "Active"}}</span>{{else}}<span class="badge blank">{{t "Not enrolled"}}</span>{{end}}</td>
   <td>
     <details><summary>{{t "Manage"}}</summary>
