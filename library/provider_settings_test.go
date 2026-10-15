@@ -114,6 +114,22 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if got := b.do("POST", "/settings/minutes", minutesForm.Encode(), sameSite, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Settings changed in another session") {
 		t.Fatal("stale minutes form accepted", got.Code)
 	}
+	// Automatic processing saves on its own form, also revision-checked, and
+	// leaves the providers alone.
+	auto := url.Values{"revision": {"5"}, "a_recognize": {"on"}, "a_summarize": {"on"}}
+	if got := b.do("POST", "/settings/automatic", auto.Encode(), nil, true); got.Code != 403 {
+		t.Fatal("automatic CSRF", got.Code)
+	}
+	if got := b.do("POST", "/settings/automatic", auto.Encode(), sameSite, true); got.Code != 303 {
+		t.Fatal("automatic save", got.Code, got.Body.String())
+	}
+	_, _, snap, e = r.pageConfiguration(ctx, db)
+	if e != nil || !snap.Config.Automatic.Recognize || !snap.Config.Automatic.Summarize || snap.Config.Automatic.Since.IsZero() || snap.Config.Summary.Model != "synthetic-llm" || snap.SummaryKey != "private-summary-key" {
+		t.Fatal("automatic save", e, snap.Config.Automatic)
+	}
+	if page := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(page, `name="a_recognize" checked`) || !strings.Contains(page, "On since") {
+		t.Fatal("automatic settings view")
+	}
 	// Enabling/saving never queues existing content for paid processing.
 	var count int
 	if e = db.QueryRowContext(ctx, `SELECT count(*) FROM boox_page_index`).Scan(&count); e != nil || count != 0 {

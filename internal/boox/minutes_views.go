@@ -52,14 +52,17 @@ var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).P
 </dl></section>
 {{if $d.Sendable}}<section class="card" id="send"><h2>On Your BOOX {{template "help" "boox.minutesnote"}}</h2>
 {{if and (eq $m.State "ready") $m.Detail}}<p class="callout danger" role="status">{{$m.Detail}}</p>{{end}}
-{{with $d.Sent}}<p>{{if eq .Status "pending"}}<span class="badge partial">Sending</span> “{{.Title}}” is on its way to your devices.
+{{with $d.Sent}}<p id="minutes-on-boox">{{if eq .Status "pending"}}<span class="badge partial">Sending</span> “{{.Title}}” reaches your devices with their next sync.
 {{else if eq .Status "failed"}}<span class="badge bad">Not sent</span> “{{.Title}}” couldn't be sent ({{.Code}}).
-{{else if eq .Status "untouched"}}Sent {{utc .At}} as “{{.Title}}”. Sending again replaces it.
-{{else if eq .Status "changed"}}“{{.Title}}” was changed on a device, so sending again creates a new note and leaves that one alone.
+{{else if eq .Status "untouched"}}<span class="badge indexed">On your BOOX</span> “{{.Title}}” is in {{if $d.Folder}}{{$d.Folder}}{{else}}the notebook root{{end}}, sent {{utc .At}}. It syncs like any other notebook; there's nothing more to do.
+{{else if eq .Status "changed"}}“{{.Title}}” was edited on a device, so it's yours now. Sending again adds a separate note and leaves that one alone.
 {{else}}“{{.Title}}” was deleted on a device. Sending again creates a new note.{{end}}</p>{{end}}
-{{if not (and $d.Sent (eq $d.Sent.Status "pending"))}}<form method="post" action="/boox/minutes/send"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="request" value="{{$d.SendRequest}}">
-<label class="confirm"><input type="checkbox" name="confirm" required> Create “{{$d.NoteTitle}}” in {{if $d.Folder}}{{$d.Folder}}{{else}}the notebook root{{end}} on every connected BOOX device{{if and $d.Sent (eq $d.Sent.Status "untouched")}}, and delete the earlier copy{{end}}</label>
-<p><button class="secondary">Send to BOOX</button></p></form>{{end}}
+{{if not (and $d.Sent (eq $d.Sent.Status "pending"))}}{{$replace := and $d.Sent (eq $d.Sent.Status "untouched")}}
+{{if $replace}}<details class="more" id="minutes-replace"><summary>Replace It on Your BOOX</summary>
+<p class="small muted">Rewrites the note with the minutes shown on this page, for example after you've updated them. It doesn't summarize anything again; that's <strong>Update</strong>, which appears when the minutes are out of date.</p>{{else if not $d.Sent}}<p class="small muted">Creates a text note beside the notebook. From then on it syncs to your devices like any other notebook.</p>{{end}}
+<form method="post" action="/boox/minutes/send"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="request" value="{{$d.SendRequest}}">
+<label class="confirm"><input type="checkbox" name="confirm" required> {{if $replace}}Replace “{{$d.Sent.Title}}” on every connected BOOX device with these minutes{{else}}Create “{{$d.NoteTitle}}” in {{if $d.Folder}}{{$d.Folder}}{{else}}the notebook root{{end}} on every connected BOOX device{{end}}</label>
+<p><button class="secondary">{{if $replace}}Replace on BOOX{{else}}Send to BOOX{{end}}</button></p></form>{{if $replace}}</details>{{end}}{{end}}
 </section>{{end}}</aside></div>{{end}}
 {{if $m.Recordings}}<section class="card"><h2>Recordings</h2>
 {{range $m.Recordings}}<article class="recording"><h3>{{.Title}}</h3>

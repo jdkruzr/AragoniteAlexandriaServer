@@ -564,8 +564,13 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 			found, err = (recognition.Store{DB: conn}).StepRun(ctx, r.recognitionCatalog(conn), pages.OCR != nil)
 		case 3:
 			if r.cfg.NativeBOOX != nil {
-				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Minutes: minutesConfig(snapshot)}
+				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Minutes: minutesConfig(snapshot), RecognitionEnabled: pages.OCR != nil}
 				if err = native.ResolveIdentity(ctx); err == nil {
+					// New pages and recordings the owner asked to have handled.
+					a := snapshot.Config.Automatic
+					if found, err = native.AutoProcess(ctx, boox.AutoConfig{Recognize: a.Recognize, Summarize: a.Summarize, Since: a.Since}, minutesConfig(snapshot)); found || err != nil {
+						break
+					}
 					// Queued work fails with guidance when its provider is off.
 					var stt *speech.Client
 					var summary minutes.Completer

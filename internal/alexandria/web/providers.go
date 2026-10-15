@@ -72,6 +72,35 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		}
 		back(w, r, "/settings/search", notice)
 	})
+	mux.HandleFunc("POST /settings/automatic", func(w http.ResponseWriter, r *http.Request) {
+		if d.Providers == nil {
+			http.Error(w, "Provider settings are unavailable in this deployment.", 503)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		if r.ParseForm() != nil {
+			http.Error(w, "Invalid settings form.", 400)
+			return
+		}
+		rev, e := strconv.ParseInt(r.Form.Get("revision"), 10, 64)
+		if e != nil {
+			http.Error(w, "Reload the Settings page.", 409)
+			return
+		}
+		candidate, e := d.Providers.AutomaticCandidate(r.Context(), rev, r.Form.Get("a_recognize") == "on", r.Form.Get("a_summarize") == "on")
+		if e == nil {
+			e = d.Providers.Save(r.Context(), candidate)
+		}
+		if e != nil {
+			back(w, r, "/settings/recognition", e.Error())
+			return
+		}
+		notice := "Automatic processing is off."
+		if candidate.Config.Automatic.On() {
+			notice = "Automatic processing saved. It applies to notebooks that change from now on."
+		}
+		back(w, r, "/settings/recognition", notice)
+	})
 	mux.HandleFunc("POST /settings/minutes", func(w http.ResponseWriter, r *http.Request) {
 		if d.Providers == nil {
 			http.Error(w, "Provider settings are unavailable in this deployment.", 503)
