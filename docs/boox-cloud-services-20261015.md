@@ -243,11 +243,15 @@ server** to report from the Onyx account, then reconnect. The tablet shows
   `<uid>/note/pb/<uuid>`, then registers it. The 501 meant the completion time
   was never saved, so every run re-uploaded (37 snapshots, 93 kB, since 10-09).
   Now accepted when the library holds that key (`TestNoteTreeVersionAcceptsHeldSnapshots`).
-- `GET /api/v2/service/core/feature?model=` (anonymous, `onyxHostBaseUrl`
-  v2): Onyx itself returns `{"list": []}` for Go103_2Lumi, the same as the
-  failure fallback. Left alone.
+- `GET /api/v2/service/core/feature?model=` (anonymous): only SIM-capable
+  tablets read it; keys `thirdPartyPhoneCall` / `thirdPartySms` enable calling
+  and SMS, and a missing key or failed request disables them
+  (`FetchCoreFeaturesAction.r`). Onyx grants both to Palma2_Pro_C and lists
+  nothing for Go103_2Lumi, so the 401 had been switching the Palma's calling/SMS
+  off. Alexandria now answers locally with both keys for every model (owner
+  decision: no region needs them off); `internal/boox/core_features.go`.
 - `PUT /api/1/devices/lock/state`, `POST /api/1/devices/action/state`
   (anonymous, send the MAC address): Onyx anti-theft/password helpers; failures
   end quietly. Left alone, which also keeps the MAC away from Onyx.
 - `POST /api/1/apks/batchQuery` (anonymous, includes the MAC): BOOX app-store
-  listing. Owner decision on an anonymous pass-through.
+  listing. Owner: nobody uses it; left alone.
