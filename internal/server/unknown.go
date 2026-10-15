@@ -9,7 +9,8 @@ import (
 )
 
 // unknownRequests logs requests nothing on a listener answered (404, 405,
-// 501), so stray BOOX cloud traffic shows up. It records the method, a masked
+// 501, and 401 under /api/, where BOOX services refuse unknown anonymous
+// calls before routing them), so stray BOOX cloud traffic shows up. It records the method, a masked
 // path and whether credentials were attached; never header values, cookies,
 // bodies or query strings. Each request shape is logged at most once an hour.
 type unknownRequests struct {
@@ -29,7 +30,7 @@ func newUnknownRequests(logger *slog.Logger) *unknownRequests {
 }
 
 func (u *unknownRequests) note(listener string, r *http.Request, status int) {
-	if u == nil || (status != http.StatusNotFound && status != http.StatusMethodNotAllowed && status != http.StatusNotImplemented) {
+	if u == nil || !unanswered(r, status) {
 		return
 	}
 	path := maskPath(r.URL.Path)
@@ -78,4 +79,14 @@ func maskPath(p string) string {
 		p = p[:160] + "…"
 	}
 	return p
+}
+
+func unanswered(r *http.Request, status int) bool {
+	switch status {
+	case http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusNotImplemented:
+		return true
+	case http.StatusUnauthorized:
+		return strings.HasPrefix(r.URL.Path, "/api/")
+	}
+	return false
 }

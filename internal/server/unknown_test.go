@@ -15,8 +15,12 @@ import (
 func TestUnknownRequestsAreLoggedOnceWithoutSecrets(t *testing.T) {
 	var out bytes.Buffer
 	runtime := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/known" {
+		switch r.URL.Path {
+		case "/known":
 			w.WriteHeader(200)
+			return
+		case "/api/1/needs-login", "/jobs":
+			w.WriteHeader(401)
 			return
 		}
 		http.NotFound(w, r)
@@ -35,6 +39,8 @@ func TestUnknownRequestsAreLoggedOnceWithoutSecrets(t *testing.T) {
 	send(g.main.Handler, "/api/1/writeTemplates?model=Palma2", false)
 	send(g.main.Handler, "/api/v1/firmware/update/5f2b9c0e8d7a4b1c9e3f6a2d1b0c7e8f", true)
 	send(g.spc.Handler, "/anything", false)
+	send(g.main.Handler, "/api/1/needs-login", false)
+	send(g.main.Handler, "/jobs", false)
 	log := out.String()
 	for _, secret := range []string{"synthetic-secret-token", "synthetic-cookie", "Go103", "Palma2", "5f2b9c0e8d7a4b1c9e3f6a2d1b0c7e8f", "/known"} {
 		if strings.Contains(log, secret) {
@@ -44,7 +50,7 @@ func TestUnknownRequestsAreLoggedOnceWithoutSecrets(t *testing.T) {
 	if n := strings.Count(log, "/api/1/writeTemplates"); n != 1 {
 		t.Errorf("writeTemplates logged %d times:\n%s", n, log)
 	}
-	for _, want := range []string{"path=/api/v1/firmware/update/:id status=404 credentials=true", "listener=spc method=GET path=/anything status=501 credentials=false"} {
+	for _, want := range []string{"path=/api/v1/firmware/update/:id status=404 credentials=true", "listener=spc method=GET path=/anything status=501 credentials=false", "path=/api/1/needs-login status=401 credentials=false"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("log lacks %q:\n%s", want, log)
 		}
