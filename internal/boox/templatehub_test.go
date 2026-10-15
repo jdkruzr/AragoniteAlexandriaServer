@@ -1,6 +1,7 @@
 package boox
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -55,5 +56,29 @@ func TestTemplateHubPageIsAnonymousAndScriptless(t *testing.T) {
 	templateHub(w, httptest.NewRequest("POST", templateHubPath, nil))
 	if w.Code != 405 {
 		t.Errorf("POST %d", w.Code)
+	}
+}
+
+// SIM-capable tablets switch calling and SMS off unless this list names them.
+func TestCoreFeaturesGrantCallingAndSMS(t *testing.T) {
+	s := testService(t)
+	w := request(t, s, "GET", "/api/v2/service/core/feature?model=Palma2_Pro_C", nil, nil)
+	var v struct {
+		Code int `json:"result_code"`
+		Data struct {
+			List []struct {
+				Key string `json:"key"`
+			} `json:"list"`
+		} `json:"data"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &v) != nil || v.Code != 0 || len(v.Data.List) != 2 {
+		t.Fatalf("%d %s", w.Code, w.Body.String())
+	}
+	keys := map[string]bool{}
+	for _, f := range v.Data.List {
+		keys[f.Key] = true
+	}
+	if !keys["thirdPartySms"] || !keys["thirdPartyPhoneCall"] {
+		t.Fatalf("keys %v", keys)
 	}
 }

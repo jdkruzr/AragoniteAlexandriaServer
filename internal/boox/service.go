@@ -296,6 +296,10 @@ func (s Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		templateHub(w, r)
 		return
 	}
+	if r.Method == http.MethodGet && r.URL.Path == "/api/v2/service/core/feature" {
+		coreFeatures(w)
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/v1/boox/device/") {
 		d, e := s.auth(r.Context(), "companion", bearer(r), "")
 		if e != nil {
