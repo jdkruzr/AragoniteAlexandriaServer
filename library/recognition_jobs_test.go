@@ -241,7 +241,7 @@ func TestClientLibraryReviewWithoutBOOXUsesSharedFlow(t *testing.T) {
 		t.Fatal("client batch reached BOOX queue", count, e)
 	}
 	jobs := b.do("GET", "/jobs", "", nil, true)
-	if jobs.Code != 200 || !strings.Contains(jobs.Body.String(), "Recent library batches") || !strings.Contains(jobs.Body.String(), "Recognize a library") {
+	if jobs.Code != 200 || !strings.Contains(jobs.Body.String(), "Recent Library Batches") || !strings.Contains(jobs.Body.String(), "Recognize a library") {
 		t.Fatal(jobs.Code, jobs.Body.String())
 	}
 }

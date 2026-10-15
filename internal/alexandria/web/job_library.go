@@ -42,7 +42,7 @@ func (d Deps) libraryJobRoutes(mux *http.ServeMux) {
 			}
 		}
 		data["Source"] = source
-		d.render(w, r, "jobs-library", "Library recognition", "jobs", data)
+		d.render(w, r, "jobs-library", "Library Recognition", "jobs", data)
 	})
 	mux.HandleFunc("POST /jobs/library", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)

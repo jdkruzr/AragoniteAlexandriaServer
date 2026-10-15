@@ -256,13 +256,13 @@ func (s Service) cleanupHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, e)
 		return
 	}
-	s.renderPage(w, r, cleanupTemplate, "Clean up BOOX notebooks", d)
+	s.renderPage(w, r, cleanupTemplate, "Clean Up BOOX Notebooks", d)
 }
 
 var cleanupTemplate = template.Must(template.New("cleanup").Funcs(template.FuncMap{"ms": listview.Date}).Parse(`{{define "content"}}{{$d:=.Data}}
-<p class="crumbs"><a href="/boox">Notebooks</a> /</p><h1>Clean up numbered notebooks {{template "help" "boox.cleanup"}}</h1>
+<p class="crumbs"><a href="/boox">Notebooks</a> /</p><h1>Clean Up Numbered Notebooks {{template "help" "boox.cleanup"}}</h1>
 {{if $d.Batch}}
-<h2>Cleanup progress</h2><p><strong>{{$d.Published}} published</strong> · {{$d.Pending}} pending · {{$d.Blocked}} blocked or superseded · {{$d.Cancelled}} cancelled · {{$d.Total}} total</p>
+<h2>Cleanup Progress</h2><p><strong>{{$d.Published}} published</strong> · {{$d.Pending}} pending · {{$d.Blocked}} blocked or superseded · {{$d.Cancelled}} cancelled · {{$d.Total}} total</p>
 <p class="small muted"><strong>Published</strong> means the deletion reached the sync server; each tablet applies it on its next sync. Pending items retry automatically, and this page refreshes while work remains. <strong>Blocked</strong> notebooks changed after your review; <strong>superseded</strong> ones were edited on a device after publication. <a href="/boox/cleanup">Review current matches</a> before trying again.</p>
 {{if $d.Pending}}<form method="post"><input type="hidden" name="token" value="{{$d.Batch}}"><button class="destructive" name="action" value="cancel">Cancel not yet published</button></form><p class="muted">Cancellation stops queued operations only. Publication already in progress may complete.</p>{{end}}
 <div class="table-scroll"><table><thead><tr><th>Notebook</th><th>State</th><th>Details</th></tr></thead><tbody>{{range $d.Items}}<tr><td><a href="/boox/notebook?id={{.ID}}">{{.Title}}</a></td><td>{{.State}}</td><td>{{.Detail}}</td></tr>{{end}}</tbody></table></div>
@@ -272,10 +272,10 @@ var cleanupTemplate = template.Must(template.New("cleanup").Funcs(template.FuncM
 <p class="callout danger">This matches <strong>names only</strong>; it doesn't look inside the pages. Open anything you're unsure about and uncheck what you want to keep. Deletion syncs to every BOOX tablet using this library. The server keeps the history, so this doesn't free storage.</p>
 <p><strong>{{$d.Total}} matching notebooks</strong>{{if gt $d.Total 200}} · showing the first 200. Run another review after these finish to handle the remaining matches.{{end}}</p>
 {{if $d.Items}}<form method="post" class="stack library-review"><input type="hidden" name="token" value="{{$d.Token}}">
-<div class="table-scroll"><table class="recognition-notebooks"><thead><tr><th>Delete</th><th>Name</th><th>Listed pages</th><th>Created (UTC)</th><th>Modified (UTC)</th></tr></thead><tbody>{{range $d.Items}}<tr><td><input type="checkbox" name="selected" value="{{.Choice}}" checked aria-label="Delete {{.Title}}"></td><td><a href="/boox/notebook?id={{.ID}}" target="_blank" rel="noopener">{{.Title}}</a></td><td>{{.Pages}}{{if .Truncated}}+{{end}}</td><td>{{ms .Created}}</td><td>{{ms .Modified}}</td></tr>{{end}}</tbody></table></div>
+<div class="table-scroll"><table class="recognition-notebooks"><thead><tr><th>Delete</th><th>Name</th><th>Listed Pages</th><th>Created (UTC)</th><th>Modified (UTC)</th></tr></thead><tbody>{{range $d.Items}}<tr><td><input type="checkbox" name="selected" value="{{.Choice}}" checked aria-label="Delete {{.Title}}"></td><td><a href="/boox/notebook?id={{.ID}}" target="_blank" rel="noopener">{{.Title}}</a></td><td>{{.Pages}}{{if .Truncated}}+{{end}}</td><td>{{ms .Created}}</td><td>{{ms .Modified}}</td></tr>{{end}}</tbody></table></div>
 <p class="small muted">Page counts come from device metadata and can be incomplete. Notebooks that change before deletion are skipped. This keeps running if you close the browser.</p>
 <label class="confirm danger"><input type="checkbox" name="confirm" required>Delete the selected notebooks from this library and its synced BOOX devices.</label>
 <button name="action" value="queue" class="destructive">Delete selected notebooks</button></form>
 {{else}}<p class="empty">No numbered notebooks to clean up.</p>{{end}}
-{{if $d.Recent}}<h2>Recent cleanups</h2><ul>{{range $d.Recent}}<li><a href="/boox/cleanup?batch={{.ID}}">{{.Created.UTC.Format "2006-01-02 15:04:05"}} UTC · {{.Total}} notebooks</a></li>{{end}}</ul>{{end}}
+{{if $d.Recent}}<h2>Recent Cleanups</h2><ul>{{range $d.Recent}}<li><a href="/boox/cleanup?batch={{.ID}}">{{.Created.UTC.Format "2006-01-02 15:04:05"}} UTC · {{.Total}} notebooks</a></li>{{end}}</ul>{{end}}
 {{end}}{{end}}`))

@@ -5,7 +5,7 @@
 {{if not $d.Annotations}}<p class="empty">No annotations in this book.</p>{{end}}
 {{range $d.Annotations}}
 <article class="annotation">
-  <h2>{{.Location}}{{if .Sticky}} · Sticky note{{end}}</h2>
+  <h2>{{.Location}}{{if .Sticky}} · Sticky Note{{end}}</h2>
   {{if .Status}}<p class="muted">{{.Status}}</p>{{end}}
   {{if .Passage}}<blockquote {{if .Highlighted}}class="highlight"{{end}}>{{.Passage}}</blockquote>{{end}}
   {{if .InkStrokes}}<img loading="lazy" src="/files/forestnote/books/ink?annotation={{.ID}}" alt="Handwritten note">{{end}}

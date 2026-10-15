@@ -1,9 +1,9 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Client devices {{template "help" "client.devices"}}</h1>
-{{if not $d.Devices}}<section class="card"><h2>Connect a device</h2>
+<h1>Client Devices {{template "help" "client.devices"}}</h1>
+{{if not $d.Devices}}<section class="card"><h2>Connect a Device</h2>
   <p>In Alexandria, open Settings → Sync, enter <code>{{.Base}}</code> as the server address, and sign in with this server's account. The device then appears here.</p></section>{{else}}
 <div class="table-scroll"><table class="keep-cols">
-<thead><tr><th>Device</th><th>Last sync</th><th>Waiting</th><th>State</th><th></th></tr></thead>
+<thead><tr><th>Device</th><th>Last Sync</th><th>Waiting</th><th>State</th><th></th></tr></thead>
 <tbody>
 {{range $d.Devices}}
 <tr>
@@ -29,7 +29,7 @@
 {{end}}
 </tbody>
 </table></div>
-<details class="more"><summary>Connect another device</summary><p>In Alexandria, open Settings → Sync, enter <code>{{.Base}}</code> as the server address, and sign in with this server's account.</p></details>
+<details class="more"><summary>Connect Another Device</summary><p>In Alexandria, open Settings → Sync, enter <code>{{.Base}}</code> as the server address, and sign in with this server's account.</p></details>
 {{end}}
 <p class="small muted">Tasks are also available over CalDAV — see <a href="/settings/integrations">Tasks &amp; integrations</a>.</p>
 {{end}}

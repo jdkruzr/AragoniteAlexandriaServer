@@ -497,7 +497,7 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 		}
 		// Shown exactly once, never stored in plain text or put in a URL.
 		w.Header().Set("Cache-Control", "no-store")
-		d.render(w, r, "token", "New API token", "settings", map[string]any{"Token": token, "Label": label})
+		d.render(w, r, "token", "New API Token", "settings", map[string]any{"Token": token, "Label": label})
 	})
 	mux.HandleFunc("POST /settings/tokens/revoke", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := d.DB.ExecContext(r.Context(), `UPDATE alexandria_api_tokens SET revoked_at=now() WHERE token_hash=$1 AND revoked_at IS NULL`, r.FormValue("token_hash")); err != nil {
@@ -518,7 +518,7 @@ func (d Deps) authorizeRoutes(mux *http.ServeMux) {
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		d.render(w, r, "authorize", "Allow access?", "", map[string]any{"Request": req, "Query": r.URL.RawQuery})
+		d.render(w, r, "authorize", "Allow Access?", "", map[string]any{"Request": req, "Query": r.URL.RawQuery})
 	})
 	mux.HandleFunc("POST /authorize", func(w http.ResponseWriter, r *http.Request) {
 		// The original query rides back in a hidden field and is validated again.
@@ -625,11 +625,11 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 	name, title := "settings", "Account"
 	switch tab {
 	case "search":
-		name, title = "settings-search", "Search by meaning"
+		name, title = "settings-search", "Search by Meaning"
 	case "recognition":
-		name, title = "settings-recognition", "Handwriting recognition"
+		name, title = "settings-recognition", "Handwriting Recognition"
 	case "integrations":
-		name, title = "settings-integrations", "Tasks & integrations"
+		name, title = "settings-integrations", "Tasks & Integrations"
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	if pv, ok := data["Providers"].(*providers.View); ok && tab == "search" && pv != nil && pv.IndexState != "" && pv.SavedEmbedding.Enabled {

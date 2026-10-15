@@ -87,7 +87,7 @@ func activeReaderBook(body map[string]any, uid string) bool {
 
 type readerRefreshView struct{ Document, Revision, Key, Title, Operation, State, Error string }
 
-var readerRefreshTemplate = template.Must(template.New("reader-refresh").Parse(`{{define "content"}}<p class="crumbs"><a href="/boox/reading">Reading</a> /</p><h1>Refresh reading data</h1><p><strong>{{.Data.Title}}</strong></p><p>Asks your BOOX tablets to recheck the ink and annotations already received for this book. Open the book on each tablet and accept Sync if prompted.</p><p class="small muted">This doesn't restore deleted content or confirm that everything has arrived.</p>{{if .Data.Error}}<p role="alert">{{.Data.Error}}</p>{{end}}{{if .Data.Operation}}<p>Server request: <strong>{{.Data.State}}</strong></p><p>Device application: not verified.</p><a href="/boox/reading/refresh?record={{.Data.Document}}&amp;operation={{.Data.Operation}}">Refresh status</a>{{else}}{{if .Data.Revision}}<form method="post" action="/boox/reading/refresh"><input type="hidden" name="documentId" value="{{.Data.Document}}"><input type="hidden" name="expectedRevision" value="{{.Data.Revision}}"><input type="hidden" name="idempotencyKey" value="{{.Data.Key}}"><button>Request refresh</button></form>{{end}}{{end}}{{end}}`))
+var readerRefreshTemplate = template.Must(template.New("reader-refresh").Parse(`{{define "content"}}<p class="crumbs"><a href="/boox/reading">Reading</a> /</p><h1>Refresh Reading Data</h1><p><strong>{{.Data.Title}}</strong></p><p>Asks your BOOX tablets to recheck the ink and annotations already received for this book. Open the book on each tablet and accept Sync if prompted.</p><p class="small muted">This doesn't restore deleted content or confirm that everything has arrived.</p>{{if .Data.Error}}<p role="alert">{{.Data.Error}}</p>{{end}}{{if .Data.Operation}}<p>Server request: <strong>{{.Data.State}}</strong></p><p>Device application: not verified.</p><a href="/boox/reading/refresh?record={{.Data.Document}}&amp;operation={{.Data.Operation}}">Refresh status</a>{{else}}{{if .Data.Revision}}<form method="post" action="/boox/reading/refresh"><input type="hidden" name="documentId" value="{{.Data.Document}}"><input type="hidden" name="expectedRevision" value="{{.Data.Revision}}"><input type="hidden" name="idempotencyKey" value="{{.Data.Key}}"><button>Request refresh</button></form>{{end}}{{end}}{{end}}`))
 
 func (s Service) readerRefreshHTTP(w http.ResponseWriter, r *http.Request) {
 	d := readerRefreshView{Document: r.URL.Query().Get("record"), Key: uuid.NewString()}
@@ -102,7 +102,7 @@ func (s Service) readerRefreshHTTP(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, errReaderRefreshStale) {
 			w.WriteHeader(http.StatusConflict)
 			d.Error = err.Error()
-			s.renderPage(w, r, readerRefreshTemplate, "Refresh reading data", d)
+			s.renderPage(w, r, readerRefreshTemplate, "Refresh Reading Data", d)
 			return
 		}
 		if err != nil {
@@ -155,5 +155,5 @@ func (s Service) readerRefreshHTTP(w http.ResponseWriter, r *http.Request) {
 			d.Error = "The book changed before this request finished. Return to Reading to request a new refresh."
 		}
 	}
-	s.renderPage(w, r, readerRefreshTemplate, "Refresh reading data", d)
+	s.renderPage(w, r, readerRefreshTemplate, "Refresh Reading Data", d)
 }

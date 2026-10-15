@@ -1,5 +1,5 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Handwriting recognition</h1>
+<h1>Handwriting Recognition</h1>
 {{if $d.Providers}}{{$p := $d.Providers}}
 <p class="lede">Turn handwriting into searchable text with a vision model you choose. Nothing is sent until you queue pages and confirm. {{template "help" "recognition.where"}}</p>
 <p class="actions"><a class="button" href="/jobs/library">Recognize a library…</a><a class="button secondary" href="/jobs">View recognition jobs</a></p>
@@ -10,7 +10,7 @@
 <input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition">
 {{/* The provider form saves both providers at once; carry the saved embedding settings unchanged. */}}
 {{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}<input type="hidden" name="embed_url" value="{{$p.Config.Embedding.URL}}"><input type="hidden" name="embed_model" value="{{$p.Config.Embedding.Model}}">
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Vision model</legend>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Vision Model</legend>
 <label><input type="checkbox" name="ocr_enabled" {{if $p.Config.OCR.Enabled}}checked{{end}}> Enable recognition</label>
 <label>API format <select name="ocr_format"><option value="anthropic" {{if eq $p.Config.OCR.Format "anthropic"}}selected{{end}}>Anthropic Messages</option><option value="openai" {{if eq $p.Config.OCR.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option></select></label>
 <div class="field"><span><label for="ocr-url">Base URL</label> {{template "help" "recognition.url"}}</span><input id="ocr-url" type="url" name="ocr_url" value="{{$p.Config.OCR.URL}}" maxlength="2048" placeholder="https://api.example.com"></div>
@@ -18,7 +18,7 @@
 <label>API key <input type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasKey}}Saved — leave blank to keep{{else}}Never displayed after saving{{end}}"></label>
 <p class="hint">{{if $p.HasKey}}A key is saved.{{else}}No key is saved.{{end}}</p>
 <label>Key action <select name="key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
-<details class="more"><summary>More options</summary>
+<details class="more"><summary>More Options</summary>
 <div class="stack">
 <div class="field"><span><label for="anthropic-workspace">Anthropic workspace ID (optional)</label> {{template "help" "recognition.workspace"}}</span><input id="anthropic-workspace" name="anthropic_workspace" value="{{$p.Config.OCR.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></div>
 <div class="field"><span><label for="ocr-prompt">Recognition prompt</label> {{template "help" "recognition.prompt"}}</span><textarea id="ocr-prompt" name="ocr_prompt" rows="4" maxlength="16000" aria-describedby="ocr-prompt-help" placeholder="{{$d.DefaultOCRPrompt}}">{{$p.Config.OCR.Prompt}}</textarea></div>
@@ -43,24 +43,24 @@
 <label>API key <input type="password" name="t_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasTranscriptionKey}}Saved — leave blank to keep{{else}}Optional for local servers{{end}}"></label>
 <label>Key action <select name="t_key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
 </fieldset>
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Summary model</legend>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Summary Model</legend>
 <label><input type="checkbox" name="s_enabled" {{if $p.Config.Summary.Enabled}}checked{{end}}> Enable summaries</label>
 <label>API format <select name="s_format"><option value="openai" {{if eq $p.Config.Summary.Format "openai"}}selected{{end}}>OpenAI Chat Completions</option><option value="anthropic" {{if eq $p.Config.Summary.Format "anthropic"}}selected{{end}}>Anthropic Messages</option></select></label>
 <div class="field"><span><label for="s-url">Base URL</label> {{template "help" "minutes.summary"}}</span><input id="s-url" type="url" name="s_url" value="{{$p.Config.Summary.URL}}" maxlength="2048" placeholder="http://llm.local:8080"></div>
 <label>Model <input name="s_model" value="{{$p.Config.Summary.Model}}" maxlength="256"></label>
 <label>API key <input type="password" name="s_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasSummaryKey}}Saved — leave blank to keep{{else}}Never displayed after saving{{end}}"></label>
 <label>Key action <select name="s_key_action"><option value="keep">Use entered key, otherwise keep saved key</option><option value="replace">Replace with entered key</option><option value="clear">Clear saved key</option></select></label>
-<details class="more"><summary>More options</summary><div class="stack">
+<details class="more"><summary>More Options</summary><div class="stack">
 <label>Anthropic workspace ID (optional) <input name="s_workspace" value="{{$p.Config.Summary.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></label>
 <label><input type="checkbox" name="s_vllm" {{if $p.Config.Summary.VLLMDisableThinking}}checked{{end}}> vLLM only: disable thinking (OpenAI format)</label>
 </div></details>
 </fieldset>
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Summary instructions {{template "help" "minutes.instructions"}}</legend>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Summary Instructions {{template "help" "minutes.instructions"}}</legend>
 <textarea id="s-instructions" name="s_instructions" rows="12" maxlength="16000" aria-label="Summary instructions" aria-describedby="s-instructions-help">{{with $p.Config.Summary.Instructions}}{{.}}{{else}}{{$d.DefaultMinutesInstructions}}{{end}}</textarea>
 <p id="s-instructions-help" class="hint">{{if $p.Config.Summary.Instructions}}You're using your own instructions.{{else}}These are the built-in instructions.{{end}} Clear the box and save to go back to the built-in ones. Changing them marks existing minutes as out of date; nothing is rewritten until you summarize a note again.</p>
-<details class="more"><summary>Response format (always added)</summary><pre>{{$d.MinutesFormat}}</pre></details>
+<details class="more"><summary>Response Format (Always Added)</summary><pre>{{$d.MinutesFormat}}</pre></details>
 </fieldset>
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>When minutes are ready {{template "help" "minutes.autosend"}}</legend>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>When Minutes Are Ready {{template "help" "minutes.autosend"}}</legend>
 <label><input type="checkbox" name="s_boox" {{if $p.Config.Summary.SendToBOOX}}checked{{end}}> Send them to BOOX automatically</label>
 </fieldset>
 <p class="hint">{{if $p.HasTranscriptionKey}}A transcription key is saved.{{else}}No transcription key is saved.{{end}} {{if $p.HasSummaryKey}}A summary key is saved.{{else}}No summary key is saved.{{end}}</p>
@@ -68,7 +68,7 @@
 </form>
 </section>
 <section class="card">
-<h2>Reprocess recognized pages {{template "help" "recognition.reprocess"}}</h2>
+<h2>Reprocess Recognized Pages {{template "help" "recognition.reprocess"}}</h2>
 <p>Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages.</p>
 <form method="post" action="/settings/providers" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition"><label class="confirm"><input type="checkbox" name="confirm" required> I want these pages reprocessed, including any provider charges.</label><div><button name="action" value="reprocess" class="secondary" {{if not $p.CanSave}}disabled{{end}}>Reprocess previously requested pages</button></div></form>
 </section>

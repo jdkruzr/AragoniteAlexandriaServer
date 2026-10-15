@@ -184,7 +184,7 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			data["Choices"] = choices[:min(50, len(choices))]
 			data["Query"] = query
 		}
-		d.render(w, r, "jobs-new", "Queue recognition", "jobs", data)
+		d.render(w, r, "jobs-new", "Queue Recognition", "jobs", data)
 	})
 	mux.HandleFunc("POST /jobs/queue", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 8192)

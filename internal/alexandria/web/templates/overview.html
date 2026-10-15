@@ -1,5 +1,5 @@
 {{define "content"}}{{$d := .Data}}
-<div class="page-head"><h1>Your library</h1></div>
+<div class="page-head"><h1>Your Library</h1></div>
 <form class="search" method="get" action="/search" role="search"><input type="search" name="q" placeholder="Search notes, books and annotations" aria-label="Search your library" maxlength="256"><button>Search</button></form>
 
 {{if or $d.Failed $d.Blocked $d.ClientNeedsRestore}}<section class="callout" aria-label="Needs attention"><strong>Needs attention:</strong>
@@ -22,13 +22,13 @@
 </section>{{end}}
 </div>
 
-<h2>Across your library</h2>
+<h2>Across Your Library</h2>
 <div class="cards">
-<section class="card"><h3><a href="/jobs">Handwriting recognition</a></h3>
+<section class="card"><h3><a href="/jobs">Handwriting Recognition</a></h3>
 <p>{{if $d.OCR}}<span class="badge ok">On</span>{{else}}<span class="badge blank">Off</span>{{end}}
 {{if $d.JobsKnown}}{{if $d.Active}} {{$d.Active}} pages in progress{{if $d.Paused}} · {{$d.Paused}} paused{{end}}{{else if $d.Paused}} {{$d.Paused}} paused{{else}} <span class="muted">Nothing queued.</span>{{end}}{{end}}</p>
 <div class="card-foot"><a href="/jobs/library">Recognize a library…</a><a href="/settings/recognition">Settings</a></div></section>
-<section class="card"><h3><a href="/settings/search">Search by meaning</a></h3>
+<section class="card"><h3><a href="/settings/search">Search by Meaning</a></h3>
 <p>{{if $d.Semantic}}<span class="badge ok">On</span>{{else}}<span class="badge blank">Off</span> <span class="muted">Keyword search is available.</span>{{end}}</p>
 <div class="card-foot"><a href="/search">Search</a><a href="/settings/search">Settings</a></div></section>
 <section class="card"><h3><a href="/tasks">Tasks</a></h3>

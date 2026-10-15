@@ -48,6 +48,12 @@ HTML stays authoritative, so agents and `curl` see everything without JS.
 
 ## Writing copy
 
+- **Headings use Title Case:** page titles, `h1`–`h4`, table headers,
+  `<summary>`, `<dt>` and help-tip titles ("Recognition Jobs", "Page/Source",
+  "Created/Updated (UTC)", "Across Your Library"). Short minor words (a, an,
+  the, and, or, of, in, on, to, for, by, at, as, via) stay lowercase unless
+  first or last; slashes take no spaces; product words keep their own case
+  (BOOX, CalDAV, API). Buttons, sentences and badges stay sentence case.
 - One plain sentence inline at most, and only if it changes what the reader
   does next. Lead with what happens and what it costs.
 - Longer explanations go in a **help tip** (`{{template "help" "key"}}`) and the

@@ -15,7 +15,7 @@ import (
 // with synthetic content. Audio Note Minutes uses the same QueueTextNote path.
 var textNoteTemplate = template.Must(template.New("text-note").Funcs(web.Funcs()).Parse(`{{define "content"}}{{$d:=.Data}}
 <p class="crumbs"><a href="/boox/settings">BOOX settings</a> /</p>
-<h1>Create a test text note {{template "help" "boox.textnote"}}</h1>
+<h1>Create a Test Text Note {{template "help" "boox.textnote"}}</h1>
 {{if $d.Error}}<p role="alert">{{$d.Error}}</p>{{end}}
 {{if $d.State}}<section class="card"><h2>{{$d.Title}}</h2><p>Server publication: <strong>{{$d.State}}</strong>{{if $d.Code}} ({{$d.Code}}){{end}}</p><p>Device delivery: not verified. Check the folder in BOOX Notes; if the notebook is listed but empty, use the Notes cloud sync button.</p><a href="/boox/text-notes/new?operation={{$d.ID}}">Refresh status</a></section>{{end}}
 <form class="card stack" method="post" action="/boox/text-notes/new"><input type="hidden" name="request" value="{{$d.Request}}">
@@ -116,5 +116,5 @@ func (s Service) textNoteHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(w, e)
 		return
 	}
-	s.renderPage(w, r, textNoteTemplate, "Create a test text note", d)
+	s.renderPage(w, r, textNoteTemplate, "Create a Test Text Note", d)
 }
