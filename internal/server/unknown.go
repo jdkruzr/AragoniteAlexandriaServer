@@ -9,8 +9,8 @@ import (
 )
 
 // unknownRequests logs requests nothing on a listener answered (404, 405,
-// 501, and 401 under /api/, where BOOX services refuse unknown anonymous
-// calls before routing them), so stray BOOX cloud traffic shows up. It records the method, a masked
+// 501, 401 under /api/, where BOOX services refuse unknown anonymous calls
+// before routing them, and 403 on WebDAV methods, a CalDAV client's refusals), so stray BOOX cloud traffic shows up. It records the method, a masked
 // path and whether credentials were attached; never header values, cookies,
 // bodies or query strings. Each request shape is logged at most once an hour.
 type unknownRequests struct {
@@ -35,7 +35,7 @@ func (u *unknownRequests) note(listener string, r *http.Request, status int) {
 	}
 	path := maskPath(r.URL.Path)
 	credentials := r.Header.Get("Authorization") != "" || r.Header.Get("Cookie") != ""
-	key := listener + " " + r.Method + " " + path + " " + http.StatusText(status)
+	key := listener + " " + r.Method + " " + path + " " + http.StatusText(status) + " " + r.Header.Get("Depth")
 	now := u.now()
 	u.mu.Lock()
 	last, ok := u.seen[key]
@@ -56,7 +56,11 @@ func (u *unknownRequests) note(listener string, r *http.Request, status int) {
 	}
 	u.seen[key] = now
 	u.mu.Unlock()
-	u.logger.Info("unknown request", "listener", listener, "method", r.Method, "path", path, "status", status, "credentials", credentials)
+	attrs := []any{"listener", listener, "method", r.Method, "path", path, "status", status, "credentials", credentials}
+	if d := r.Header.Get("Depth"); d != "" && webDAVMethods[r.Method] {
+		attrs = append(attrs, "depth", d)
+	}
+	u.logger.Info("unknown request", attrs...)
 }
 
 // maskPath keeps a path's shape but not identifiers or tokens in it: long or
@@ -81,12 +85,16 @@ func maskPath(p string) string {
 	return p
 }
 
+var webDAVMethods = map[string]bool{"PROPFIND": true, "PROPPATCH": true, "REPORT": true, "MKCALENDAR": true, "MKCOL": true, "PUT": true, "DELETE": true, "MOVE": true, "COPY": true}
+
 func unanswered(r *http.Request, status int) bool {
 	switch status {
 	case http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusNotImplemented:
 		return true
 	case http.StatusUnauthorized:
 		return strings.HasPrefix(r.URL.Path, "/api/")
+	case http.StatusForbidden:
+		return webDAVMethods[r.Method] // a CalDAV client's refused discovery or write
 	}
 	return false
 }
