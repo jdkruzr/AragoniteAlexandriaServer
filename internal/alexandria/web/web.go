@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
@@ -34,7 +35,14 @@ import (
 var assets embed.FS
 
 var funcs = template.FuncMap{
-	"tip":     tip,
+	"tip": tip,
+	// t translates owner-facing text; renderTemplate binds it to the
+	// request's language. This English default lets every template parse.
+	"t": i18n.English.T,
+	// th translates a message that carries its own inline markup (links,
+	// emphasis, code) so a sentence isn't split around it. Catalogs are
+	// reviewed files in the repository, so their markup is trusted.
+	"th":      htmlT(i18n.English),
 	"version": func() string { return Version },
 	"listJobStates": func() []string {
 		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled", "skipped"}
@@ -159,6 +167,7 @@ type Deps struct {
 }
 
 type page struct {
+	Lang         string // HTML lang attribute
 	SourceTab    string
 	ClientSource bool
 	NativeBOOX   bool
@@ -197,8 +206,12 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		// regions so browsers don't reload the whole page.
 		live, _ := strconv.Atoi(w.Header().Get("Refresh"))
 		w.Header().Del("Refresh")
-		err = t.ExecuteTemplate(&buf, "layout.html", page{Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: title, Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
-			Notice: r.URL.Query().Get("notice")})
+		loc := d.Localizer(r)
+		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "tip": tipIn(loc)})
+		w.Header().Set("Content-Language", loc.Lang())
+		w.Header().Add("Vary", "Accept-Language")
+		err = t.ExecuteTemplate(&buf, "layout.html", page{Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
+			Notice: notice(loc, r)})
 	}
 	if err != nil {
 		d.fail(w, err)
@@ -206,6 +219,54 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = buf.WriteTo(w)
+}
+
+func htmlT(l i18n.Localizer) func(string, ...any) template.HTML {
+	return func(id string, args ...any) template.HTML { return template.HTML(l.T(id, args...)) }
+}
+
+// LanguageCookie holds the language chosen in Settings, per browser.
+const LanguageCookie = "alexandria_lang"
+
+// Localizer picks the language for owner-facing text: the one chosen in
+// Settings, then the browser's preference, then English.
+func (d Deps) Localizer(r *http.Request) i18n.Localizer { return Localizer(r) }
+
+// Localizer is Deps.Localizer for code that renders outside a Deps.
+func Localizer(r *http.Request) i18n.Localizer {
+	var chosen string
+	if c, err := r.Cookie(LanguageCookie); err == nil {
+		chosen = c.Value
+	}
+	return i18n.For(chosen, r.Header.Get("Accept-Language"))
+}
+
+// T translates one message for the request's language.
+func T(r *http.Request, id string, args ...any) string { return Localizer(r).T(id, args...) }
+
+// verbatim marks a page title that is the owner's own content (a notebook or
+// book name), so it is shown as written rather than looked up as a message.
+const verbatim = "\ue000"
+
+// Verbatim returns a page title that is never translated.
+func Verbatim(title string) string { return verbatim + title }
+
+func pageTitle(l i18n.Localizer, title string) string {
+	if strings.HasPrefix(title, verbatim) {
+		return strings.TrimPrefix(title, verbatim)
+	}
+	return l.T(title)
+}
+
+// notice translates a redirect notice; notice_n carries its count, so the
+// message can pluralize in any language.
+func notice(l i18n.Localizer, r *http.Request) string {
+	q := r.URL.Query()
+	n := q.Get("notice")
+	if c, err := strconv.Atoi(q.Get("notice_n")); err == nil {
+		return l.T(n, c)
+	}
+	return l.T(n)
 }
 
 func (d Deps) fail(w http.ResponseWriter, err error) {
@@ -225,8 +286,9 @@ func sameOrigin(public string, r *http.Request) bool {
 	return origin != "" && origin == oauth.BaseURL(public, r)
 }
 
-// back redirects to a same-site path after a form post.
-func back(w http.ResponseWriter, r *http.Request, path, notice string) {
+// back redirects to a same-site path after a form post. notice is English
+// message text (see i18n.M); an optional count is its plural count.
+func back(w http.ResponseWriter, r *http.Request, path, notice string, count ...int) {
 	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 		path = "/"
 	}
@@ -236,6 +298,9 @@ func back(w http.ResponseWriter, r *http.Request, path, notice string) {
 			sep = "&"
 		}
 		path += sep + "notice=" + url.QueryEscape(notice)
+		if len(count) == 1 {
+			path += "&notice_n=" + strconv.Itoa(count[0])
+		}
 	}
 	http.Redirect(w, r, path, http.StatusSeeOther)
 }

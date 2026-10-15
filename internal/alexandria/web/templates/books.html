@@ -1,14 +1,14 @@
 {{define "content"}}{{$d:=.Data}}
-<h1>Books {{template "help" "client.books"}}</h1>
-{{if not $d.Entries}}<div class="card"><p class="empty">No books yet. Books appear after a device imports one and syncs.</p></div>{{else}}
+<h1>{{t "Books"}} {{template "help" "client.books"}}</h1>
+{{if not $d.Entries}}<div class="card"><p class="empty">{{t "No books yet. Books appear after a device imports one and syncs."}}</p></div>{{else}}
 {{template "pagination" $d.Listing}}<div class="table-scroll"><table class="dated-list">
-<thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">Title{{$d.Listing.Indicator "name"}}</a></th><th>Author</th><th>Format</th><th>Annotations</th><th><a href="{{$d.Listing.SortURL "created"}}">Created (UTC){{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">Modified (UTC){{$d.Listing.Indicator "modified"}}</a></th><th>File</th></tr></thead>
+<thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">{{t "Title"}}{{$d.Listing.Indicator "name"}}</a></th><th>{{t "Author"}}</th><th>{{t "Format"}}</th><th>{{t "Annotations"}}</th><th><a href="{{$d.Listing.SortURL "created"}}">{{t "Created (UTC)"}}{{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">{{t "Modified (UTC)"}}{{$d.Listing.Indicator "modified"}}</a></th><th>{{t "File"}}</th></tr></thead>
 <tbody>
 {{range $d.Entries}}
 <tr>
   <td><a href="/files/forestnote/books?book={{.ID}}">{{.Title}}</a></td>
   <td>{{.Authors}}</td><td>{{.Format}}</td><td>{{.AnnotationCount}}</td>
-  <td>{{ms .AddedAt}}</td><td>{{ms .ModifiedAt}}</td><td>{{if eq .FileState "ready"}}<a href="/files/forestnote/books/file?book={{.ID}}">Download</a> ({{bytes .ByteLength}}){{else if eq .FileState "uploading"}}Uploading{{else if eq .FileState "invalid"}}Upload failed{{else}}Not uploaded{{end}}</td>
+  <td>{{ms .AddedAt}}</td><td>{{ms .ModifiedAt}}</td><td>{{if eq .FileState "ready"}}<a href="/files/forestnote/books/file?book={{.ID}}">{{t "Download"}}</a> ({{bytes .ByteLength}}){{else if eq .FileState "uploading"}}{{t "Uploading"}}{{else if eq .FileState "invalid"}}{{t "Upload failed"}}{{else}}{{t "Not uploaded"}}{{end}}</td>
 </tr>
 {{end}}
 </tbody>

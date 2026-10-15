@@ -1,10 +1,10 @@
 {{define "content"}}
-<div class="page-head"><h1>BOOX Devices {{template "help" "boox.devices"}}</h1><a class="button" href="/boox/enroll">Connect a device</a></div>
-{{if not .Data}}<div class="card"><p class="empty">No BOOX devices have connected yet.</p></div>{{else}}
-<div class="table-scroll"><table class="keep-cols"><thead><tr><th>Device</th><th>State</th><th>Last Upload Received</th><th></th></tr></thead><tbody>
+<div class="page-head"><h1>{{t "BOOX Devices"}} {{template "help" "boox.devices"}}</h1><a class="button" href="/boox/enroll">{{t "Connect a device"}}</a></div>
+{{if not .Data}}<div class="card"><p class="empty">{{t "No BOOX devices have connected yet."}}</p></div>{{else}}
+<div class="table-scroll"><table class="keep-cols"><thead><tr><th>{{t "Device"}}</th><th>{{t "State"}}</th><th>{{t "Last Upload Received"}}</th><th></th></tr></thead><tbody>
 {{range .Data}}<tr><td><strong>{{.Model}}</strong><div class="muted small"><code>{{.ID}}</code></div></td>
-<td>{{if .Revoked}}<span class="badge blank">Revoked</span>{{else}}<span class="badge indexed">Authorized</span>{{end}}</td>
-<td>{{if .LastUpload.Valid}}{{.LastUpload.Time.UTC.Format "2006-01-02 15:04"}} UTC{{else}}<span class="muted">Nothing yet</span>{{end}}</td>
-<td>{{if not .Revoked}}<details><summary>Manage</summary><form method="post" action="/boox/revoke"><input type="hidden" name="deviceId" value="{{.ID}}"><p class="small">Removes this device's access to the server. It does not switch the tablet back to Onyx.</p><button class="destructive">Revoke device</button></form></details>{{end}}</td></tr>{{end}}
+<td>{{if .Revoked}}<span class="badge blank">{{t "Revoked"}}</span>{{else}}<span class="badge indexed">{{t "Authorized"}}</span>{{end}}</td>
+<td>{{if .LastUpload.Valid}}{{.LastUpload.Time.UTC.Format "2006-01-02 15:04"}} UTC{{else}}<span class="muted">{{t "Nothing yet"}}</span>{{end}}</td>
+<td>{{if not .Revoked}}<details><summary>{{t "Manage"}}</summary><form method="post" action="/boox/revoke"><input type="hidden" name="deviceId" value="{{.ID}}"><p class="small">{{t "Removes this device's access to the server. It does not switch the tablet back to Onyx."}}</p><button class="destructive">{{t "Revoke device"}}</button></form></details>{{end}}</td></tr>{{end}}
 </tbody></table></div>{{end}}
 {{end}}

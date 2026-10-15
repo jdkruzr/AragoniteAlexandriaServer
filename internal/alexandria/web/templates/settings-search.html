@@ -1,63 +1,63 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Search by Meaning {{template "help" "semantic.overview"}}</h1>
+<h1>{{t "Search by Meaning"}} {{template "help" "semantic.overview"}}</h1>
 {{if $d.Providers}}{{$p := $d.Providers}}
-<p class="lede">Find related ideas even when the wording differs. Keyword search always works, whether this is on or off.</p>
+<p class="lede">{{t "Find related ideas even when the wording differs. Keyword search always works, whether this is on or off."}}</p>
 <section id="semantic-search" class="semantic-panel" aria-labelledby="semantic-heading">
-<h2 id="semantic-heading">Status {{template "help" "semantic.status"}}</h2>
+<h2 id="semantic-heading">{{t "Status"}} {{template "help" "semantic.status"}}</h2>
 <div id="semantic-live" data-live-region data-live-key="{{$p.IndexState}}{{$p.ActiveModel}}">
 <dl class="semantic-status">
-<div><dt>Provider</dt><dd><span class="badge {{if $p.Availability.Ready}}indexed{{else}}partial{{end}}">{{$p.Availability.Label}}</span></dd></div>
-<div><dt>Semantic Search</dt><dd><span class="badge {{if $p.SavedEmbedding.Enabled}}indexed{{else}}blank{{end}}">{{if $p.SavedEmbedding.Enabled}}On{{else}}Off{{end}}</span></dd></div>
-<div><dt>Index</dt><dd>{{if $p.Failed}}Needs attention{{else if $p.IndexState}}{{if $p.SavedEmbedding.Enabled}}Building{{else}}Build paused{{end}}{{else if $p.ActiveModel}}{{if $p.Pending}}{{if $p.SavedEmbedding.Enabled}}Updating{{else}}Updates paused{{end}}{{else}}Ready{{end}}{{else}}Not built{{end}}</dd></div>
+<div><dt>{{t "Provider"}}</dt><dd><span class="badge {{if $p.Availability.Ready}}indexed{{else}}partial{{end}}">{{t $p.Availability.Label}}</span></dd></div>
+<div><dt>{{t "Semantic Search"}}</dt><dd><span class="badge {{if $p.SavedEmbedding.Enabled}}indexed{{else}}blank{{end}}">{{if $p.SavedEmbedding.Enabled}}{{t "On"}}{{else}}{{t "Off"}}{{end}}</span></dd></div>
+<div><dt>{{t "Index"}}</dt><dd>{{if $p.Failed}}{{t "Needs attention"}}{{else if $p.IndexState}}{{if $p.SavedEmbedding.Enabled}}{{t "Building"}}{{else}}{{t "Build paused"}}{{end}}{{else if $p.ActiveModel}}{{if $p.Pending}}{{if $p.SavedEmbedding.Enabled}}{{t "Updating"}}{{else}}{{t "Updates paused"}}{{end}}{{else}}{{t "Ready"}}{{end}}{{else}}{{t "Not built"}}{{end}}</dd></div>
 </dl>
-<p class="small muted">{{$p.Availability.Detail}} {{if $p.SavedEmbedding.Model}}Saved model: <code>{{$p.SavedEmbedding.Model}}</code>.{{end}}</p>
-{{if not $p.SavedEmbedding.Enabled}}<p>Turning this on sends your existing searchable text to the embedding provider to build an index.</p>{{end}}
+<p class="small muted">{{t $p.Availability.Detail}} {{if $p.SavedEmbedding.Model}}{{t "Saved model:"}} <code>{{$p.SavedEmbedding.Model}}</code>.{{end}}</p>
+{{if not $p.SavedEmbedding.Enabled}}<p>{{t "Turning this on sends your existing searchable text to the embedding provider to build an index."}}</p>{{end}}
 {{if $p.IndexState}}<div class="run-box" id="semantic-build"><progress value="{{$p.BuildDone}}" max="{{if $p.BuildTotal}}{{$p.BuildTotal}}{{else}}1{{end}}">{{$p.BuildPercent}}%</progress>
 <div class="table-scroll"><table class="run-status keep-cols"><tbody>
-<tr><th scope="row">Embedded in This Build</th><td>{{num $p.BuildDone}} of {{num $p.BuildTotal}} records ({{$p.BuildPercent}}%)</td></tr>
-<tr><th scope="row">Pace</th><td>{{if $p.BuildPerMinute}}{{printf "%.1f" $p.BuildPerMinute}} records a minute (average since the build started){{else}}Measuring…{{end}}</td></tr>
-<tr><th scope="row">Time Left</th><td>{{if not $p.BuildETA.IsZero}}About {{until $p.BuildETA}} · finishes around {{utc $p.BuildETA}}{{else if $p.SavedEmbedding.Enabled}}—{{else}}Paused while semantic search is off{{end}}</td></tr>
+<tr><th scope="row">{{t "Embedded in This Build"}}</th><td>{{t "{{.Done}} of {{.Total}} records ({{.Percent}}%)" "Done" (num $p.BuildDone) "Total" (num $p.BuildTotal) "Percent" $p.BuildPercent}}</td></tr>
+<tr><th scope="row">{{t "Pace"}}</th><td>{{if $p.BuildPerMinute}}{{t "{{.Rate}} records a minute (average since the build started)" "Rate" (printf "%.1f" $p.BuildPerMinute)}}{{else}}{{t "Measuring…"}}{{end}}</td></tr>
+<tr><th scope="row">{{t "Time Left"}}</th><td>{{if not $p.BuildETA.IsZero}}{{t "About {{.Left}} · finishes around {{.When}}" "Left" (until $p.BuildETA) "When" (utc $p.BuildETA)}}{{else if $p.SavedEmbedding.Enabled}}—{{else}}{{t "Paused while semantic search is off"}}{{end}}</td></tr>
 </tbody></table></div>
-<p class="small muted">This updates every 15 seconds while the index builds.{{if not $p.ActiveModel}} Search by meaning starts working when this first build finishes; keyword search works meanwhile.{{end}}</p></div>{{end}}
-{{if or $p.ActiveModel $p.IndexState}}<p><strong>{{$p.IndexedPages}}</strong> records {{if $p.ActiveModel}}in the current index{{else}}searchable by meaning so far{{end}} · <strong>{{$p.Pending}}</strong> outstanding{{if $p.Failed}} · <strong>{{$p.Failed}}</strong> failed{{end}}{{if $p.ActiveModel}} · index model <code>{{$p.ActiveModel}}</code>{{end}}.
-{{if and $p.IndexState $p.ActiveModel}}The previous index stays available until the new build completes.{{end}}</p>{{end}}
+<p class="small muted">{{t "This updates every 15 seconds while the index builds."}}{{if not $p.ActiveModel}} {{t "Search by meaning starts working when this first build finishes; keyword search works meanwhile."}}{{end}}</p></div>{{end}}
+{{if or $p.ActiveModel $p.IndexState}}<p><strong>{{$p.IndexedPages}}</strong> records {{if $p.ActiveModel}}{{t "in the current index"}}{{else}}{{t "searchable by meaning so far"}}{{end}} · <strong>{{$p.Pending}}</strong> outstanding{{if $p.Failed}} · <strong>{{$p.Failed}}</strong> failed{{end}}{{if $p.ActiveModel}} {{t "· index model"}} <code>{{$p.ActiveModel}}</code>{{end}}.
+{{if and $p.IndexState $p.ActiveModel}}{{t "The previous index stays available until the new build completes."}}{{end}}</p>{{end}}
 </div>
-{{if and $p.ActiveModel (not $p.CanResume)}}<p class="coverage">The existing index was built with different provider settings. Build a replacement to use the saved provider.</p>{{end}}
+{{if and $p.ActiveModel (not $p.CanResume)}}<p class="coverage">{{t "The existing index was built with different provider settings. Build a replacement to use the saved provider."}}</p>{{end}}
 <form method="post" action="/settings/semantic" class="inline">
 <input type="hidden" name="revision" value="{{$p.Revision}}">
 {{if $p.SavedEmbedding.Enabled}}
-{{if not $p.IndexState}}<button name="action" value="build" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>{{if $p.ActiveModel}}Build replacement index{{else}}Build index{{end}}</button>{{end}}
-<button name="action" value="disable" class="secondary" {{if not $p.CanSave}}disabled{{end}}>Turn off</button>
+{{if not $p.IndexState}}<button name="action" value="build" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>{{if $p.ActiveModel}}{{t "Build replacement index"}}{{else}}{{t "Build index"}}{{end}}</button>{{end}}
+<button name="action" value="disable" class="secondary" {{if not $p.CanSave}}disabled{{end}}>{{t "Turn off"}}</button>
 {{else}}
-{{if $p.CanResume}}<button name="action" value="enable" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>Turn on and resume</button>{{else}}<button name="action" value="enable_build" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>Enable and build index</button>{{end}}
+{{if $p.CanResume}}<button name="action" value="enable" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>{{t "Turn on and resume"}}</button>{{else}}<button name="action" value="enable_build" {{if or (not $p.CanSave) (not $p.Availability.Ready)}}disabled{{end}}>{{t "Enable and build index"}}</button>{{end}}
 {{end}}
-{{if $p.Failed}}<button name="action" value="retry" class="secondary" {{if or (not $p.CanSave) (not $p.SavedEmbedding.Enabled)}}disabled{{end}}>Retry failed index work</button>{{end}}
-<button name="action" value="test" class="quiet" {{if not $p.SavedEmbedding.URL}}disabled{{end}}>Test connection</button>
-<a href="/settings/search">Refresh</a>
+{{if $p.Failed}}<button name="action" value="retry" class="secondary" {{if or (not $p.CanSave) (not $p.SavedEmbedding.Enabled)}}disabled{{end}}>{{t "Retry failed index work"}}</button>{{end}}
+<button name="action" value="test" class="quiet" {{if not $p.SavedEmbedding.URL}}disabled{{end}}>{{t "Test connection"}}</button>
+<a href="/settings/search">{{t "Refresh"}}</a>
 {{template "help" "semantic.off"}}
 </form>
-<h3>Coverage by Source {{template "help" "semantic.coverage"}}</h3>
-<div class="table-scroll" tabindex="0" role="region" aria-label="Semantic search coverage; scroll horizontally for all columns"><table class="semantic-coverage"><thead><tr><th>Source</th><th>Text Available</th><th>Embedded</th><th>Pending</th><th>Failed</th></tr></thead><tbody>
-{{range $p.Coverage}}<tr><th scope="row">{{.Label}}</th><td>{{.Texts}}</td><td>{{.Embedded}}</td><td>{{.Pending}}</td><td>{{.Failed}}</td></tr>{{end}}
+<h3>{{t "Coverage by Source"}} {{template "help" "semantic.coverage"}}</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="{{t "Semantic search coverage; scroll horizontally for all columns"}}"><table class="semantic-coverage"><thead><tr><th>{{t "Source"}}</th><th>{{t "Text Available"}}</th><th>{{t "Embedded"}}</th><th>{{t "Pending"}}</th><th>{{t "Failed"}}</th></tr></thead><tbody>
+{{range $p.Coverage}}<tr><th scope="row">{{t .Label}}</th><td>{{.Texts}}</td><td>{{.Embedded}}</td><td>{{.Pending}}</td><td>{{.Failed}}</td></tr>{{end}}
 </tbody></table></div>
-{{if $p.BOOXWithoutText}}<p class="small muted">{{$p.BOOXWithoutText}} BOOX pages have no recognized text yet, so they can't be searched by meaning. <a href="/jobs/library?source=boox">Recognize them</a> separately if you want them included.</p>{{end}}
+{{if $p.BOOXWithoutText}}<p class="small muted">{{t "{{.Count}} BOOX pages have no recognized text yet, so they can't be searched by meaning." $p.BOOXWithoutText}} <a href="/jobs/library?source=boox">{{t "Recognize them separately if you want them included."}}</a></p>{{end}}
 </section>
 
 <section class="card">
-<h2>Embedding Provider {{template "help" "semantic.provider"}}</h2>
-{{if $p.Locked}}<p class="coverage">Provider settings are locked by the deployment.</p>{{else if not $p.CanSave}}<p class="coverage">The deployment needs a settings encryption key before provider settings can be saved.</p>{{end}}
+<h2>{{t "Embedding Provider"}} {{template "help" "semantic.provider"}}</h2>
+{{if $p.Locked}}<p class="coverage">{{t "Provider settings are locked by the deployment."}}</p>{{else if not $p.CanSave}}<p class="coverage">{{t "The deployment needs a settings encryption key before provider settings can be saved."}}</p>{{end}}
 <form method="post" action="/settings/providers" class="stack" id="semantic-advanced">
 <input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="search">
 {{/* The provider form saves both providers at once; carry the saved recognition settings unchanged. */}}
 {{with $p.Config.OCR}}{{if .Enabled}}<input type="hidden" name="ocr_enabled" value="on">{{end}}<input type="hidden" name="ocr_format" value="{{.Format}}"><input type="hidden" name="ocr_url" value="{{.URL}}"><input type="hidden" name="anthropic_workspace" value="{{.AnthropicWorkspace}}"><input type="hidden" name="ocr_model" value="{{.Model}}"><input type="hidden" name="ocr_prompt" value="{{.Prompt}}">{{if .VLLMDisableThinking}}<input type="hidden" name="vllm" value="on">{{end}}{{end}}<input type="hidden" name="key_action" value="keep">
 {{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>Ollama-Compatible Endpoint</legend>
-<label>Base URL <input type="url" name="embed_url" value="{{$p.Config.Embedding.URL}}" maxlength="2048" placeholder="http://ollama:11434"></label>
-<label>Embedding model <input name="embed_model" value="{{$p.Config.Embedding.Model}}" maxlength="256" placeholder="nomic-embed-text:v1.5"></label>
-<p class="hint">Changing the provider or model needs a new index build.</p>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Ollama-Compatible Endpoint"}}</legend>
+<label>{{t "Base URL"}} <input type="url" name="embed_url" value="{{$p.Config.Embedding.URL}}" maxlength="2048" placeholder="http://ollama:11434"></label>
+<label>{{t "Embedding model"}} <input name="embed_model" value="{{$p.Config.Embedding.Model}}" maxlength="256" placeholder="nomic-embed-text:v1.5"></label>
+<p class="hint">{{t "Changing the provider or model needs a new index build."}}</p>
 </fieldset>
-<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save</button><button name="action" value="test_embedding" class="secondary">Test without saving</button></div>
+<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button name="action" value="test_embedding" class="secondary">{{t "Test without saving"}}</button></div>
 </form>
 </section>
-{{else}}<p>Search by meaning is configured by this deployment.</p>{{end}}
+{{else}}<p>{{t "Search by meaning is configured by this deployment."}}</p>{{end}}
 {{end}}

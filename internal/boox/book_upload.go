@@ -251,7 +251,7 @@ func (s Service) publishBookRecord(ctx context.Context, tx *sql.Tx, id, doc stri
 	return live, e
 }
 
-var uploadBookTemplate = template.Must(template.New("upload-book.html").ParseFS(templateFS, "templates/upload-book.html"))
+var uploadBookTemplate = template.Must(template.New("upload-book.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/upload-book.html"))
 
 func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 	data := struct{ Error, State, Name, ID string }{}

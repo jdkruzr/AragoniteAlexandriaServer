@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
 	"html/template"
 	"io"
 	"net/http"
@@ -39,7 +40,7 @@ type libraryPage struct {
 	Deleted                       bool
 }
 
-var libraryTemplate = template.Must(template.New("library.html").Funcs(template.FuncMap{"ms": listview.Date}).ParseFS(templateFS, "templates/library.html"))
+var libraryTemplate = template.Must(template.New("library.html").Funcs(listFuncs()).ParseFS(templateFS, "templates/library.html"))
 
 func browserOffset(r *http.Request) int {
 	n, _ := strconv.Atoi(r.URL.Query().Get("offset"))
@@ -263,7 +264,7 @@ type notebookView struct {
 	Warnings                                                      []string
 }
 
-var notebookTemplate = template.Must(template.New("notebook.html").ParseFS(templateFS, "templates/notebook.html"))
+var notebookTemplate = template.Must(template.New("notebook.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/notebook.html"))
 
 func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	n, e := s.notebookSnapshot(r.Context(), r.URL.Query().Get("id"))
@@ -336,7 +337,7 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.renderPage(w, r, notebookTemplate, d.Title, d)
+	s.renderPage(w, r, notebookTemplate, web.Verbatim(d.Title), d)
 }
 
 var previewSlots = make(chan struct{}, 2)

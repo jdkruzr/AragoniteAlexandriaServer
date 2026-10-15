@@ -1,36 +1,36 @@
 {{define "content"}}{{$d := .Data}}
-<p class="crumbs"><a href="/files/forestnote">Notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}} /</p>
-<div class="page-head"><h1>{{if $d.Name}}{{$d.Name}}{{else}}Untitled Notebook{{end}}</h1>
+<p class="crumbs"><a href="/files/forestnote">{{t "Notebooks"}}</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}} /</p>
+<div class="page-head"><h1>{{if $d.Name}}{{$d.Name}}{{else}}{{t "Untitled Notebook"}}{{end}}</h1>
 <div class="toolbar">
-  {{if $d.Count}}<nav class="segmented" aria-label="View"><a href="{{$d.Base}}{{if $d.Page.ID}}&amp;page={{$d.Page.ID}}{{end}}" {{if not $d.Grid}}aria-current="page"{{end}}>Page</a><a href="{{$d.Base}}&amp;view=grid" {{if $d.Grid}}aria-current="page"{{end}}>All pages</a></nav>{{end}}
-  <a class="button secondary" href="/files/forestnote/export?notebook={{$d.ID}}">Download PDF</a>
+  {{if $d.Count}}<nav class="segmented" aria-label="{{t "View"}}"><a href="{{$d.Base}}{{if $d.Page.ID}}&amp;page={{$d.Page.ID}}{{end}}" {{if not $d.Grid}}aria-current="page"{{end}}>{{t "Page"}}</a><a href="{{$d.Base}}&amp;view=grid" {{if $d.Grid}}aria-current="page"{{end}}>{{t "All pages"}}</a></nav>{{end}}
+  <a class="button secondary" href="/files/forestnote/export?notebook={{$d.ID}}">{{t "Download PDF"}}</a>
 </div></div>
-{{if not $d.Count}}<div class="card"><p class="empty">This notebook has no pages.</p></div>
+{{if not $d.Count}}<div class="card"><p class="empty">{{t "This notebook has no pages."}}</p></div>
 {{else if $d.Grid}}
 <div class="pages">
 {{range $d.Pages}}
 <figure id="page-{{.ID}}">
   <a href="{{$d.Base}}&amp;page={{.ID}}"><img loading="lazy" src="/files/forestnote/render?path={{.Key}}" alt="Page {{.Number}}"></a>
-  <figcaption><strong>Page {{.Number}}</strong> · {{if .BodyText}}<span class="badge indexed">Text</span>{{else}}<span class="badge blank">No text yet</span>{{end}}</figcaption>
+  <figcaption><strong>{{t "Page {{.Number}}" "Number" .Number}}</strong> · {{if .BodyText}}<span class="badge indexed">{{t "Text"}}</span>{{else}}<span class="badge blank">{{t "No text yet"}}</span>{{end}}</figcaption>
 </figure>
 {{end}}
 </div>
 {{else}}{{$p := $d.Page}}
 <div class="reader-layout"><div>
-<div class="pager">{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}" rel="prev">← Previous</a>{{end}}<form class="inline" method="get" action="/files/forestnote"><input type="hidden" name="notebook" value="{{$d.ID}}">{{if eq $d.Zoom "actual"}}<input type="hidden" name="zoom" value="actual">{{end}}<label>Page <input type="number" name="n" min="1" max="{{$d.Count}}" value="{{$p.Number}}"></label><span>of {{$d.Count}}</span><button class="secondary">Go</button></form>{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}" rel="next">Next →</a>{{end}}<a href="{{$d.Base}}&amp;page={{$p.ID}}{{if ne $d.Zoom "actual"}}&amp;zoom=actual{{end}}">{{if eq $d.Zoom "actual"}}Fit page{{else}}Actual size{{end}}</a></div>
+<div class="pager">{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}" rel="prev">{{t "← Previous"}}</a>{{end}}<form class="inline" method="get" action="/files/forestnote"><input type="hidden" name="notebook" value="{{$d.ID}}">{{if eq $d.Zoom "actual"}}<input type="hidden" name="zoom" value="actual">{{end}}<label>{{t "Page"}} <input type="number" name="n" min="1" max="{{$d.Count}}" value="{{$p.Number}}"></label><span>of {{$d.Count}}</span><button class="secondary">{{t "Go"}}</button></form>{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}" rel="next">{{t "Next →"}}</a>{{end}}<a href="{{$d.Base}}&amp;page={{$p.ID}}{{if ne $d.Zoom "actual"}}&amp;zoom=actual{{end}}">{{if eq $d.Zoom "actual"}}{{t "Fit page"}}{{else}}{{t "Actual size"}}{{end}}</a></div>
 <figure id="page-{{$p.ID}}" class="reader {{$d.Zoom}}"><img src="/files/forestnote/render?path={{$p.Key}}" alt="{{if $d.Name}}{{$d.Name}}{{else}}Untitled notebook{{end}}, page {{$p.Number}}"></figure>
 </div>
 <aside>
-<section class="card"><h2>Page Text {{template "help" "recognition.where"}}</h2>
-{{if $p.BodyText}}<pre>{{$p.BodyText}}</pre>{{if $p.Model}}<p class="small muted">{{$p.Model}}</p>{{end}}{{else}}<p class="muted">No text for this page yet.</p>{{end}}
-<p><a class="button{{if $p.BodyText}} secondary{{end}}" href="/jobs/new?source=client&amp;notebook={{$d.ID}}&amp;from={{$p.Number}}&amp;to={{$p.Number}}">{{if $p.BodyText}}Recognize again…{{else}}Recognize this page…{{end}}</a></p>
-<div class="card-foot"><a href="/jobs/new?source=client&amp;notebook={{$d.ID}}">Choose pages…</a><a href="/jobs?source=client">Jobs</a></div>
+<section class="card"><h2>{{t "Page Text"}} {{template "help" "recognition.where"}}</h2>
+{{if $p.BodyText}}<pre>{{$p.BodyText}}</pre>{{if $p.Model}}<p class="small muted">{{$p.Model}}</p>{{end}}{{else}}<p class="muted">{{t "No text for this page yet."}}</p>{{end}}
+<p><a class="button{{if $p.BodyText}} secondary{{end}}" href="/jobs/new?source=client&amp;notebook={{$d.ID}}&amp;from={{$p.Number}}&amp;to={{$p.Number}}">{{if $p.BodyText}}{{t "Recognize again…"}}{{else}}{{t "Recognize this page…"}}{{end}}</a></p>
+<div class="card-foot"><a href="/jobs/new?source=client&amp;notebook={{$d.ID}}">{{t "Choose pages…"}}</a><a href="/jobs?source=client">{{t "Jobs"}}</a></div>
 </section>
 </aside></div>
 {{end}}
-<details class="danger more"><summary>Delete Notebook</summary>
+<details class="danger more"><summary>{{t "Delete Notebook"}}</summary>
   <form method="post" action="/files/forestnote/delete"><input type="hidden" name="notebook" value="{{$d.ID}}">
-    <p>Devices delete this notebook on their next sync. An edit made on a device afterwards brings it back.</p>
-    <button class="destructive">Delete Notebook</button></form>
+    <p>{{t "Devices delete this notebook on their next sync. An edit made on a device afterwards brings it back."}}</p>
+    <button class="destructive">{{t "Delete Notebook"}}</button></form>
 </details>
 {{end}}

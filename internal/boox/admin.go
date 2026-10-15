@@ -293,7 +293,7 @@ func (s Service) preview(w http.ResponseWriter, r *http.Request) {
 	reply(w, 200, map[string]any{"operationId": id, "state": "preview", "kind": in.Kind, "documentId": in.DocumentID, "expectedRevision": in.Expected, "selectedRevision": in.Selected, "changes": map[string]any{"title": in.Title, "status": in.Status, "readerFields": changes}, "scope": "bounded native fields only; original resource identities preserved", "application": "unverified"})
 }
 
-var browseTemplate = template.Must(template.New("boox.html").ParseFS(templateFS, "templates/boox.html"))
+var browseTemplate = template.Must(template.New("boox.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/boox.html"))
 
 // browse lists observed native records for diagnosis, 100 per page, ordered
 // by type and native ID. Titles lead; native IDs stay visible for tooling.

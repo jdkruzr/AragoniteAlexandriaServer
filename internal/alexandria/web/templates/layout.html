@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{.Lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,24 +15,24 @@
 <script src="/static/live.js?v={{version}}" defer></script>{{end}}
 </head>
 <body data-section="{{.Section}}">
-<a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main">{{t "Skip to content"}}</a>
 <header class="topbar"><a class="brand" href="/"><img src="/static/alexandria-mark-v1.png" width="32" height="32" alt="">Alexandria Server</a>
-<nav class="global-nav" aria-label="Global"><a href="/" {{if eq .Section "overview"}}aria-current="page"{{end}}>Library</a><a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>Search</a><a href="/tasks" {{if eq .Section "tasks"}}aria-current="page"{{end}}>Tasks</a><a href="/jobs" {{if eq .Section "jobs"}}aria-current="page"{{end}}>Recognition</a><a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>Settings</a></nav>
-<a class="help-link" href="/help" {{if eq .Section "help"}}aria-current="page"{{end}}>Help</a></header>
-<div class="workspace"><aside class="source-nav"><h2>Sources</h2><nav aria-label="Sources">
+<nav class="global-nav" aria-label="{{t "Global"}}"><a href="/" {{if eq .Section "overview"}}aria-current="page"{{end}}>{{t "Library"}}</a><a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>{{t "Search"}}</a><a href="/tasks" {{if eq .Section "tasks"}}aria-current="page"{{end}}>{{t "Tasks"}}</a><a href="/jobs" {{if eq .Section "jobs"}}aria-current="page"{{end}}>{{t "Recognition"}}</a><a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>{{t "Settings"}}</a></nav>
+<a class="help-link" href="/help" {{if eq .Section "help"}}aria-current="page"{{end}}>{{t "Help"}}</a></header>
+<div class="workspace"><aside class="source-nav"><h2>{{t "Sources"}}</h2><nav aria-label="{{t "Sources"}}">
 <a href="/files/forestnote" {{if .ClientSource}}aria-current="page"{{end}}>Alexandria Client</a>
-{{if .NativeBOOX}}<a href="/boox" {{if eq .Section "boox"}}aria-current="page"{{end}}>BOOX <small>via PowerSync</small></a>{{end}}
-<a class="add-source" href="/sources" {{if eq .Section "sources"}}aria-current="page"{{end}}>+ Add source</a></nav></aside>
+{{if .NativeBOOX}}<a href="/boox" {{if eq .Section "boox"}}aria-current="page"{{end}}>BOOX <small>{{t "via PowerSync"}}</small></a>{{end}}
+<a class="add-source" href="/sources" {{if eq .Section "sources"}}aria-current="page"{{end}}>{{t "+ Add source"}}</a></nav></aside>
 <main id="main">
-{{if .ClientSource}}<nav class="source-tabs" aria-label="Alexandria Client"><span class="source-label">Alexandria Client</span><a href="/files/forestnote" {{if eq .Section "notebooks"}}aria-current="page"{{end}}>Notebooks</a><a href="/files/forestnote/books" {{if eq .Section "books"}}aria-current="page"{{end}}>Books</a><a href="/files/forestnote/devices" {{if eq .Section "devices"}}aria-current="page"{{end}}>Devices</a><a href="/sources/client" {{if eq .Section "client-settings"}}aria-current="page"{{end}}>Settings</a></nav>{{end}}
-{{if eq .Section "boox"}}<nav class="source-tabs" aria-label="BOOX"><span class="source-label">BOOX</span><a href="/boox" {{if eq .SourceTab "notebooks"}}aria-current="page"{{end}}>Notebooks</a><a href="/boox/reading" {{if eq .SourceTab "reading"}}aria-current="page"{{end}}>Reading</a><a href="/boox/devices" {{if eq .SourceTab "devices"}}aria-current="page"{{end}}>Devices</a><a href="/boox/settings" {{if eq .SourceTab "settings"}}aria-current="page"{{end}}>Settings</a></nav>{{end}}
-{{if eq .Section "settings"}}<nav class="source-tabs" aria-label="Settings"><a href="/settings" {{if eq .SourceTab "account"}}aria-current="page"{{end}}>Account</a><a href="/settings/search" {{if eq .SourceTab "search"}}aria-current="page"{{end}}>Search</a><a href="/settings/recognition" {{if eq .SourceTab "recognition"}}aria-current="page"{{end}}>Recognition</a><a href="/settings/integrations" {{if eq .SourceTab "integrations"}}aria-current="page"{{end}}>Tasks &amp; integrations</a></nav>{{end}}
+{{if .ClientSource}}<nav class="source-tabs" aria-label="Alexandria Client"><span class="source-label">Alexandria Client</span><a href="/files/forestnote" {{if eq .Section "notebooks"}}aria-current="page"{{end}}>{{t "Notebooks"}}</a><a href="/files/forestnote/books" {{if eq .Section "books"}}aria-current="page"{{end}}>{{t "Books"}}</a><a href="/files/forestnote/devices" {{if eq .Section "devices"}}aria-current="page"{{end}}>{{t "Devices"}}</a><a href="/sources/client" {{if eq .Section "client-settings"}}aria-current="page"{{end}}>{{t "Settings"}}</a></nav>{{end}}
+{{if eq .Section "boox"}}<nav class="source-tabs" aria-label="BOOX"><span class="source-label">BOOX</span><a href="/boox" {{if eq .SourceTab "notebooks"}}aria-current="page"{{end}}>{{t "Notebooks"}}</a><a href="/boox/reading" {{if eq .SourceTab "reading"}}aria-current="page"{{end}}>{{t "Reading"}}</a><a href="/boox/devices" {{if eq .SourceTab "devices"}}aria-current="page"{{end}}>{{t "Devices"}}</a><a href="/boox/settings" {{if eq .SourceTab "settings"}}aria-current="page"{{end}}>{{t "Settings"}}</a></nav>{{end}}
+{{if eq .Section "settings"}}<nav class="source-tabs" aria-label="{{t "Settings"}}"><a href="/settings" {{if eq .SourceTab "account"}}aria-current="page"{{end}}>{{t "Account"}}</a><a href="/settings/search" {{if eq .SourceTab "search"}}aria-current="page"{{end}}>{{t "Search"}}</a><a href="/settings/recognition" {{if eq .SourceTab "recognition"}}aria-current="page"{{end}}>{{t "Recognition"}}</a><a href="/settings/integrations" {{if eq .SourceTab "integrations"}}aria-current="page"{{end}}>{{t "Tasks & Integrations"}}</a></nav>{{end}}
 {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
 {{template "content" .}}
 </main></div>
-<footer class="site-footer"><span>Alexandria Server <code data-version>{{version}}</code></span><a href="/help">Help</a><a href="/help#diagnostics">Operator notes</a></footer>
+<footer class="site-footer"><span>Alexandria Server <code data-version>{{version}}</code></span><a href="/help">{{t "Help"}}</a><a href="/help#diagnostics">{{t "Operator notes"}}</a></footer>
 </body>
 </html>
 
 {{define "help"}}{{tip .}}{{end}}
-{{define "pagination"}}<nav class="pagination" aria-label="Results pages"><span>{{if .Total}}{{.Start}}–{{.End}} of {{.Total}}{{else}}0 results{{end}} · Page {{.Page}} of {{.Pages}}</span>{{if .Previous}}<a class="button secondary" href="{{.Previous}}">Previous</a>{{end}}{{if .Next}}<a class="button secondary" href="{{.Next}}">Next</a>{{end}}</nav>{{end}}
+{{define "pagination"}}<nav class="pagination" aria-label="{{t "Results pages"}}"><span>{{if .Total}}{{t "{{.Start}}–{{.End}} of {{.Total}}" "Start" .Start "End" .End "Total" .Total}}{{else}}{{t "0 results"}}{{end}} · {{t "Page {{.Page}} of {{.Pages}}" "Page" .Page "Pages" .Pages}}</span>{{if .Previous}}<a class="button secondary" href="{{.Previous}}">{{t "Previous"}}</a>{{end}}{{if .Next}}<a class="button secondary" href="{{.Next}}">{{t "Next"}}</a>{{end}}</nav>{{end}}

@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"sort"
 	"strings"
+
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 )
 
 // Version identifies the running build in the page footer and a meta tag, so
@@ -76,17 +78,23 @@ var helpTips = map[string]helpTip{
 	"boox.diagnostics":     {"Diagnostics", "The raw records the server has observed, with their native IDs and revisions. Useful when investigating sync; not needed for everyday use.", "diagnostics"},
 }
 
-// tip renders an accessible ⓘ button and its popover. The popover API needs
-// no script, so it works under the BOOX pages' script-free CSP as well.
-func tip(key string) (template.HTML, error) {
-	t, ok := helpTips[key]
-	if !ok {
-		return "", fmt.Errorf("unknown help tip %q", key)
+// tip renders an accessible ⓘ button and its popover in English; pages
+// rendered for a request use tipIn with the request's language. The popover
+// API needs no script, so it works under the BOOX pages' script-free CSP too.
+func tip(key string) (template.HTML, error) { return tipIn(i18n.English)(key) }
+
+func tipIn(l i18n.Localizer) func(string) (template.HTML, error) {
+	return func(key string) (template.HTML, error) {
+		t, ok := helpTips[key]
+		if !ok {
+			return "", fmt.Errorf("unknown help tip %q", key)
+		}
+		id := "tip-" + strings.ReplaceAll(key, ".", "-")
+		esc := template.HTMLEscapeString
+		title := l.T(t.Title)
+		return template.HTML(fmt.Sprintf(`<button type="button" class="tip" popovertarget="%[1]s" aria-label="%[6]s" data-help="%[3]s">?</button><span id="%[1]s" popover class="tip-pop" role="note"><strong>%[2]s</strong> %[4]s <a href="/help#%[5]s">%[7]s</a></span>`,
+			id, esc(title), esc(key), l.T(t.Body), esc(t.Guide), esc(l.T("About: {{.Title}}", "Title", title)), esc(l.T("Learn more")))), nil
 	}
-	id := "tip-" + strings.ReplaceAll(key, ".", "-")
-	esc := template.HTMLEscapeString
-	return template.HTML(fmt.Sprintf(`<button type="button" class="tip" popovertarget="%[1]s" aria-label="About: %[2]s" data-help="%[3]s">?</button><span id="%[1]s" popover class="tip-pop" role="note"><strong>%[2]s</strong> %[4]s <a href="/help#%[5]s">Learn more</a></span>`,
-		id, esc(t.Title), esc(key), t.Body, esc(t.Guide))), nil
 }
 
 // helpKeys lists every tip, for tests and the guide's index.

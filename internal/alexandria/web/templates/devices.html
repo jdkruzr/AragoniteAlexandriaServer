@@ -1,27 +1,27 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Client Devices {{template "help" "client.devices"}}</h1>
-{{if not $d.Devices}}<section class="card"><h2>Connect a Device</h2>
-  <p>In Alexandria, open Settings → Sync, enter <code>{{.Base}}</code> as the server address, and sign in with this server's account. The device then appears here.</p></section>{{else}}
+<h1>{{t "Client Devices"}} {{template "help" "client.devices"}}</h1>
+{{if not $d.Devices}}<section class="card"><h2>{{t "Connect a Device"}}</h2>
+  <p>{{t "In Alexandria, open Settings → Sync, enter"}} <code>{{.Base}}</code> {{t "as the server address, and sign in with this server's account. The device then appears here."}}</p></section>{{else}}
 <div class="table-scroll"><table class="keep-cols">
-<thead><tr><th>Device</th><th>Last Sync</th><th>Waiting</th><th>State</th><th></th></tr></thead>
+<thead><tr><th>{{t "Device"}}</th><th>{{t "Last Sync"}}</th><th>{{t "Waiting"}}</th><th>{{t "State"}}</th><th></th></tr></thead>
 <tbody>
 {{range $d.Devices}}
 <tr>
-  <td><strong>{{.DisplayName}}</strong><div class="muted small">{{.SiteID}}{{if .FirstSeenMs}} · since {{ms .FirstSeenMs}}{{end}}</div></td>
-  <td>{{if .LastSeenMs}}{{ms .LastSeenMs}}{{else}}Never{{end}}</td>
+  <td><strong>{{.DisplayName}}</strong><div class="muted small">{{.SiteID}}{{if .FirstSeenMs}} · {{t "since {{.When}}" "When" (ms .FirstSeenMs)}}{{end}}</div></td>
+  <td>{{if .LastSeenMs}}{{ms .LastSeenMs}}{{else}}{{t "Never"}}{{end}}</td>
   <td>{{.PendingOps}} changes</td>
-  <td>{{if .Revoked}}<span class="badge blank">Revoked</span>{{else if .NeedsAdoption}}<span class="badge partial">Needs restore</span>{{else if .Enrolled}}<span class="badge indexed">Active</span>{{else}}<span class="badge blank">Not enrolled</span>{{end}}</td>
+  <td>{{if .Revoked}}<span class="badge blank">{{t "Revoked"}}</span>{{else if .NeedsAdoption}}<span class="badge partial">{{t "Needs restore"}}</span>{{else if .Enrolled}}<span class="badge indexed">{{t "Active"}}</span>{{else}}<span class="badge blank">{{t "Not enrolled"}}</span>{{end}}</td>
   <td>
-    <details><summary>Manage</summary>
+    <details><summary>{{t "Manage"}}</summary>
       <form method="post" action="/files/forestnote/devices/rename" class="inline"><input type="hidden" name="site_id" value="{{.SiteID}}">
-        <input name="label" value="{{.Label}}" placeholder="{{.Name}}" maxlength="128" aria-label="Device name"><button class="secondary">Rename</button></form>
+        <input name="label" value="{{.Label}}" placeholder="{{.Name}}" maxlength="128" aria-label="{{t "Device name"}}"><button class="secondary">{{t "Rename"}}</button></form>
       {{if .LastSeenMs}}
       <form method="post" action="/files/forestnote/devices/prune"><input type="hidden" name="site_id" value="{{.SiteID}}">
-        <p class="small">Clears the sync position. A device still in use picks up where it left off.</p><button class="secondary">Clear Sync Position</button></form>
+        <p class="small">{{t "Clears the sync position. A device still in use picks up where it left off."}}</p><button class="secondary">{{t "Clear Sync Position"}}</button></form>
       {{end}}
       {{if and .Enrolled (not .Revoked)}}
       <form method="post" action="/files/forestnote/devices/revoke"><input type="hidden" name="site_id" value="{{.SiteID}}">
-        <p class="small">Revoking stops this device syncing. Its notes stay in the library.</p><button class="destructive">Revoke Device</button></form>
+        <p class="small">{{t "Revoking stops this device syncing. Its notes stay in the library."}}</p><button class="destructive">{{t "Revoke Device"}}</button></form>
       {{end}}
     </details>
   </td>
@@ -29,7 +29,7 @@
 {{end}}
 </tbody>
 </table></div>
-<details class="more"><summary>Connect Another Device</summary><p>In Alexandria, open Settings → Sync, enter <code>{{.Base}}</code> as the server address, and sign in with this server's account.</p></details>
+<details class="more"><summary>{{t "Connect Another Device"}}</summary><p>{{t "In Alexandria, open Settings → Sync, enter"}} <code>{{.Base}}</code> {{t "as the server address, and sign in with this server's account."}}</p></details>
 {{end}}
-<p class="small muted">Tasks are also available over CalDAV — see <a href="/settings/integrations">Tasks &amp; integrations</a>.</p>
+<p class="small muted">{{th "Tasks are also available over CalDAV — see <a href=\"/settings/integrations\">Tasks &amp; integrations</a>."}}</p>
 {{end}}

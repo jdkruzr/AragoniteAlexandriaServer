@@ -1,14 +1,14 @@
 {{define "content"}}
-<p class="crumbs"><a href="/boox/devices">BOOX devices</a> /</p>
-<h1>Connect a BOOX Device {{template "help" "boox.enroll"}}</h1>
+<p class="crumbs">{{th "<a href=\"/boox/devices\">BOOX devices</a> /"}}</p>
+<h1>{{t "Connect a BOOX Device"}} {{template "help" "boox.enroll"}}</h1>
 <section class="card">
 <ol>
-<li>Install <strong>PowerSync</strong> on the tablet.</li>
-<li>Enter <code>{{.Base}}</code> as the server address.</li>
-<li>Create a code below and type it into PowerSync. It works once and expires after ten minutes.</li>
+<li>{{th "Install <strong>PowerSync</strong> on the tablet."}}</li>
+<li>{{t "Enter"}} <code>{{.Base}}</code> {{t "as the server address."}}</li>
+<li>{{t "Create a code below and type it into PowerSync. It works once and expires after ten minutes."}}</li>
 </ol>
-{{if .Data}}<p>Enrollment code:</p><code class="secret">{{.Data}}</code>{{end}}
-<form class="actions" method="post" action="/boox/enroll"><button>{{if .Data}}Create another code{{else}}Create enrollment code{{end}}</button></form>
+{{if .Data}}<p>{{t "Enrollment code:"}}</p><code class="secret">{{.Data}}</code>{{end}}
+<form class="actions" method="post" action="/boox/enroll"><button>{{if .Data}}{{t "Create another code"}}{{else}}{{t "Create enrollment code"}}{{end}}</button></form>
 </section>
-<p class="small muted">Every tablet must use the same BOOX account. In PowerSync, turn on notebook and reading sync to send content here. Your existing BOOX library is kept, and returning to Onyx doesn't need this server.</p>
+<p class="small muted">{{t "Every tablet must use the same BOOX account. In PowerSync, turn on notebook and reading sync to send content here. Your existing BOOX library is kept, and returning to Onyx doesn't need this server."}}</p>
 {{end}}

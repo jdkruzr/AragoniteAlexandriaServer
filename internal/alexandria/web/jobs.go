@@ -2,7 +2,6 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -83,7 +82,7 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 		if batch {
 			dest += "?batch=" + url.QueryEscape(r.Form.Get("id"))
 		}
-		back(w, r, dest, fmt.Sprintf("Updated %d jobs. Requests already sent to a provider may still incur charges.", n))
+		back(w, r, dest, "Updated {{.Count}} jobs. Requests already sent to a provider may still incur charges.", int(n))
 	})
 	mux.HandleFunc("POST /jobs/retry", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 4096)
@@ -117,10 +116,10 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			return
 		}
 		if action == "skip" {
-			back(w, r, dest, fmt.Sprintf("Skipped %d jobs. They stay out of recognition until you un-skip them.", n))
+			back(w, r, dest, "Skipped {{.Count}} jobs. They stay out of recognition until you un-skip them.", int(n))
 			return
 		}
-		back(w, r, dest, fmt.Sprintf("Queued %d jobs again. Charges from your provider may apply.", n))
+		back(w, r, dest, "Queued {{.Count}} jobs again. Charges from your provider may apply.", int(n))
 	})
 	mux.HandleFunc("POST /jobs/skip-notebook", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 4096)
@@ -136,10 +135,10 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 		}
 		dest := "/jobs/new?source=" + url.QueryEscape(source) + "&notebook=" + url.QueryEscape(id)
 		if skip {
-			back(w, r, dest, fmt.Sprintf("This notebook is now skipped in recognition (%d pages skipped). Recognized pages keep their text.", n))
+			back(w, r, dest, "This notebook is now skipped in recognition ({{.Count}} pages skipped). Recognized pages keep their text.", int(n))
 			return
 		}
-		back(w, r, dest, fmt.Sprintf("This notebook is no longer skipped (%d pages released). Pages you skipped one by one stay skipped.", n))
+		back(w, r, dest, "This notebook is no longer skipped ({{.Count}} pages released). Pages you skipped one by one stay skipped.", int(n))
 	})
 	mux.HandleFunc("GET /jobs/new", func(w http.ResponseWriter, r *http.Request) {
 		source, id := r.URL.Query().Get("source"), r.URL.Query().Get("notebook")
@@ -217,6 +216,6 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			back(w, r, "/jobs/new?source="+url.QueryEscape(source)+"&notebook="+url.QueryEscape(id), e.Error())
 			return
 		}
-		back(w, r, "/jobs?batch="+batch, fmt.Sprintf("%d pages queued. Already active or paused pages were left with their existing jobs.", count))
+		back(w, r, "/jobs?batch="+batch, "{{.Count}} pages queued. Already active or paused pages were left with their existing jobs.", count)
 	})
 }

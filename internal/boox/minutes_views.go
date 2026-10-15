@@ -74,7 +74,7 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 	if has && (stored.State == "queued" || stored.State == "processing") {
 		d.Progress = s.minutesProgress(r, n, stored)
 	}
-	s.renderPage(w, r, minutesTemplate, "Audio Note Minutes · "+n.Meta.Title, d)
+	s.renderPage(w, r, minutesTemplate, web.Verbatim(web.T(r, "Audio Note Minutes")+" · "+n.Meta.Title), d)
 }
 
 func (s Service) minutesProgress(r *http.Request, n notebookSnapshot, m minutes.Stored) string {
@@ -132,7 +132,7 @@ func (s Service) minutesRequestPage(w http.ResponseWriter, r *http.Request) {
 			d.Missing++
 		}
 	}
-	s.renderPage(w, r, minutesRequestTemplate, "Summarize · "+n.Meta.Title, d)
+	s.renderPage(w, r, minutesRequestTemplate, web.Verbatim(web.T(r, "Summarize")+" · "+n.Meta.Title), d)
 }
 
 func (s Service) minutesRequestHTTP(w http.ResponseWriter, r *http.Request) {

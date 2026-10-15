@@ -15,7 +15,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
-	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
 
 const cleanupLimit = 200
@@ -259,4 +258,4 @@ func (s Service) cleanupHTTP(w http.ResponseWriter, r *http.Request) {
 	s.renderPage(w, r, cleanupTemplate, "Clean Up BOOX Notebooks", d)
 }
 
-var cleanupTemplate = template.Must(template.New("cleanup.html").Funcs(template.FuncMap{"ms": listview.Date}).ParseFS(templateFS, "templates/cleanup.html"))
+var cleanupTemplate = template.Must(template.New("cleanup.html").Funcs(listFuncs()).ParseFS(templateFS, "templates/cleanup.html"))
