@@ -926,7 +926,9 @@
   "in the current index": "in the current index",
   "in {{.Folder}}": "in {{.Folder}}",
   "is one list across your library. Tasks made from Alexandria Client pages link back to their page.": "is one list across your library. Tasks made from Alexandria Client pages link back to their page.",
+  "just now": "just now",
   "key matching the help registry in": "key matching the help registry in",
+  "never": "never",
   "new library review": "new library review",
   "notes": "notes",
   "now. It won't be shown again.": "now. It won't be shown again.",
@@ -944,6 +946,7 @@
   "since {{.When}}": "since {{.When}}",
   "skipped": "skipped",
   "to Do": "to Do",
+  "under a minute": "under a minute",
   "vLLM only: disable thinking (OpenAI format)": "vLLM only: disable thinking (OpenAI format)",
   "via PowerSync": "via PowerSync",
   "wants to use this library: search and read your notebooks and books, edit text boxes, and manage tasks.": "wants to use this library: search and read your notebooks and books, edit text boxes, and manage tasks.",
@@ -963,6 +966,10 @@
     "one": "{{.Count}} change",
     "other": "{{.Count}} changes"
   },
+  "{{.Count}} days ago": {
+    "one": "{{.Count}} day ago",
+    "other": "{{.Count}} days ago"
+  },
   "{{.Count}} failed": {
     "one": "{{.Count}} failed",
     "other": "{{.Count}} failed"
@@ -971,9 +978,17 @@
     "one": "{{.Count}} failed attempt",
     "other": "{{.Count}} failed attempts"
   },
+  "{{.Count}} hours ago": {
+    "one": "{{.Count}} hour ago",
+    "other": "{{.Count}} hours ago"
+  },
   "{{.Count}} matching notebooks": {
     "one": "{{.Count}} matching notebook",
     "other": "{{.Count}} matching notebooks"
+  },
+  "{{.Count}} minutes ago": {
+    "one": "{{.Count}} minute ago",
+    "other": "{{.Count}} minutes ago"
   },
   "{{.Count}} notebooks": {
     "one": "{{.Count}} notebook",
@@ -1020,6 +1035,8 @@
   "{{.Done}} of {{.Total}} pages ({{.Percent}}%)": "{{.Done}} of {{.Total}} pages ({{.Percent}}%)",
   "{{.Done}} of {{.Total}} records ({{.Percent}}%)": "{{.Done}} of {{.Total}} records ({{.Percent}}%)",
   "{{.Done}} of {{.Total}} with handwriting text": "{{.Done}} of {{.Total}} with handwriting text",
+  "{{.Hours}} h {{.Minutes}} min": "{{.Hours}} h {{.Minutes}} min",
+  "{{.Minutes}} min": "{{.Minutes}} min",
   "{{.Model}}, from {{.Transcriber}} transcripts": "{{.Model}}, from {{.Transcriber}} transcripts",
   "{{.Name}}, page {{.Number}}": "{{.Name}}, page {{.Number}}",
   "{{.Pending}} pending · {{.Blocked}} blocked or superseded · {{.Cancelled}} cancelled · {{.Total}} total": "{{.Pending}} pending · {{.Blocked}} blocked or superseded · {{.Cancelled}} cancelled · {{.Total}} total",

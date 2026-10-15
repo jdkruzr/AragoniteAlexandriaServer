@@ -940,7 +940,9 @@
   "in the current index": "en el índice actual",
   "in {{.Folder}}": "en {{.Folder}}",
   "is one list across your library. Tasks made from Alexandria Client pages link back to their page.": "son una sola lista para toda tu biblioteca. Las tareas creadas a partir de páginas de Alexandria Client enlazan con su página.",
+  "just now": "ahora mismo",
   "key matching the help registry in": "que coincide con el registro de ayuda en",
+  "never": "nunca",
   "new library review": "nueva revisión de la biblioteca",
   "notes": "notas",
   "now. It won't be shown again.": "ahora. No se volverá a mostrar.",
@@ -959,6 +961,7 @@
   "since {{.When}}": "desde {{.When}}",
   "skipped": "omitido",
   "to Do": "Pendientes",
+  "under a minute": "menos de un minuto",
   "vLLM only: disable thinking (OpenAI format)": "Solo vLLM: desactivar el razonamiento (formato OpenAI)",
   "via PowerSync": "mediante PowerSync",
   "wants to use this library: search and read your notebooks and books, edit text boxes, and manage tasks.": "quiere usar esta biblioteca: buscar y leer tus cuadernos y libros, editar cuadros de texto y gestionar tareas.",
@@ -982,6 +985,11 @@
     "one": "{{.Count}} cambio",
     "other": "{{.Count}} cambios"
   },
+  "{{.Count}} days ago": {
+    "many": "hace {{.Count}} días",
+    "one": "hace {{.Count}} día",
+    "other": "hace {{.Count}} días"
+  },
   "{{.Count}} failed": {
     "many": "{{.Count}} fallidos",
     "one": "{{.Count}} fallido",
@@ -992,10 +1000,20 @@
     "one": "{{.Count}} intento fallido",
     "other": "{{.Count}} intentos fallidos"
   },
+  "{{.Count}} hours ago": {
+    "many": "hace {{.Count}} horas",
+    "one": "hace {{.Count}} hora",
+    "other": "hace {{.Count}} horas"
+  },
   "{{.Count}} matching notebooks": {
     "many": "{{.Count}} cuadernos coincidentes",
     "one": "{{.Count}} cuaderno coincidente",
     "other": "{{.Count}} cuadernos coincidentes"
+  },
+  "{{.Count}} minutes ago": {
+    "many": "hace {{.Count}} minutos",
+    "one": "hace {{.Count}} minuto",
+    "other": "hace {{.Count}} minutos"
   },
   "{{.Count}} notebooks": {
     "many": "{{.Count}} cuadernos",
@@ -1052,6 +1070,8 @@
   "{{.Done}} of {{.Total}} pages ({{.Percent}}%)": "{{.Done}} de {{.Total}} páginas ({{.Percent}}%)",
   "{{.Done}} of {{.Total}} records ({{.Percent}}%)": "{{.Done}} de {{.Total}} registros ({{.Percent}} %)",
   "{{.Done}} of {{.Total}} with handwriting text": "{{.Done}} de {{.Total}} con texto de escritura a mano",
+  "{{.Hours}} h {{.Minutes}} min": "{{.Hours}} h {{.Minutes}} min",
+  "{{.Minutes}} min": "{{.Minutes}} min",
   "{{.Model}}, from {{.Transcriber}} transcripts": "{{.Model}}, a partir de transcripciones de {{.Transcriber}}",
   "{{.Name}}, page {{.Number}}": "{{.Name}}, página {{.Number}}",
   "{{.Pending}} pending · {{.Blocked}} blocked or superseded · {{.Cancelled}} cancelled · {{.Total}} total": "{{.Pending}} pendientes · {{.Blocked}} bloqueados o reemplazados · {{.Cancelled}} cancelados · {{.Total}} en total",

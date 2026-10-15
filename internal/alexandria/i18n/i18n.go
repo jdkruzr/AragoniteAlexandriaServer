@@ -7,12 +7,15 @@ package i18n
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"text/template"
 
 	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
+	"golang.org/x/text/message"
+	"golang.org/x/text/number"
 )
 
 //go:embed locales/*.json
@@ -82,6 +85,14 @@ func (l Localizer) T(id string, args ...any) string {
 		}
 		if n, ok := data["Count"]; ok {
 			cfg.PluralCount = n
+		}
+	}
+	// Numbers print in the language's style; the plural form was chosen
+	// from the raw value above.
+	for k, v := range data {
+		switch v.(type) {
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			data[k] = l.Number(v, 0)
 		}
 	}
 	cfg.TemplateData = data
@@ -158,3 +169,59 @@ func loadKnown() map[string]bool {
 
 // Known reports whether id is a message in the English source catalog.
 func Known(id string) bool { return known[id] }
+
+// Number formats an integer or float with the language's grouping and decimal
+// marks (Spanish: 529.070 and 1,5; four-digit numbers stay ungrouped there).
+// fraction is the number of decimals to show for floats.
+func (l Localizer) Number(v any, fraction int) string {
+	p := message.NewPrinter(l.Tag)
+	f, ok := toFloat(v)
+	if !ok {
+		return fmt.Sprint(v)
+	}
+	opts := []number.Option{number.MinFractionDigits(fraction), number.MaxFractionDigits(fraction)}
+	// CLDR's minimum grouping digits: these languages leave numbers below
+	// 10 000 ungrouped (Spanish writes 1625, but 10.000). x/text doesn't apply it.
+	if base, _ := l.Tag.Base(); minGroupingTwo[base.String()] && f > -10000 && f < 10000 {
+		opts = append(opts, number.NoSeparator())
+	}
+	if _, isFloat := v.(float64); isFloat {
+		return p.Sprint(number.Decimal(f, opts...))
+	}
+	if _, isFloat := v.(float32); isFloat {
+		return p.Sprint(number.Decimal(f, opts...))
+	}
+	return p.Sprint(number.Decimal(v, opts[2:]...))
+}
+
+var minGroupingTwo = map[string]bool{"es": true, "pl": true}
+
+func toFloat(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case float32:
+		return float64(n), true
+	case int:
+		return float64(n), true
+	case int8:
+		return float64(n), true
+	case int16:
+		return float64(n), true
+	case int32:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case uint:
+		return float64(n), true
+	case uint8:
+		return float64(n), true
+	case uint16:
+		return float64(n), true
+	case uint32:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	}
+	return 0, false
+}

@@ -15,7 +15,7 @@
 {{if $p.IndexState}}<div class="run-box" id="semantic-build"><progress value="{{$p.BuildDone}}" max="{{if $p.BuildTotal}}{{$p.BuildTotal}}{{else}}1{{end}}">{{$p.BuildPercent}}%</progress>
 <div class="table-scroll"><table class="run-status keep-cols"><tbody>
 <tr><th scope="row">{{t "Embedded in This Build"}}</th><td>{{t "{{.Done}} of {{.Total}} records ({{.Percent}}%)" "Done" (num $p.BuildDone) "Total" (num $p.BuildTotal) "Percent" $p.BuildPercent}}</td></tr>
-<tr><th scope="row">{{t "Pace"}}</th><td>{{if $p.BuildPerMinute}}{{t "{{.Rate}} records a minute (average since the build started)" "Rate" (printf "%.1f" $p.BuildPerMinute)}}{{else}}{{t "Measuring…"}}{{end}}</td></tr>
+<tr><th scope="row">{{t "Pace"}}</th><td>{{if $p.BuildPerMinute}}{{t "{{.Rate}} records a minute (average since the build started)" "Rate" (decimal $p.BuildPerMinute 1)}}{{else}}{{t "Measuring…"}}{{end}}</td></tr>
 <tr><th scope="row">{{t "Time Left"}}</th><td>{{if not $p.BuildETA.IsZero}}{{t "About {{.Left}} · finishes around {{.When}}" "Left" (until $p.BuildETA) "When" (utc $p.BuildETA)}}{{else if $p.SavedEmbedding.Enabled}}—{{else}}{{t "Paused while semantic search is off"}}{{end}}</td></tr>
 </tbody></table></div>
 <p class="small muted">{{t "This updates every 15 seconds while the index builds."}}{{if not $p.ActiveModel}} {{t "Search by meaning starts working when this first build finishes; keyword search works meanwhile."}}{{end}}</p></div>{{end}}
