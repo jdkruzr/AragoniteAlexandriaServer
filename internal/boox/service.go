@@ -401,6 +401,29 @@ func (s Service) account(w http.ResponseWriter, r *http.Request) {
 			data, e = s.session(r.Context(), d)
 		case r.Method == "GET" && p == "/config/stss":
 			data, e = s.sts(r.Context(), d)
+		case r.Method == "POST" && p == "/notes/version":
+			// ksync's catalog backup: it uploads a NOTE_TREE snapshot to OSS, then
+			// registers it here. Until this succeeds the device repeats the upload
+			// on every sync. The snapshot itself is already stored; accept only a
+			// key this library holds.
+			var v struct {
+				OssKey      string `json:"ossKey"`
+				Device      string `json:"device"`
+				MD5         string `json:"md5"`
+				CreateAt    int64  `json:"createAt"`
+				DocCount    int    `json:"docCount"`
+				FolderCount int    `json:"folderCount"`
+			}
+			if decode(r, &v) != nil || !strings.HasPrefix(v.OssKey, s.uid()+"/note/pb/") || strings.Contains(v.OssKey, "..") {
+				reply(w, 400, map[string]any{"code": -1, "result_code": -1, "error": "invalid note tree version"})
+				return
+			}
+			var held bool
+			if e = s.DB.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE l.native_key=$1 AND NOT v.deleted)`, v.OssKey).Scan(&held); e == nil && !held {
+				reply(w, 404, map[string]any{"code": -1, "result_code": -1, "error": "note tree snapshot not stored"})
+				return
+			}
+			data = map[string]any{}
 		case r.Method == "POST" && p == "/users/device":
 			data = map[string]any{}
 		case r.Method == "POST" && p == "/users/updateSyncChannels":
