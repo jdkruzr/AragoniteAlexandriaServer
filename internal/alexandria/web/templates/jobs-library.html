@@ -42,7 +42,7 @@
 <progress value="{{$r.Finished}}" max="{{if $r.WorkTotal}}{{$r.WorkTotal}}{{else}}1{{end}}">{{$r.Percent}}%</progress>
 <div class="table-scroll run-box"><table class="run-status keep-cols"><tbody>
 <tr><th scope="row">{{t "Done"}}</th><td>{{t "{{.Done}} of {{.Total}} pages ({{.Percent}}%)" "Done" (num $r.Finished) "Total" (num $r.WorkTotal) "Percent" $r.Percent}}</td></tr>
-<tr><th scope="row">{{t "Pace"}}</th><td>{{if $r.PerMinute}}{{t "{{.Rate}} pages a minute (last 10 minutes)" "Rate" (printf "%.1f" $r.PerMinute)}}{{else}}{{t "Measuring…"}}{{end}}</td></tr>
+<tr><th scope="row">{{t "Pace"}}</th><td>{{if $r.PerMinute}}{{t "{{.Rate}} pages a minute (last 10 minutes)" "Rate" (decimal $r.PerMinute 1)}}{{else}}{{t "Measuring…"}}{{end}}</td></tr>
 <tr><th scope="row">{{t "Time Left"}}</th><td>{{if not $r.ETA.IsZero}}{{t "About {{.Left}} · finishes around {{.When}}" "Left" (until $r.ETA) "When" (utc $r.ETA)}}{{else if eq $r.Remaining 0}}{{t "None"}}{{else}}—{{end}}</td></tr>
 </tbody></table></div>
 <div class="run-tables">

@@ -34,7 +34,9 @@ import (
 //go:embed templates/*.html static/*
 var assets embed.FS
 
-var funcs = template.FuncMap{
+// funcs are declared with the English number/time formats merged in, so the
+// layout (parsed during package initialization) sees every name.
+var funcs = withFormats(template.FuncMap{
 	"tip": tip,
 	// t translates owner-facing text; renderTemplate binds it to the
 	// request's language. This English default lets every template parse.
@@ -64,55 +66,8 @@ var funcs = template.FuncMap{
 		}
 		return t.Local().Format("2006-01-02 15:04")
 	},
-	"bytes": func(n int64) string {
-		switch {
-		case n >= 1<<20:
-			return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
-		case n >= 1<<10:
-			return fmt.Sprintf("%.0f KB", float64(n)/(1<<10))
-		}
-		return fmt.Sprintf("%d B", n)
-	},
-	"ago": func(t time.Time) string {
-		if t.IsZero() {
-			return "never"
-		}
-		switch d := time.Since(t); {
-		case d < time.Minute:
-			return "just now"
-		case d < time.Hour:
-			return plural(int(d/time.Minute), "minute") + " ago"
-		case d < 48*time.Hour:
-			return plural(int(d/time.Hour), "hour") + " ago"
-		default:
-			return plural(int(d/(24*time.Hour)), "day") + " ago"
-		}
-	},
-	"count": func(n int) string {
-		if n < 0 {
-			return "—"
-		}
-		return fmt.Sprintf("%d", n)
-	},
 	// num groups thousands: 1624 → "1,624".
-	"num": func(n int) string {
-		s := fmt.Sprintf("%d", n)
-		for i := len(s) - 3; i > 0 && s[i-1] != '-'; i -= 3 {
-			s = s[:i] + "," + s[i:]
-		}
-		return s
-	},
 	// until is a rounded time left before t, such as "2 h 5 min".
-	"until": func(t time.Time) string {
-		m := int(time.Until(t).Round(time.Minute) / time.Minute)
-		switch {
-		case m < 1:
-			return "under a minute"
-		case m < 60:
-			return fmt.Sprintf("%d min", m)
-		}
-		return fmt.Sprintf("%d h %d min", m/60, m%60)
-	},
 	"deref": func(s *string) string {
 		if s == nil {
 			return ""
@@ -142,6 +97,13 @@ var funcs = template.FuncMap{
 		}
 		return t.UTC().Format("2006-01-02 15:04") + " UTC"
 	},
+})
+
+func withFormats(f template.FuncMap) template.FuncMap {
+	for k, v := range formatFuncs(i18n.English) {
+		f[k] = v
+	}
+	return f
 }
 
 // Funcs are the layout's template functions. Content templates grafted into
@@ -212,7 +174,7 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		live, _ := strconv.Atoi(w.Header().Get("Refresh"))
 		w.Header().Del("Refresh")
 		loc := d.Localizer(r)
-		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc)})
+		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc)}).Funcs(formatFuncs(loc))
 		w.Header().Set("Content-Language", loc.Lang())
 		w.Header().Add("Vary", "Accept-Language")
 		err = t.ExecuteTemplate(&buf, "layout.html", page{Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
@@ -376,11 +338,4 @@ func sourceTab(path, section string) string {
 		return "notebooks"
 	}
 	return section
-}
-
-func plural(n int, unit string) string {
-	if n == 1 {
-		return "1 " + unit
-	}
-	return fmt.Sprintf("%d %ss", n, unit)
 }

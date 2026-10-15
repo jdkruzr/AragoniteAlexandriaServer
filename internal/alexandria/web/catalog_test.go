@@ -20,11 +20,12 @@ var (
 	templateT  = regexp.MustCompile(`\{\{-?\s*th? (` + quoted + `)((?:` + quoted + `|[^"}]|\}[^}])*)\}\}`)
 	goPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`i18n\.M\((` + quoted + `)\)`),
-		regexp.MustCompile(`\bT\((?:r, )?(` + quoted + `)`),
 		regexp.MustCompile(`\b(?:render|renderPage)\(w, r, [^,]+, (` + quoted + `)`),
 		regexp.MustCompile(`(?m)^\s*notice\w* *:?= *(` + quoted + `)`),
 		regexp.MustCompile(`notice="\+url\.QueryEscape\((` + quoted + `)\)`),
 	}
+	// T("ID", args…) in Go: plural when the only argument is a count or a "Count" pair is given.
+	goT        = regexp.MustCompile(`\bT\((?:r, )?(` + quoted + `)(?:, ([^)]*))?\)`)
 	backNotice = regexp.MustCompile(`\bback\(w, r, [^,]+, (` + quoted + `)(, [^)]+)?\)`)
 )
 
@@ -70,6 +71,10 @@ func collectMessages(t *testing.T) usedMessages {
 			for _, m := range p.FindAllStringSubmatch(src, -1) {
 				used.add(m[1], false)
 			}
+		}
+		for _, m := range goT.FindAllStringSubmatch(src, -1) {
+			args := strings.TrimSpace(m[2])
+			used.add(m[1], strings.Contains(args, `"Count"`) || (args != "" && !strings.HasPrefix(args, `"`) && len(splitArgs(args)) == 1))
 		}
 		for _, m := range backNotice.FindAllStringSubmatch(src, -1) {
 			used.add(m[1], m[2] != "")
