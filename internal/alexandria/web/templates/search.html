@@ -8,11 +8,11 @@
 </form>
 <p class="small muted">What's searched? {{template "help" "search.coverage"}}{{if $d.Semantic}} · Matching {{template "help" "search.modes"}}{{end}}</p>
 {{if $d.Query}}
-<h2>Pages and reading{{if $d.Results}} <span class="badge">{{len $d.Results}}</span>{{end}}</h2>
+<h2>Pages and Reading{{if $d.Results}} <span class="badge">{{len $d.Results}}</span>{{end}}</h2>
 {{range $d.Results}}
 <article class="result"><span class="badge source">{{if eq .Source "boox"}}BOOX{{else}}Alexandria Client{{end}} · {{.Kind}}</span><p><a href="{{.URL}}">{{.NotebookName}}{{if .PageNumber}}, page {{.PageNumber}}{{end}}</a></p><p>{{.Snippet}}</p></article>
 {{else}}<p class="empty">No page text or BOOX reading records match. Pages that haven't been through handwriting recognition can only be found by title.</p>{{end}}
-{{if $d.Native}}<h2>BOOX notebook titles <span class="badge">{{len $d.Native}}</span></h2>{{range $d.Native}}<article class="result"><span class="badge source">BOOX · {{.Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p></article>{{end}}{{end}}
-{{if $d.Annotations}}<h2>Alexandria Client book annotations <span class="badge">{{len $d.Annotations}}</span></h2>{{range $d.Annotations}}<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}Untitled book{{end}}</a><p>{{.Snippet}}</p></article>{{end}}{{end}}
+{{if $d.Native}}<h2>BOOX Notebook Titles <span class="badge">{{len $d.Native}}</span></h2>{{range $d.Native}}<article class="result"><span class="badge source">BOOX · {{.Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p></article>{{end}}{{end}}
+{{if $d.Annotations}}<h2>Alexandria Client Book Annotations <span class="badge">{{len $d.Annotations}}</span></h2>{{range $d.Annotations}}<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}Untitled book{{end}}</a><p>{{.Snippet}}</p></article>{{end}}{{end}}
 {{end}}
 {{end}}

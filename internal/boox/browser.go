@@ -13,7 +13,7 @@ import (
 
 var setupTemplate = template.Must(template.New("setup").Parse(`{{define "content"}}
 <p class="crumbs"><a href="/boox/devices">BOOX devices</a> /</p>
-<h1>Connect a BOOX device {{template "help" "boox.enroll"}}</h1>
+<h1>Connect a BOOX Device {{template "help" "boox.enroll"}}</h1>
 <section class="card">
 <ol>
 <li>Install <strong>PowerSync</strong> on the tablet.</li>
@@ -28,9 +28,9 @@ var setupTemplate = template.Must(template.New("setup").Parse(`{{define "content
 
 // Views are grafted into the shared layout, so they may only use its functions.
 var devicesTemplate = template.Must(template.New("devices").Parse(`{{define "content"}}
-<div class="page-head"><h1>BOOX devices {{template "help" "boox.devices"}}</h1><a class="button" href="/boox/enroll">Connect a device</a></div>
+<div class="page-head"><h1>BOOX Devices {{template "help" "boox.devices"}}</h1><a class="button" href="/boox/enroll">Connect a device</a></div>
 {{if not .Data}}<div class="card"><p class="empty">No BOOX devices have connected yet.</p></div>{{else}}
-<div class="table-scroll"><table class="keep-cols"><thead><tr><th>Device</th><th>State</th><th>Last upload received</th><th></th></tr></thead><tbody>
+<div class="table-scroll"><table class="keep-cols"><thead><tr><th>Device</th><th>State</th><th>Last Upload Received</th><th></th></tr></thead><tbody>
 {{range .Data}}<tr><td><strong>{{.Model}}</strong><div class="muted small"><code>{{.ID}}</code></div></td>
 <td>{{if .Revoked}}<span class="badge blank">Revoked</span>{{else}}<span class="badge indexed">Authorized</span>{{end}}</td>
 <td>{{if .LastUpload.Valid}}{{.LastUpload.Time.UTC.Format "2006-01-02 15:04"}} UTC{{else}}<span class="muted">Nothing yet</span>{{end}}</td>
@@ -57,7 +57,7 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			s.pageImage(w, r)
 			return
 		case "/boox/settings":
-			s.renderPage(w, r, booxSettings, "BOOX settings", nil)
+			s.renderPage(w, r, booxSettings, "BOOX Settings", nil)
 			return
 		case "/boox/reading":
 			s.reading(w, r)
@@ -109,9 +109,9 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 				failure(w, e)
 				return
 			}
-			s.renderPage(w, r, setupTemplate, "Connect a BOOX device", code)
+			s.renderPage(w, r, setupTemplate, "Connect a BOOX Device", code)
 		} else if r.Method == "GET" {
-			s.renderPage(w, r, setupTemplate, "Connect a BOOX device", "")
+			s.renderPage(w, r, setupTemplate, "Connect a BOOX Device", "")
 		} else {
 			http.NotFound(w, r)
 		}
@@ -144,7 +144,7 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			failure(w, rows.Err())
 			return
 		}
-		s.renderPage(w, r, devicesTemplate, "BOOX devices", out)
+		s.renderPage(w, r, devicesTemplate, "BOOX Devices", out)
 	case "/boox/revoke":
 		if r.Method != "POST" {
 			http.NotFound(w, r)

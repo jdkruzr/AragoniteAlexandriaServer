@@ -62,7 +62,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/files/forestnote/books":                               "No books yet",
 		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, page 1",
 		"/tasks":                                                "Nothing to do",
-		"/files/forestnote/devices":                             "<h2>Connect a device</h2>",
+		"/files/forestnote/devices":                             "<h2>Connect a Device</h2>",
 		"/settings/integrations":                                "/caldav/user/calendars/tasks/",
 		"/help":                                                 "Handwriting recognition",
 		"/":                                                     "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
@@ -81,7 +81,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 			t.Fatalf("%s: double-escaped link", path)
 		}
 	}
-	if got := b.do("GET", "/", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Your library") || !strings.Contains(got.Body.String(), "Alexandria Client") {
+	if got := b.do("GET", "/", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Your Library") || !strings.Contains(got.Body.String(), "Alexandria Client") {
 		t.Fatalf("home: %d", got.Code)
 	}
 	if got := b.do("GET", "/files/forestnote/render?path=forestnote://00000000000000000000000NB1/00000000000000000000000PG1", "", nil, true); got.Code != 200 || got.Header().Get("Content-Type") != "image/jpeg" {

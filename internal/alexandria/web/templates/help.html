@@ -18,7 +18,7 @@
 <li><a href="#diagnostics">Operator notes</a></li>
 </ol>
 
-<section id="start"><h2>Getting started</h2>
+<section id="start"><h2>Getting Started</h2>
 <p>Alexandria keeps one library for one person, gathered from several <strong>sources</strong>. Each source keeps its own notebooks and devices, because each one syncs in its own way. Search, tasks and handwriting recognition work across all of them.</p>
 <p>To add content, connect a device from <a href="/sources">Add source</a>. Notebooks appear after the device's first sync.</p>
 </section>
@@ -40,8 +40,8 @@
 <section id="devices"><h2>Devices</h2>
 <p>Each source keeps its own device list. A tablet connected through two sources appears in both.</p>
 <dl>
-<dt>Alexandria Client devices</dt><dd>Sign in from the Client app's Settings → Sync using this server's address and your account. <em>Waiting</em> counts changes the device has not pulled yet. <em>Clear sync position</em> is safe for a device still in use; it picks up where it left off.</dd>
-{{if $d.NativeBOOX}}<dt>BOOX devices</dt><dd>Install PowerSync, enter this server's address, and type a one-time code from <a href="/boox/enroll">Connect a device</a>. Codes expire after ten minutes. <em>Authorized</em> means a tablet may connect; it doesn't mean everything has finished downloading.</dd>{{end}}
+<dt>Alexandria Client Devices</dt><dd>Sign in from the Client app's Settings → Sync using this server's address and your account. <em>Waiting</em> counts changes the device has not pulled yet. <em>Clear sync position</em> is safe for a device still in use; it picks up where it left off.</dd>
+{{if $d.NativeBOOX}}<dt>BOOX Devices</dt><dd>Install PowerSync, enter this server's address, and type a one-time code from <a href="/boox/enroll">Connect a device</a>. Codes expire after ten minutes. <em>Authorized</em> means a tablet may connect; it doesn't mean everything has finished downloading.</dd>{{end}}
 <dt>Revoking</dt><dd>Stops a device syncing. Its notes stay in your library.</dd>
 </dl>
 </section>
@@ -51,45 +51,45 @@
 <p><strong>Words and meaning</strong> (shown when <a href="#semantic">search by meaning</a> is on) also finds related ideas. <strong>Exact words only</strong> matches what you typed. Use the source menu to narrow results to one source.</p>
 </section>
 
-<section id="semantic"><h2>Search by meaning</h2>
+<section id="semantic"><h2>Search by Meaning</h2>
 <p>Semantic search turns your text into vectors so a search for “budget” can find a page about “cost showback”. It needs an <strong>embedding provider</strong>: the optional bundled Ollama service runs the Nomic model on the server's CPU, or you can point it at another Ollama-compatible endpoint.</p>
 <p>Settings shows three separate things, because each can be true without the others:</p>
 <dl><dt>Provider</dt><dd>Whether the saved embedding service answers. Checked without sending any of your notes.</dd>
-<dt>Semantic search</dt><dd>Whether you've turned the feature on.</dd>
+<dt>Semantic Search</dt><dd>Whether you've turned the feature on.</dd>
 <dt>Index</dt><dd>Whether the vectors exist yet. Building takes a while; the previous index stays usable until a replacement finishes.</dd></dl>
 <p>Turning it off keeps the index and pauses new work, so turning it back on resumes quickly. Search by meaning only indexes text that already exists. It never starts handwriting recognition.</p>
 </section>
 
-<section id="recognition"><h2>Handwriting recognition</h2>
+<section id="recognition"><h2>Handwriting Recognition</h2>
 <p>Recognition sends page images to a vision model you configure and stores the text it returns, which makes the pages searchable. <strong>It can cost money</strong>, so nothing is sent until you confirm.</p>
 <dl>
 <dt>Providers</dt><dd>Anthropic Messages or OpenAI Chat Completions formats, including local OpenAI-compatible servers such as vLLM. API keys are encrypted in the database and never displayed after saving.</dd>
-<dt>Where text goes</dt><dd>Alexandria Client text can sync back to Client devices.{{if $d.NativeBOOX}} BOOX text stays on this server: it's searchable here but never changes your BOOX notebooks.{{end}}</dd>
-<dt>One notebook or a whole library</dt><dd>Recognize individual pages from a notebook, or use <a href="/jobs/library">Recognize a library</a>. A library run first checks every notebook's page list. That check is free and doesn't contact your provider. You then review and exclude notebooks before confirming. Pages are sent in chunks of up to 100.</dd>
-<dt>Pause, cancel and retry</dt><dd>Pausing or cancelling stops results being published, but a request already sent may still finish and be billed. Resuming may send it again. Retry reuses unchanged successful results. Temporary failures retry automatically up to five times.</dd>
-<dt>Image size</dt><dd>Each page is sent as a JPEG of at most 1 MB and 4096 pixels on its long side. Pages are never enlarged. Base64 encoding adds about a third to the request size.</dd>
+<dt>Where Text Goes</dt><dd>Alexandria Client text can sync back to Client devices.{{if $d.NativeBOOX}} BOOX text stays on this server: it's searchable here but never changes your BOOX notebooks.{{end}}</dd>
+<dt>One Notebook or a Whole Library</dt><dd>Recognize individual pages from a notebook, or use <a href="/jobs/library">Recognize a library</a>. A library run first checks every notebook's page list. That check is free and doesn't contact your provider. You then review and exclude notebooks before confirming. Pages are sent in chunks of up to 100.</dd>
+<dt>Pause, Cancel and Retry</dt><dd>Pausing or cancelling stops results being published, but a request already sent may still finish and be billed. Resuming may send it again. Retry reuses unchanged successful results. Temporary failures retry automatically up to five times.</dd>
+<dt>Image Size</dt><dd>Each page is sent as a JPEG of at most 1 MB and 4096 pixels on its long side. Pages are never enlarged. Base64 encoding adds about a third to the request size.</dd>
 <dt>Reprocessing</dt><dd>Re-runs pages that were already recognized or requested, using the current settings. Unchanged pages reuse cached results; a new model or prompt can cost money again.</dd>
-<dt>Connection tests</dt><dd>Send a synthetic image or sentence, never your notes. They may cost a fraction of a cent and don't save settings.</dd>
+<dt>Connection Tests</dt><dd>Send a synthetic image or sentence, never your notes. They may cost a fraction of a cent and don't save settings.</dd>
 </dl>
 </section>
 
 {{if $d.NativeBOOX}}<section id="minutes"><h2>Audio Note Minutes</h2>
 <p>Audio Note Minutes summarize a BOOX note from its recordings <em>and</em> its handwriting. Talk Insights on the device only hears the audio; here, what you wrote down counts as much as what was said.</p>
 <dl>
-<dt>What you get</dt><dd>The overall topic, 4–6 keywords, up to five key points (each marked as coming from the recording, your notes or both) and a conclusion. Each note also lists its recordings with start time and length, and the full timestamped transcripts.</dd>
-<dt>How it works</dt><dd>Open a notebook and choose <strong>Summarize this note…</strong>. You'll see the recordings and how many pages have recognized text before anything is sent. Each recording is transcribed, then a summary model writes the minutes.</dd>
-<dt>Pages without text</dt><dd>You can include unrecognized pages; they're sent to your recognition provider first (charges may apply) and the minutes wait for them. Otherwise they're left out and listed.</dd>
+<dt>What You Get</dt><dd>The overall topic, 4–6 keywords, up to five key points (each marked as coming from the recording, your notes or both) and a conclusion. Each note also lists its recordings with start time and length, and the full timestamped transcripts.</dd>
+<dt>How It Works</dt><dd>Open a notebook and choose <strong>Summarize this note…</strong>. You'll see the recordings and how many pages have recognized text before anything is sent. Each recording is transcribed, then a summary model writes the minutes.</dd>
+<dt>Pages Without Text</dt><dd>You can include unrecognized pages; they're sent to your recognition provider first (charges may apply) and the minutes wait for them. Otherwise they're left out and listed.</dd>
 <dt>Providers</dt><dd>Set up in <a href="/settings/recognition">Settings → Recognition</a> under Audio Note Minutes. Transcription uses any OpenAI-compatible speech-to-text server, including a self-hosted Whisper. The summary model can be a local OpenAI-compatible server or an Anthropic model. Its instructions are editable there too; Alexandria always adds the response format it needs.</dd>
-<dt>Keeping up to date</dt><dd>Minutes are marked out of date when a recording, a recognized page or the summary instructions change. Updating is always your choice; unchanged recordings aren't transcribed again.</dd>
-<dt>Where results go</dt><dd>They stay on this server, appear in search and are available to MCP clients through <code>get_note_minutes</code>. Nothing is written to your BOOX until you choose <strong>Send to BOOX</strong>, which creates a separate text note named <em>title</em><code>_Minutes</code> in the same folder. Your original notebook is never changed. Sending again replaces that note if it's untouched; if you've edited it, a new one is added instead. To send every new set of minutes automatically, turn on <strong>Send them to BOOX automatically</strong> in Settings → Recognition.</dd>
+<dt>Keeping Up to Date</dt><dd>Minutes are marked out of date when a recording, a recognized page or the summary instructions change. Updating is always your choice; unchanged recordings aren't transcribed again.</dd>
+<dt>Where Results Go</dt><dd>They stay on this server, appear in search and are available to MCP clients through <code>get_note_minutes</code>. Nothing is written to your BOOX until you choose <strong>Send to BOOX</strong>, which creates a separate text note named <em>title</em><code>_Minutes</code> in the same folder. Your original notebook is never changed. Sending again replaces that note if it's untouched; if you've edited it, a new one is added instead. To send every new set of minutes automatically, turn on <strong>Send them to BOOX automatically</strong> in Settings → Recognition.</dd>
 </dl>
 </section>
 
-{{end}}<section id="deleting"><h2>Deleting and recovering</h2>
+{{end}}<section id="deleting"><h2>Deleting and Recovering</h2>
 <dl>
-<dt>Alexandria Client notebooks</dt><dd>Devices delete the notebook on their next sync. If a device edits it afterwards, it comes back.</dd>
-{{if $d.NativeBOOX}}<dt>BOOX numbered-notebook cleanup</dt><dd>BOOX names new notebooks <code>Notebook-1</code>, <code>Notebook-2</code> and so on. <a href="/boox/cleanup">Cleanup</a> finds notebooks named exactly that, across folders, so you can delete the ones you never renamed. It matches names only and doesn't look at the pages, so open anything you're unsure about. Deletion syncs to every BOOX tablet using this library.</dd>
-<dt>Deleted BOOX notebooks</dt><dd>Stay viewable under <a href="/boox?show=deleted">Deleted notebooks</a>. The server keeps their history and files, so deletion doesn't free storage space.</dd>{{end}}
+<dt>Alexandria Client Notebooks</dt><dd>Devices delete the notebook on their next sync. If a device edits it afterwards, it comes back.</dd>
+{{if $d.NativeBOOX}}<dt>BOOX Numbered-Notebook Cleanup</dt><dd>BOOX names new notebooks <code>Notebook-1</code>, <code>Notebook-2</code> and so on. <a href="/boox/cleanup">Cleanup</a> finds notebooks named exactly that, across folders, so you can delete the ones you never renamed. It matches names only and doesn't look at the pages, so open anything you're unsure about. Deletion syncs to every BOOX tablet using this library.</dd>
+<dt>Deleted BOOX Notebooks</dt><dd>Stay viewable under <a href="/boox?show=deleted">Deleted notebooks</a>. The server keeps their history and files, so deletion doesn't free storage space.</dd>{{end}}
 <dt>Tasks</dt><dd>Deleted tasks go to a separate list first.</dd>
 </dl>
 </section>
@@ -99,15 +99,15 @@
 <p>Any CalDAV task app can sync the list using the address in <a href="/settings/integrations">Settings → Tasks &amp; integrations</a> and your account. Choose <em>Date only</em> if your app mishandles due times.</p>
 </section>
 
-<section id="api"><h2>API and MCP access</h2>
+<section id="api"><h2>API and MCP Access</h2>
 <p>Claude on the web connects using this server's MCP address. You approve it on a page here, and it then appears in your token list. Other MCP clients and scripts use an API token from <a href="/settings/integrations">Settings → Tasks &amp; integrations</a>. A token can search and read your notebooks and books, edit text boxes and manage tasks, so revoke any you no longer use. A token is shown once, when you create it.</p>
 </section>
 
-<section id="account"><h2>Your account</h2>
+<section id="account"><h2>Your Account</h2>
 <p>Passwords need at least 12 characters (up to 72 bytes). After a change your browser may ask you to sign in again. Enrolled devices and API tokens keep working.</p>
 </section>
 
-<section id="diagnostics"><h2>Operator notes</h2>
+<section id="diagnostics"><h2>Operator Notes</h2>
 <p>For people running the server, and for automation working with a running copy:</p>
 <ul>
 <li>The footer and the <code>alexandria-version</code> meta tag show the build that's running. The readiness endpoint is <code>/readyz</code>.</li>

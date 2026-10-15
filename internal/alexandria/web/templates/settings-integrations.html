@@ -1,7 +1,7 @@
 {{define "content"}}{{$d := .Data}}
-<h1>Tasks &amp; integrations</h1>
+<h1>Tasks &amp; Integrations</h1>
 <section class="card">
-<h2>Tasks over CalDAV {{template "help" "tasks.caldav"}}</h2>
+<h2>Tasks Over CalDAV {{template "help" "tasks.caldav"}}</h2>
 <p>CalDAV address: <code>{{.Base}}{{$d.CalDAV}}</code></p>
 <form method="post" action="/settings/caldav" class="stack">
 <label>Task list name <input name="collection" value="{{$d.Collection}}" maxlength="200"></label>
@@ -14,7 +14,7 @@
 </form>
 </section>
 <section class="card">
-<h2>API and MCP access {{template "help" "api.mcp"}}</h2>
+<h2>API and MCP Access {{template "help" "api.mcp"}}</h2>
 <p>MCP address: <code>{{.Base}}/mcp</code></p>
 <p class="small muted">Claude on the web connects with this address and asks you to approve access. Other clients use a token.</p>
 <form method="post" action="/settings/tokens/create" class="inline">
@@ -22,7 +22,7 @@
 </form>
 {{if $d.Tokens}}
 <div class="table-scroll"><table>
-<thead><tr><th>Token</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+<thead><tr><th>Token</th><th>Created</th><th>Last Used</th><th></th></tr></thead>
 <tbody>{{range $d.Tokens}}
 <tr><td>{{if eq .Label $d.OAuthLabel}}Claude (approved here){{else}}{{.Label}}{{end}}</td><td>{{.Created.Local.Format "2006-01-02"}}</td>
 <td>{{if .LastUsed}}{{.LastUsed.Local.Format "2006-01-02 15:04"}}{{else}}Never{{end}}</td>

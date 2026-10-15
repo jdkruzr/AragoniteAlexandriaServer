@@ -68,7 +68,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 		}
 		return html
 	}
-	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", "Embedding provider", "BOOX notebook pages")
+	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", "Embedding Provider", "BOOX notebook pages")
 	if inference.Load() != 0 {
 		t.Fatal("viewing Settings ran inference")
 	}

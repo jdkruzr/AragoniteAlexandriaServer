@@ -2,7 +2,7 @@
 <h1>Account</h1>
 {{if $d.LocalPasswords}}
 <section class="card">
-<h2>Change password {{template "help" "account.password"}}</h2>
+<h2>Change Password {{template "help" "account.password"}}</h2>
 <form method="post" action="/settings/password" class="stack">
 <label>Current password <input type="password" name="current_password" autocomplete="current-password" required></label>
 <label>New password <input type="password" name="new_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
@@ -13,7 +13,7 @@
 </section>
 {{else}}<p class="muted">Your sign-in is managed by the service hosting this library.</p>{{end}}
 <section class="card">
-<h2>About this server</h2>
+<h2>About This Server</h2>
 <p class="stats"><span><span class="stat-label">Address</span><br><code>{{.Base}}</code></span><span><span class="stat-label">Version</span><br><code>{{version}}</code></span></p>
 <p class="small muted">Other settings: <a href="/settings/search">search by meaning</a>, <a href="/settings/recognition">handwriting recognition</a>, and <a href="/settings/integrations">tasks, CalDAV and API access</a>.</p>
 </section>

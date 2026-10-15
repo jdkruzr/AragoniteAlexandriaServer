@@ -141,7 +141,7 @@ type audioRecoveryAsset struct {
 }
 
 var audioRecoveryTemplate = template.Must(template.New("audio-recovery").Parse(`{{define "content"}}
-<p class="crumbs"><a href="/boox/notebook?id={{.Data.Document}}">{{.Data.Title}}</a> /</p><h1>Recover notebook audio</h1>
+<p class="crumbs"><a href="/boox/notebook?id={{.Data.Document}}">{{.Data.Title}}</a> /</p><h1>Recover Notebook Audio</h1>
 <p class="lede">Repairs recordings affected by a known BOOX audio defect, one recording at a time. The original stays on the server.</p>
 {{if .Data.Error}}<p role="alert">{{.Data.Error}}</p>{{end}}
 {{if .Data.Operation}}<p>Server repair: <strong>{{.Data.State}}</strong></p>
@@ -256,5 +256,5 @@ func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.renderPage(w, r, audioRecoveryTemplate, "Recover notebook audio", d)
+	s.renderPage(w, r, audioRecoveryTemplate, "Recover Notebook Audio", d)
 }

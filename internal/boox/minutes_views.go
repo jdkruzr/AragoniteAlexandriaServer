@@ -40,17 +40,17 @@ var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).P
 {{if $m.Topic}}<div class="reader-layout"><div>
 <section class="card minutes"><h2>{{$m.Topic}}</h2>
 <p class="tags" aria-label="Keywords">{{range $m.Keywords}}<span class="tag">{{.}}</span>{{end}}</p>
-<h3>Key points</h3><ol class="points">{{range $m.KeyPoints}}<li>{{.Text}} <span class="badge source">{{if eq .From "recording"}}Recording{{else if eq .From "notes"}}Notes{{else}}Recording + notes{{end}}</span></li>{{end}}</ol>
+<h3>Key Points</h3><ol class="points">{{range $m.KeyPoints}}<li>{{.Text}} <span class="badge source">{{if eq .From "recording"}}Recording{{else if eq .From "notes"}}Notes{{else}}Recording + notes{{end}}</span></li>{{end}}</ol>
 <h3>Conclusion</h3><p>{{$m.Conclusion}}</p></section>
-</div><aside><section class="card"><h2>About these minutes</h2><dl class="meta">
+</div><aside><section class="card"><h2>About These Minutes</h2><dl class="meta">
 <dt>Notebook</dt><dd>{{$m.Metadata.Title}}{{if $m.Metadata.Folder}} <span class="muted">in {{$m.Metadata.Folder}}</span>{{end}}</dd>
 <dt>Created</dt><dd>{{utc $m.Metadata.Created}}</dd>
 <dt>Pages</dt><dd>{{$m.Metadata.PagesWithText}} of {{$m.Metadata.PageCount}} with handwriting text</dd>
 <dt>Recordings</dt><dd>{{len $m.Metadata.Recordings}}{{range $m.Metadata.Recordings}}<br>{{.Title}}: {{utc .RecordedAt}}, {{clock .DurationMS}}{{end}}</dd>
-<dt>Written by</dt><dd>{{$m.Model}}{{if $m.Metadata.Transcriber}}, from {{$m.Metadata.Transcriber}} transcripts{{end}}</dd>
+<dt>Written By</dt><dd>{{$m.Model}}{{if $m.Metadata.Transcriber}}, from {{$m.Metadata.Transcriber}} transcripts{{end}}</dd>
 <dt>Written</dt><dd>{{if $m.FinishedAt.Valid}}{{utc $m.FinishedAt.Time}}{{else}}—{{end}}</dd>
 </dl></section>
-{{if $d.Sendable}}<section class="card" id="send"><h2>On your BOOX {{template "help" "boox.minutesnote"}}</h2>
+{{if $d.Sendable}}<section class="card" id="send"><h2>On Your BOOX {{template "help" "boox.minutesnote"}}</h2>
 {{if and (eq $m.State "ready") $m.Detail}}<p class="callout danger" role="status">{{$m.Detail}}</p>{{end}}
 {{with $d.Sent}}<p>{{if eq .Status "pending"}}<span class="badge partial">Sending</span> “{{.Title}}” is on its way to your devices.
 {{else if eq .Status "failed"}}<span class="badge bad">Not sent</span> “{{.Title}}” couldn't be sent ({{.Code}}).
@@ -79,7 +79,7 @@ type minutesRequestView struct {
 
 var minutesRequestTemplate = template.Must(template.New("minutes-new").Funcs(web.Funcs()).Parse(`{{define "content"}}{{$d:=.Data}}
 <p class="crumbs"><a href="/boox">Notebooks</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">Audio Note Minutes</a> /</p>
-<h1>Summarize this note {{template "help" "boox.minutes"}}</h1>
+<h1>Summarize This Note {{template "help" "boox.minutes"}}</h1>
 {{if not $d.Enabled}}<div class="callout"><p>Set up transcription and a summary model in <a href="/settings/recognition#minutes">Settings → Recognition</a> first.</p></div>{{else}}
 <form method="post" action="/boox/minutes/new"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="request" value="{{$d.Request}}">
 <section class="card"><h2>Recordings</h2>

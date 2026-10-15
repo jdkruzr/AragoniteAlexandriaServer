@@ -248,9 +248,9 @@ func Handler(d Deps) http.Handler {
 	mux.HandleFunc("GET /help", func(w http.ResponseWriter, r *http.Request) {
 		d.render(w, r, "help", "Help", "help", map[string]any{"NativeBOOX": d.Status.NativeBOOX})
 	})
-	mux.HandleFunc("GET /sources", func(w http.ResponseWriter, r *http.Request) { d.render(w, r, "sources", "Add source", "sources", nil) })
+	mux.HandleFunc("GET /sources", func(w http.ResponseWriter, r *http.Request) { d.render(w, r, "sources", "Add Source", "sources", nil) })
 	mux.HandleFunc("GET /sources/client", func(w http.ResponseWriter, r *http.Request) {
-		d.render(w, r, "client-settings", "Alexandria Client settings", "client-settings", nil)
+		d.render(w, r, "client-settings", "Alexandria Client Settings", "client-settings", nil)
 	})
 	d.notebookRoutes(mux)
 	d.bookRoutes(mux)

@@ -295,11 +295,11 @@ func (s Service) preview(w http.ResponseWriter, r *http.Request) {
 
 var browseTemplate = template.Must(template.New("boox").Parse(`{{define "content"}}{{$d:=.Data}}
 <p class="crumbs"><a href="/boox/settings">BOOX settings</a> /</p>
-<h1>BOOX diagnostics {{template "help" "boox.diagnostics"}}</h1>
+<h1>BOOX Diagnostics {{template "help" "boox.diagnostics"}}</h1>
 <form class="search" method="get" action="/boox/activity"><label>Record type <select name="domain"><option value="">All types</option>{{range $d.Domains}}<option value="{{.}}" {{if eq . $d.Domain}}selected{{end}}>{{.}}</option>{{end}}</select></label><button class="secondary">Show</button></form>
 {{if not $d.Items}}<p class="empty">Nothing here yet. Records appear after a BOOX device syncs.</p>{{else}}
 <nav class="pagination" aria-label="Diagnostics pages"><span>{{$d.Start}}–{{$d.End}} of {{$d.Total}}</span>{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}">Next</a>{{end}}</nav>
-<div class="table-scroll"><table><thead><tr><th>Type</th><th>Title or native ID</th><th>Revision</th><th>Metadata editing</th><th>History {{template "help" "boox.history"}}</th></tr></thead><tbody>
+<div class="table-scroll"><table><thead><tr><th>Type</th><th>Title or Native ID</th><th>Revision</th><th>Metadata Editing</th><th>History {{template "help" "boox.history"}}</th></tr></thead><tbody>
 {{range $d.Items}}<tr><td>{{.Domain}}</td><td>{{.Title}}{{if ne .Title .ID}}<div class="muted small"><code>{{.ID}}</code></div>{{end}}</td><td class="small"><code>{{.Revision}}</code></td><td>{{if .Supported}}<span class="badge indexed">Supported</span>{{else}}<span class="badge blank">Unavailable</span>{{end}}</td><td><a href="/api/v1/boox/admin/history?documentId={{.ID}}">Observed versions</a></td></tr>{{end}}
 </tbody></table></div>
 <nav class="pagination" aria-label="Diagnostics pages"><span>{{$d.Start}}–{{$d.End}} of {{$d.Total}}</span>{{if $d.Previous}}<a class="button secondary" href="{{$d.Previous}}">Previous</a>{{end}}{{if $d.Next}}<a class="button secondary" href="{{$d.Next}}">Next</a>{{end}}</nav>{{end}}
@@ -370,7 +370,7 @@ func (s Service) browse(w http.ResponseWriter, r *http.Request) {
 	if offset+size < d.Total {
 		d.Next = page(offset + size)
 	}
-	s.renderPage(w, r, browseTemplate, "BOOX diagnostics", d)
+	s.renderPage(w, r, browseTemplate, "BOOX Diagnostics", d)
 }
 
 func (s Service) assetHistory(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,6 @@
 {{define "content"}}{{$d := .Data}}
 <p class="crumbs"><a href="/files/forestnote">Notebooks</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}} /</p>
-<div class="page-head"><h1>{{if $d.Name}}{{$d.Name}}{{else}}Untitled notebook{{end}}</h1>
+<div class="page-head"><h1>{{if $d.Name}}{{$d.Name}}{{else}}Untitled Notebook{{end}}</h1>
 <div class="toolbar">
   {{if $d.Count}}<nav class="segmented" aria-label="View"><a href="{{$d.Base}}{{if $d.Page.ID}}&amp;page={{$d.Page.ID}}{{end}}" {{if not $d.Grid}}aria-current="page"{{end}}>Page</a><a href="{{$d.Base}}&amp;view=grid" {{if $d.Grid}}aria-current="page"{{end}}>All pages</a></nav>{{end}}
   <a class="button secondary" href="/files/forestnote/export?notebook={{$d.ID}}">Download PDF</a>
@@ -21,14 +21,14 @@
 <figure id="page-{{$p.ID}}" class="reader {{$d.Zoom}}"><img src="/files/forestnote/render?path={{$p.Key}}" alt="{{if $d.Name}}{{$d.Name}}{{else}}Untitled notebook{{end}}, page {{$p.Number}}"></figure>
 </div>
 <aside>
-<section class="card"><h2>Page text {{template "help" "recognition.where"}}</h2>
+<section class="card"><h2>Page Text {{template "help" "recognition.where"}}</h2>
 {{if $p.BodyText}}<pre>{{$p.BodyText}}</pre>{{if $p.Model}}<p class="small muted">{{$p.Model}}</p>{{end}}{{else}}<p class="muted">No text for this page yet.</p>{{end}}
 <p><a class="button{{if $p.BodyText}} secondary{{end}}" href="/jobs/new?source=client&amp;notebook={{$d.ID}}&amp;from={{$p.Number}}&amp;to={{$p.Number}}">{{if $p.BodyText}}Recognize again…{{else}}Recognize this page…{{end}}</a></p>
 <div class="card-foot"><a href="/jobs/new?source=client&amp;notebook={{$d.ID}}">Choose pages…</a><a href="/jobs?source=client">Jobs</a></div>
 </section>
 </aside></div>
 {{end}}
-<details class="danger more"><summary>Delete notebook</summary>
+<details class="danger more"><summary>Delete Notebook</summary>
   <form method="post" action="/files/forestnote/delete"><input type="hidden" name="notebook" value="{{$d.ID}}">
     <p>Devices delete this notebook on their next sync. An edit made on a device afterwards brings it back.</p>
     <button class="destructive">Delete Notebook</button></form>
