@@ -2,13 +2,22 @@ package recognition
 
 import (
 	"context"
+	"errors"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 )
 
+// ErrNotebookDeleted means the notebook was deleted at its source: a library
+// run leaves it out rather than reporting it unavailable.
+var ErrNotebookDeleted = errors.New("Notebook was deleted on the device")
+
 func ClientNotebook(ctx context.Context, db pg.DB, id string) (Notebook, error) {
 	n := Notebook{ID: id}
-	if e := db.QueryRowContext(ctx, `SELECT coalesce(name,'Untitled') FROM fn_notebook WHERE id=$1 AND deleted_at IS NULL`, id).Scan(&n.Title); e != nil {
+	var deleted bool
+	if e := db.QueryRowContext(ctx, `SELECT coalesce(name,'Untitled'),deleted_at IS NOT NULL FROM fn_notebook WHERE id=$1`, id).Scan(&n.Title, &deleted); e != nil {
 		return n, e
+	}
+	if deleted {
+		return n, ErrNotebookDeleted
 	}
 	rows, e := db.QueryContext(ctx, `SELECT id FROM fn_page WHERE notebook_id=$1 AND deleted_at IS NULL ORDER BY sort_order,id`, id)
 	if e != nil {

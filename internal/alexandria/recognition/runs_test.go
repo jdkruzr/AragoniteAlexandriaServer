@@ -266,3 +266,71 @@ func TestLibraryDispatchChunksResumeWithoutDuplicatingJobs(t *testing.T) {
 		t.Fatal(runs, e)
 	}
 }
+
+func TestRunWithOnlyDecidedLeftoversIsComplete(t *testing.T) {
+	ctx := context.Background()
+	db := testenv.Database(t).DB
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	s := Store{DB: conn}
+	if _, err = conn.ExecContext(ctx, `UPDATE boox_identity SET native_uid='owner' WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"a", "gone"} {
+		raw, _ := json.Marshal(map[string]any{"uniqueId": id, "type": 1, "status": 1, "title": "Notebook " + id})
+		if _, err = conn.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'1-a','notebook','1','owner',$2)`, id, raw); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Seen live: a notebook deleted on the tablet, and a page the owner had
+	// skipped. Neither needs the owner's attention.
+	cat := func(ctx context.Context, source, id string) (Notebook, error) {
+		if id == "gone" {
+			return Notebook{}, ErrNotebookDeleted
+		}
+		return Notebook{ID: id, Title: "Notebook " + id, Pages: []Page{{ID: "a1", Number: 1}, {ID: "a2", Number: 2}}}, nil
+	}
+	if _, _, err = s.Queue(ctx, "boox", Notebook{ID: "a", Title: "Notebook a", Pages: []Page{{ID: "a2", Number: 2}}}, 1, 1, false, uuid.NewString()); err != nil {
+		t.Fatal(err)
+	}
+	var job string
+	conn.QueryRowContext(ctx, `SELECT job_id::text FROM boox_page_index WHERE page_id='a2'`).Scan(&job)
+	if _, err = s.Control(ctx, job, false, "skip"); err != nil {
+		t.Fatal(err)
+	}
+	id, err := s.CreateRun(ctx, "boox", uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		s.StepRun(ctx, cat, false)
+	}
+	if err = s.ApproveRun(ctx, id, nil, false); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		s.StepRun(ctx, cat, true)
+	}
+	if _, err = conn.ExecContext(ctx, `UPDATE boox_page_index SET state='ready' WHERE page_id='a1'`); err != nil {
+		t.Fatal(err)
+	}
+	r, err := s.GetRun(ctx, id)
+	if err != nil || r.Label() != "Complete" || r.Excluded != 1 || r.Unavailable != 0 || r.SkippedForGood != 1 || r.Skipped != 0 || r.Ready != 1 {
+		t.Fatal(err, r.Label(), r.Excluded, r.Unavailable, r.SkippedForGood, r.Skipped, r.Ready)
+	}
+	for _, n := range r.Notebooks {
+		if n.ID == "gone" && (n.State != "excluded" || n.Detail != "Deleted on the device.") {
+			t.Fatal(n)
+		}
+	}
+	// A failure still needs attention.
+	if _, err = conn.ExecContext(ctx, `UPDATE boox_page_index SET state='failed' WHERE page_id='a1'`); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ = s.GetRun(ctx, id); r.Label() != "Needs attention" {
+		t.Fatal(r.Label())
+	}
+}

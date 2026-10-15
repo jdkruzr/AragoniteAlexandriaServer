@@ -168,11 +168,14 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 	detail := ""
 	next := "ready"
 	queued, skipped := previousQueued, previousSkipped
-	if catErr != nil {
+	if errors.Is(catErr, ErrNotebookDeleted) {
+		next, detail, catErr = "excluded", "Deleted on the device.", nil
+		n = Notebook{ID: nid, Pages: []Page{}}
+	} else if catErr != nil {
 		next = "unavailable"
 		detail = "Page catalog unavailable or incomplete. Retry preparation after synchronization."
 	}
-	if state == "preparing" && catErr == nil {
+	if state == "preparing" && catErr == nil && next == "ready" {
 		var skippedNotebook bool
 		if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM alexandria_recognition_skip WHERE source=$1 AND notebook_id=$2)`, source, nid).Scan(&skippedNotebook); err != nil {
 			return false, err
@@ -198,7 +201,7 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 		}
 		version = n.Version()
 	}
-	if state == "queued" && catErr == nil {
+	if state == "queued" && catErr == nil && next == "ready" {
 		if n.Version() != version {
 			next = "unavailable"
 			detail = "Page list changed after review. Prepare and confirm this notebook again."
@@ -307,6 +310,19 @@ func (s Store) GetRun(ctx context.Context, id string) (Run, error) {
 	if err = rows.Err(); err != nil {
 		return r, err
 	}
+	// Pages the owner skipped before the run weren't queued by it; dispatch
+	// counted them as left to earlier jobs. Report them as skipped instead.
+	pages := `JOIN boox_page_index q ON q.notebook_id=n.notebook_id AND q.page_id=e.v->>'ID'`
+	if r.Source == "client" {
+		pages = `JOIN alexandria_page_dirty q ON q.page_id=e.v->>'ID'`
+	}
+	var earlier int
+	if err = s.DB.QueryRowContext(ctx, `SELECT count(*) FROM alexandria_recognition_run_notebook n CROSS JOIN LATERAL jsonb_array_elements(n.pages) WITH ORDINALITY e(v,o) `+pages+`
+ WHERE n.run_id=$1 AND e.o<=n.cursor AND q.state='skipped' AND NOT EXISTS(SELECT 1 FROM alexandria_recognition_job j JOIN alexandria_recognition_batch b ON b.id=j.batch_id WHERE j.id=q.job_id AND b.run_id=$1)`, id).Scan(&earlier); err != nil {
+		return r, err
+	}
+	r.SkippedForGood += earlier
+	r.Skipped = max(0, r.Skipped-earlier)
 	// Measure from the first outcome when the run is younger than the window.
 	var recent int
 	var seconds float64
@@ -480,7 +496,9 @@ func (r Run) Label() string {
 	if r.Awaiting+r.Pending+r.Processing > 0 {
 		return "Running"
 	}
-	if r.Failed+r.Blocked+r.Paused+r.Unavailable+r.Skipped+r.Cancelled > 0 {
+	// Cancelled work, pages skipped by the owner and pages left to earlier
+	// jobs were decided already; only unfinished problems need the owner.
+	if r.Failed+r.Blocked+r.Paused+r.Unavailable > 0 {
 		return "Needs attention"
 	}
 	return "Complete"

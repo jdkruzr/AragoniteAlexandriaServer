@@ -12,8 +12,11 @@ func (s Service) RecognitionNotebook(ctx context.Context, id string) (recognitio
 	if e != nil {
 		return recognition.Notebook{}, e
 	}
-	if n.Meta.Status != 1 || n.IndexWarning != "" {
-		return recognition.Notebook{}, errors.New("Notebook is deleted or its page catalog is incomplete")
+	if n.Meta.Status != 1 {
+		return recognition.Notebook{}, recognition.ErrNotebookDeleted
+	}
+	if n.IndexWarning != "" {
+		return recognition.Notebook{}, errors.New("Notebook page catalog is incomplete")
 	}
 	out := recognition.Notebook{ID: id, Title: n.Meta.Title}
 	for i, p := range booxpage.PageIDs(n.Meta.PageNameList) {
