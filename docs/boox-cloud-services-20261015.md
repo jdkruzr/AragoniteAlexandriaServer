@@ -200,3 +200,31 @@ mode-5 odds itself or by anonymous pass-through (`updateLogs/privacy/updatedAt`,
   from the marker (PowerSync `docs/ksync-retargeting-spike.md`), so (b) is
   plausible but unqualified.
 - Feedback is unchanged: it fails at `GET /api/1/encrypt/key`.
+
+## Rolled out (2026-10-15, late afternoon)
+
+- Alexandria: `GET /api/v1/boox/device/endpoints` (companion token) returns the
+  current cluster; enrolment and this route share `Config.cluster`.
+- PowerSync 0.1.8 (`6663f28`, both tablets) adds **Update server endpoints**:
+  verifies active connection, signed-in library account and that the live entry
+  and marker are PowerSync's own; previews the changed values; journals the
+  previous entry, marker and sync flags; pauses sync, rewrites marker and
+  clusterMap entry, calls ksync refresh (81, requires success), verifies,
+  restores flags and broadcasts `SERVER_INFO_CHANGED_ACTION` and
+  `ONYX_MATERIAL_HOST_BASEURL_CHANGED_ACTION`. Any failure rolls back.
+  Refresh rebuilds the list from Onyx's index plus the marker, so the marker is
+  the source of truth; an id missing from it would log the device out.
+- Applied on Palma then Lumi: exactly the 4 values changed, same selected
+  cluster, built-in `en`/`eu` entries untouched; both after-states identical.
+  Notes picked up the change at once; the launcher/Settings process kept old
+  hosts until a restart, so the app now asks for a reboot.
+- After reboot the firmware check (`checkCloudOTA`) no longer reaches
+  Alexandria (log dedup reset beforehand), nor does `deviceconfigs/query`.
+  Still reaching Alexandria anonymously at boot: `v2/service/core/feature`,
+  `1/devices/lock/state`, `1/devices/action/state`, `1/apks/batchQuery` (app
+  updates); and `POST /api/1/notes/version` with a token gets 501. Candidates
+  for later.
+- Next idea (owner asked): Alexandria's own Template Hub page using the Notes
+  bridge (`downloadLibrary`, `addMaterials`, `checkLocalLibraries`,
+  `createNote`; `MaterialCenterFragment$getOnyxWebViewCallback$1`), filled from
+  the owner's uploaded templates or an anonymous mirror of Onyx's catalogue.
