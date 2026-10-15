@@ -62,6 +62,8 @@
 </fieldset>
 <fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "When Minutes Are Ready"}} {{template "help" "minutes.autosend"}}</legend>
 <label><input type="checkbox" name="s_boox" {{if $p.Config.Summary.SendToBOOX}}checked{{end}}> {{t "Send them to BOOX automatically"}}</label>
+<label>{{t "Language of headings in minutes notes"}} <select name="s_note_language"><option value="" {{if not $p.Config.Summary.NoteLanguage}}selected{{end}}>English</option><option value="auto" {{if eq $p.Config.Summary.NoteLanguage "auto"}}selected{{end}}>{{t "Match the recordings"}}</option>{{range languages}}{{if ne .Tag "en"}}<option value="{{.Tag}}" lang="{{.Tag}}" {{if eq $p.Config.Summary.NoteLanguage .Tag}}selected{{end}}>{{.Name}}</option>{{end}}{{end}}</select></label>
+<p class="hint">{{t "The minutes themselves are written in the recordings' language; this sets the headings and labels around them, such as “Key points”."}}</p>
 </fieldset>
 <p class="hint">{{if $p.HasTranscriptionKey}}{{t "A transcription key is saved."}}{{else}}{{t "No transcription key is saved."}}{{end}} {{if $p.HasSummaryKey}}{{t "A summary key is saved."}}{{else}}{{t "No summary key is saved."}}{{end}}</p>
 <div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button name="action" value="test_transcription" class="secondary">{{t "Test transcription"}}</button><button name="action" value="test_summary" class="secondary">{{t "Test summary"}}</button></div>

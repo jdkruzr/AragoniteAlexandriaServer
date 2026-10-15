@@ -45,8 +45,10 @@ var funcs = template.FuncMap{
 	"th": htmlT(i18n.English),
 	// td shows a stored job or page detail in the reader's language when it
 	// is a known sentence (see details.go); other text is shown as stored.
-	"td":      detailIn(i18n.English),
-	"version": func() string { return Version },
+	"td": detailIn(i18n.English),
+	// languages lists the available languages by their own names.
+	"languages": i18n.Choices,
+	"version":   func() string { return Version },
 	"listJobStates": func() []string {
 		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled", "skipped"}
 	},

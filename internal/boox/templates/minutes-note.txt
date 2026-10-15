@@ -1,13 +1,12 @@
-
-**Topic:** {{.Topic}}
-**Keywords:** {{range $i, $k := .Keywords}}{{if $i}}, {{end}}{{$k}}{{end}}
-# Key points
-{{range .KeyPoints}}- {{.Text}} ({{if eq .From "recording"}}recording{{else if eq .From "notes"}}notes{{else}}recording and notes{{end}})
-{{end}}# Conclusion
+**{{t "Topic:"}}** {{.Topic}}
+**{{t "Keywords:"}}** {{range $i, $k := .Keywords}}{{if $i}}, {{end}}{{$k}}{{end}}
+# {{t "Key points"}}
+{{range .KeyPoints}}- {{.Text}} ({{if eq .From "recording"}}{{t "recording"}}{{else if eq .From "notes"}}{{t "notes"}}{{else}}{{t "recording and notes"}}{{end}})
+{{end}}# {{t "Conclusion"}}
 {{.Conclusion}}
-# About these minutes
-**Notebook:** {{.Metadata.Title}}{{if .Metadata.Folder}} in {{.Metadata.Folder}}{{end}}
-**Pages:** {{.Metadata.PagesWithText}} of {{.Metadata.PageCount}} with handwriting text
-**Recordings:** {{len .Metadata.Recordings}}
+# {{t "About these minutes"}}
+**{{t "Notebook:"}}** {{.Metadata.Title}}{{if .Metadata.Folder}} {{t "in {{.Folder}}" "Folder" .Metadata.Folder}}{{end}}
+**{{t "Pages:"}}** {{t "{{.Done}} of {{.Total}} with handwriting text" "Done" .Metadata.PagesWithText "Total" .Metadata.PageCount}}
+**{{t "Recordings:"}}** {{len .Metadata.Recordings}}
 {{range .Metadata.Recordings}}- {{.Title}}: {{utc .RecordedAt}}, {{clock .DurationMS}}
-{{end}}**Written by:** {{.Model}}{{if .Metadata.Transcriber}}, from {{.Metadata.Transcriber}} transcripts{{end}}{{if .FinishedAt.Valid}}, {{utc .FinishedAt.Time}}{{end}}
+{{end}}**{{t "Written by:"}}** {{if .Metadata.Transcriber}}{{t "{{.Model}}, from {{.Transcriber}} transcripts" "Model" .Model "Transcriber" .Metadata.Transcriber}}{{else}}{{.Model}}{{end}}{{if .FinishedAt.Valid}}, {{utc .FinishedAt.Time}}{{end}}

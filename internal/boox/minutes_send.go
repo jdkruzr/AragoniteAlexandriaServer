@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"net/http"
 	"net/url"
 	"strings"
@@ -28,9 +29,17 @@ const (
 	noticeMinutesConfirm = "Confirm creating the note before sending."
 )
 
-func minutesNoteBlocks(m minutes.Stored) ([]TextBlock, error) {
+// minutesNoteBlocks writes the note's headings and labels in lang: "" for
+// English, "auto" for the recordings' most common language, or a tag. The
+// minutes themselves are in whatever language the model wrote them.
+func minutesNoteBlocks(m minutes.Stored, lang string) ([]TextBlock, error) {
+	t, e := minutesNoteTemplate.Clone()
+	if e != nil {
+		return nil, e
+	}
+	t.Funcs(texttemplate.FuncMap{"t": noteLocalizer(m, lang).T})
 	var b bytes.Buffer
-	if e := minutesNoteTemplate.Execute(&b, m); e != nil {
+	if e := t.Execute(&b, m); e != nil {
 		return nil, e
 	}
 	return textBlocks(b.String()), nil
@@ -182,7 +191,7 @@ func (s Service) SendMinutesToBOOX(ctx context.Context, id, request string) erro
 	if !has || stored.Topic == "" {
 		return sql.ErrNoRows
 	}
-	blocks, e := minutesNoteBlocks(stored)
+	blocks, e := minutesNoteBlocks(stored, s.Minutes.NoteLanguage)
 	if e != nil {
 		return e
 	}
@@ -203,4 +212,22 @@ func autoSendFailed(e error) string {
 		return "Couldn't send these minutes to BOOX automatically: " + e.Error()
 	}
 	return "Couldn't send these minutes to BOOX automatically. Use Send to BOOX to try again."
+}
+
+func noteLocalizer(m minutes.Stored, lang string) i18n.Localizer {
+	if lang != "auto" {
+		return i18n.For(lang, "en")
+	}
+	counts := map[string]int{}
+	best := "en"
+	for _, r := range m.Metadata.Recordings {
+		if r.Language == "" {
+			continue
+		}
+		counts[r.Language]++
+		if counts[r.Language] > counts[best] {
+			best = r.Language
+		}
+	}
+	return i18n.For(best, "en")
 }

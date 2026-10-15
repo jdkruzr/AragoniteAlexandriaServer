@@ -196,7 +196,7 @@ func TestMinutesNoteBlocks(t *testing.T) {
 			KeyPoints: []minutes.Point{{Text: "Testing finishes Thursday.", From: "both"}, {Text: "Notes need an owner.", From: "notes"}}},
 		Metadata: minutes.Metadata{Title: "Synthetic meeting", Folder: "Work", PageCount: 2, PagesWithText: 1, Transcriber: "whisper",
 			Recordings: []minutes.RecordingSummary{{Title: "Recording1", RecordedAt: start, DurationMS: 185400}}}}
-	blocks, e := minutesNoteBlocks(m)
+	blocks, e := minutesNoteBlocks(m, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -299,4 +299,33 @@ func TestMinutesNoteResendPolicy(t *testing.T) {
 	status("changed")
 	s.DB.ExecContext(ctx, `UPDATE boox_projection SET body=jsonb_set(body,'{status}','0') WHERE document_id=$1`, doc)
 	status("deleted")
+}
+
+// Headings and labels follow the chosen language; "auto" follows the
+// recordings, and falls back to English when none has a detected language.
+func TestMinutesNoteLanguage(t *testing.T) {
+	m := minutes.Stored{Model: "synthetic-llm",
+		Minutes:  minutes.Minutes{Topic: "Planificación", Conclusion: "Listo.", KeyPoints: []minutes.Point{{Text: "Algo.", From: "recording"}}},
+		Metadata: minutes.Metadata{Title: "Reunión", PageCount: 1, Recordings: []minutes.RecordingSummary{{Title: "R1", Language: "es"}}}}
+	first := func(lang string) string {
+		blocks, e := minutesNoteBlocks(m, lang)
+		if e != nil {
+			t.Fatal(e)
+		}
+		var out []string
+		for _, b := range blocks[:4] {
+			out = append(out, b.Label+b.Text)
+		}
+		return strings.Join(out, "|")
+	}
+	if got, want := first("es"), "Tema:Planificación|Palabras clave:|Puntos clave|Algo. (grabación)"; got != want {
+		t.Errorf("es: %q, want %q", got, want)
+	}
+	if got := first("auto"); !strings.HasPrefix(got, "Tema:") {
+		t.Errorf("auto with a Spanish recording: %q", got)
+	}
+	m.Metadata.Recordings[0].Language = ""
+	if got := first("auto"); !strings.HasPrefix(got, "Topic:") {
+		t.Errorf("auto without a detected language: %q", got)
+	}
 }

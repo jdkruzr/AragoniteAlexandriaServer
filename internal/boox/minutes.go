@@ -31,6 +31,7 @@ type MinutesConfig struct {
 	Identity                string // transcription settings identity
 	AutoSend                bool   // send finished minutes to BOOX
 	Instructions            string // custom summary instructions; blank is the default
+	NoteLanguage            string // minutes note headings: "", "auto" or a language tag
 }
 
 // Recordings are notebook audio files in resource/data. Titles, start times and
