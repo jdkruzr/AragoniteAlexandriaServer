@@ -42,7 +42,10 @@ var funcs = template.FuncMap{
 	// th translates a message that carries its own inline markup (links,
 	// emphasis, code) so a sentence isn't split around it. Catalogs are
 	// reviewed files in the repository, so their markup is trusted.
-	"th":      htmlT(i18n.English),
+	"th": htmlT(i18n.English),
+	// td shows a stored job or page detail in the reader's language when it
+	// is a known sentence (see details.go); other text is shown as stored.
+	"td":      detailIn(i18n.English),
 	"version": func() string { return Version },
 	"listJobStates": func() []string {
 		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled", "skipped"}
@@ -207,7 +210,7 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		live, _ := strconv.Atoi(w.Header().Get("Refresh"))
 		w.Header().Del("Refresh")
 		loc := d.Localizer(r)
-		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "tip": tipIn(loc)})
+		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc)})
 		w.Header().Set("Content-Language", loc.Lang())
 		w.Header().Add("Vary", "Accept-Language")
 		err = t.ExecuteTemplate(&buf, "layout.html", page{Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,

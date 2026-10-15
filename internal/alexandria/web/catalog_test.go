@@ -114,6 +114,59 @@ func splitArgs(s string) []string {
 
 const localeDir = "../i18n/locales"
 
+var (
+	htmlTags    = regexp.MustCompile(`<[^>]*>`)
+	placeholder = regexp.MustCompile(`\{\{\.\w+\}\}`)
+)
+
+// forms_ lists a catalog value's text: one string, or each plural form.
+func forms_(v any) []string {
+	switch x := v.(type) {
+	case string:
+		return []string{x}
+	case map[string]any:
+		var out []string
+		for _, f := range x {
+			if s, ok := f.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// sameSet compares placeholder names, ignoring order and repeats (a singular
+// form may drop {{.Count}}, e.g. "one page").
+func sameSet(a, b []string) bool {
+	in := func(xs []string) map[string]bool {
+		m := map[string]bool{}
+		for _, x := range xs {
+			m[x] = true
+		}
+		return m
+	}
+	ma, mb := in(a), in(b)
+	for k := range ma {
+		if !mb[k] {
+			return false
+		}
+	}
+	return true
+}
+
 func readCatalog(t *testing.T, path string) map[string]any {
 	t.Helper()
 	b, err := os.ReadFile(path)
@@ -165,6 +218,18 @@ func TestCatalogsCoverEveryMessage(t *testing.T) {
 				t.Errorf("%s: %s: %q", lang, kind, id)
 			}
 		}
+		// Translators change words, never markup: every form must carry exactly
+		// the English message's tags (attributes included) and placeholders.
+		var markup []string
+		for id := range used {
+			for _, form := range forms_(cat[id]) {
+				if !sameStrings(htmlTags.FindAllString(form, -1), htmlTags.FindAllString(id, -1)) || !sameSet(placeholder.FindAllString(form, -1), placeholder.FindAllString(id, -1)) {
+					markup = append(markup, id)
+					break
+				}
+			}
+		}
+		report("markup or placeholders differ from English", markup)
 		report("missing", missing)
 		report("needs one/other plural forms", forms)
 		report("no longer used (reworded or removed?)", stale)

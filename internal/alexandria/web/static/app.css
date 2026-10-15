@@ -153,7 +153,10 @@ h1 .tip, h2 .tip, h3 .tip, legend .tip { vertical-align:.2em; }
 .tip-pop::backdrop { background:rgba(0,0,0,.08); }
 
 /* Tables */
-table { width:100%; border-collapse:collapse; background:var(--panel); overflow-wrap:anywhere; }
+/* break-word (not anywhere): only words that can't fit break, so columns keep
+   room for whole words; hyphens:auto follows the page language. */
+table { width:100%; border-collapse:collapse; background:var(--panel); overflow-wrap:break-word; hyphens:auto; }
+th { hyphens:manual; }
 th, td { text-align:left; padding:.55rem .65rem; border-bottom:1px solid var(--line); vertical-align:top; }
 thead th { position:sticky; top:0; background:var(--panel-2); font-size:.85rem; font-weight:600; color:var(--muted); z-index:1; }
 thead th a { color:var(--muted); text-decoration:none; } thead th a:hover { color:var(--ink); }
