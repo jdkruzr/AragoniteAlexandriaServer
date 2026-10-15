@@ -27,50 +27,7 @@ type minutesView struct {
 	Sent                           *sentNote
 }
 
-var minutesTemplate = template.Must(template.New("minutes").Funcs(web.Funcs()).Parse(`{{define "content"}}{{$d:=.Data}}{{$m:=$d.Stored}}
-<p class="crumbs"><a href="/boox">Notebooks</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> /</p>
-<div class="page-head"><h1>Audio Note Minutes {{template "help" "boox.minutes"}}</h1>{{if $d.Has}}<div class="toolbar"><a class="button secondary" href="/boox/minutes/new?id={{$d.ID}}">{{if eq $m.State "ready"}}Update…{{else}}Request again…{{end}}</a></div>{{end}}</div>
-{{if not $d.Has}}<div class="card"><p class="empty">No Audio Note Minutes for this notebook yet.</p>
-<p>{{if $d.Recordings}}It has {{$d.Recordings}} recording{{if ne $d.Recordings 1}}s{{end}}.{{else}}It has no recordings, so minutes would come from handwriting alone.{{end}}</p>
-<p><a class="button" href="/boox/minutes/new?id={{$d.ID}}">Summarize this note…</a></p></div>
-{{else}}
-{{if eq $m.State "queued" "processing"}}<div class="callout" role="status"><p><span class="badge partial">In progress</span> {{if $d.Progress}}{{$d.Progress}}{{else}}Waiting to start.{{end}}</p>{{if $m.Topic}}<p class="small">The minutes below are from the previous request.</p>{{end}}<form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="cancel"><button class="quiet">Cancel</button></form></div>
-{{else if eq $m.State "failed" "cancelled"}}<div class="callout danger" role="status"><p><span class="badge bad">{{if eq $m.State "failed"}}Failed{{else}}Cancelled{{end}}</span> {{$m.Detail}}</p><form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="retry"><button class="secondary">Retry</button></form></div>
-{{else if $d.Stale}}<p class="callout">The notebook or the summary instructions have changed since these minutes were written. <a href="/boox/minutes/new?id={{$d.ID}}">Update…</a></p>{{end}}
-{{if $m.Topic}}<div class="reader-layout"><div>
-<section class="card minutes"><h2>{{$m.Topic}}</h2>
-<p class="tags" aria-label="Keywords">{{range $m.Keywords}}<span class="tag">{{.}}</span>{{end}}</p>
-<h3>Key Points</h3><ol class="points">{{range $m.KeyPoints}}<li>{{.Text}} <span class="badge source">{{if eq .From "recording"}}Recording{{else if eq .From "notes"}}Notes{{else}}Recording + notes{{end}}</span></li>{{end}}</ol>
-<h3>Conclusion</h3><p>{{$m.Conclusion}}</p></section>
-</div><aside><section class="card"><h2>About These Minutes</h2><dl class="meta">
-<dt>Notebook</dt><dd>{{$m.Metadata.Title}}{{if $m.Metadata.Folder}} <span class="muted">in {{$m.Metadata.Folder}}</span>{{end}}</dd>
-<dt>Created</dt><dd>{{utc $m.Metadata.Created}}</dd>
-<dt>Pages</dt><dd>{{$m.Metadata.PagesWithText}} of {{$m.Metadata.PageCount}} with handwriting text</dd>
-<dt>Recordings</dt><dd>{{len $m.Metadata.Recordings}}{{range $m.Metadata.Recordings}}<br>{{.Title}}: {{utc .RecordedAt}}, {{clock .DurationMS}}{{end}}</dd>
-<dt>Written By</dt><dd>{{$m.Model}}{{if $m.Metadata.Transcriber}}, from {{$m.Metadata.Transcriber}} transcripts{{end}}</dd>
-<dt>Written</dt><dd>{{if $m.FinishedAt.Valid}}{{utc $m.FinishedAt.Time}}{{else}}—{{end}}</dd>
-</dl></section>
-{{if $d.Sendable}}<section class="card" id="send"><h2>On Your BOOX {{template "help" "boox.minutesnote"}}</h2>
-{{if and (eq $m.State "ready") $m.Detail}}<p class="callout danger" role="status">{{$m.Detail}}</p>{{end}}
-{{with $d.Sent}}<p id="minutes-on-boox">{{if eq .Status "pending"}}<span class="badge partial">Sending</span> “{{.Title}}” reaches your devices with their next sync.
-{{else if eq .Status "failed"}}<span class="badge bad">Not sent</span> “{{.Title}}” couldn't be sent ({{.Code}}).
-{{else if eq .Status "untouched"}}<span class="badge indexed">On your BOOX</span> “{{.Title}}” is in {{if $d.Folder}}{{$d.Folder}}{{else}}the notebook root{{end}}, sent {{utc .At}}. It syncs like any other notebook; there's nothing more to do.
-{{else if eq .Status "changed"}}“{{.Title}}” was edited on a device, so it's yours now. Sending again adds a separate note and leaves that one alone.
-{{else}}“{{.Title}}” was deleted on a device. Sending again creates a new note.{{end}}</p>{{end}}
-{{if not (and $d.Sent (eq $d.Sent.Status "pending"))}}{{$replace := and $d.Sent (eq $d.Sent.Status "untouched")}}
-{{if $replace}}<details class="more" id="minutes-replace"><summary>Replace It on Your BOOX</summary>
-<p class="small muted">Rewrites the note with the minutes shown on this page, for example after you've updated them. It doesn't summarize anything again; that's <strong>Update</strong>, which appears when the minutes are out of date.</p>{{else if not $d.Sent}}<p class="small muted">Creates a text note beside the notebook. From then on it syncs to your devices like any other notebook.</p>{{end}}
-<form method="post" action="/boox/minutes/send"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="request" value="{{$d.SendRequest}}">
-<label class="confirm"><input type="checkbox" name="confirm" required> {{if $replace}}Replace “{{$d.Sent.Title}}” on every connected BOOX device with these minutes{{else}}Create “{{$d.NoteTitle}}” in {{if $d.Folder}}{{$d.Folder}}{{else}}the notebook root{{end}} on every connected BOOX device{{end}}</label>
-<p><button class="secondary">{{if $replace}}Replace on BOOX{{else}}Send to BOOX{{end}}</button></p></form>{{if $replace}}</details>{{end}}{{end}}
-</section>{{end}}</aside></div>{{end}}
-{{if $m.Recordings}}<section class="card"><h2>Recordings</h2>
-{{range $m.Recordings}}<article class="recording"><h3>{{.Title}}</h3>
-<p class="small muted">{{if not .RecordedAt.IsZero}}Recorded {{utc .RecordedAt}} · {{end}}{{clock .DurationMS}}{{if .Language}} · {{.Language}}{{end}} · {{if eq .State "ready"}}Transcribed{{else if eq .State "failed"}}Transcription failed: {{.Detail}}{{else if eq .State "missing"}}Not transcribed{{else}}Transcribing…{{end}}</p>
-<audio controls preload="none" src="/boox/minutes/audio?id={{$d.ID}}&amp;key={{.Key}}&amp;sha={{.SHA256}}">Your browser can't play this recording.</audio>
-{{if .Segments}}<details><summary>Transcript</summary><dl class="transcript">{{range .Segments}}<dt>{{clock .Start}}</dt><dd>{{.Text}}</dd>{{end}}</dl></details>{{else if .Text}}<details><summary>Transcript</summary><p>{{.Text}}</p></details>{{end}}
-</article>{{end}}</section>{{end}}
-{{end}}{{end}}`))
+var minutesTemplate = template.Must(template.New("minutes.html").Funcs(web.Funcs()).ParseFS(templateFS, "templates/minutes.html"))
 
 type minutesRequestView struct {
 	ID, Title, Version, Request           string
@@ -80,27 +37,7 @@ type minutesRequestView struct {
 	Pages, WithText, Missing, InProgress  int
 }
 
-var minutesRequestTemplate = template.Must(template.New("minutes-new").Funcs(web.Funcs()).Parse(`{{define "content"}}{{$d:=.Data}}
-<p class="crumbs"><a href="/boox">Notebooks</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">Audio Note Minutes</a> /</p>
-<h1>Summarize This Note {{template "help" "boox.minutes"}}</h1>
-{{if not $d.Enabled}}<div class="callout"><p>Set up transcription and a summary model in <a href="/settings/recognition#minutes">Settings → Recognition</a> first.</p></div>{{else}}
-<form method="post" action="/boox/minutes/new"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="request" value="{{$d.Request}}">
-<section class="card"><h2>Recordings</h2>
-{{if $d.Recordings}}<div class="table-scroll"><table><thead><tr><th>Recording</th><th>Recorded</th><th>Length</th><th>Size</th></tr></thead><tbody>
-{{range $d.Recordings}}<tr><td>{{.Title}}</td><td>{{utc .RecordedAt}}</td><td>{{if .DurationMS}}{{clock .DurationMS}}{{else}}—{{end}}</td><td>{{bytes .Bytes}}</td></tr>{{end}}
-</tbody></table></div>{{else}}<p class="muted">This notebook has no recordings. The minutes will come from handwriting alone.</p>{{end}}
-</section>
-<section class="card"><h2>Handwriting</h2>
-<p>{{$d.WithText}} of {{$d.Pages}} page{{if ne $d.Pages 1}}s{{end}} have recognized text{{if $d.InProgress}}; {{$d.InProgress}} {{if eq $d.InProgress 1}}is{{else}}are{{end}} being recognized now{{end}}.</p>
-{{if $d.Missing}}{{if $d.RecognitionEnabled}}<label class="confirm"><input type="checkbox" name="recognize" checked> Recognize the {{$d.Missing}} page{{if ne $d.Missing 1}}s{{end}} without text first</label><p class="small muted">Sends {{if eq $d.Missing 1}}that page{{else}}those pages{{end}} to your recognition provider. Provider charges may apply. Minutes wait until recognition finishes.</p>
-{{else}}<p class="small muted">{{$d.Missing}} page{{if ne $d.Missing 1}}s have{{else}} has{{end}} no text and will be left out. Turn on recognition in <a href="/settings/recognition">Settings → Recognition</a> to include them.</p>{{end}}{{end}}
-</section>
-<section class="card"><h2>Send</h2>
-<p>Transcription: <strong>{{$d.Transcriber}}</strong> · Summary: <strong>{{$d.Summarizer}}</strong></p>
-<label class="confirm"><input type="checkbox" name="confirm" required> Send the recordings and this notebook's text to these providers</label>
-{{if $d.AutoSend}}<p class="small muted">When they're ready, the minutes are also sent to your BOOX as “{{$d.Title}}_Minutes”. Change this in <a href="/settings/recognition#minutes">Settings → Recognition</a>.</p>{{end}}
-<p><button>Summarize</button></p>
-</section></form>{{end}}{{end}}`))
+var minutesRequestTemplate = template.Must(template.New("minutes-new.html").Funcs(web.Funcs()).ParseFS(templateFS, "templates/minutes-new.html"))
 
 func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")

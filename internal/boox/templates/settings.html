@@ -1,0 +1,6 @@
+{{define "content"}}<h1>BOOX Settings</h1>
+<div class="cards">
+<section class="card"><h2>Connection {{template "help" "boox.enroll"}}</h2><p>Devices connect with PowerSync using <code>{{.Base}}</code>.</p><p class="small muted">To return a tablet to Onyx, use Restore in PowerSync. Revoking a device here only removes its access.</p><div class="card-foot"><a class="button" href="/boox/enroll">Connect a device</a><a href="/boox/devices">Manage devices</a></div></section>
+<section class="card"><h2>Library Maintenance</h2><p>Delete notebooks BOOX left with default names, review deleted notebooks, or recognize handwriting across the whole library.</p><div class="card-foot"><a href="/boox/cleanup">Clean up numbered notebooks…</a><a href="/boox?show=deleted">Deleted notebooks</a><a href="/jobs/library?source=boox">Recognize this library…</a></div></section>
+<section class="card"><h2>Diagnostics {{template "help" "boox.diagnostics"}}</h2><p>Raw records the server has observed, with native IDs, revisions and retained history.</p><div class="card-foot"><a href="/boox/activity">Open diagnostics</a><a href="/boox/text-notes/new">Create a test text note</a><a href="/help#boox">How BOOX sync works</a></div></section>
+</div>{{end}}

@@ -140,17 +140,7 @@ type audioRecoveryAsset struct {
 	Version, Bytes int64
 }
 
-var audioRecoveryTemplate = template.Must(template.New("audio-recovery").Parse(`{{define "content"}}
-<p class="crumbs"><a href="/boox/notebook?id={{.Data.Document}}">{{.Data.Title}}</a> /</p><h1>Recover Notebook Audio</h1>
-<p class="lede">Repairs recordings affected by a known BOOX audio defect, one recording at a time. The original stays on the server.</p>
-{{if .Data.Error}}<p role="alert">{{.Data.Error}}</p>{{end}}
-{{if .Data.Operation}}<p>Server repair: <strong>{{.Data.State}}</strong></p>
-{{if eq .Data.State "preview"}}<p>The selected recording passed the compatibility checks. Publishing replaces its cloud download with a corrected copy.</p><form method="post"><input type="hidden" name="documentId" value="{{.Data.Document}}"><input type="hidden" name="operationId" value="{{.Data.Operation}}"><button>Publish corrected audio</button></form>{{end}}
-{{if eq .Data.State "published"}}<p>For an MP3 already on a device, stop recording and close the notebook, then open PowerSync and choose <strong>Recover notebook audio</strong>. PowerSync preserves a local backup and replaces only a file that exactly matches the known defect. MP3s up to 16 MiB are supported; PCM cache recovery is not yet supported.</p><p>Device playback and application are not confirmed by this server status.</p>{{end}}
-<p><a href="/boox/audio?document={{.Data.Document}}&amp;operation={{.Data.Operation}}">Refresh repair status</a> · <a href="/boox/audio?document={{.Data.Document}}">Review another recording</a></p>
-{{else}}<p class="muted">A preview checks the full retained recording before making any change to cloud downloads. An already corrected or unsupported recording is rejected.</p>
-{{range .Data.Items}}<section class="card"><p>{{.Name}} · {{.Bytes}} stored bytes</p><form method="post"><input type="hidden" name="documentId" value="{{$.Data.Document}}"><input type="hidden" name="expectedRevision" value="{{$.Data.Revision}}"><input type="hidden" name="nativeKey" value="{{.Key}}"><input type="hidden" name="versionId" value="{{.Version}}"><input type="hidden" name="idempotencyKey" value="{{$.Data.Key}}"><button>Preview audio repair</button></form></section>{{else}}<p>No live audio resources are available for this notebook.</p>{{end}}{{end}}
-{{end}}`))
+var audioRecoveryTemplate = template.Must(template.New("audio-recovery.html").ParseFS(templateFS, "templates/audio-recovery.html"))
 
 func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 	d := audioRecoveryView{Document: r.URL.Query().Get("document"), Operation: r.URL.Query().Get("operation"), Key: uuid.NewString()}

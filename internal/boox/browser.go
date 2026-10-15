@@ -11,32 +11,10 @@ import (
 	"strings"
 )
 
-var setupTemplate = template.Must(template.New("setup").Parse(`{{define "content"}}
-<p class="crumbs"><a href="/boox/devices">BOOX devices</a> /</p>
-<h1>Connect a BOOX Device {{template "help" "boox.enroll"}}</h1>
-<section class="card">
-<ol>
-<li>Install <strong>PowerSync</strong> on the tablet.</li>
-<li>Enter <code>{{.Base}}</code> as the server address.</li>
-<li>Create a code below and type it into PowerSync. It works once and expires after ten minutes.</li>
-</ol>
-{{if .Data}}<p>Enrollment code:</p><code class="secret">{{.Data}}</code>{{end}}
-<form class="actions" method="post" action="/boox/enroll"><button>{{if .Data}}Create another code{{else}}Create enrollment code{{end}}</button></form>
-</section>
-<p class="small muted">Every tablet must use the same BOOX account. In PowerSync, turn on notebook and reading sync to send content here. Your existing BOOX library is kept, and returning to Onyx doesn't need this server.</p>
-{{end}}`))
+var setupTemplate = template.Must(template.New("setup.html").ParseFS(templateFS, "templates/setup.html"))
 
 // Views are grafted into the shared layout, so they may only use its functions.
-var devicesTemplate = template.Must(template.New("devices").Parse(`{{define "content"}}
-<div class="page-head"><h1>BOOX Devices {{template "help" "boox.devices"}}</h1><a class="button" href="/boox/enroll">Connect a device</a></div>
-{{if not .Data}}<div class="card"><p class="empty">No BOOX devices have connected yet.</p></div>{{else}}
-<div class="table-scroll"><table class="keep-cols"><thead><tr><th>Device</th><th>State</th><th>Last Upload Received</th><th></th></tr></thead><tbody>
-{{range .Data}}<tr><td><strong>{{.Model}}</strong><div class="muted small"><code>{{.ID}}</code></div></td>
-<td>{{if .Revoked}}<span class="badge blank">Revoked</span>{{else}}<span class="badge indexed">Authorized</span>{{end}}</td>
-<td>{{if .LastUpload.Valid}}{{.LastUpload.Time.UTC.Format "2006-01-02 15:04"}} UTC{{else}}<span class="muted">Nothing yet</span>{{end}}</td>
-<td>{{if not .Revoked}}<details><summary>Manage</summary><form method="post" action="/boox/revoke"><input type="hidden" name="deviceId" value="{{.ID}}"><p class="small">Removes this device's access to the server. It does not switch the tablet back to Onyx.</p><button class="destructive">Revoke device</button></form></details>{{end}}</td></tr>{{end}}
-</tbody></table></div>{{end}}
-{{end}}`))
+var devicesTemplate = template.Must(template.New("devices.html").ParseFS(templateFS, "templates/devices.html"))
 
 func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *template.Template, title string, data any) {
 	w.Header().Set("Cache-Control", "no-store")

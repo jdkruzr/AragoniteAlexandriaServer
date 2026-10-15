@@ -124,8 +124,8 @@ func TestHelpTipsAreUsed(t *testing.T) {
 		}
 		return nil
 	})
-	// BOOX views are feature-owned templates in Go source.
-	booxFiles, _ := filepath.Glob("../../boox/*.go")
+	// BOOX views are feature-owned templates in that package.
+	booxFiles, _ := filepath.Glob("../../boox/templates/*")
 	for _, f := range booxFiles {
 		if b, err := os.ReadFile(f); err == nil {
 			corpus.Write(b)
