@@ -235,3 +235,19 @@ Feedback stays unsupported while synced to Alexandria; no relay will be built.
 Workarounds: the Onyx web app's feedback tool, or PowerSync **Return to previous
 server** to report from the Onyx account, then reconnect. The tablet shows
 "Failed to send." because `GET /api/1/encrypt/key` is refused.
+
+## Leftover requests (2026-10-15, evening)
+
+- `POST /api/1/notes/version` (token): ksync's catalog backup
+  (`SaveNoteTreePBToCloudAction`) uploads a NOTE_TREE snapshot to OSS at
+  `<uid>/note/pb/<uuid>`, then registers it. The 501 meant the completion time
+  was never saved, so every run re-uploaded (37 snapshots, 93 kB, since 10-09).
+  Now accepted when the library holds that key (`TestNoteTreeVersionAcceptsHeldSnapshots`).
+- `GET /api/v2/service/core/feature?model=` (anonymous, `onyxHostBaseUrl`
+  v2): Onyx itself returns `{"list": []}` for Go103_2Lumi, the same as the
+  failure fallback. Left alone.
+- `PUT /api/1/devices/lock/state`, `POST /api/1/devices/action/state`
+  (anonymous, send the MAC address): Onyx anti-theft/password helpers; failures
+  end quietly. Left alone, which also keeps the MAC away from Onyx.
+- `POST /api/1/apks/batchQuery` (anonymous, includes the MAC): BOOX app-store
+  listing. Owner decision on an anonymous pass-through.
