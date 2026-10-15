@@ -685,7 +685,7 @@ func (r *Runtime) pageConfiguration(ctx context.Context, db pg.DB) (notes.Pipeli
 
 func minutesConfig(v providers.Snapshot) boox.MinutesConfig {
 	t, m := v.Config.Transcription, v.Config.Summary
-	return boox.MinutesConfig{Enabled: t.Enabled && m.Enabled, Transcriber: t.Model, Summarizer: m.Model, Identity: v.TranscriptionIdentity(), AutoSend: m.SendToBOOX, Instructions: m.Instructions}
+	return boox.MinutesConfig{Enabled: t.Enabled && m.Enabled, Transcriber: t.Model, Summarizer: m.Model, Identity: v.TranscriptionIdentity(), AutoSend: m.SendToBOOX, Instructions: m.Instructions, NoteLanguage: m.NoteLanguage}
 }
 
 func (r *Runtime) recognitionCatalog(db pg.DB) recognition.Catalog {

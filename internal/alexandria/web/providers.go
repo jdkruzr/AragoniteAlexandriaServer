@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"net/http"
 	"net/url"
@@ -118,7 +119,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		}
 		f := r.Form.Get
 		t := providers.TranscriptionConfig{Enabled: f("t_enabled") == "on", URL: f("t_url"), Model: f("t_model"), Language: f("t_language")}
-		m := providers.SummaryConfig{Enabled: f("s_enabled") == "on", URL: f("s_url"), Model: f("s_model"), Format: f("s_format"), AnthropicWorkspace: f("s_workspace"), VLLMDisableThinking: f("s_vllm") == "on", SendToBOOX: f("s_boox") == "on", Instructions: f("s_instructions")}
+		m := providers.SummaryConfig{Enabled: f("s_enabled") == "on", URL: f("s_url"), Model: f("s_model"), Format: f("s_format"), AnthropicWorkspace: f("s_workspace"), VLLMDisableThinking: f("s_vllm") == "on", SendToBOOX: f("s_boox") == "on", Instructions: f("s_instructions"), NoteLanguage: noteLanguage(f("s_note_language"))}
 		candidate, e := d.Providers.MinutesCandidate(r.Context(), rev, t, m, providers.KeyChange{Key: f("t_key"), Action: f("t_key_action")}, providers.KeyChange{Key: f("s_key"), Action: f("s_key_action")})
 		if e == nil {
 			switch f("action") {
@@ -226,4 +227,12 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		r.URL.RawQuery = url.Values{"notice": {notice}}.Encode()
 		d.settingsPage(w, r, tab, &view)
 	})
+}
+
+// noteLanguage accepts "auto" or an available language; anything else is English.
+func noteLanguage(v string) string {
+	if v == "auto" || (v != "en" && i18n.Supported(v)) {
+		return v
+	}
+	return ""
 }

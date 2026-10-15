@@ -54,6 +54,10 @@ type SummaryConfig struct {
 	// Instructions replace minutes.DefaultInstructions when set. The
 	// response format is fixed and always appended.
 	Instructions string `json:",omitempty"`
+	// NoteLanguage is the language of the headings and labels in minutes
+	// notes sent to BOOX: "" for English, "auto" to match the recordings, or
+	// a language tag.
+	NoteLanguage string `json:",omitempty"`
 }
 
 // AutomaticConfig processes new BOOX material without a request: pages are

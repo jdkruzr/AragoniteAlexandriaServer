@@ -46,7 +46,7 @@ func TestTemplateHubPageIsAnonymousAndScriptless(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	templateHub(w, r)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "Template Hub Isn't Available Here") {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Template Hub Isn&#39;t Available Here") {
 		t.Fatalf("%d %s", w.Code, w.Body.String())
 	}
 	if csp := w.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "default-src 'none'") || strings.Contains(csp, "script-src") {
@@ -80,5 +80,16 @@ func TestCoreFeaturesGrantCallingAndSMS(t *testing.T) {
 	}
 	if !keys["thirdPartySms"] || !keys["thirdPartyPhoneCall"] {
 		t.Fatalf("keys %v", keys)
+	}
+}
+
+// The tablet's browser sends its language; the notice follows it.
+func TestTemplateHubFollowsDeviceLanguage(t *testing.T) {
+	r := httptest.NewRequest("GET", templateHubPath, nil)
+	r.Header.Set("Accept-Language", "es-MX,es;q=0.9")
+	w := httptest.NewRecorder()
+	templateHub(w, r)
+	if body := w.Body.String(); !strings.Contains(body, `lang="es"`) || !strings.Contains(body, "Template Hub no está disponible aquí") {
+		t.Fatalf("%s", body)
 	}
 }
