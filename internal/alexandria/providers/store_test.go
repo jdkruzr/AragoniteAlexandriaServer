@@ -493,3 +493,35 @@ func TestFirstBuildReportsItsOwnProgress(t *testing.T) {
 		t.Fatal(view.BuildPerMinute, view.BuildETA)
 	}
 }
+
+func TestAutomaticProcessingStartsItsClockWhenTurnedOn(t *testing.T) {
+	ctx := context.Background()
+	s := fixture(t)
+	v, _ := s.Load(ctx)
+	before := time.Now().Add(-time.Second)
+	c, e := s.AutomaticCandidate(ctx, v.Revision, true, false)
+	if e != nil || !c.Config.Automatic.Recognize || c.Config.Automatic.Since.Before(before) {
+		t.Fatal(e, c.Config.Automatic)
+	}
+	if e = s.Save(ctx, c); e != nil {
+		t.Fatal(e)
+	}
+	since := c.Config.Automatic.Since
+	v, _ = s.Load(ctx)
+	if !v.Config.Automatic.Since.Equal(since) {
+		t.Fatal("start time not saved", v.Config.Automatic)
+	}
+	// Adding the other option keeps the original start time.
+	c, _ = s.AutomaticCandidate(ctx, v.Revision, true, true)
+	if !c.Config.Automatic.Since.Equal(since) || !c.Config.Automatic.Summarize {
+		t.Fatal(c.Config.Automatic)
+	}
+	s.Save(ctx, c)
+	v, _ = s.Load(ctx)
+	if c, _ = s.AutomaticCandidate(ctx, v.Revision, false, false); c.Config.Automatic.On() || !c.Config.Automatic.Since.IsZero() {
+		t.Fatal("turning it off kept a start time", c.Config.Automatic)
+	}
+	if _, e = s.AutomaticCandidate(ctx, v.Revision-1, true, true); e != ErrStale {
+		t.Fatal("stale revision accepted", e)
+	}
+}

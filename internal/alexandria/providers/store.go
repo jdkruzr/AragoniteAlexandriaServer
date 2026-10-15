@@ -55,11 +55,26 @@ type SummaryConfig struct {
 	// response format is fixed and always appended.
 	Instructions string `json:",omitempty"`
 }
+
+// AutomaticConfig processes new BOOX material without a request: pages are
+// recognized and notes with new recordings summarized once they stop changing.
+type AutomaticConfig struct {
+	Recognize, Summarize bool
+	// Since is when automatic processing was turned on. Only notebooks that
+	// change afterwards are processed, so turning it on never sweeps up the
+	// existing library.
+	Since time.Time
+}
+
+// On reports whether any automatic processing is turned on.
+func (a AutomaticConfig) On() bool { return a.Recognize || a.Summarize }
+
 type Config struct {
 	OCR           OCRConfig
 	Embedding     EmbedConfig
 	Transcription TranscriptionConfig
 	Summary       SummaryConfig
+	Automatic     AutomaticConfig
 }
 
 // Bootstrap values seed the database only once. Locked explicitly disables editing.
@@ -413,6 +428,30 @@ type KeyChange struct{ Key, Action string }
 
 // MinutesCandidate validates the transcription and summary providers, keeping
 // the recognition and search settings exactly as saved.
+// AutomaticCandidate applies the owner's automatic-processing choices to the
+// saved settings. Turning it on from off starts the clock for what counts as new.
+func (s Store) AutomaticCandidate(ctx context.Context, revision int64, recognize, summarize bool) (Snapshot, error) {
+	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
+		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")
+	}
+	v, e := s.Load(ctx)
+	if e != nil {
+		return v, e
+	}
+	if v.Revision != revision {
+		return v, ErrStale
+	}
+	a := AutomaticConfig{Recognize: recognize, Summarize: summarize, Since: v.Config.Automatic.Since}
+	switch {
+	case !a.On():
+		a.Since = time.Time{}
+	case !v.Config.Automatic.On():
+		a.Since = time.Now().UTC().Truncate(time.Second)
+	}
+	v.Config.Automatic = a
+	return v, nil
+}
+
 func (s Store) MinutesCandidate(ctx context.Context, revision int64, t TranscriptionConfig, m SummaryConfig, tk, mk KeyChange) (Snapshot, error) {
 	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
 		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")

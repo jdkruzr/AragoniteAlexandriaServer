@@ -146,3 +146,23 @@ already exist. The Summarize review page says when automatic sending is on.
 - The recognition jobs list doesn't show minutes; progress is on the minutes
   page.
 - Recordings aren't mapped to pages, and speakers aren't separated.
+
+## Automatic processing (2026-10-15)
+
+Settings → Recognition → **Automatic Processing** (off by default, saved by
+`POST /settings/automatic`, stored as `Config.Automatic` with the time it was
+turned on). The worker's minutes turn calls `boox.Service.AutoProcess` first:
+
+- **Recognize new BOOX pages automatically:** a live, unskipped notebook whose
+  record or files changed after `Since` and that has been quiet for five minutes
+  gets its never-recognized pages queued (`recognition.QueuePagesTx`, one batch).
+- **Summarize notes with new recordings automatically:** a notebook with an audio
+  file that arrived after `Since`, quiet for ten minutes, gets `RequestMinutes`
+  (recognizing missing pages first) when it has no minutes or its minutes don't
+  include every current recording. Minutes out of date only from handwriting,
+  queued or running minutes, and failed minutes are left for the owner.
+
+Client pages need no option: sync already queues each changed page. The minutes
+page's "On Your BOOX" section now says a sent note is an ordinary notebook that
+syncs on its own; resending is "Replace It on Your BOOX" and never summarizes again.
+

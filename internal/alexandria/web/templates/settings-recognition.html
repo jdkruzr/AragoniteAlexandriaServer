@@ -67,6 +67,17 @@
 <div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>Save</button><button name="action" value="test_transcription" class="secondary">Test transcription</button><button name="action" value="test_summary" class="secondary">Test summary</button></div>
 </form>
 </section>
+<section class="card" id="automatic">
+<h2>Automatic Processing {{template "help" "recognition.automatic"}}</h2>
+<form method="post" action="/settings/automatic" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}>
+<label><input type="checkbox" name="a_recognize" {{if $p.Config.Automatic.Recognize}}checked{{end}}> Recognize new BOOX pages automatically</label>
+<label><input type="checkbox" name="a_summarize" {{if $p.Config.Automatic.Summarize}}checked{{end}}> Summarize notes with new recordings automatically</label>
+</fieldset>
+<p class="small muted">Applies to notebooks that change after you turn it on, once they've been quiet for a few minutes. Pages are sent to your recognition provider; charges may apply.{{if $p.Config.Automatic.On}} On since {{utc $p.Config.Automatic.Since}}.{{end}}</p>
+<p><button {{if not $p.CanSave}}disabled{{end}}>Save automatic processing</button></p>
+</form>
+</section>
 <section class="card">
 <h2>Reprocess Recognized Pages {{template "help" "recognition.reprocess"}}</h2>
 <p>Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages.</p>
