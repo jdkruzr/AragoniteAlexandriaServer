@@ -179,3 +179,24 @@ allowing those three fields to be either same-origin or the exact stock value;
 re-apply the cluster on each tablet. (B) Alexandria answers the anonymous
 mode-5 odds itself or by anonymous pass-through (`updateLogs/privacy/updatedAt`,
 `resource/layout`). (C) Template Hub and Feedback need an owner decision.
+
+## Built (2026-10-15, evening)
+
+- Alexandria (commit after a25cb26, deployed as `-split1`): `internal/boox/config.go`
+  `stockHosts` puts `onyxCloudDataHostBaseUrl`, `onyxLogHostBaseUrl`, `shopBookUrl`
+  on stock US values; `onyxMaterialHostBaseUrl` = `<public>/api/v1/boox/template-hub`,
+  an anonymous, scriptless (CSP `default-src 'none'`) page explaining that the
+  Template Hub needs Onyx (`internal/boox/templatehub.go`).
+- Left alone on purpose: the Settings privacy check and the material version
+  check fail quietly, and a wrong answer could trigger a privacy dialog.
+- PowerSync 0.1.6 (`792855b`, installed in place on both tablets) validates the
+  split. Profiles only matter at enrolment, so **existing tablets keep the old
+  hosts until the cluster is re-applied.**
+- Re-apply options (owner decision): (a) the qualified Return → enrol → Connect
+  path, but Return restores the original account and its sync flags, and an
+  earlier Return let the Onyx account pull five notebooks; (b) a new in-place
+  "update endpoints" PowerSync action (rewrite cluster entry + marker,
+  `updateClusters`, verify, no logout). ksync's refresh reloads custom clusters
+  from the marker (PowerSync `docs/ksync-retargeting-spike.md`), so (b) is
+  plausible but unqualified.
+- Feedback is unchanged: it fails at `GET /api/1/encrypt/key`.
