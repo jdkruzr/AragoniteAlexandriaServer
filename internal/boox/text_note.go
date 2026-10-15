@@ -11,8 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image"
-	"image/png"
 	"math"
 	"net/url"
 	"strconv"
@@ -260,12 +258,8 @@ func buildTextNote(uid string, n TextNote, ids textIDs, now time.Time) (map[stri
 		model = pbBytes(model, 1, m)
 	}
 
-	var thumb bytes.Buffer
-	img := image.NewGray(image.Rect(0, 0, 412, 686))
-	for i := range img.Pix {
-		img.Pix[i] = 0xff
-	}
-	if e = png.Encode(&thumb, img); e != nil {
+	thumb, e := textThumbnail(n.Title, n.Blocks)
+	if e != nil {
 		return nil, nil, e
 	}
 
@@ -278,7 +272,7 @@ func buildTextNote(uid string, n TextNote, ids textIDs, now time.Time) (map[stri
 		{base + "virtual/page/pb/" + ids.VirtualPage, "application/octet-stream", pbBytes(nil, 1, vpage)},
 		{base + "pageModel/pb/" + ids.PageModel, "application/octet-stream", model},
 		{base + "template/json/" + ids.Scribble + ".template_json", "application/octet-stream", []byte(textTemplateJSON)},
-		{uid + "/note/" + ids.Doc + ".png", "image/png", thumb.Bytes()},
+		{uid + "/note/" + ids.Doc + ".png", "image/png", thumb},
 	}
 	rect := map[string]any{"top": 0, "left": 0, "empty": false, "right": textPageWidth, "valid": true, "bottom": textPageHeight, "stability": 0}
 	record := map[string]any{
