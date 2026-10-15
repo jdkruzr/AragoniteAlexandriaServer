@@ -97,10 +97,25 @@ func TestEnrollmentIdentityAndRevocation(t *testing.T) {
 			t.Fatalf("device binding status %d expected %d", w.Code, v.status)
 		}
 	}
+	// An enrolled companion can fetch the current cluster definition again,
+	// identical to the one enrolment installed.
+	w := request(t, s, "GET", "/api/v1/boox/device/endpoints", nil, map[string]string{"Authorization": "Bearer " + p1["companionToken"].(string)})
+	var endpoints map[string]any
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &endpoints) != nil || endpoints["nativeUid"] != p1["nativeUid"] {
+		t.Fatalf("endpoints %d %s", w.Code, w.Body.String())
+	}
+	enrolled, _ := json.Marshal(p1["cluster"])
+	current, _ := json.Marshal(endpoints["cluster"])
+	if string(enrolled) != string(current) {
+		t.Fatalf("endpoint cluster differs:\n%s\n%s", enrolled, current)
+	}
+	if w = request(t, s, "GET", "/api/v1/boox/device/endpoints", nil, map[string]string{"Authorization": "Bearer " + b1}); w.Code != 401 {
+		t.Fatalf("native bearer fetched endpoints: %d", w.Code)
+	}
 	if _, e := s.DB.ExecContext(context.Background(), `UPDATE boox_device SET revoked=true WHERE id=$1`, p1["deviceId"]); e != nil {
 		t.Fatal(e)
 	}
-	w := request(t, s, "GET", "/api/v1/boox/device/status", nil, map[string]string{"Authorization": "Bearer " + p1["companionToken"].(string)})
+	w = request(t, s, "GET", "/api/v1/boox/device/status", nil, map[string]string{"Authorization": "Bearer " + p1["companionToken"].(string)})
 	if w.Code != 401 {
 		t.Fatalf("revoked companion %d", w.Code)
 	}

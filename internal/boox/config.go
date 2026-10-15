@@ -70,6 +70,12 @@ var stockHosts = map[string]string{
 }
 
 func (c Config) profile(library, device, account, code, companion, uid string) map[string]any {
+	return map[string]any{"version": 1, "libraryId": library, "deviceId": device, "nativeUid": uid, "companionToken": companion, "account": map[string]string{"account": account, "code": code}, "cluster": c.cluster(library)}
+}
+
+// cluster is the native cluster definition PowerSync installs. Enrolment
+// carries it, and enrolled devices fetch it again to update their endpoints.
+func (c Config) cluster(library string) map[string]any {
 	base := strings.TrimRight(c.PublicURL, "/")
 	wss := "wss" + strings.TrimPrefix(base, "https") + "/boox-neocloud"
 	h := map[string]string{}
@@ -90,7 +96,7 @@ func (c Config) profile(library, device, account, code, companion, uid string) m
 		o[k] = c.bucket(library)
 	}
 	cluster := "powersync_" + strings.ReplaceAll(library, "-", "")[:16]
-	return map[string]any{"version": 1, "libraryId": library, "deviceId": device, "nativeUid": uid, "companionToken": companion, "account": map[string]string{"account": account, "code": code}, "cluster": map[string]any{"clusterId": cluster, "lang": cluster, "name": "Alexandria", "region": "self-hosted", "clusterHost": h, "ossConfig": o, "couchbase": map[string]string{"onyxCouchbaseWSSHost": wss}, "messageCouchbase": map[string]string{"onyxCouchbaseWSSHost": wss}}}
+	return map[string]any{"clusterId": cluster, "lang": cluster, "name": "Alexandria", "region": "self-hosted", "clusterHost": h, "ossConfig": o, "couchbase": map[string]string{"onyxCouchbaseWSSHost": wss}, "messageCouchbase": map[string]string{"onyxCouchbaseWSSHost": wss}}
 }
 
 var privateHTTP = &http.Client{Timeout: 20 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
