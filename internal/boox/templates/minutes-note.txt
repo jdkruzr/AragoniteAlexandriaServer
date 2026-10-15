@@ -1,0 +1,13 @@
+
+**Topic:** {{.Topic}}
+**Keywords:** {{range $i, $k := .Keywords}}{{if $i}}, {{end}}{{$k}}{{end}}
+# Key points
+{{range .KeyPoints}}- {{.Text}} ({{if eq .From "recording"}}recording{{else if eq .From "notes"}}notes{{else}}recording and notes{{end}})
+{{end}}# Conclusion
+{{.Conclusion}}
+# About these minutes
+**Notebook:** {{.Metadata.Title}}{{if .Metadata.Folder}} in {{.Metadata.Folder}}{{end}}
+**Pages:** {{.Metadata.PagesWithText}} of {{.Metadata.PageCount}} with handwriting text
+**Recordings:** {{len .Metadata.Recordings}}
+{{range .Metadata.Recordings}}- {{.Title}}: {{utc .RecordedAt}}, {{clock .DurationMS}}
+{{end}}**Written by:** {{.Model}}{{if .Metadata.Transcriber}}, from {{.Metadata.Transcriber}} transcripts{{end}}{{if .FinishedAt.Valid}}, {{utc .FinishedAt.Time}}{{end}}

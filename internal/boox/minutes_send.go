@@ -21,20 +21,7 @@ import (
 // Audio Note Minutes sent to BOOX become a new text note named
 // "<title>_Minutes" beside the source notebook (docs/boox-text-notes.md).
 // The wording lives in this template, in the test form's line format.
-var minutesNoteTemplate = texttemplate.Must(texttemplate.New("minutes-note").Funcs(texttemplate.FuncMap(web.Funcs())).Parse(`
-**Topic:** {{.Topic}}
-**Keywords:** {{range $i, $k := .Keywords}}{{if $i}}, {{end}}{{$k}}{{end}}
-# Key points
-{{range .KeyPoints}}- {{.Text}} ({{if eq .From "recording"}}recording{{else if eq .From "notes"}}notes{{else}}recording and notes{{end}})
-{{end}}# Conclusion
-{{.Conclusion}}
-# About these minutes
-**Notebook:** {{.Metadata.Title}}{{if .Metadata.Folder}} in {{.Metadata.Folder}}{{end}}
-**Pages:** {{.Metadata.PagesWithText}} of {{.Metadata.PageCount}} with handwriting text
-**Recordings:** {{len .Metadata.Recordings}}
-{{range .Metadata.Recordings}}- {{.Title}}: {{utc .RecordedAt}}, {{clock .DurationMS}}
-{{end}}**Written by:** {{.Model}}{{if .Metadata.Transcriber}}, from {{.Metadata.Transcriber}} transcripts{{end}}{{if .FinishedAt.Valid}}, {{utc .FinishedAt.Time}}{{end}}
-`))
+var minutesNoteTemplate = texttemplate.Must(texttemplate.New("minutes-note.txt").Funcs(texttemplate.FuncMap(web.Funcs())).ParseFS(templateFS, "templates/minutes-note.txt"))
 
 const (
 	noticeMinutesSent    = "Sending to your BOOX. It appears on each device after its next sync."

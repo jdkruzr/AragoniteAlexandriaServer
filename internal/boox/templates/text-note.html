@@ -1,0 +1,12 @@
+{{define "content"}}{{$d:=.Data}}
+<p class="crumbs"><a href="/boox/settings">BOOX settings</a> /</p>
+<h1>Create a Test Text Note {{template "help" "boox.textnote"}}</h1>
+{{if $d.Error}}<p role="alert">{{$d.Error}}</p>{{end}}
+{{if $d.State}}<section class="card"><h2>{{$d.Title}}</h2><p>Server publication: <strong>{{$d.State}}</strong>{{if $d.Code}} ({{$d.Code}}){{end}}</p><p>Device delivery: not verified. Check the folder in BOOX Notes; if the notebook is listed but empty, use the Notes cloud sync button.</p><a href="/boox/text-notes/new?operation={{$d.ID}}">Refresh status</a></section>{{end}}
+<form class="card stack" method="post" action="/boox/text-notes/new"><input type="hidden" name="request" value="{{$d.Request}}">
+<label>Folder <select name="parent"><option value="">Notebook root</option>{{range $d.Folders}}<option value="{{.ID}}">{{.Title}}</option>{{end}}</select></label>
+<label>Title <input name="title" required maxlength="200" value="{{$d.Title}}"></label>
+<label>Text <textarea name="text" rows="10" required></textarea></label>
+<p class="small muted">One block per line. Start a line with "# " for a heading, or "- " or "* " for a bullet. "**Label:** text" starts a line in bold.</p>
+<label class="confirm"><input type="checkbox" name="confirm" required> Create this notebook on every connected BOOX device. Nothing existing is changed.</label>
+<p><button>Create text note</button></p></form>{{end}}

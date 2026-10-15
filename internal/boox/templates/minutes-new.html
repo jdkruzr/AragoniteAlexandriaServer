@@ -1,0 +1,21 @@
+{{define "content"}}{{$d:=.Data}}
+<p class="crumbs"><a href="/boox">Notebooks</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">Audio Note Minutes</a> /</p>
+<h1>Summarize This Note {{template "help" "boox.minutes"}}</h1>
+{{if not $d.Enabled}}<div class="callout"><p>Set up transcription and a summary model in <a href="/settings/recognition#minutes">Settings → Recognition</a> first.</p></div>{{else}}
+<form method="post" action="/boox/minutes/new"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="request" value="{{$d.Request}}">
+<section class="card"><h2>Recordings</h2>
+{{if $d.Recordings}}<div class="table-scroll"><table><thead><tr><th>Recording</th><th>Recorded</th><th>Length</th><th>Size</th></tr></thead><tbody>
+{{range $d.Recordings}}<tr><td>{{.Title}}</td><td>{{utc .RecordedAt}}</td><td>{{if .DurationMS}}{{clock .DurationMS}}{{else}}—{{end}}</td><td>{{bytes .Bytes}}</td></tr>{{end}}
+</tbody></table></div>{{else}}<p class="muted">This notebook has no recordings. The minutes will come from handwriting alone.</p>{{end}}
+</section>
+<section class="card"><h2>Handwriting</h2>
+<p>{{$d.WithText}} of {{$d.Pages}} page{{if ne $d.Pages 1}}s{{end}} have recognized text{{if $d.InProgress}}; {{$d.InProgress}} {{if eq $d.InProgress 1}}is{{else}}are{{end}} being recognized now{{end}}.</p>
+{{if $d.Missing}}{{if $d.RecognitionEnabled}}<label class="confirm"><input type="checkbox" name="recognize" checked> Recognize the {{$d.Missing}} page{{if ne $d.Missing 1}}s{{end}} without text first</label><p class="small muted">Sends {{if eq $d.Missing 1}}that page{{else}}those pages{{end}} to your recognition provider. Provider charges may apply. Minutes wait until recognition finishes.</p>
+{{else}}<p class="small muted">{{$d.Missing}} page{{if ne $d.Missing 1}}s have{{else}} has{{end}} no text and will be left out. Turn on recognition in <a href="/settings/recognition">Settings → Recognition</a> to include them.</p>{{end}}{{end}}
+</section>
+<section class="card"><h2>Send</h2>
+<p>Transcription: <strong>{{$d.Transcriber}}</strong> · Summary: <strong>{{$d.Summarizer}}</strong></p>
+<label class="confirm"><input type="checkbox" name="confirm" required> Send the recordings and this notebook's text to these providers</label>
+{{if $d.AutoSend}}<p class="small muted">When they're ready, the minutes are also sent to your BOOX as “{{$d.Title}}_Minutes”. Change this in <a href="/settings/recognition#minutes">Settings → Recognition</a>.</p>{{end}}
+<p><button>Summarize</button></p>
+</section></form>{{end}}{{end}}

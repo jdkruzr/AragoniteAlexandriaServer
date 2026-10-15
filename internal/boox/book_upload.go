@@ -251,7 +251,7 @@ func (s Service) publishBookRecord(ctx context.Context, tx *sql.Tx, id, doc stri
 	return live, e
 }
 
-var uploadBookTemplate = template.Must(template.New("upload-book").Parse(`{{define "content"}}<p class="crumbs"><a href="/boox/reading">Reading</a> /</p><h1>Upload a Book {{template "help" "boox.upload"}}</h1><p class="lede">EPUB or PDF, up to 64 MiB. Tablets with reading sync on will list it in their library and download it when you open it.</p>{{if .Data.Error}}<p role="alert">{{.Data.Error}}</p>{{end}}<form class="card" method="post" enctype="multipart/form-data" action="/boox/books/upload"><label>Book file <input type="file" name="book" accept=".epub,.pdf" required></label><p><button>Upload book</button></p></form>{{if .Data.State}}<section class="card"><h2>{{.Data.Name}}</h2><p>Server publication: <strong>{{.Data.State}}</strong></p><p>Device download: not verified. Open the book in the BOOX library to download it.</p><a href="/boox/books/upload?operation={{.Data.ID}}">Refresh status</a></section>{{end}}{{end}}`))
+var uploadBookTemplate = template.Must(template.New("upload-book.html").ParseFS(templateFS, "templates/upload-book.html"))
 
 func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 	data := struct{ Error, State, Name, ID string }{}
