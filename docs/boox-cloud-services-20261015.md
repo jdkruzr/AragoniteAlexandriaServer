@@ -1,7 +1,9 @@
 # BOOX cloud services after the PowerSync cluster switch (2026-10-15)
 
-Handoff for the next session. Status: **investigated, not yet built.** The owner
-approved the first two steps of the plan below on 2026-10-15.
+Handoff for the next session. Status: **step 1 built and live; live tests done;
+split proposed.** The owner approved the first two steps of the plan below on
+2026-10-15, then noted PowerSync is ours to change. **See "Live results" below;
+it supersedes the per-feature guesses.**
 
 ## Problem
 
@@ -129,3 +131,51 @@ the Alexandria sync endpoint.
 Read-only on tablets unless the owner acts; never reset or uninstall; opening a
 note is a write. Don't print credentials. Use synthetic fixtures. The fresh
 PG/S3 gate before deploys. Server never imports Hosting.
+
+## Live results and corrected mapping (2026-10-15, afternoon)
+
+Unknown-request logging is deployed (`internal/server/unknown.go`, commits
+6f9a6c0 and the /api/ 401 follow-up). It logs method, masked path, status and
+whether credentials were present, once per shape an hour. Tests run on the Lumi
+(Go103_2Lumi). All requests were anonymous and all reached Alexandria:
+
+| Owner action | Request | Host field (Lumi build, confirmed) |
+|---|---|---|
+| Open Settings | `GET /api/1/updateLogs/privacy/updatedAt` | `onyxSend2BooxHostBaseUrl` (mode 5); `PrivacyUpdateCheckRequest.java:27` |
+| Firmware Update → Check | `GET /api/firmware/update` | `onyxCloudDataHostBaseUrl` (mode 3); `FirmwareUpdateRequest.java:26`, `OTAManager.java:131` |
+| Notes → Template Hub | `GET /api/v2/boox/resource/layout`, then the page shows our plain `unauthorized` | `onyxHostBaseUrl` + `/api/v2/boox/`; the hub page itself is `onyxMaterialHostBaseUrl` (`EnsureMaterialUrlAction.java:33`) |
+| Feedback → Submit ("Failed to send") | `GET /api/1/encrypt/key` | `onyxSend2BooxHostBaseUrl` (mode 4) |
+
+Decompile trace (Lumi sources are `~/booxreverse/go103lumi/decompiled`; the
+older `~/booxreverse/decompiled` lacks the material host; JADX garbled
+`getCloudConf`, so baksmali output is in the job tmp dir). Corrections:
+
+- **Sync runs on `onyxSend2BooxHostBaseUrl`, not `onyxHostBaseUrl`**: ksync
+  login, `users/syncToken`, channels, `config/stss` STS all use mode 5.
+- **OTA = mode 3 = `onyxCloudDataHostBaseUrl` + `/api/`.** No user token on any
+  mode-1/3 call. The hardcoded `data.boox.com` class is dead code. The OTA
+  service app makes no network calls (installs a local file only).
+- Tokens are attached per call (`@Header("authorization")`), not globally.
+  `TokenInvalidInterceptor` broadcasts a token-invalid action on a 401 to any
+  call that carried a token, so a leaked Alexandria token could also log the
+  device out.
+- **Template Hub page** (`onyxMaterialHostBaseUrl`) exposes the token to the
+  page's JavaScript (`getToken()`/`getHeaders()` bridge). Pointing it at Onyx
+  hands Onyx's page our Alexandria token.
+- **Feedback**: key fetch anonymous; log-upload STS from send2boox `config/stss`
+  with `Bearer null`; the report is a msgType 0 document in the message
+  Couchbase, i.e. Alexandria's.
+
+| Field | Back to stock? | Stock US value |
+|---|---|---|
+| `onyxCloudDataHostBaseUrl` | **yes** (fixes OTA; no token) | `https://en-data.boox.com` |
+| `onyxLogHostBaseUrl` | yes (unused) | `https://en-lon.boox.com` |
+| `shopBookUrl` | yes | `https://push.boox.com` |
+| `onyxHostBaseUrl`, `onyxSend2BooxHostBaseUrl`, `onyxContentHostBaseUrl`, `onyxMaterialHostBaseUrl`, couchbase, replicator, `ossConfig` | no: token-bearing or sync | — |
+
+Proposed next steps (awaiting owner): (A) field split in Alexandria's profile
+(`internal/boox/config.go` `profile`) plus PowerSync `EndpointProfile.validate`
+allowing those three fields to be either same-origin or the exact stock value;
+re-apply the cluster on each tablet. (B) Alexandria answers the anonymous
+mode-5 odds itself or by anonymous pass-through (`updateLogs/privacy/updatedAt`,
+`resource/layout`). (C) Template Hub and Feedback need an owner decision.
