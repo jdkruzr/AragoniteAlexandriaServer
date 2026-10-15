@@ -21,7 +21,8 @@ const NoPageFilesWarning = "No files for this page have reached the server; it m
 type previewResult struct {
 	PNG      []byte
 	Warnings []string
-	// Blank means the page has no shapes: nothing for recognition to read.
+	// Blank means the page has no shapes and no imported document behind it:
+	// nothing for recognition to read. Templates don't count.
 	Blank   bool
 	Notices []string
 	Texts   []string
@@ -119,7 +120,7 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 	if len(p.Shapes) == 0 && len(w) == 0 && len(tw) > 0 && !slices.ContainsFunc(n.Keys, func(k string) bool { return strings.HasPrefix(k, "shape/"+p.PageID+"#") }) {
 		tw = []string{NoPageFilesWarning}
 	}
-	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices, Blank: len(p.Shapes) == 0}
+	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices, Blank: len(p.Shapes) == 0 && !p.Background.IsDocument()}
 	// A transient object/index read failure must not pin a partial page (or a
 	// metadata-only page number) after the immutable resources become readable.
 	if len(v.Warnings) == 0 {
