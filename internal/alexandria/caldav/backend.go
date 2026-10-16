@@ -1,5 +1,5 @@
 // Package caldav serves tasks as one CalDAV VTODO collection. Copied from
-// UltraBridge (internal/caldav) under Apache-2.0, unchanged apart from imports:
+// UltraBridge (internal/caldav) under Apache-2.0, unchanged apart from imports and naming:
 // tasks live in internal/alexandria/taskdb and attachment bytes in object
 // storage (internal/alexandria/taskattach).
 package caldav
@@ -272,7 +272,7 @@ func (b *Backend) collection() gocaldav.Calendar {
 	return gocaldav.Calendar{
 		Path:                  b.prefix + "/user/calendars/tasks/",
 		Name:                  b.CollectionName(),
-		Description:           "Tasks via UltraBridge",
+		Description:           "Tasks in Alexandria",
 		SupportedComponentSet: []string{"VTODO"},
 	}
 }

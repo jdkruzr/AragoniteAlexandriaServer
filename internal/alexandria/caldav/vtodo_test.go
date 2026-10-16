@@ -550,7 +550,7 @@ func TestRoundTripVTODOTask(t *testing.T) {
 // Helper function to create a test calendar with VTODO properties
 func createTestCalendar(props map[string]string) *ical.Calendar {
 	cal := ical.NewCalendar()
-	cal.Props.SetText("PRODID", "-//UltraBridge//CalDAV//EN")
+	cal.Props.SetText("PRODID", "-//Alexandria//CalDAV//EN")
 	cal.Props.SetText("VERSION", "2.0")
 
 	todo := ical.NewComponent("VTODO")
@@ -608,7 +608,7 @@ func TestBlobRoundTrip(t *testing.T) {
 				"UID":        "test-cat-456",
 				"SUMMARY":    "Work Task",
 				"STATUS":     "NEEDS-ACTION",
-				"CATEGORIES": "Work,UltraBridge",
+				"CATEGORIES": "Work,Alexandria",
 			},
 			dueTimeMode: "preserve",
 			verify: func(t *testing.T, original *ical.Calendar, roundTrip *ical.Calendar) {

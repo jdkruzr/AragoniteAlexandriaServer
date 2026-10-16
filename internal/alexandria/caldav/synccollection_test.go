@@ -88,7 +88,7 @@ func TestSyncCollection_InitialSync(t *testing.T) {
 	for _, want := range []string{
 		"/caldav/user/calendars/tasks/alpha.ics",
 		"/caldav/user/calendars/tasks/beta.ics",
-		"<D:sync-token>urn:ultrabridge:sync:5000</D:sync-token>",
+		"<D:sync-token>urn:alexandria:sync:5000</D:sync-token>",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("initial sync response missing %q\nbody=%s", want, body)
@@ -107,7 +107,7 @@ func TestSyncCollection_IncrementalReportsRemovals(t *testing.T) {
 		max:     9000,
 		changed: []taskstore.Task{task("edited", 8000, false), task("gone", 8500, true)},
 	}
-	rec := syncRequest(t, store, bodyWithToken("urn:ultrabridge:sync:7000"))
+	rec := syncRequest(t, store, bodyWithToken("urn:alexandria:sync:7000"))
 
 	if rec.Code != http.StatusMultiStatus {
 		t.Fatalf("status: got %d, want 207. body=%s", rec.Code, rec.Body.String())
@@ -133,7 +133,7 @@ func TestSyncCollection_IncrementalReportsRemovals(t *testing.T) {
 	if strings.Contains(rest[:end], "propstat") {
 		t.Errorf("tombstone response carries a propstat; RFC 6578 wants a bare status\n%s", rest[:end])
 	}
-	if !strings.Contains(body, "<D:sync-token>urn:ultrabridge:sync:9000</D:sync-token>") {
+	if !strings.Contains(body, "<D:sync-token>urn:alexandria:sync:9000</D:sync-token>") {
 		t.Errorf("missing or wrong new sync-token\nbody=%s", body)
 	}
 }
@@ -144,7 +144,7 @@ func TestSyncCollection_IncrementalReportsRemovals(t *testing.T) {
 // keeping deleted tasks forever.
 func TestSyncCollection_ExpiredTokenIsRejected(t *testing.T) {
 	store := &stubSyncStore{max: 9000, floor: 5000}
-	rec := syncRequest(t, store, bodyWithToken("urn:ultrabridge:sync:4000"))
+	rec := syncRequest(t, store, bodyWithToken("urn:alexandria:sync:4000"))
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status: got %d, want 403. body=%s", rec.Code, rec.Body.String())
@@ -186,7 +186,7 @@ func TestSyncCollection_CalendarDataIncludesBody(t *testing.T) {
 	}
 	rec := syncRequest(t, store, `<?xml version="1.0" encoding="utf-8"?>
 <D:sync-collection xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <D:sync-token>urn:ultrabridge:sync:2000</D:sync-token>
+  <D:sync-token>urn:alexandria:sync:2000</D:sync-token>
   <D:prop><D:getetag/><C:calendar-data/></D:prop>
 </D:sync-collection>`)
 
@@ -213,7 +213,7 @@ func TestSyncCollection_LimitTruncatesAndResumes(t *testing.T) {
 	}
 	rec := syncRequest(t, store, `<?xml version="1.0" encoding="utf-8"?>
 <D:sync-collection xmlns:D="DAV:">
-  <D:sync-token>urn:ultrabridge:sync:500</D:sync-token>
+  <D:sync-token>urn:alexandria:sync:500</D:sync-token>
   <D:limit><D:nresults>2</D:nresults></D:limit>
   <D:prop><D:getetag/></D:prop>
 </D:sync-collection>`)
@@ -224,7 +224,18 @@ func TestSyncCollection_LimitTruncatesAndResumes(t *testing.T) {
 	}
 	// Token resumes at the last included row, not at the collection maximum —
 	// otherwise the truncated remainder would be skipped forever.
-	if !strings.Contains(body, "<D:sync-token>urn:ultrabridge:sync:2000</D:sync-token>") {
+	if !strings.Contains(body, "<D:sync-token>urn:alexandria:sync:2000</D:sync-token>") {
 		t.Errorf("truncated response must resume at the boundary, not the max\nbody=%s", body)
+	}
+}
+
+// A token issued before the rename still syncs incrementally.
+func TestLegacySyncTokenStillAccepted(t *testing.T) {
+	ms, initial, ok := parseSyncToken("urn:ultrabridge:sync:4000")
+	if !ok || initial || ms != 4000 {
+		t.Fatalf("legacy token: %d %v %v", ms, initial, ok)
+	}
+	if got := formatSyncToken(4000); got != "urn:alexandria:sync:4000" {
+		t.Fatalf("new tokens: %q", got)
 	}
 }

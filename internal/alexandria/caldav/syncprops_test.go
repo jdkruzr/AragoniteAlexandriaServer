@@ -59,7 +59,7 @@ func TestSyncProps_CtagAlone(t *testing.T) {
 		t.Fatalf("status: got %d, want 207. body=%s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "urn:ultrabridge:sync:4242") {
+	if !strings.Contains(body, "urn:alexandria:sync:4242") {
 		t.Errorf("ctag value missing\nbody=%s", body)
 	}
 	if !strings.Contains(body, "200 OK") {
@@ -78,7 +78,7 @@ func TestSyncProps_TokenMatchesCtag(t *testing.T) {
 	tokenRec, _ := propfindRequest(t, store, propfindBody(`<D:sync-token/>`))
 
 	extract := func(body, tag string) string {
-		i := strings.Index(body, ">urn:ultrabridge:sync:")
+		i := strings.Index(body, ">urn:alexandria:sync:")
 		if i < 0 {
 			t.Fatalf("no token value in %s response: %s", tag, body)
 		}
@@ -131,7 +131,7 @@ func TestSyncProps_MixedRequestSplicesIntoLibraryResponse(t *testing.T) {
 	if !strings.Contains(body, "Tasks") {
 		t.Errorf("library's displayname answer was lost\nbody=%s", body)
 	}
-	if !strings.Contains(body, "urn:ultrabridge:sync:555") {
+	if !strings.Contains(body, "urn:alexandria:sync:555") {
 		t.Errorf("sync-token was not spliced in\nbody=%s", body)
 	}
 	// The library's own 404 for a genuinely unknown property must survive.
