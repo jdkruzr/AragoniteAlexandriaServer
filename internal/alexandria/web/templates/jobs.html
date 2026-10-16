@@ -2,11 +2,11 @@
 <div class="page-head"><h1>{{t "Recognition Jobs"}}</h1><div class="toolbar">{{th "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs/new\">Recognize one notebook…</a>"}}</div></div>
 {{if $d.Runs}}<details open><summary>{{t "Recent Library Batches"}}</summary><ul>{{range $d.Runs}}<li><a href="/jobs/library?id={{.ID}}">{{$date:=.Created.UTC.Format "2006-01-02 15:04:05"}}{{$date}} UTC</a> · {{t .SourceLabel}} · {{t .Label}}{{if .Queued}} · {{t "{{.Ready}} / {{.Queued}} ready · {{.Failed}} failed · {{.Blocked}} blocked" "Ready" .Ready "Queued" .Queued "Failed" .Failed "Blocked" .Blocked}}{{end}}</li>{{end}}</ul></details>{{end}}
 {{if $f.Run}}<p><a href="/jobs/library?id={{$f.Run}}">{{t "← Library batch progress and controls"}}</a></p>{{end}}
-<div class="actions"><a class="button secondary" href="{{$d.Refresh}}">{{t "Refresh"}}</a><a href="{{$d.LiveURL}}">{{if $d.Live}}{{t "Stop live updates"}}{{else}}{{t "Live updates (every 5 seconds)"}}{{end}}</a><a href="/settings/recognition">{{t "Provider settings"}}</a></div>
+<div class="actions"><a class="button secondary" href="{{$d.Refresh}}">{{t "Refresh"}}</a><a href="/settings/recognition">{{t "Provider settings"}}</a></div>
 {{if $f.Batch}}<h2>{{$d.View.BatchTitle}}</h2><p>{{t "Batch"}} <code>{{$f.Batch}}</code> · <a href="/jobs">{{t "All jobs"}}</a></p>{{end}}
 <form class="inline" method="get" action="/jobs">
 {{if $f.Run}}<input type="hidden" name="run" value="{{$f.Run}}">{{end}}
-{{if $d.Live}}<input type="hidden" name="live" value="1">{{end}}{{if $f.Batch}}<input type="hidden" name="batch" value="{{$f.Batch}}">{{end}}
+{{if $f.Batch}}<input type="hidden" name="batch" value="{{$f.Batch}}">{{end}}
 <label><input type="checkbox" name="history" value="1" {{if $f.History}}checked{{end}}> {{t "Show earlier attempts at the same page"}}</label>
 <label>{{t "Source"}} <select name="source"><option value="">{{t "All sources"}}</option><option value="boox" {{if eq $f.Source "boox"}}selected{{end}}>BOOX</option><option value="client" {{if eq $f.Source "client"}}selected{{end}}>Alexandria Client</option></select></label>
 <label>{{t "Status"}} <select name="state"><option value="">{{t "All statuses"}}</option>{{range $state := (listJobStates)}}<option value="{{$state}}" {{if eq $f.State $state}}selected{{end}}>{{t $state}}</option>{{end}}</select></label><button class="secondary">{{t "Filter"}}</button></form>

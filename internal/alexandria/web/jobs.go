@@ -38,20 +38,10 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 		if offset+50 < v.Total {
 			next = link(offset + 50)
 		}
-		live := q.Get("live") == "1"
-		if live && (v.Counts["queued"]+v.Counts["processing"]) > 0 {
+		// The page updates itself while work is running (static/live.js).
+		if v.Counts["queued"]+v.Counts["processing"] > 0 {
 			w.Header().Set("Refresh", "5")
 		}
-		liveQuery := url.Values{}
-		for k, vals := range q {
-			liveQuery[k] = append([]string{}, vals...)
-		}
-		if live {
-			liveQuery.Del("live")
-		} else {
-			liveQuery.Set("live", "1")
-		}
-		liveURL := "/jobs?" + liveQuery.Encode()
 		runs, e := store.RecentRuns(r.Context())
 		if e != nil {
 			d.fail(w, e)
@@ -64,7 +54,7 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 				done += count
 			}
 		}
-		d.render(w, r, "jobs", "Jobs", "jobs", map[string]any{"NativeBOOX": d.Status.NativeBOOX, "Runs": runs, "ProgressTotal": total, "ProgressDone": done, "View": v, "Filter": f, "Live": live, "LiveURL": liveURL, "Previous": previous, "Next": next, "Refresh": r.URL.RequestURI(), "Start": min(offset+1, v.Total), "End": min(offset+50, v.Total)})
+		d.render(w, r, "jobs", "Jobs", "jobs", map[string]any{"NativeBOOX": d.Status.NativeBOOX, "Runs": runs, "ProgressTotal": total, "ProgressDone": done, "View": v, "Filter": f, "Previous": previous, "Next": next, "Refresh": r.URL.RequestURI(), "Start": min(offset+1, v.Total), "End": min(offset+50, v.Total)})
 	})
 	mux.HandleFunc("POST /jobs/control", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 4096)
