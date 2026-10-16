@@ -15,6 +15,8 @@
   <button class="secondary">{{t "Sort"}}</button>
 </form>
 {{if or $d.Open $d.Done}}
+<h2>{{t "Bulk Actions"}}</h2>
+<p class="muted small">{{t "Tick tasks below, then choose what to do with them."}}</p>
 <form id="task-bulk" class="inline task-bulk" method="post" action="/tasks/bulk">
   <input type="hidden" name="return" value="{{$v.URL}}">
   <label class="select-all" hidden><input type="checkbox" data-select-all="task-bulk"> {{t "Select all"}}</label>
