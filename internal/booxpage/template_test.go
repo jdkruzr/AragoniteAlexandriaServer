@@ -199,3 +199,35 @@ func TestGridTemplateOfRectanglesTakesTheFastPath(t *testing.T) {
 		t.Fatal("cell filled")
 	}
 }
+
+// BOOX's grid templates wrap the drawing in a clip the size of the canvas,
+// which clips nothing. Real clipping is still refused.
+func TestSVGCanvasClipIsIgnored(t *testing.T) {
+	grid := `<svg xmlns="http://www.w3.org/2000/svg" fill="none" width="100" height="200" viewBox="0 0 100 200"><defs><clipPath id="c"><rect x="0" y="0" width="100" height="200" rx="0"/></clipPath></defs>` +
+		`<g clip-path="url(#c)"><rect x="0" y="0" width="100" height="200" fill="#FFFFFF"/>` +
+		`<path d="M10,40L190,40L190,41L10,41L10,40Z" fill-rule="evenodd" fill="#777777" transform="matrix(0,1,-1,0,50,-1)"/></g></svg>`
+	dc := gg.NewContext(100, 200)
+	dc.SetRGB(1, 1, 1)
+	dc.Clear()
+	if e := drawSVG(dc, []byte(grid)); e != nil {
+		t.Fatal(e)
+	}
+	dark := 0
+	for y := 0; y < 200; y++ {
+		if r, _, _, _ := dc.Image().At(9, y).RGBA(); r < 0xE000 {
+			dark++
+		}
+	}
+	if dark < 100 {
+		t.Fatalf("rotated grid line missing (%d dark pixels at x=9)", dark)
+	}
+	for _, raw := range []string{
+		`<svg viewBox="0 0 100 200"><defs><clipPath id="c"><rect x="0" y="0" width="50" height="200"/></clipPath></defs><g clip-path="url(#c)"/></svg>`,
+		`<svg viewBox="0 0 100 200"><defs><clipPath id="c"><circle cx="5" cy="5" r="500"/></clipPath></defs><g clip-path="url(#c)"/></svg>`,
+		`<svg viewBox="0 0 100 200"><g clip-path="url(#missing)"/></svg>`,
+	} {
+		if _, e := safeSVG([]byte(raw)); e == nil {
+			t.Fatal("accepted real clipping", raw)
+		}
+	}
+}
