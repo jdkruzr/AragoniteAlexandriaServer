@@ -7,7 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image/png"
 	"net/http/httptest"
+	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -307,6 +310,42 @@ func TestTextNotebookTypedTextIsSearchableWithoutRecognition(t *testing.T) {
 	web.Handler(d).ServeHTTP(w, httptest.NewRequest("GET", "/search?q=zeppelin&source=boox", nil))
 	if !strings.Contains(w.Body.String(), "Synthetic plan") {
 		t.Fatal("typed text not searchable")
+	}
+	// The notebook view draws the typed text; recognition's render stays ink-only.
+	n, e := s.notebookSnapshot(ctx, "note")
+	if e != nil {
+		t.Fatal(e)
+	}
+	plain, e := s.renderPreview(ctx, n, 1)
+	if e != nil || !plain.Blank {
+		t.Fatal("recognition preview should stay blank", e)
+	}
+	shown, typed, e := s.typedPreview(ctx, n, 1)
+	if e != nil || !typed || !slices.Contains(shown.Notices, booxpage.RichTextDrawnNotice) || slices.Contains(shown.Warnings, booxpage.RichTextNotebookWarning) {
+		t.Fatalf("typed preview: %v %v %q %q", typed, e, shown.Notices, shown.Warnings)
+	}
+	dark := func(b []byte) int {
+		img, err := png.Decode(bytes.NewReader(b))
+		if err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+			for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
+				if r, _, _, _ := img.At(x, y).RGBA(); r < 0x8000 {
+					n++
+				}
+			}
+		}
+		return n
+	}
+	if dark(plain.PNG) != 0 || dark(shown.PNG) == 0 {
+		t.Fatal("typed text should appear only in the shown preview")
+	}
+	w = httptest.NewRecorder()
+	s.pageImage(w, httptest.NewRequest("GET", "/boox/page.png?id=note&page=1&typed=1&version="+url.QueryEscape(n.Version), nil))
+	if w.Code != 200 || !bytes.Equal(w.Body.Bytes(), shown.PNG) {
+		t.Fatalf("typed page image: %d", w.Code)
 	}
 }
 

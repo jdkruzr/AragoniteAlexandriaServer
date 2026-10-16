@@ -253,7 +253,7 @@ func (s Service) snapshotLoader(ctx context.Context, n notebookSnapshot) booxpag
 }
 
 type notebookView struct {
-	RecognitionEnabled                                            bool
+	RecognitionEnabled, TypedText                                 bool
 	Recordings                                                    int
 	MinutesState, MinutesTopic                                    string
 	RecognitionState, RecognitionDetail, RecognizedText           string
@@ -312,17 +312,21 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(ids) > 0 {
 		d.Page = ids[num-1]
-		preview, err := s.renderPreview(r.Context(), n, num)
+		preview, typed, err := s.typedPreview(r.Context(), n, num)
 		if err != nil {
 			d.Warnings = append(d.Warnings, "Preview unavailable: "+err.Error())
 		} else {
 			d.Warnings = append(append([]string{}, preview.Warnings...), preview.Notices...)
 			d.Texts = preview.Texts
 			d.Image = "/boox/page.png?id=" + url.QueryEscape(d.ID) + "&page=" + strconv.Itoa(num) + "&version=" + n.Version
+			if typed {
+				d.Image += "&typed=1"
+				d.TypedText = true
+			}
 		}
 
 	}
-	if len(booxpage.PageIDs(n.Meta.RichTextPageNameList)) > 0 {
+	if len(booxpage.PageIDs(n.Meta.RichTextPageNameList)) > 0 && !d.TypedText {
 		d.Warnings = append(d.Warnings, "This notebook also has rich-text pages; their layout is not rendered yet.")
 	}
 	d.Recordings = len(audioKeys(n))
@@ -345,7 +349,12 @@ var previewSlots = make(chan struct{}, 2)
 func (s Service) pageImage(w http.ResponseWriter, r *http.Request) {
 	id, version := r.URL.Query().Get("id"), r.URL.Query().Get("version")
 	num, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	v, ok := cachedPreview(s.previewKey(id, version, num))
+	typed := r.URL.Query().Get("typed") == "1"
+	key := s.previewKey(id, version, num)
+	if typed {
+		key += ":typed"
+	}
+	v, ok := cachedPreview(key)
 	if !ok {
 		n, e := s.notebookSnapshot(r.Context(), id)
 		if e != nil {
@@ -356,7 +365,11 @@ func (s Service) pageImage(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Content changed; reload the notebook.", http.StatusConflict)
 			return
 		}
-		v, e = s.renderPreview(r.Context(), n, num)
+		if typed {
+			v, _, e = s.typedPreview(r.Context(), n, num)
+		} else {
+			v, e = s.renderPreview(r.Context(), n, num)
+		}
 		if e != nil {
 			http.Error(w, "Preview unavailable; reload the notebook for details.", 422)
 			return
@@ -366,6 +379,10 @@ func (s Service) pageImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "private, max-age=300")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("ETag", `"`+version+"-"+strconv.Itoa(num)+`"`)
+	etag := version + "-" + strconv.Itoa(num)
+	if typed {
+		etag += "-typed"
+	}
+	w.Header().Set("ETag", `"`+etag+`"`)
 	w.Write(v.PNG)
 }

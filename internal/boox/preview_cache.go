@@ -138,3 +138,48 @@ func previewSize(v previewResult) int {
 	}
 	return n
 }
+
+// typedPreview is what the notebook view shows for a text notebook's first
+// page: its typed text drawn under the handwriting. Recognition never sees it
+// (renderPreview stays ink-only, so typed text isn't sent to a provider or
+// counted as handwriting). Other pages are their plain preview.
+func (s Service) typedPreview(ctx context.Context, n notebookSnapshot, num int) (previewResult, bool, error) {
+	v, err := s.renderPreview(ctx, n, num)
+	if err != nil || n.Meta.ActiveScene != 1 || num != 1 {
+		return v, false, err
+	}
+	key := s.previewKey(n.Meta.UniqueID, n.Version, num) + ":typed"
+	if p, ok := cachedPreview(key); ok {
+		return p, true, nil
+	}
+	load := s.snapshotLoader(ctx, n)
+	var docs [][]byte
+	for _, k := range n.Keys {
+		if !strings.HasPrefix(k, "resource/data/") || !strings.HasSuffix(k, ".html") || n.Assets[k].Bytes > 1<<20 {
+			continue
+		}
+		if b, e := load(k); e == nil {
+			docs = append(docs, b)
+		}
+	}
+	if len(docs) == 0 {
+		return v, false, nil
+	}
+	ink, err := png.Decode(bytes.NewReader(v.PNG))
+	if err != nil {
+		return v, false, err
+	}
+	img, notices := booxpage.ComposeRichText(ink, docs)
+	var b bytes.Buffer
+	if err = png.Encode(&b, img); err != nil {
+		return v, false, err
+	}
+	typed := v
+	typed.PNG = b.Bytes()
+	typed.Warnings = slices.DeleteFunc(slices.Clone(v.Warnings), func(w string) bool { return w == booxpage.RichTextNotebookWarning })
+	typed.Notices = append(slices.Clone(v.Notices), notices...)
+	if len(v.Warnings) == 0 {
+		storePreview(key, typed)
+	}
+	return typed, true, nil
+}

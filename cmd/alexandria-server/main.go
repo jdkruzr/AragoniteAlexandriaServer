@@ -485,6 +485,7 @@ func runBOOXCoverage(args []string) error {
 	render := set.String("render", "", "also write each blocked page's preview PNG into this existing private directory")
 	notebook := set.String("notebook", "", "report this notebook's page instead of every blocked page (with -page)")
 	page := set.String("page", "", "the page ID to report with -notebook")
+	richText := set.Bool("richtext", false, "report the structure (not the text) of text notebooks' editor resources instead")
 	if err := set.Parse(args); err != nil {
 		return err
 	}
@@ -515,6 +516,15 @@ func runBOOXCoverage(args []string) error {
 	native := boox.Service{Config: boox.Config{Database: cfg.BOOXDatabase}, DB: db, Objects: objects, LibraryID: id}
 	if err = native.ResolveIdentity(ctx); err != nil {
 		return err
+	}
+	if *richText {
+		inv, err := native.RichTextInventory(ctx)
+		if err != nil {
+			return err
+		}
+		out := json.NewEncoder(os.Stdout)
+		out.SetIndent("", "  ")
+		return out.Encode(inv)
 	}
 	var report []boox.CoveragePage
 	if *notebook != "" || *page != "" {
