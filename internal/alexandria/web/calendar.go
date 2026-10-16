@@ -252,9 +252,3 @@ func (d Deps) calendarRoutes(mux *http.ServeMux) {
 		back(w, r, "/calendar?show=deleted", "Event permanently deleted.")
 	})
 }
-
-// commonZones are suggestions for the time zone field; any IANA name works.
-var commonZones = []string{"UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles",
-	"America/Anchorage", "Pacific/Honolulu", "America/Toronto", "America/Mexico_City", "America/Sao_Paulo", "Europe/London",
-	"Europe/Dublin", "Europe/Paris", "Europe/Berlin", "Europe/Madrid", "Europe/Rome", "Africa/Johannesburg", "Asia/Kolkata",
-	"Asia/Shanghai", "Asia/Tokyo", "Asia/Singapore", "Australia/Sydney", "Pacific/Auckland"}

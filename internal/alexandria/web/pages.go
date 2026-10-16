@@ -441,15 +441,15 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
-		if zone := strings.TrimSpace(r.FormValue("time_zone")); zone != "" {
-			if _, err := time.LoadLocation(zone); err != nil || zone == "Local" {
-				back(w, r, "/settings/integrations", "Unknown time zone. Use a name like America/Chicago.")
-				return
-			}
-			if err := settings.Set(r.Context(), d.DB, settings.TimeZone, zone, false); err != nil {
-				d.fail(w, err)
-				return
-			}
+		// Blank is the server's zone; a saved zone outside the list is kept as is.
+		zone := r.FormValue("time_zone")
+		if saved, _ := settings.Get(r.Context(), d.DB, settings.TimeZone, ""); zone != "" && zone != saved && !settings.KnownZone(zone) {
+			back(w, r, "/settings/integrations", "Choose a time zone from the list.")
+			return
+		}
+		if err := settings.Set(r.Context(), d.DB, settings.TimeZone, zone, false); err != nil {
+			d.fail(w, err)
+			return
 		}
 		back(w, r, "/settings/integrations", "CalDAV settings saved.")
 	})
@@ -577,7 +577,15 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 		}
 		data["Collection"], data["DueMode"], data["Tokens"] = collection, due, tokens
 		data["EventsCollection"], data["EventsCalDAV"] = eventsName, taskhost.Prefix+"/user/calendars/events/"
-		data["TimeZone"], data["Zones"] = settings.ZoneName(settings.Zone(ctx, d.DB)), commonZones
+		zone, err := settings.Get(ctx, d.DB, settings.TimeZone, "")
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		data["TimeZone"], data["ServerZone"], data["ZoneGroups"] = zone, settings.ZoneName(time.Local), settings.Zones(time.Now())
+		if zone != "" && !settings.KnownZone(zone) {
+			data["LegacyZone"] = zone
+		}
 		data["CalDAV"], data["OAuthLabel"] = taskhost.Prefix+"/user/calendars/tasks/", oauth.TokenLabel
 	case "search", "recognition":
 		var providerView *providers.View
