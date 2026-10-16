@@ -182,11 +182,16 @@ func missing(p pageText) bool { return p.State != "ready" && !pending(p) }
 
 // minutesInputHash covers recordings, page text and the prompt; the minutes
 // view compares it with the current notebook to flag stale minutes.
-func minutesInputHash(recs []string, pages []pageText, instructions string) string {
+// The notebook's own tags count when it has any (so earlier minutes of
+// untagged notes stay current); the library's other tags are only a hint.
+func minutesInputHash(recs []string, pages []pageText, tags []string, instructions string) string {
 	h := sha256.New()
 	fmt.Fprintf(h, "%s\x00%x\x00", minutes.PromptVersion, sha256.Sum256([]byte(minutes.System(instructions))))
 	for _, r := range recs {
 		fmt.Fprintf(h, "r\x00%s\x00", r)
+	}
+	for _, t := range tags {
+		fmt.Fprintf(h, "t\x00%s\x00", t)
 	}
 	for _, p := range pages {
 		if p.State == "ready" {
@@ -486,7 +491,14 @@ func (s Service) processSummary(ctx context.Context, summary minutes.Completer, 
 	if summary == nil {
 		return fail("Set up a summary model in Settings → Recognition, then retry.", true)
 	}
-	inputHash := minutesInputHash(ids, pages, s.Minutes.Instructions)
+	_, in.Tags, e = s.notebookTags(ctx, id)
+	if e == nil {
+		in.LibraryTags, e = s.libraryTags(ctx, minutes.MaxLibraryTags+len(in.Tags))
+	}
+	if e != nil {
+		return fail("Could not read BOOX tags; retrying.", false)
+	}
+	inputHash := minutesInputHash(ids, pages, in.Tags, s.Minutes.Instructions)
 	work, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	m, e := minutes.Summarize(work, summary, s.Minutes.Instructions, in)
 	cancel()

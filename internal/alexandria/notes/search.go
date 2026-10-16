@@ -40,6 +40,8 @@ type Result struct {
 	Snippet      string  `json:"snippet"`
 	Score        float64 `json:"score"`
 	Lexical      bool    `json:"lexical"`
+	// Tags are the page's BOOX tags (recognized BOOX pages only).
+	Tags []string `json:"tags,omitempty"`
 }
 
 type Searcher struct {
@@ -218,10 +220,29 @@ func (s Searcher) SearchScoped(ctx context.Context, query string, limit int, hyb
 			h.URL = "/boox/minutes?id=" + url.QueryEscape(h.NotebookID)
 		} else {
 			h.URL = "/boox/notebook?id=" + url.QueryEscape(h.NotebookID) + "&page=" + strconv.Itoa(h.PageNumber) + "&page_id=" + url.QueryEscape(h.PageID)
+			if err := s.pageTags(ctx, &h.Result); err != nil {
+				return nil, err
+			}
 		}
 		results[i] = h.Result
 	}
 	return results, nil
+}
+
+func (s Searcher) pageTags(ctx context.Context, r *Result) error {
+	rows, err := s.DB.QueryContext(ctx, `SELECT DISTINCT content FROM boox_tag WHERE notebook_id=$1 AND page_id=$2 ORDER BY content`, r.NotebookID, r.PageID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil {
+			return err
+		}
+		r.Tags = append(r.Tags, t)
+	}
+	return rows.Err()
 }
 
 func excerpt(s string, max int) string {

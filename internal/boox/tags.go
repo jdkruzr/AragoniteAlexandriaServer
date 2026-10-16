@@ -1,0 +1,154 @@
+package boox
+
+import (
+	"context"
+	"fmt"
+	"html/template"
+	"net/http"
+	"sort"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
+)
+
+// BOOX tags are the firmware's TagModel rows (migration 0030, view boox_tag):
+// one row per tag per page, made with the lasso's "Tag" action. Alexandria
+// reads them; it never writes tags.
+
+// noteTag reports whether a NOTE_TREE record is a tag (modeType 1, no type).
+func noteTag(b map[string]any, uid string) bool {
+	content, ok := b["content"].(string)
+	id, _ := b["_id"].(string)
+	_, typed := b["type"]
+	return ok && len(content) <= 1024 && !typed && fmt.Sprint(b["modeType"]) == "1" && b["dbId"] == uid+"-NOTE_TREE" && b["user"] == uid && id != "" && b["uniqueId"] == id && b["commitType"] == nil
+}
+
+// notebookTags returns a live notebook's tags by page ID, and all of them.
+func (s Service) notebookTags(ctx context.Context, id string) (map[string][]string, []string, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT DISTINCT page_id,content FROM boox_tag WHERE notebook_id=$1 ORDER BY content`, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	byPage, seen := map[string][]string{}, map[string]bool{}
+	var all []string
+	for rows.Next() {
+		var page, content string
+		if err := rows.Scan(&page, &content); err != nil {
+			return nil, nil, err
+		}
+		byPage[page] = append(byPage[page], content)
+		if !seen[content] {
+			seen[content] = true
+			all = append(all, content)
+		}
+	}
+	return byPage, all, rows.Err()
+}
+
+// libraryTags returns the most-used tags across live notebooks, then tags
+// that aren't on any page (made in the tag manager), up to limit.
+func (s Service) libraryTags(ctx context.Context, limit int) ([]string, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT t.content FROM boox_tag t LEFT JOIN boox_search_notebooks n ON n.document_id=t.notebook_id
+	 GROUP BY t.content ORDER BY count(DISTINCT (t.notebook_id,t.page_id)) FILTER (WHERE n.document_id IS NOT NULL) DESC,lower(t.content) LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+type tagSummary struct {
+	Content          string
+	Pages, Notebooks int
+}
+
+type taggedPage struct {
+	NotebookID, Title, PageID, Snippet string
+	Number                             int
+}
+
+type tagsView struct {
+	Tag   string
+	Tags  []tagSummary
+	Pages []taggedPage
+}
+
+var tagsTemplate = template.Must(template.New("tags.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/tags.html"))
+
+func (s Service) tagsPage(w http.ResponseWriter, r *http.Request) {
+	d := tagsView{Tag: strings.TrimSpace(r.URL.Query().Get("tag"))}
+	if d.Tag == "" {
+		rows, err := s.DB.QueryContext(r.Context(), `SELECT t.content,count(DISTINCT (t.notebook_id,t.page_id)) FILTER (WHERE n.document_id IS NOT NULL),count(DISTINCT t.notebook_id) FILTER (WHERE n.document_id IS NOT NULL)
+		 FROM boox_tag t LEFT JOIN boox_search_notebooks n ON n.document_id=t.notebook_id GROUP BY t.content ORDER BY 2 DESC,lower(t.content)`)
+		if err != nil {
+			failure(w, err)
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var t tagSummary
+			if err := rows.Scan(&t.Content, &t.Pages, &t.Notebooks); err != nil {
+				failure(w, err)
+				return
+			}
+			d.Tags = append(d.Tags, t)
+		}
+		if err := rows.Err(); err != nil {
+			failure(w, err)
+			return
+		}
+		s.renderPage(w, r, tagsTemplate, "BOOX Tags", d)
+		return
+	}
+	// Tags match without regard to case, like the device's tag search.
+	rows, err := s.DB.QueryContext(r.Context(), `SELECT DISTINCT n.document_id,coalesce(n.body->>'title','Untitled'),t.page_id,ids.ord,coalesce(p.text,''),min(t.content) OVER ()
+	 FROM boox_tag t JOIN boox_search_notebooks n ON n.document_id=t.notebook_id
+	 CROSS JOIN LATERAL (SELECT min(o)::integer AS ord FROM jsonb_array_elements_text(boox_search_page_ids(n.body->'pageNameList')) WITH ORDINALITY l(id,o) WHERE l.id=t.page_id) ids
+	 LEFT JOIN boox_page_index p ON p.notebook_id=t.notebook_id AND p.page_id=t.page_id
+	 WHERE lower(t.content)=lower($1) AND ids.ord IS NOT NULL`, d.Tag)
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var p taggedPage
+		var text, content string
+		if err := rows.Scan(&p.NotebookID, &p.Title, &p.PageID, &p.Number, &text, &content); err != nil {
+			failure(w, err)
+			return
+		}
+		d.Tag, p.Snippet = content, snippet(text, 200)
+		d.Pages = append(d.Pages, p)
+	}
+	if err := rows.Err(); err != nil {
+		failure(w, err)
+		return
+	}
+	sort.Slice(d.Pages, func(i, j int) bool {
+		a, b := d.Pages[i], d.Pages[j]
+		if a.Title != b.Title {
+			return strings.ToLower(a.Title) < strings.ToLower(b.Title)
+		}
+		return a.Number < b.Number
+	})
+	s.renderPage(w, r, tagsTemplate, web.Verbatim(web.T(r, "BOOX Tags")+" · "+d.Tag), d)
+}
+
+func snippet(s string, max int) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if utf8.RuneCountInString(s) <= max {
+		return s
+	}
+	return string([]rune(s)[:max]) + "…"
+}

@@ -110,6 +110,7 @@ type mcpSearchResult struct {
 	ModifiedAt    time.Time `json:"modified_at,omitempty"`
 	DetailURL     string    `json:"detail_url"`
 	ImageToolHint string    `json:"image_tool_hint"`
+	Tags          []string  `json:"tags,omitempty"`
 }
 
 type notePagesOutput struct {
@@ -210,7 +211,7 @@ func text(s string, out any) *mcp.CallToolResult {
 func registerNoteTools(server *mcp.Server, d Deps) {
 	mcp.AddTool[searchNotesInput, any](server, &mcp.Tool{
 		Name:        "search_notes",
-		Description: "Search Alexandria Client page text and BOOX recognized pages, reading text and Audio Note Minutes (including recording transcripts). Optional: mode (hybrid/keyword), limit, source or sources (client/forestnote, boox). Defaults to all sources. Folder, location, device_model, dates and sort are accepted but not implemented. BOOX results provide web links; the client-only image/page tools do not accept BOOX paths.",
+		Description: "Search Alexandria Client page text and BOOX recognized pages (also found by their BOOX tags, which results list), reading text and Audio Note Minutes (including recording transcripts). Optional: mode (hybrid/keyword), limit, source or sources (client/forestnote, boox). Defaults to all sources. Folder, location, device_model, dates and sort are accepted but not implemented. BOOX results provide web links; the client-only image/page tools do not accept BOOX paths.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in searchNotesInput) (*mcp.CallToolResult, any, error) {
 		if in.Query == "" {
 			return nil, nil, fmt.Errorf("query is required")
@@ -255,6 +256,7 @@ func registerNoteTools(server *mcp.Server, d Deps) {
 				m.DetailPath = r.URL
 				m.DetailURL = d.display(r.URL)
 				m.ImageToolHint = ""
+				m.Tags = r.Tags
 				m.Title = r.NotebookName
 				if r.PageNumber > 0 {
 					m.Title = fmt.Sprintf("%s, page %d", r.NotebookName, r.PageNumber)
@@ -264,8 +266,12 @@ func registerNoteTools(server *mcp.Server, d Deps) {
 				}
 			}
 			out.Results = append(out.Results, m)
-			fmt.Fprintf(&sb, "--- Result %d ---\nNote: %s (page 0)\nTitle: %s\nSource type: %s\nURL: %s\nText:\n%s\n\n",
-				i+1, m.Path, m.Title, m.SourceType, m.DetailURL, m.Snippet)
+			tags := ""
+			if len(m.Tags) > 0 {
+				tags = "BOOX tags: " + strings.Join(m.Tags, "; ") + "\n"
+			}
+			fmt.Fprintf(&sb, "--- Result %d ---\nNote: %s (page 0)\nTitle: %s\nSource type: %s\nURL: %s\n%sText:\n%s\n\n",
+				i+1, m.Path, m.Title, m.SourceType, m.DetailURL, tags, m.Snippet)
 		}
 		if len(results) == 0 {
 			sb.WriteString("No results found.\n")

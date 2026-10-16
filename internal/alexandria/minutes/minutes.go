@@ -46,6 +46,9 @@ type Input struct {
 	Pages             []Page // recognized pages only
 	Missing           []int  // pages without recognized text
 	Recordings        []Recording
+	// Tags are the notebook's own BOOX tags; LibraryTags are other tags the
+	// author uses. Keywords reuse a tag's spelling when they mean the same.
+	Tags, LibraryTags []string
 }
 
 // Point is one key point; From says whether it came from the recordings, the
@@ -109,6 +112,7 @@ func Prompt(in Input) string {
 		fmt.Fprintf(&b, "Created: %s\n", in.Created.UTC().Format("2006-01-02 15:04 UTC"))
 	}
 	fmt.Fprintf(&b, "Pages: %d\n\n", in.PageCount)
+	b.WriteString(tagsText(in))
 	budget := MaxPromptRunes - utf8.RuneCountInString(b.String())
 	notes := notesText(in)
 	if n := utf8.RuneCountInString(notes); n > budget/2 {
@@ -136,6 +140,35 @@ func Prompt(in Input) string {
 		b.WriteString("\n\n")
 	}
 	b.WriteString(notes)
+	return b.String()
+}
+
+// MaxLibraryTags bounds the other tags listed in a prompt.
+const MaxLibraryTags = 50
+
+func tagsText(in Input) string {
+	own := map[string]bool{}
+	for _, t := range in.Tags {
+		own[strings.ToLower(t)] = true
+	}
+	var other []string
+	for _, t := range in.LibraryTags {
+		if !own[strings.ToLower(t)] && len(other) < MaxLibraryTags {
+			other = append(other, t)
+		}
+	}
+	if len(in.Tags) == 0 && len(other) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("BOOX TAGS\n")
+	if len(in.Tags) > 0 {
+		fmt.Fprintf(&b, "This notebook's tags: %s\n", strings.Join(in.Tags, "; "))
+	}
+	if len(other) > 0 {
+		fmt.Fprintf(&b, "Other tags the author uses: %s\n", strings.Join(other, "; "))
+	}
+	b.WriteString("When a keyword means the same as one of these tags, use the tag's exact spelling. Other keywords are fine too.\n\n")
 	return b.String()
 }
 

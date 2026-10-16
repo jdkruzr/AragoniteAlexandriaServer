@@ -10,7 +10,7 @@
 {{if $d.Query}}
 <h2>{{t "Pages and Reading"}}{{if $d.Results}} <span class="badge">{{len $d.Results}}</span>{{end}}</h2>
 {{range $d.Results}}
-<article class="result"><span class="badge source">{{if eq .Source "boox"}}BOOX{{else}}Alexandria Client{{end}} · {{t .Kind}}</span><p><a href="{{.URL}}">{{if .PageNumber}}{{t "{{.Name}}, page {{.Number}}" "Name" .NotebookName "Number" .PageNumber}}{{else}}{{.NotebookName}}{{end}}</a></p><p>{{.Snippet}}</p></article>
+<article class="result"><span class="badge source">{{if eq .Source "boox"}}BOOX{{else}}Alexandria Client{{end}} · {{t .Kind}}</span><p><a href="{{.URL}}">{{if .PageNumber}}{{t "{{.Name}}, page {{.Number}}" "Name" .NotebookName "Number" .PageNumber}}{{else}}{{.NotebookName}}{{end}}</a></p><p>{{.Snippet}}</p>{{if .Tags}}<p class="tags compact" aria-label="{{t "BOOX tags"}}">{{range .Tags}}<a class="tag" href="/boox/tags?tag={{.}}">{{.}}</a>{{end}}</p>{{end}}</article>
 {{else}}<p class="empty">{{t "No page text or BOOX reading records match. Pages that haven't been through handwriting recognition can only be found by title."}}</p>{{end}}
 {{if $d.Native}}<h2>{{t "BOOX Notebook Titles"}} <span class="badge">{{len $d.Native}}</span></h2>{{range $d.Native}}<article class="result"><span class="badge source">BOOX · {{t .Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p></article>{{end}}{{end}}
 {{if $d.Annotations}}<h2>{{t "Alexandria Client Book Annotations"}} <span class="badge">{{len $d.Annotations}}</span></h2>{{range $d.Annotations}}<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}{{t "Untitled book"}}{{end}}</a><p>{{.Snippet}}</p></article>{{end}}{{end}}

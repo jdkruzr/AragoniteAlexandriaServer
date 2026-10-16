@@ -135,6 +135,9 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 		t.Fatal(found, e)
 	}
 	s.DB.ExecContext(ctx, `UPDATE alexandria_note_minutes SET next_at=now()`)
+	// The note's own BOOX tag and a library tag go to the model as known tags.
+	putTag(t, s, "tag-nebula", "note", "page", "Nebula", 0)
+	putTag(t, s, "tag-common", "", "", "Telescope time", 0)
 	// With automatic sending on, finished minutes go straight to BOOX.
 	s.Minutes.AutoSend, s.Minutes.Instructions = true, "Write like a ship's log."
 	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_identity SET native_uid=$1 WHERE id=1`, s.uid()); e != nil {
@@ -157,6 +160,9 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 	}
 	if len(summary.prompts) != 1 || !strings.Contains(summary.prompts[0], "synthetic quasar transcript") || !strings.Contains(summary.prompts[0], "nebula survey") || !strings.Contains(summary.prompts[0], "Recording 1: Standup, started 2026-10-13 21:50:41 UTC, length 1:01") {
 		t.Fatal("prompt lacks notes, transcript or metadata", summary.prompts)
+	}
+	if !strings.Contains(summary.prompts[0], "This notebook's tags: Nebula\nOther tags the author uses: Telescope time\n") {
+		t.Fatal("prompt lacks BOOX tags", summary.prompts[0])
 	}
 	if summary.systems[0] != minutes.System("Write like a ship's log.") {
 		t.Fatal("custom instructions not used", summary.systems[0])
@@ -184,6 +190,20 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 	if body := page(); !strings.Contains(body, "Synthetic nebula review") || strings.Contains(body, "have changed") {
 		t.Fatal("ready minutes page", body)
 	}
+	// "nebula" is the tag Nebula; "schedule" isn't a tag.
+	if body := page(); !strings.Contains(body, `<a class="tag" href="/boox/tags?tag=Nebula"`) || !strings.Contains(body, `<span class="tag new" title="Not a BOOX tag">schedule</span>`) {
+		t.Fatal("keywords not matched with tags", body)
+	}
+	// Removing the note's tag makes the minutes out of date; library tags don't.
+	putTag(t, s, "tag-common", "", "", "Telescope time", 2)
+	if body := page(); strings.Contains(body, "have changed") {
+		t.Fatal("library tag change flagged the minutes")
+	}
+	putTag(t, s, "tag-nebula", "note", "page", "Nebula", 2)
+	if body := page(); !strings.Contains(body, "have changed") {
+		t.Fatal("tag removal not flagged")
+	}
+	putTag(t, s, "tag-nebula", "note", "page", "Nebula", 0)
 	// New instructions make the minutes out of date, and restoring them doesn't.
 	s.Minutes.Instructions = ""
 	if body := page(); !strings.Contains(body, "summary instructions have changed") {
