@@ -28,6 +28,10 @@ func safeSVG(raw []byte) ([]byte, error) {
 	d := xml.NewDecoder(bytes.NewReader(raw))
 	var tokens []xml.Token
 	classes := map[string]string{}
+	// Clips that cover the whole canvas clip nothing; BOOX templates wrap
+	// their drawing in one. Any other clip is refused below.
+	noopClips := map[string]bool{}
+	var canvasW, canvasH float64
 	depth, count := 0, 0
 	for {
 		t, e := d.Token()
@@ -45,6 +49,40 @@ func safeSVG(raw []byte) ([]byte, error) {
 			count++
 			if depth > 32 || count > 10000 {
 				return nil, fmt.Errorf("SVG exceeds preview limits")
+			}
+			if v.Name.Local == "svg" && canvasW == 0 {
+				canvasW, canvasH = svgCanvas(v)
+			}
+			if v.Name.Local == "clipPath" {
+				id := ""
+				for _, a := range v.Attr {
+					if a.Name.Local == "id" {
+						id = a.Value
+					}
+				}
+				var clip struct {
+					Inner []struct {
+						XMLName   xml.Name
+						X         string `xml:"x,attr"`
+						Y         string `xml:"y,attr"`
+						Width     string `xml:"width,attr"`
+						Height    string `xml:"height,attr"`
+						Transform string `xml:"transform,attr"`
+					} `xml:",any"`
+				}
+				if d.DecodeElement(&clip, &v) != nil {
+					return nil, fmt.Errorf("invalid SVG clip")
+				}
+				depth--
+				if len(clip.Inner) == 1 && clip.Inner[0].XMLName.Local == "rect" && clip.Inner[0].Transform == "" && id != "" && canvasW > 0 {
+					r := clip.Inner[0]
+					x, y, w, h := svgFloat(r.X), svgFloat(r.Y), svgFloat(r.Width), svgFloat(r.Height)
+					if x <= 0 && y <= 0 && x+w >= canvasW && y+h >= canvasH {
+						noopClips[id] = true
+						continue
+					}
+				}
+				return nil, fmt.Errorf("SVG clipping unsupported")
 			}
 			switch v.Name.Local {
 			case "svg", "g", "defs", "title", "desc", "line", "rect", "circle", "ellipse", "path", "polygon", "polyline", "style":
@@ -75,6 +113,12 @@ func safeSVG(raw []byte) ([]byte, error) {
 			}
 			for _, a := range v.Attr {
 				key := a.Name.Local
+				if key == "clip-path" {
+					if id, ok := strings.CutPrefix(strings.TrimSpace(a.Value), "url(#"); ok && noopClips[strings.TrimSuffix(id, ")")] {
+						continue // dropped on output
+					}
+					return nil, fmt.Errorf("SVG clipping unsupported")
+				}
 				if key == "href" || strings.HasPrefix(strings.ToLower(key), "on") || strings.Contains(strings.ToLower(a.Value), "url(") {
 					return nil, fmt.Errorf("SVG references unsupported")
 				}
@@ -103,7 +147,9 @@ func safeSVG(raw []byte) ([]byte, error) {
 			var cls, style string
 			attrs := []xml.Attr{}
 			for _, a := range s.Attr {
-				if a.Name.Local == "class" {
+				if a.Name.Local == "clip-path" {
+					continue
+				} else if a.Name.Local == "class" {
 					cls = a.Value
 				} else if a.Name.Local == "style" {
 					style = a.Value
@@ -135,6 +181,33 @@ func safeSVG(raw []byte) ([]byte, error) {
 	}
 	return out.Bytes(), nil
 }
+
+// svgCanvas is the root's drawing area: its viewBox, else width and height.
+func svgCanvas(root xml.StartElement) (float64, float64) {
+	var w, h float64
+	for _, a := range root.Attr {
+		switch a.Name.Local {
+		case "viewBox":
+			if f := strings.Fields(strings.ReplaceAll(a.Value, ",", " ")); len(f) == 4 && svgFloat(f[0]) == 0 && svgFloat(f[1]) == 0 {
+				return svgFloat(f[2]), svgFloat(f[3])
+			}
+		case "width":
+			w = svgFloat(a.Value)
+		case "height":
+			h = svgFloat(a.Value)
+		}
+	}
+	return w, h
+}
+
+func svgFloat(s string) float64 {
+	v, err := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(s), "px"), 64)
+	if err != nil || !finite(v) {
+		return 0
+	}
+	return v
+}
+
 func drawSVG(dc *gg.Context, b []byte) error {
 	// Preserve the already-qualified simple ruled rasterization exactly.
 	if drawLineSVG(dc, b) == nil {
