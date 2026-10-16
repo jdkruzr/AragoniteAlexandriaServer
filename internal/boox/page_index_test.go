@@ -545,8 +545,9 @@ func TestRerunKeepsPagesInSearchWithoutReembedding(t *testing.T) {
 	if searchable() != "synthetic quasar transcript" || work() != 0 {
 		t.Fatal("unchanged text re-embedded", searchable(), work())
 	}
-	// A real change on the device still clears it until it's recognized again.
-	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET revision='2-b' WHERE document_id='note'`); e != nil {
+	// A real change on the device still clears it until it's recognized again
+	// (a new revision alone doesn't: see TestRevisionOnlyResaveKeepsRecognition).
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET revision='2-b',body=jsonb_set(body,'{title}','"Edited"') WHERE document_id='note'`); e != nil {
 		t.Fatal(e)
 	}
 	if searchable() != "" {
@@ -643,5 +644,54 @@ func TestBlockedCoverageReportsOffendingShapes(t *testing.T) {
 	}
 	if raw, _ := json.Marshal(report); bytes.Contains(raw, []byte("private")) {
 		t.Fatal("report leaked text")
+	}
+}
+
+// A device re-saving a notebook with only Couchbase bookkeeping changed
+// (_rev, _revisions, updatedAt) must not throw away recognized text.
+func TestRevisionOnlyResaveKeepsRecognition(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	ocr := &testOCR{}
+	if e := s.QueuePage(ctx, "note", 1); e != nil {
+		t.Fatal(e)
+	}
+	if found, e := s.ProcessPageIndex(ctx, ocr, ""); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	state := func() (string, string) {
+		var st, text string
+		if e := s.DB.QueryRowContext(ctx, `SELECT state,text FROM boox_page_index`).Scan(&st, &text); e != nil {
+			t.Fatal(e)
+		}
+		return st, text
+	}
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET revision='9-resave',body=body||'{"_rev":"9-resave","_revisions":{"start":9,"ids":["resave"]},"updatedAt":1792000000000}' WHERE document_id='note'`); e != nil {
+		t.Fatal(e)
+	}
+	if st, text := state(); st != "ready" || text != "synthetic quasar transcript" {
+		t.Fatalf("revision-only re-save invalidated the page: %s %q", st, text)
+	}
+	// Rebinding a page file to identical bytes changes nothing either.
+	var key string
+	var v int64
+	if e := s.DB.QueryRowContext(ctx, `SELECT l.native_key FROM boox_blob_live l WHERE l.native_key LIKE '%shape/%'`).Scan(&key); e != nil {
+		t.Fatal(e)
+	}
+	if e := s.DB.QueryRowContext(ctx, `INSERT INTO boox_blob_version(native_key,sha256,md5,bytes) SELECT native_key,sha256,md5,bytes FROM boox_blob_version WHERE id=(SELECT version_id FROM boox_blob_live WHERE native_key=$1) RETURNING id`, key).Scan(&v); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_blob_live SET version_id=$2 WHERE native_key=$1`, key, v); e != nil {
+		t.Fatal(e)
+	}
+	if st, _ := state(); st != "ready" {
+		t.Fatalf("identical page file invalidated the page: %s", st)
+	}
+	// A real change still does.
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET body=jsonb_set(body,'{pageNameList}','["page","page2"]') WHERE document_id='note'`); e != nil {
+		t.Fatal(e)
+	}
+	if st, text := state(); st != "queued" || text != "" {
+		t.Fatalf("real change kept the old result: %s %q", st, text)
 	}
 }
