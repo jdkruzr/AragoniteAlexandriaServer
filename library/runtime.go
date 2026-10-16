@@ -19,6 +19,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
@@ -326,6 +327,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 			native.RecognitionEnabled = pages.OCR != nil
 			native.Minutes = minutesConfig(providerSnapshot)
+			native.Actions = r.actionsConfig(providerSnapshot)
 			native.Admin(w, req)
 			return
 		}
@@ -550,14 +552,27 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 		found := false
 		// Embedding has its own loop (ProcessIndex): a slow embedder must not
 		// hold up recognition or library-run preparation.
-		switch turn % 4 {
+		switch turn % 5 {
 		case 0:
 			found, err = pages.Step(ctx, conn)
 		case 1:
 			if r.cfg.NativeBOOX != nil {
-				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil, RecognitionIdentity: pages.OCRIdentity, RecognitionRevision: pages.SettingsRevision}
+				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil, RecognitionIdentity: pages.OCRIdentity, RecognitionRevision: pages.SettingsRevision, Actions: r.actionsConfig(snapshot)}
 				if err = native.ResolveIdentity(ctx); err == nil {
 					found, err = native.ProcessPageIndex(ctx, pages.OCR, pages.Prompt)
+				}
+			}
+		case 4:
+			// Note actions queued by recognition. They still run if their
+			// settings changed meanwhile, failing with guidance when a model is off.
+			if r.cfg.NativeBOOX != nil {
+				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Actions: r.actionsConfig(snapshot)}
+				if err = native.ResolveIdentity(ctx); err == nil {
+					var summary noteactions.Completer
+					if snapshot.Config.Summary.Enabled {
+						summary = snapshot.SummaryClient()
+					}
+					found, err = native.ProcessNoteActions(ctx, pages.OCR, summary)
 				}
 			}
 		case 2:
@@ -681,6 +696,13 @@ func (r *Runtime) pageConfiguration(ctx context.Context, db pg.DB) (notes.Pipeli
 		p.OCR = v.OCRClient()
 	}
 	return p, s, v, nil
+}
+
+func (r *Runtime) actionsConfig(v providers.Snapshot) boox.ActionsConfig {
+	a := v.Config.Actions
+	ready, _ := v.Config.ActionsReady()
+	return boox.ActionsConfig{Enabled: ready, Red: a.For("red"), Blue: a.For("blue"), TaskInstructions: a.TaskInstructions,
+		EventInstructions: a.EventInstructions, PublicURL: r.cfg.PublicURL}
 }
 
 func minutesConfig(v providers.Snapshot) boox.MinutesConfig {

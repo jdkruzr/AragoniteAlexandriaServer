@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach"
@@ -319,5 +320,69 @@ func TestCalDAVTasksRoundTripThroughRuntime(t *testing.T) {
 	defer again.Close()
 	if again.attachSecret != secret || len(secret) != 64 {
 		t.Fatal("attachment secret changed on reopen")
+	}
+}
+
+func TestCalDAVEventsThroughRuntime(t *testing.T) {
+	r, db, _ := fixture(t)
+	call := func(method, path, body string, headers map[string]string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.SetBasicAuth("author", "a-long-test-password")
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		out := httptest.NewRecorder()
+		r.ServeHTTP(out, req)
+		return out
+	}
+	ics := func(comp, uid, start string) string {
+		return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nBEGIN:" + comp + "\r\nUID:" + uid + "\r\nDTSTAMP:20261001T000000Z\r\n" +
+			"DTSTART:" + start + "\r\nSUMMARY:Synthetic " + uid + "\r\nEND:" + comp + "\r\nEND:VCALENDAR\r\n"
+	}
+	cal := map[string]string{"Content-Type": "text/calendar"}
+	xml := func(depth string) map[string]string {
+		return map[string]string{"Depth": depth, "Content-Type": "application/xml"}
+	}
+	// Discovery lists both collections.
+	home := call("PROPFIND", "/caldav/user/calendars/", `<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:displayname/><c:supported-calendar-component-set/></d:prop></d:propfind>`, xml("1"))
+	if home.Code != 207 || !strings.Contains(home.Body.String(), "/caldav/user/calendars/events/") || !strings.Contains(home.Body.String(), "/caldav/user/calendars/tasks/") || !strings.Contains(home.Body.String(), "VEVENT") {
+		t.Fatalf("home: %d %s", home.Code, home.Body)
+	}
+	if got := call("PUT", "/caldav/user/calendars/events/ev-1.ics", ics("VEVENT", "ev-1", "20261022T200000Z"), cal); got.Code/100 != 2 {
+		t.Fatalf("PUT event: %d %s", got.Code, got.Body)
+	}
+	call("PUT", "/caldav/user/calendars/events/ev-2.ics", ics("VEVENT", "ev-2", "20261201T200000Z"), cal)
+	if got := call("PUT", "/caldav/user/calendars/events/td.ics", ics("VTODO", "td", "20261022T200000Z"), cal); got.Code/100 == 2 {
+		t.Fatalf("VTODO accepted into events: %d", got.Code)
+	}
+	if got := call("PUT", "/caldav/user/calendars/tasks/ev-3.ics", ics("VEVENT", "ev-3", "20261022T200000Z"), cal); got.Code/100 == 2 {
+		t.Fatalf("VEVENT accepted into tasks: %d", got.Code)
+	}
+	var title string
+	var start time.Time
+	if err := db.QueryRow(`SELECT title,start_at FROM alexandria_events WHERE event_id='ev-1'`).Scan(&title, &start); err != nil || title != "Synthetic ev-1" || !start.Equal(time.Date(2026, 10, 22, 20, 0, 0, 0, time.UTC)) {
+		t.Fatal(title, start, err)
+	}
+	query := `<?xml version="1.0"?><c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/></d:prop>
+<c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"><c:time-range start="20261020T000000Z" end="20261031T000000Z"/></c:comp-filter></c:comp-filter></c:filter></c:calendar-query>`
+	if got := call("REPORT", "/caldav/user/calendars/events/", query, xml("1")); got.Code != 207 || !strings.Contains(got.Body.String(), "ev-1.ics") || strings.Contains(got.Body.String(), "ev-2.ics") {
+		t.Fatalf("time-range: %d %s", got.Code, got.Body)
+	}
+	sync := `<?xml version="1.0"?><d:sync-collection xmlns:d="DAV:"><d:sync-token/><d:prop><d:getetag/></d:prop></d:sync-collection>`
+	first := call("REPORT", "/caldav/user/calendars/events/", sync, xml("1"))
+	body := first.Body.String()
+	if first.Code != 207 || !strings.Contains(body, "ev-1.ics") || strings.Contains(body, "/tasks/") {
+		t.Fatalf("sync: %d %s", first.Code, body)
+	}
+	token := body[strings.Index(body, "<D:sync-token>")+len("<D:sync-token>") : strings.Index(body, "</D:sync-token>")]
+	if got := call("DELETE", "/caldav/user/calendars/events/ev-1.ics", "", nil); got.Code/100 != 2 {
+		t.Fatalf("DELETE: %d", got.Code)
+	}
+	next := call("REPORT", "/caldav/user/calendars/events/", strings.Replace(sync, "<d:sync-token/>", "<d:sync-token>"+token+"</d:sync-token>", 1), xml("1"))
+	if !strings.Contains(next.Body.String(), "404 Not Found") {
+		t.Fatalf("deletion not reported: %s", next.Body)
+	}
+	if got := call("PUT", "/caldav/user/calendars/events/ev-1.ics", ics("VEVENT", "ev-1", "20261022T200000Z"), cal); got.Code != 412 {
+		t.Fatalf("deleted event recreated: %d", got.Code)
 	}
 }

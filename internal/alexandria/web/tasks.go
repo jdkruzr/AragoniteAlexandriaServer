@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
@@ -121,14 +122,19 @@ func (d Deps) taskRoutes(mux *http.ServeMux) {
 		}
 		sortTasks(open, v)
 		sortTasks(done, v)
-		d.render(w, r, "tasks", "Tasks", "tasks", map[string]any{"Open": open, "Done": done, "Trash": v.Trash, "View": v, "Sorts": taskSorts})
+		ids := make([]string, 0, len(open)+len(done))
+		for _, t := range append(append([]tasksvc.Task{}, open...), done...) {
+			ids = append(ids, t.ID)
+		}
+		d.render(w, r, "tasks", "Tasks", "tasks", map[string]any{"Open": open, "Done": done, "Trash": v.Trash, "View": v, "Sorts": taskSorts,
+			"Sources": d.noteSources(r.Context(), "task", ids)})
 	}
 	mux.HandleFunc("GET /{$}", list)
 	mux.HandleFunc("GET /tasks", list)
 	mux.HandleFunc("POST /tasks", func(w http.ResponseWriter, r *http.Request) {
 		create := tasksvc.TaskCreate{Title: strings.TrimSpace(r.FormValue("title")), Detail: strings.TrimSpace(r.FormValue("detail"))}
 		if due := r.FormValue("due"); due != "" {
-			if t, err := time.ParseInLocation("2006-01-02", due, time.Local); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02", due, settings.Zone(r.Context(), d.DB)); err == nil {
 				create.DueAt = &t
 			}
 		}
@@ -168,7 +174,7 @@ func (d Deps) taskRoutes(mux *http.ServeMux) {
 		}
 		due := ""
 		if t.DueAt != nil {
-			due = t.DueAt.Local().Format("2006-01-02")
+			due = t.DueAt.In(settings.Zone(r.Context(), d.DB)).Format("2006-01-02")
 		}
 		d.render(w, r, "task-edit", "Edit Task", "tasks", map[string]any{"Task": t, "Due": due, "Return": returnTo(r)})
 	})
@@ -182,7 +188,7 @@ func (d Deps) taskRoutes(mux *http.ServeMux) {
 		detail := strings.TrimSpace(r.FormValue("detail"))
 		patch := tasksvc.TaskPatch{Title: &title, Detail: &detail, ClearDueAt: true}
 		if due := r.FormValue("due"); due != "" {
-			if t, err := time.ParseInLocation("2006-01-02", due, time.Local); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02", due, settings.Zone(r.Context(), d.DB)); err == nil {
 				patch.DueAt, patch.ClearDueAt = &t, false
 			}
 		}

@@ -248,7 +248,7 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 				warnings = append(warnings, "A shape references an unknown layer.")
 			}
 		}
-		s := &Shape{UniqueID: sp.UniqueId, ShapeType: sp.ShapeType, Color: sp.Color, FillColor: sp.FillColor, Thickness: sp.Thickness, ZOrder: sp.Zorder, Text: sp.Text, RevisionID: sp.RevisionId, UnderContent: underContent && sp.ShapeType == shapeMarker}
+		s := &Shape{UniqueID: sp.UniqueId, ShapeType: sp.ShapeType, Color: sp.Color, FillColor: sp.FillColor, Thickness: sp.Thickness, ZOrder: sp.Zorder, Text: sp.Text, RevisionID: sp.RevisionId, UnderContent: underContent && sp.ShapeType == shapeMarker, CreatedAt: sp.CreatedAt, UpdatedAt: sp.UpdatedAt}
 		if sp.BoundingRect != "" {
 			if json.Unmarshal([]byte(sp.BoundingRect), &s.BoundingRect) != nil {
 				return nil, nil, fmt.Errorf("invalid shape bounds")

@@ -80,6 +80,28 @@
 <p><button {{if not $p.CanSave}}disabled{{end}}>{{t "Save automatic processing"}}</button></p>
 </form>
 </section>
+<section class="card" id="note-actions">
+<h2>{{t "Note Actions"}} {{template "help" "actions.overview"}}</h2>
+<p>{{t "Handwriting in an assigned BOOX pen color becomes tasks or calendar events, each linking back to its page."}}</p>
+{{if $d.ActionsWhy}}<p class="notice" data-actions-state="waiting">{{t $d.ActionsWhy}}</p>{{else}}<p class="small muted" data-actions-state="on">{{t "On. Ink written since {{.When}} is read when its page is recognized." "When" $d.ActionsSince}}</p>{{end}}
+<form method="post" action="/settings/actions" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}>
+<label><input type="checkbox" name="x_on" {{if not $p.Config.Actions.Off}}checked{{end}}> {{t "Find tasks and events in colored ink"}}</label>
+{{range $c := $d.ActionColors}}<label>{{if eq $c.Name "red"}}{{t "Red ink"}}{{else}}{{t "Sky blue ink"}}{{end}} <span class="swatch {{$c.Name}}" aria-hidden="true"></span>
+<select name="x_{{$c.Name}}"><option value="task" {{if eq $c.Action "task"}}selected{{end}}>{{t "Makes tasks"}}</option><option value="event" {{if eq $c.Action "event"}}selected{{end}}>{{t "Makes calendar events"}}</option><option value="off" {{if eq $c.Action "off"}}selected{{end}}>{{t "Nothing"}}</option></select></label>{{end}}
+</fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Task Instructions"}} {{template "help" "actions.instructions"}}</legend>
+<textarea name="x_task_instructions" rows="10" maxlength="16000" aria-label="{{t "Task instructions"}}">{{with $p.Config.Actions.TaskInstructions}}{{.}}{{else}}{{$d.DefaultTaskInstructions}}{{end}}</textarea>
+<details class="more"><summary>{{t "Response Format (Always Added)"}}</summary><pre>{{$d.TaskFormat}}</pre></details>
+</fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Event Instructions"}}</legend>
+<textarea name="x_event_instructions" rows="10" maxlength="16000" aria-label="{{t "Event instructions"}}">{{with $p.Config.Actions.EventInstructions}}{{.}}{{else}}{{$d.DefaultEventInstructions}}{{end}}</textarea>
+<details class="more"><summary>{{t "Response Format (Always Added)"}}</summary><pre>{{$d.EventFormat}}</pre></details>
+</fieldset>
+<p class="hint">{{t "Clear a box and save to go back to the built-in instructions. Uses the recognition provider and summary model above; charges may apply."}}</p>
+<p><button {{if not $p.CanSave}}disabled{{end}}>{{t "Save note actions"}}</button></p>
+</form>
+</section>
 <section class="card">
 <h2>{{t "Reprocess Recognized Pages"}} {{template "help" "recognition.reprocess"}}</h2>
 <p>{{t "Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages."}}</p>

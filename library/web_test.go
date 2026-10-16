@@ -66,6 +66,9 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/library":                                              "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
 		"/files/forestnote/devices":                             "<h2>Connect a Device</h2>",
 		"/settings/integrations":                                "/caldav/user/calendars/tasks/",
+		"/settings/integrations?events":                         "/caldav/user/calendars/events/",
+		"/calendar":                                             "No events.",
+		"/calendar?show=deleted":                                "Deleted Events",
 		"/help":                                                 "Handwriting recognition",
 		"/":                                                     "Nothing to do",
 	} {
@@ -102,6 +105,25 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 	}
 	if got := b.do("POST", "/tasks", "title=Forged", nil, true); got.Code != 403 {
 		t.Fatalf("header-less post: %d", got.Code)
+	}
+	// Calendar: add a timed event in the owner's zone, see it, edit it.
+	if got := b.do("POST", "/settings/caldav", "collection=Tasks&due_mode=preserve&events_collection=Calendar&time_zone=America%2FChicago", sameSite, true); got.Code != 303 {
+		t.Fatalf("save time zone: %d", got.Code)
+	}
+	if got := b.do("POST", "/calendar", "title=Plant+garlic&date=2099-10-22&start=15:00&location=Bed+3", sameSite, true); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "Event+added") {
+		t.Fatalf("add event: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	cal := b.do("GET", "/calendar", "", nil, true).Body.String()
+	if !strings.Contains(cal, "Plant garlic") || !strings.Contains(cal, "2099-10-22 15:00–16:00") || !strings.Contains(cal, "America/Chicago") {
+		t.Fatalf("calendar page:\n%s", cal)
+	}
+	editAt := strings.Index(cal, "/calendar/")
+	editLink := cal[editAt : editAt+strings.Index(cal[editAt:], `"`)]
+	if !strings.HasSuffix(editLink, "/edit") {
+		t.Fatalf("edit link %q", editLink)
+	}
+	if got := b.do("GET", editLink, "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), `value="15:00"`) {
+		t.Fatalf("edit page: %d", got.Code)
 	}
 	if got := b.do("POST", "/tasks", "title=Save+seeds&due=2026-11-01", sameSite, true); got.Code != 303 {
 		t.Fatalf("create task: %d %s", got.Code, got.Body)

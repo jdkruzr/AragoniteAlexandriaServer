@@ -1,0 +1,17 @@
+{{define "content"}}{{$d := .Data}}{{$e := $d.Event}}{{$f := $d.Form}}
+<div class="page-head"><h1>{{t "Edit Event"}}</h1><a class="button secondary" href="{{$d.Return}}">{{t "Back to calendar"}}</a></div>
+{{with $d.Source}}<p><span class="badge">{{t "From note"}}</span> <a href="{{.URL}}">{{if .Notebook}}{{.Notebook}}{{else}}{{t "Notebook page"}}{{end}}</a></p>{{end}}
+<form class="stack" method="post" action="/calendar/{{$e.ID}}/edit">
+  <input type="hidden" name="return" value="{{$d.Return}}">
+  <label>{{t "Title"}} <input name="title" value="{{$e.Title}}" required maxlength="500"></label>
+  <label>{{t "Date"}} <input type="date" name="date" value="{{index $f "date"}}" required></label>
+  <label>{{t "Start time (optional)"}} <input type="time" name="start" value="{{index $f "start"}}"></label>
+  <label>{{t "End date (optional)"}} <input type="date" name="end_date" value="{{index $f "end_date"}}"></label>
+  <label>{{t "End time (optional)"}} <input type="time" name="end" value="{{index $f "end"}}"></label>
+  <label>{{t "Location"}} <input name="location" value="{{$e.Location}}" maxlength="500"></label>
+  <label>{{t "Link"}} <input name="url" value="{{$e.URL}}" maxlength="2000"></label>
+  <label>{{t "Notes"}} <textarea name="detail" rows="5">{{$e.Detail}}</textarea></label>
+  <p class="muted small">{{t "Times are in {{.Zone}}. Leave the time empty for an all-day event." "Zone" $d.Zone}}</p>
+  <div class="actions"><button>{{t "Save"}}</button><a class="button secondary" href="{{$d.Return}}">{{t "Cancel"}}</a></div>
+</form>
+{{end}}

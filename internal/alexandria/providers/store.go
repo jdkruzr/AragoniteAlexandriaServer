@@ -73,12 +73,53 @@ type AutomaticConfig struct {
 // On reports whether any automatic processing is turned on.
 func (a AutomaticConfig) On() bool { return a.Recognize || a.Summarize }
 
+// ActionsConfig turns BOOX handwriting in assigned pen colors into tasks and
+// calendar events. It is on by default: it runs wherever automatic
+// recognition and a summary model are both set up, unless turned off.
+type ActionsConfig struct {
+	Off bool `json:",omitempty"`
+	// Red and Blue are "task", "event" or "off"; "" is the default
+	// (red makes tasks, blue makes events).
+	Red, Blue string `json:",omitempty"`
+	// Instructions replace the defaults when set; the response format is
+	// fixed and always appended.
+	TaskInstructions, EventInstructions string `json:",omitempty"`
+}
+
+// For is the action assigned to a pen color ("red" or "blue").
+func (a ActionsConfig) For(color string) string {
+	v, def := a.Red, "task"
+	if color == "blue" {
+		v, def = a.Blue, "event"
+	}
+	if v == "" {
+		return def
+	}
+	return v
+}
+
+// ActionsReady reports whether note actions can run with these settings, and why not.
+func (c Config) ActionsReady() (bool, string) {
+	switch {
+	case c.Actions.Off:
+		return false, "Note actions are off."
+	case !c.OCR.Enabled:
+		return false, "Note actions need a recognition provider."
+	case !c.Summary.Enabled:
+		return false, "Note actions need a summary model."
+	case !c.Automatic.Recognize:
+		return false, "Note actions need automatic recognition."
+	}
+	return true, ""
+}
+
 type Config struct {
 	OCR           OCRConfig
 	Embedding     EmbedConfig
 	Transcription TranscriptionConfig
 	Summary       SummaryConfig
 	Automatic     AutomaticConfig
+	Actions       ActionsConfig `json:",omitempty"`
 }
 
 // Bootstrap values seed the database only once. Locked explicitly disables editing.
@@ -413,7 +454,7 @@ func (s Store) Candidate(ctx context.Context, revision int64, c Config, key, act
 		return v, ErrStale
 	}
 	// The recognition and search forms don't carry the minutes providers.
-	c.Transcription, c.Summary = v.Config.Transcription, v.Config.Summary
+	c.Transcription, c.Summary, c.Actions = v.Config.Transcription, v.Config.Summary, v.Config.Actions
 	c.OCR.AnthropicWorkspace = strings.TrimSpace(c.OCR.AnthropicWorkspace)
 	c.OCR.URL = strings.TrimRight(strings.TrimSpace(c.OCR.URL), "/")
 	c.Embedding.URL = strings.TrimRight(strings.TrimSpace(c.Embedding.URL), "/")
@@ -453,6 +494,43 @@ func (s Store) AutomaticCandidate(ctx context.Context, revision int64, recognize
 		a.Since = time.Now().UTC().Truncate(time.Second)
 	}
 	v.Config.Automatic = a
+	return v, nil
+}
+
+// ActionsCandidate applies the note actions form to the saved settings.
+func (s Store) ActionsCandidate(ctx context.Context, revision int64, a ActionsConfig, defaults [2]string) (Snapshot, error) {
+	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
+		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")
+	}
+	v, e := s.Load(ctx)
+	if e != nil {
+		return v, e
+	}
+	if v.Revision != revision {
+		return v, ErrStale
+	}
+	for _, x := range []*string{&a.Red, &a.Blue} {
+		if *x != "task" && *x != "event" && *x != "off" {
+			*x = ""
+		}
+	}
+	if a.Red == "task" {
+		a.Red = ""
+	}
+	if a.Blue == "event" {
+		a.Blue = ""
+	}
+	// Blank means the default, so a later change of default reaches owners who never edited it.
+	for i, x := range []*string{&a.TaskInstructions, &a.EventInstructions} {
+		*x = strings.TrimSpace(strings.ReplaceAll(*x, "\r\n", "\n"))
+		if *x == strings.TrimSpace(defaults[i]) {
+			*x = ""
+		}
+		if utf8.RuneCountInString(*x) > minutes.MaxInstructionRunes {
+			return v, errors.New("The note action instructions exceed the settings limit.")
+		}
+	}
+	v.Config.Actions = a
 	return v, nil
 }
 

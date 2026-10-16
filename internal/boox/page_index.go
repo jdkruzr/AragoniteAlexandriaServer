@@ -196,7 +196,12 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 	}
 	// Text extracted from unsupported shapes is never silently appended to a
 	// supposedly complete OCR result: those pages were blocked by warnings above.
-	return true, finish("ready", body, "Server-recognized text; original native content is unchanged.", n.Version, inputHash, text, ocr.Model())
+	if e = finish("ready", body, "Server-recognized text; original native content is unchanged.", n.Version, inputHash, text, ocr.Model()); e != nil {
+		return true, e
+	}
+	// Colored ink new since the last look becomes note actions.
+	_, e = s.noteInk(ctx, id, page, p.Ink, false)
+	return true, e
 }
 
 // typedText is the readable text of a text notebook's typed pages, from its

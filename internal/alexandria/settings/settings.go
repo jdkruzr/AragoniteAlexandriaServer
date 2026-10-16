@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"os"
+	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 )
@@ -17,7 +19,40 @@ const (
 	CalDAVCollectionName = "caldav_collection_name"
 	DueTimeMode          = "due_time_mode"
 	TaskAttachSecret     = "task_attach_secret"
+	// CalDAVEventsName is the events calendar's display name.
+	CalDAVEventsName = "caldav_events_collection_name"
+	// TimeZone is the owner's IANA time zone, for dates typed or written
+	// without one ("" = the server's zone).
+	TimeZone = "time_zone"
+	// NoteActionsSince is when note actions started (RFC 3339): older ink
+	// is only acted on from a page's Find actions button.
+	NoteActionsSince = "note_actions_since"
 )
+
+// Zone returns the owner's time zone: the saved setting, else the server's
+// local zone. An unknown saved name falls back the same way.
+func Zone(ctx context.Context, db pg.Querier) *time.Location {
+	name, err := Get(ctx, db, TimeZone, "")
+	if err == nil && name != "" {
+		if loc, err := time.LoadLocation(name); err == nil {
+			return loc
+		}
+	}
+	return time.Local
+}
+
+// ZoneName is the name Zone's location is shown and stored under.
+func ZoneName(loc *time.Location) string {
+	if loc == nil || loc.String() == "Local" {
+		if tz := os.Getenv("TZ"); tz != "" {
+			if _, err := time.LoadLocation(tz); err == nil {
+				return tz
+			}
+		}
+		return "UTC"
+	}
+	return loc.String()
+}
 
 // Get returns a string setting, or fallback when unset.
 func Get(ctx context.Context, db pg.Querier, key, fallback string) (string, error) {

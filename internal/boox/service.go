@@ -22,6 +22,7 @@ type Service struct {
 	RecognitionIdentity string
 	RecognitionRevision int64
 	Minutes             MinutesConfig
+	Actions             ActionsConfig
 	Config              Config
 	DB                  pg.DB
 	Objects             blob.Store

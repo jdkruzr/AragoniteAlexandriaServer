@@ -48,8 +48,69 @@ type SyncStore interface {
 // Backend interface offers no hook for either, so the handler reads the body,
 // decides, and writes its own multistatus.
 func SyncCollectionStub(next http.Handler, store SyncStore, backend *Backend) http.Handler {
+	if store == nil {
+		return next
+	}
+	return SyncCollectionSource(next, TaskSyncSource(store, backend))
+}
+
+// SyncItem is one resource as sync-collection reports it.
+type SyncItem struct {
+	Href, ETag string
+	Deleted    bool
+	UpdatedAt  int64
+	// Calendar renders the resource, only when calendar-data is asked for.
+	Calendar func() *ical.Calendar
+}
+
+// SyncSource is one collection as sync-collection sees it.
+type SyncSource interface {
+	MaxUpdatedAtAll(ctx context.Context) (int64, error)
+	SyncFloor(ctx context.Context) (int64, error)
+	// Changes is the live set (initial) or every row written at or after
+	// since, tombstones included, ordered by UpdatedAt.
+	Changes(ctx context.Context, since int64, initial bool) ([]SyncItem, error)
+}
+
+type taskSync struct {
+	store   SyncStore
+	backend *Backend
+}
+
+// TaskSyncSource is the Tasks collection's sync-collection source.
+func TaskSyncSource(store SyncStore, backend *Backend) SyncSource {
+	return taskSync{store: store, backend: backend}
+}
+
+func (s taskSync) MaxUpdatedAtAll(ctx context.Context) (int64, error) {
+	return s.store.MaxUpdatedAtAll(ctx)
+}
+func (s taskSync) SyncFloor(ctx context.Context) (int64, error) { return s.store.SyncFloor(ctx) }
+
+func (s taskSync) Changes(ctx context.Context, since int64, initial bool) ([]SyncItem, error) {
+	var rows []taskstore.Task
+	var err error
+	if initial {
+		rows, err = s.store.List(ctx)
+	} else {
+		rows, err = s.store.ListChangedSince(ctx, since)
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SyncItem, len(rows))
+	for i := range rows {
+		t := &rows[i]
+		out[i] = SyncItem{Href: s.backend.ObjectPath(t.TaskID), ETag: taskstore.ComputeETag(t), Deleted: t.IsDeleted == "Y",
+			UpdatedAt: t.UpdatedAt, Calendar: func() *ical.Calendar { return s.backend.RenderCalendar(t) }}
+	}
+	return out, nil
+}
+
+// SyncCollectionSource answers sync-collection for one collection.
+func SyncCollectionSource(next http.Handler, src SyncSource) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "REPORT" || store == nil {
+		if r.Method != "REPORT" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -67,7 +128,7 @@ func SyncCollectionStub(next http.Handler, store SyncStore, backend *Backend) ht
 			next.ServeHTTP(w, r)
 			return
 		}
-		serveSyncCollection(w, r, store, backend, req)
+		serveSyncCollection(w, r, src, req)
 	})
 }
 
@@ -126,7 +187,7 @@ func parseSyncCollection(body []byte) (syncCollectionReq, bool) {
 	return req, true
 }
 
-func serveSyncCollection(w http.ResponseWriter, r *http.Request, store SyncStore, backend *Backend, req syncCollectionReq) {
+func serveSyncCollection(w http.ResponseWriter, r *http.Request, store SyncSource, req syncCollectionReq) {
 	ctx := r.Context()
 
 	since, initial, ok := parseSyncToken(req.token)
@@ -150,15 +211,9 @@ func serveSyncCollection(w http.ResponseWriter, r *http.Request, store SyncStore
 		}
 	}
 
-	var rows []taskstore.Task
-	var err error
-	if initial {
-		// A client with no prior state has nothing to forget, so removals are
-		// omitted and only the live set is sent.
-		rows, err = store.List(ctx)
-	} else {
-		rows, err = store.ListChangedSince(ctx, since)
-	}
+	// A client with no prior state has nothing to forget, so removals are
+	// omitted and only the live set is sent.
+	rows, err := store.Changes(ctx, since, initial)
 	if err != nil {
 		http.Error(w, "list changes", http.StatusInternalServerError)
 		return
@@ -180,7 +235,7 @@ func serveSyncCollection(w http.ResponseWriter, r *http.Request, store SyncStore
 		}
 	}
 
-	writeSyncCollectionResponse(w, backend, req, rows, newToken)
+	writeSyncCollectionResponse(w, req, rows, newToken)
 }
 
 // parseSyncToken reads the millisecond bound out of a client token. Returns
@@ -222,18 +277,18 @@ func writeInvalidSyncToken(w http.ResponseWriter) {
 </D:error>`)
 }
 
-func writeSyncCollectionResponse(w http.ResponseWriter, backend *Backend, req syncCollectionReq, rows []taskstore.Task, newToken int64) {
+func writeSyncCollectionResponse(w http.ResponseWriter, req syncCollectionReq, rows []SyncItem, newToken int64) {
 	var b strings.Builder
 	b.WriteString(`<?xml version="1.0" encoding="utf-8"?>` + "\n")
 	b.WriteString(`<D:multistatus xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">` + "\n")
 
 	for i := range rows {
 		t := &rows[i]
-		href := backend.ObjectPath(t.TaskID)
+		href := t.Href
 
 		// A removed resource is reported as a response carrying only a status,
 		// with no propstat at all (RFC 6578 §3.2). That absence is the signal.
-		if t.IsDeleted == "Y" {
+		if t.Deleted {
 			fmt.Fprintf(&b, "  <D:response>\n    <D:href>%s</D:href>\n"+
 				"    <D:status>HTTP/1.1 404 Not Found</D:status>\n  </D:response>\n",
 				xmlEscape(href))
@@ -243,11 +298,11 @@ func writeSyncCollectionResponse(w http.ResponseWriter, backend *Backend, req sy
 		var props strings.Builder
 		if req.wantETag {
 			fmt.Fprintf(&props, "        <D:getetag>%s</D:getetag>\n",
-				xmlEscape(`"`+taskstore.ComputeETag(t)+`"`))
+				xmlEscape(`"`+t.ETag+`"`))
 		}
 		if req.wantCalData {
 			fmt.Fprintf(&props, "        <C:calendar-data>%s</C:calendar-data>\n",
-				xmlEscape(encodeCalendar(backend.RenderCalendar(t))))
+				xmlEscape(encodeCalendar(t.Calendar())))
 		}
 		fmt.Fprintf(&b, "  <D:response>\n    <D:href>%s</D:href>\n"+
 			"    <D:propstat>\n      <D:prop>\n%s      </D:prop>\n"+

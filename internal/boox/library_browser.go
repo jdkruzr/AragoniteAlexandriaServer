@@ -258,6 +258,9 @@ type notebookView struct {
 	Recordings                                                    int
 	MinutesState, MinutesTopic                                    string
 	RecognitionState, RecognitionDetail, RecognizedText           string
+	ActionsEnabled                                                bool
+	Actions                                                       []pageAction
+	ActionItems                                                   []pageActionItem
 	Texts                                                         []string
 	PageTags, OtherTags                                           []string
 	ID, Title, Parent, Page, Version, Image, Previous, Next, Zoom string
@@ -354,6 +357,13 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if d.Page != "" {
+		if d.Actions, d.ActionItems, err = s.pageActions(r.Context(), d.ID, d.Page); err != nil {
+			failure(w, err)
+			return
+		}
+	}
+	d.ActionsEnabled = s.Actions.Enabled
 	s.renderPage(w, r, notebookTemplate, web.Verbatim(d.Title), d)
 }
 

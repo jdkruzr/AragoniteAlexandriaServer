@@ -26,7 +26,9 @@ type previewResult struct {
 	Blank   bool
 	Notices []string
 	Texts   []string
-	Access  time.Time
+	// Ink is the page's handwriting in note-action pen colors.
+	Ink    []pageInk
+	Access time.Time
 }
 
 // Derived previews are disposable and bounded. Immutable input keys include
@@ -120,7 +122,7 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 	if len(p.Shapes) == 0 && len(w) == 0 && len(tw) > 0 && !slices.ContainsFunc(n.Keys, func(k string) bool { return strings.HasPrefix(k, "shape/"+p.PageID+"#") }) {
 		tw = []string{NoPageFilesWarning}
 	}
-	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices, Blank: len(p.Shapes) == 0 && !p.Background.IsDocument()}
+	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices, Blank: len(p.Shapes) == 0 && !p.Background.IsDocument(), Ink: inkSummary(p)}
 	// A transient object/index read failure must not pin a partial page (or a
 	// metadata-only page number) after the immutable resources become readable.
 	if len(v.Warnings) == 0 {

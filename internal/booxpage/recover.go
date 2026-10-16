@@ -66,7 +66,7 @@ func recoverEmptySessions(id string, keys []string, load Load, winners map[strin
 				return nil, errPointLimit
 			}
 			s := *style
-			s.UniqueID, s.RevisionID, s.Points = sid, rev, pts
+			s.UniqueID, s.RevisionID, s.Points, s.Recovered = sid, rev, pts, true
 			out = append(out, &s)
 		}
 	}
