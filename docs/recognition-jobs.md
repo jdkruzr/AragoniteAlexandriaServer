@@ -18,8 +18,9 @@ in this view.
   invalidates the selected pages' OCR cache. Queued, processing, or paused pages
   keep their existing jobs/batches instead of being duplicated or resumed.
 - Follow the resulting batch on Jobs. Filter by source/status, paginate in sets
-  of 50, refresh manually or enable five-second live updates. Live refresh stops
-  when there are no queued/processing jobs in the selected source/batch.
+  of 50. While jobs are queued or processing the page updates itself every five
+  seconds (`static/live.js`; 2026-10-16: no longer a `?live=1` toggle, which is
+  now ignored) and stops when none remain in the selected source/batch.
 - Pause/resume/cancel individual jobs or unfinished batch work; retry failed or
   blocked jobs after correcting their cause. Completed work remains visible and
   links to its source notebook/page.
