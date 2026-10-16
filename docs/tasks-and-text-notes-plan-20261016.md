@@ -76,3 +76,49 @@ fails until every language has every message).
 ## Order
 
 3 (quick) → 1 + 2 (same page) → 4 (independent, largest).
+
+## Built (2026-10-16)
+
+All four items deployed: `0004748-tasks1` (migration 0029, full migration
+procedure; evidence and `postgres-before.dump` under
+`deploy/compose/private/tasks-purge-20261016/`, rollback tag
+`before-tasks-purge-20261016`) and `634bebf-typed1` (app only). Fresh full
+PostgreSQL/S3 gate passed before each.
+
+- **Home:** `/` is Tasks (`/tasks` still works); the overview is `/library`;
+  nav Tasks · Library · Search · Recognition · Settings; logo → Tasks.
+- **Bulk actions:** `POST /tasks/bulk` (`action` = complete, reopen, delete,
+  restore, purge; repeated `id`; `return` keeps the view). "Select all" is
+  `static/tasks.js` (progressive; boxes work without it). Rows have Done, Edit
+  (`/tasks/{id}/edit`: title, due date, notes) and Delete. Deleted Tasks has
+  Restore and Delete permanently, which shows a confirmation page first.
+- **Permanent delete:** done with a ledger rather than a `purged` column:
+  `alexandria_task_purged(task_id, purged_at)` (0029). `taskdb.Store.Purge`
+  only purges trashed tasks: it erases content, keeps the tombstone (moves
+  `updated_at`, so sync-collection reports it), drops sync-map rows and records
+  the UID. `Create` refuses any UID in the ledger (`ErrPurged`) **or in the
+  trash** (`ErrDeleted`; this used to be a primary-key 500). CalDAV answers those
+  PUTs with **412** and logs "CalDAV refused to recreate a deleted task".
+  `HardDeleteOlderThan` (MCP purge of old tombstones) now reserves its UIDs too,
+  so pruning never reopens the door. Restore refuses purged tasks.
+- **Dates and sort:** each row shows Created and Updated (`tasksvc.Task.UpdatedAt`
+  is new); sort by due (default; undated last), created, updated or title,
+  ascending or descending, in the URL.
+- **Text notes:** inventory first (`alexandria-server boox-coverage -richtext`,
+  structure only): 7 text notebooks, all editor JSON: heading 1–2, paragraph,
+  bulletList/listItem, taskList/taskItem, one `onyxImg`, one `attach`; marks bold
+  and textStyle (fontSize, fontColor). Server-written `_Minutes` notes are the
+  same JSON, not HTML. `booxpage.ComposeRichText` lays these out (Go fonts,
+  wrapping, list markers, checkboxes, italic/underline/strike, colours; images and
+  attachments as labelled placeholders; unknown blocks as plain text) and puts the
+  handwriting over it with a darken blend, growing the canvas for long text.
+  Display only: the notebook view's first page of a text notebook uses
+  `typedPreview` (`/boox/page.png?…&typed=1`, its own cache key); the
+  recognition worker's `renderPreview` is unchanged, so typed text is never sent
+  to a provider or mistaken for handwriting.
+
+Not done / later: text-note images aren't drawn (the `onyxImg` `src`/`dataKey`
+mapping to a stored file wasn't traced); renderer notices stay English like the
+other BOOX preview notices; client-side CalDAV edit/delete still unexercised.
+Transfers to the VM stall after a few MB (ping fine; small deploy archives fine);
+the inventory binary went over in 512 KB pieces.
