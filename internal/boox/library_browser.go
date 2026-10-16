@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -258,6 +259,7 @@ type notebookView struct {
 	MinutesState, MinutesTopic                                    string
 	RecognitionState, RecognitionDetail, RecognizedText           string
 	Texts                                                         []string
+	PageTags, OtherTags                                           []string
 	ID, Title, Parent, Page, Version, Image, Previous, Next, Zoom string
 	Number, Count                                                 int
 	Deleted                                                       bool
@@ -328,6 +330,17 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(booxpage.PageIDs(n.Meta.RichTextPageNameList)) > 0 && !d.TypedText {
 		d.Warnings = append(d.Warnings, "This notebook also has rich-text pages; their layout is not rendered yet.")
+	}
+	byPage, all, err := s.notebookTags(r.Context(), d.ID)
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	d.PageTags = byPage[d.Page]
+	for _, t := range all {
+		if !slices.Contains(d.PageTags, t) {
+			d.OtherTags = append(d.OtherTags, t)
+		}
 	}
 	d.Recordings = len(audioKeys(n))
 	if err := s.DB.QueryRowContext(r.Context(), `SELECT state,topic FROM alexandria_note_minutes WHERE source='boox' AND notebook_id=$1`, d.ID).Scan(&d.MinutesState, &d.MinutesTopic); err != nil && !errors.Is(err, sql.ErrNoRows) {

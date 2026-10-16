@@ -104,7 +104,7 @@ func (s Service) Observe(ctx context.Context) (int, error) {
 			domain = "message"
 		}
 		raw, _ := json.Marshal(winner)
-		_, e = tx.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body,supported) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(document_id) DO UPDATE SET revision=excluded.revision,domain=excluded.domain,native_type=excluded.native_type,native_uid=excluded.native_uid,body=excluded.body,supported=excluded.supported,updated_at=now()`, change.ID, winner["_rev"], domain, fmt.Sprint(winner["modeType"], "/", winner["type"]), winner["user"], raw, noteMetadata(winner, s.uid()) || readerRecord(winner, s.uid()) != 0)
+		_, e = tx.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body,supported) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(document_id) DO UPDATE SET revision=excluded.revision,domain=excluded.domain,native_type=excluded.native_type,native_uid=excluded.native_uid,body=excluded.body,supported=excluded.supported,updated_at=now()`, change.ID, winner["_rev"], domain, fmt.Sprint(winner["modeType"], "/", winner["type"]), winner["user"], raw, noteMetadata(winner, s.uid()) || noteTag(winner, s.uid()) || readerRecord(winner, s.uid()) != 0)
 		if e != nil {
 			return n, e
 		}

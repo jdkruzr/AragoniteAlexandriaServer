@@ -43,6 +43,9 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		case "/boox/activity":
 			s.browse(w, r)
 			return
+		case "/boox/tags":
+			s.tagsPage(w, r)
+			return
 		case "/boox/minutes":
 			s.minutesPage(w, r)
 			return

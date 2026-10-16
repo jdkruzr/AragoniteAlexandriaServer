@@ -96,6 +96,14 @@ Text before the first `{`, after the last `}`, and any inline `<think>` block is
 ignored. One repair retry restates the format and accepts a near miss leniently
 (trims extras, accepts fewer keywords).
 
+**BOOX tags** (2026-10-16, [details](boox-tags.md)): the prompt's fixed
+context lists the notebook's own tags and up to 50 other library tags, asking
+that a keyword meaning the same as a tag use its exact spelling. The notebook's
+own tags join `input_hash` when it has any (untagged notes hash as before), so
+tagging or untagging a note marks its minutes out of date; library tags don't.
+The minutes page shows keywords that are tags as filled chips linking to
+`/boox/tags`.
+
 Prompts are capped at 400k characters. Notes take at most half; transcripts
 share the rest and are cut with a marker.
 

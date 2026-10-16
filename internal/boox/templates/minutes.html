@@ -10,7 +10,7 @@
 {{else if $d.Stale}}<p class="callout">{{t "The notebook or the summary instructions have changed since these minutes were written."}} <a href="/boox/minutes/new?id={{$d.ID}}">{{t "Update…"}}</a></p>{{end}}
 {{if $m.Topic}}<div class="reader-layout"><div>
 <section class="card minutes"><h2>{{$m.Topic}}</h2>
-<p class="tags" aria-label="{{t "Keywords"}}">{{range $m.Keywords}}<span class="tag">{{.}}</span>{{end}}</p>
+<p class="tags" aria-label="{{t "Keywords"}}">{{range $d.Keywords}}{{if .Tag}}<a class="tag" href="/boox/tags?tag={{.Tag}}" title="{{t "A BOOX tag: see the pages that have it"}}">{{.Text}}</a>{{else}}<span class="tag new" title="{{t "Not a BOOX tag"}}">{{.Text}}</span>{{end}}{{end}}</p>{{if $d.TaggedKeywords}}<p class="small muted">{{t "Filled keywords are also BOOX tags; select one to see the pages that have it."}}</p>{{end}}
 <h3>{{t "Key Points"}}</h3><ol class="points">{{range $m.KeyPoints}}<li>{{.Text}} <span class="badge source">{{if eq .From "recording"}}{{t "Recording"}}{{else if eq .From "notes"}}{{t "Notes"}}{{else}}{{t "Recording + notes"}}{{end}}</span></li>{{end}}</ol>
 <h3>{{t "Conclusion"}}</h3><p>{{$m.Conclusion}}</p></section>
 </div><aside><section class="card"><h2>{{t "About These Minutes"}}</h2><dl class="meta">

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,7 +26,12 @@ type minutesView struct {
 	Sendable                       bool
 	NoteTitle, Folder, SendRequest string
 	Sent                           *sentNote
+	// Keywords marks each minutes keyword that is already a BOOX tag.
+	Keywords       []minutesKeyword
+	TaggedKeywords int
 }
+
+type minutesKeyword struct{ Text, Tag string }
 
 var minutesTemplate = template.Must(template.New("minutes.html").Funcs(web.Funcs()).ParseFS(templateFS, "templates/minutes.html"))
 
@@ -69,7 +75,31 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 			failure(w, e)
 			return
 		}
-		d.Stale = minutesInputHash(recordingIDs(n), pages, s.Minutes.Instructions) != stored.InputHash
+		_, tags, e := s.notebookTags(r.Context(), id)
+		if e != nil {
+			failure(w, e)
+			return
+		}
+		d.Stale = minutesInputHash(recordingIDs(n), pages, tags, s.Minutes.Instructions) != stored.InputHash
+	}
+	if has && len(stored.Keywords) > 0 {
+		known, e := s.libraryTags(r.Context(), 100000)
+		if e != nil {
+			failure(w, e)
+			return
+		}
+		byLower := map[string]string{}
+		for _, t := range known {
+			if _, ok := byLower[strings.ToLower(t)]; !ok {
+				byLower[strings.ToLower(t)] = t
+			}
+		}
+		for _, k := range stored.Keywords {
+			d.Keywords = append(d.Keywords, minutesKeyword{Text: k, Tag: byLower[strings.ToLower(k)]})
+			if byLower[strings.ToLower(k)] != "" {
+				d.TaggedKeywords++
+			}
+		}
 	}
 	if has && (stored.State == "queued" || stored.State == "processing") {
 		d.Progress = s.minutesProgress(r, n, stored)

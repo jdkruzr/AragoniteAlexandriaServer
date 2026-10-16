@@ -63,7 +63,7 @@ func previewPages() []previewPage {
 			BOOX:   &SourceSummary{Notebooks: 1038, Books: 130, Devices: 3, LastActivity: now.Add(-20 * time.Minute), ActivityLabel: "Last upload"}}},
 		{"overview-empty", "overview", "Library", "overview", "/library", overviewData{Client: SourceSummary{Notebooks: 0, Books: 0, Devices: 0, ActivityLabel: "Last sync"}}},
 		{"search", "search", "Search", "search", "/search", map[string]any{"Query": "trellis", "Semantic": true, "BOOX": true,
-			"Results": []notes.Result{{Source: "boox", Kind: "Notebook page", NotebookName: "Synthetic storage sync", PageNumber: 2, Snippet: "…build the bean trellis before May…", URL: "#"}},
+			"Results": []notes.Result{{Source: "boox", Kind: "Notebook page", NotebookName: "Synthetic storage sync", PageNumber: 2, Snippet: "…build the bean trellis before May…", URL: "#", Tags: []string{"Bean Trellis", "storage"}}},
 			"Native":  []sourceMatch{{Title: "Synthetic trellis notes", Kind: "Notebook", URL: "#"}}}},
 		{"settings-account", "settings", "Account", "settings", "/settings", map[string]any{"LocalPasswords": true}},
 		{"settings-search", "settings-search", "Search by meaning", "settings", "/settings/search", map[string]any{"Providers": provider, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},

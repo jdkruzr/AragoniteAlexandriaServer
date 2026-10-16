@@ -326,7 +326,7 @@ func (s Service) browse(w http.ResponseWriter, r *http.Request) {
 		d.Domains = append(d.Domains, v)
 	}
 	rows.Close()
-	rows, e = s.DB.QueryContext(r.Context(), `SELECT document_id,revision,domain,coalesce(body->>'title',document_id),supported,count(*) OVER() FROM boox_projection WHERE $1='' OR domain=$1 ORDER BY domain,document_id LIMIT $2 OFFSET $3`, domain, size, offset)
+	rows, e = s.DB.QueryContext(r.Context(), `SELECT document_id,revision,domain,coalesce(body->>'title',body->>'content',document_id),supported,count(*) OVER() FROM boox_projection WHERE $1='' OR domain=$1 ORDER BY domain,document_id LIMIT $2 OFFSET $3`, domain, size, offset)
 	if e != nil {
 		failure(w, e)
 		return
