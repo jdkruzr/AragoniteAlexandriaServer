@@ -64,7 +64,9 @@ will: **Reminders stay on the device.** The app's own settings text (string
 ## Events
 
 - Events sync only with linked Google, Outlook or CalDAV accounts. kmail ≥32216
-  imports CalDAV one way. Alexandria's CalDAV server serves VTODO (tasks) only.
+  imports CalDAV one way. Since 2026-10-16 (migration 0031) Alexandria also serves
+  an events calendar over CalDAV ([boox-note-actions.md](boox-note-actions.md)),
+  so Calendar Memo can import it; not yet tried on a device.
 
 ## Also Seen
 
@@ -103,7 +105,7 @@ events"; it replicates memos.
 ## Possible Next Steps (Each Needs an Explicit Request)
 
 - Make memos first-class: list by date in BOOX, render, recognize, search.
-- Add VEVENT to Alexandria's CalDAV so Calendar Memo can import server events.
+- ~~Add VEVENT to Alexandria's CalDAV~~ (done 2026-10-16; device import untested).
 - Reminders could only come off a device through a helper on it. Even
   PowerSync can't read another app's private database, so this probably isn't
   worth it.

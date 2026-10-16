@@ -25,10 +25,10 @@
 </form>
 {{end}}
 <h2>{{if $d.Trash}}{{t "Deleted"}}{{else}}{{t "To Do"}}{{end}}</h2>
-{{if not $d.Open}}<p class="empty">{{t "Nothing to do."}}</p>{{else}}<ul class="tasks">{{range $d.Open}}{{template "task" (taskRow . $v)}}{{end}}</ul>{{end}}
+{{if not $d.Open}}<p class="empty">{{t "Nothing to do."}}</p>{{else}}<ul class="tasks">{{range $d.Open}}{{template "task" (taskRow . $v $d.Sources)}}{{end}}</ul>{{end}}
 {{if $d.Done}}
 <h2>{{t "Done"}}</h2>
-<ul class="tasks done">{{range $d.Done}}{{template "task" (taskRow . $v)}}{{end}}</ul>
+<ul class="tasks done">{{range $d.Done}}{{template "task" (taskRow . $v $d.Sources)}}{{end}}</ul>
 {{if not $d.Trash}}<form method="post" action="/tasks/purge-completed"><input type="hidden" name="return" value="{{$v.URL}}"><button class="quiet">{{t "Clear Completed Tasks"}}</button></form>{{end}}
 {{end}}
 <script src="/static/tasks.js?v={{version}}" defer></script>
@@ -40,6 +40,7 @@
   <span class="title">{{$t.Title}}</span>
   {{if $t.DueAt}}<span class="muted">{{t "due {{.When}}" "When" (time $t.DueAt)}}</span>{{end}}
   {{if $t.ForestNote}}<span class="badge">Alexandria Client</span><a class="small" href="/files/forestnote?notebook={{$t.ForestNote.NotebookID}}&page={{$t.ForestNote.PageID}}#page-{{$t.ForestNote.PageID}}">{{if $t.ForestNote.NotebookName}}{{$t.ForestNote.NotebookName}}{{else}}{{t "Notebook page"}}{{end}}</a>{{end}}
+  {{with .Source}}<span class="badge">{{t "From note"}}</span><a class="small" href="{{.URL}}">{{if .Notebook}}{{.Notebook}}{{else}}{{t "Notebook page"}}{{end}}</a>{{end}}
   {{if $t.Detail}}<div class="muted small">{{deref $t.Detail}}</div>{{end}}
   {{if not $t.Deleted}}
   <span class="row-actions">

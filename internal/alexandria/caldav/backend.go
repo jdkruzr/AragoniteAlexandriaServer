@@ -55,7 +55,17 @@ type Backend struct {
 	// inbound PUT and reconstructs it on outbound GET. Wired from main.go via
 	// SetTaskAttach.
 	attach AttachDeps
+
+	// others are further collections listed in discovery (the events
+	// calendar); their requests are routed to their own backend.
+	others []func() gocaldav.Calendar
 }
+
+// AlsoList adds a collection to discovery beside Tasks.
+func (b *Backend) AlsoList(c func() gocaldav.Calendar) { b.others = append(b.others, c) }
+
+// Collection describes the Tasks calendar.
+func (b *Backend) Collection() gocaldav.Calendar { return b.collection() }
 
 // SetTaskAttach wires the inline-binary ATTACH side-store + signer + base URL.
 // Set from main.go after construction; a zero value (never set) leaves inline
@@ -103,7 +113,11 @@ func (b *Backend) CreateCalendar(ctx context.Context, calendar *gocaldav.Calenda
 }
 
 func (b *Backend) ListCalendars(ctx context.Context) ([]gocaldav.Calendar, error) {
-	return []gocaldav.Calendar{b.collection()}, nil
+	list := []gocaldav.Calendar{b.collection()}
+	for _, c := range b.others {
+		list = append(list, c())
+	}
+	return list, nil
 }
 
 func (b *Backend) GetCalendar(ctx context.Context, urlPath string) (*gocaldav.Calendar, error) {
@@ -175,13 +189,10 @@ func (b *Backend) QueryCalendarObjects(ctx context.Context, urlPath string, quer
 }
 
 func (b *Backend) PutCalendarObject(ctx context.Context, urlPath string, cal *ical.Calendar, opts *gocaldav.PutCalendarObjectOptions) (*gocaldav.CalendarObject, error) {
-	// Reject VEVENTs — this collection only supports VTODO.
-	// The implementor should check go-webdav's exported error types for the
-	// "supported-calendar-component" precondition violation. If the library
-	// provides a specific precondition error type, use it. Otherwise, return
-	// a plain error — go-webdav will map it to an appropriate HTTP status.
+	// Reject VEVENTs — this collection only supports VTODO; events belong in
+	// the events collection.
 	if HasVEvent(cal) {
-		return nil, fmt.Errorf("only VTODO components are supported, not VEVENT")
+		return nil, gocaldav.NewPreconditionError(gocaldav.PreconditionSupportedCalendarComponent)
 	}
 
 	task, err := VTODOToTask(cal, b.dueTimeMode)

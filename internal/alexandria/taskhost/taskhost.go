@@ -16,6 +16,7 @@ import (
 	gocaldav "github.com/emersion/go-webdav/caldav"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach"
@@ -42,37 +43,63 @@ func (d Deps) signer() *taskattach.Signer {
 }
 
 // CalDAV serves {Prefix}/... for one admitted request; the caller authenticates.
+// Two collections: Tasks (VTODO) and the events calendar (VEVENT). Discovery
+// lists both; requests below the events collection go to its own backend.
 func CalDAV(d Deps) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		name, err := settings.Get(ctx, d.DB, settings.CalDAVCollectionName, "Tasks")
+		var mode, eventsName string
 		if err == nil {
-			var mode string
-			if mode, err = settings.Get(ctx, d.DB, settings.DueTimeMode, "preserve"); err == nil {
-				store := taskdb.NewStore(d.DB)
-				backend := caldav.NewBackend(store, Prefix, name, mode, nil)
-				if s := d.signer(); s != nil {
-					backend.SetTaskAttach(&taskattach.BlobStore{Objects: d.Objects}, s, d.PublicURL)
-				}
-				handler := caldav.ProppatchStub(caldav.GetOnCollectionStub(&gocaldav.Handler{Backend: backend, Prefix: Prefix}), caldav.ProppatchOptions{
-					OnDisplayName: func(name string) error {
-						if trimmed := strings.TrimSpace(name); trimmed != "" {
-							backend.SetCollectionName(trimmed)
-							return settings.Set(ctx, d.DB, settings.CalDAVCollectionName, trimmed, false)
-						}
-						return nil
-					},
-					Logger: func(format string, args ...any) {
-						if d.Logger != nil {
-							d.Logger.Warn("caldav", "detail", strings.TrimSpace(format))
-						}
-					},
-				})
-				caldav.SyncPropsStub(caldav.SyncCollectionStub(handler, store, backend), store, backend).ServeHTTP(w, r)
-				return
+			mode, err = settings.Get(ctx, d.DB, settings.DueTimeMode, "preserve")
+		}
+		if err == nil {
+			eventsName, err = settings.Get(ctx, d.DB, settings.CalDAVEventsName, "Calendar")
+		}
+		if err != nil {
+			http.Error(w, "caldav_unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		logger := func(format string, args ...any) {
+			if d.Logger != nil {
+				d.Logger.Warn("caldav", "detail", strings.TrimSpace(format))
 			}
 		}
-		http.Error(w, "caldav_unavailable", http.StatusServiceUnavailable)
+		store := taskdb.NewStore(d.DB)
+		backend := caldav.NewBackend(store, Prefix, name, mode, nil)
+		if s := d.signer(); s != nil {
+			backend.SetTaskAttach(&taskattach.BlobStore{Objects: d.Objects}, s, d.PublicURL)
+		}
+		eventStore := events.NewStore(d.DB)
+		eventBackend := caldav.NewEventBackend(eventStore, Prefix, eventsName, settings.Zone(ctx, d.DB))
+		backend.AlsoList(eventBackend.Collection)
+		eventBackend.WithTasks(backend.Collection)
+
+		if p := strings.TrimSuffix(r.URL.Path, "/") + "/"; strings.HasPrefix(p, Prefix+caldav.EventsCollection) {
+			handler := caldav.ProppatchStub(caldav.GetOnCollectionStub(&gocaldav.Handler{Backend: eventBackend, Prefix: Prefix}), caldav.ProppatchOptions{
+				OnDisplayName: func(name string) error {
+					if trimmed := strings.TrimSpace(name); trimmed != "" {
+						eventBackend.SetCollectionName(trimmed)
+						return settings.Set(ctx, d.DB, settings.CalDAVEventsName, trimmed, false)
+					}
+					return nil
+				},
+				Logger: logger,
+			})
+			caldav.SyncPropsStub(caldav.SyncCollectionSource(handler, caldav.EventSyncSource(eventStore, eventBackend)), eventStore, nil).ServeHTTP(w, r)
+			return
+		}
+		handler := caldav.ProppatchStub(caldav.GetOnCollectionStub(&gocaldav.Handler{Backend: backend, Prefix: Prefix}), caldav.ProppatchOptions{
+			OnDisplayName: func(name string) error {
+				if trimmed := strings.TrimSpace(name); trimmed != "" {
+					backend.SetCollectionName(trimmed)
+					return settings.Set(ctx, d.DB, settings.CalDAVCollectionName, trimmed, false)
+				}
+				return nil
+			},
+			Logger: logger,
+		})
+		caldav.SyncPropsStub(caldav.SyncCollectionStub(handler, store, backend), store, backend).ServeHTTP(w, r)
 	})
 }
 

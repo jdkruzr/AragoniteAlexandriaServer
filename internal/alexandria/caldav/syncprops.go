@@ -2,6 +2,7 @@ package caldav
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -35,7 +36,9 @@ const (
 //
 // allprop is deliberately left alone: RFC 6578 §3 says DAV:sync-token is not
 // returned for it.
-func SyncPropsStub(next http.Handler, store SyncStore, backend *Backend) http.Handler {
+func SyncPropsStub(next http.Handler, store interface {
+	MaxUpdatedAtAll(context.Context) (int64, error)
+}, _ *Backend) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PROPFIND" || store == nil {
 			next.ServeHTTP(w, r)

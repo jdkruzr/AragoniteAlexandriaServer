@@ -70,11 +70,23 @@ var funcs = withFormats(template.FuncMap{
 	// num groups thousands: 1624 → "1,624".
 	// until is a rounded time left before t, such as "2 h 5 min".
 	// taskRow pairs a task with the Tasks view its row links back to.
-	"taskRow": func(t tasksvc.Task, v taskView) any {
+	"taskRow": func(t tasksvc.Task, v taskView, sources ...map[string]*NoteSource) any {
+		var src *NoteSource
+		if len(sources) == 1 {
+			src = sources[0][t.ID]
+		}
 		return struct {
-			Task tasksvc.Task
-			View taskView
-		}{t, v}
+			Task   tasksvc.Task
+			View   taskView
+			Source *NoteSource
+		}{t, v, src}
+	},
+	// eventRow pairs a Calendar row with whether it is in the trash.
+	"eventRow": func(r calendarRow, trash bool) any {
+		return struct {
+			Row   calendarRow
+			Trash bool
+		}{r, trash}
 	},
 	"deref": func(s *string) string {
 		if s == nil {
@@ -317,6 +329,7 @@ func Handler(d Deps) http.Handler {
 	d.bookRoutes(mux)
 	d.searchRoutes(mux)
 	d.taskRoutes(mux)
+	d.calendarRoutes(mux)
 	d.deviceRoutes(mux)
 	d.settingsRoutes(mux)
 	d.providerRoutes(mux)
@@ -339,7 +352,7 @@ func Handler(d Deps) http.Handler {
 // Owns reports whether the web UI serves a path (the API, sync, CalDAV and
 // MCP keep their own routes).
 func Owns(path string) bool {
-	for _, prefix := range []string{"/sources", "/files/", "/search", "/tasks", "/settings", "/static/", "/authorize", "/help", "/jobs"} {
+	for _, prefix := range []string{"/sources", "/files/", "/search", "/tasks", "/calendar", "/settings", "/static/", "/authorize", "/help", "/jobs"} {
 		if strings.HasPrefix(path, prefix) {
 			return true
 		}

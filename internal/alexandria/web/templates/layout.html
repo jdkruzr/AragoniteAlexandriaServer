@@ -17,7 +17,7 @@
 <body data-section="{{.Section}}">
 <a class="skip-link" href="#main">{{t "Skip to content"}}</a>
 <header class="topbar"><a class="brand" href="/"><img src="/static/alexandria-mark-v1.png" width="32" height="32" alt="">Alexandria Server</a>
-<nav class="global-nav" aria-label="{{t "Global"}}"><a href="/" {{if eq .Section "tasks"}}aria-current="page"{{end}}>{{t "Tasks"}}</a><a href="/library" {{if eq .Section "overview"}}aria-current="page"{{end}}>{{t "Library"}}</a><a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>{{t "Search"}}</a><a href="/jobs" {{if eq .Section "jobs"}}aria-current="page"{{end}}>{{t "Recognition"}}</a><a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>{{t "Settings"}}</a></nav>
+<nav class="global-nav" aria-label="{{t "Global"}}"><a href="/" {{if eq .Section "tasks"}}aria-current="page"{{end}}>{{t "Tasks"}}</a><a href="/calendar" {{if eq .Section "calendar"}}aria-current="page"{{end}}>{{t "Calendar"}}</a><a href="/library" {{if eq .Section "overview"}}aria-current="page"{{end}}>{{t "Library"}}</a><a href="/search" {{if eq .Section "search"}}aria-current="page"{{end}}>{{t "Search"}}</a><a href="/jobs" {{if eq .Section "jobs"}}aria-current="page"{{end}}>{{t "Recognition"}}</a><a href="/settings" {{if eq .Section "settings"}}aria-current="page"{{end}}>{{t "Settings"}}</a></nav>
 <a class="help-link" href="/help" {{if eq .Section "help"}}aria-current="page"{{end}}>{{t "Help"}}</a></header>
 <div class="workspace"><aside class="source-nav"><h2>{{t "Sources"}}</h2><nav aria-label="{{t "Sources"}}">
 <a href="/files/forestnote" {{if .ClientSource}}aria-current="page"{{end}}>Alexandria Client</a>

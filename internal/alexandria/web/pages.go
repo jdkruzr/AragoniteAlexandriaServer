@@ -14,6 +14,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
@@ -432,6 +433,24 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
+		events := strings.TrimSpace(r.FormValue("events_collection"))
+		if events == "" {
+			events = "Calendar"
+		}
+		if err := settings.Set(r.Context(), d.DB, settings.CalDAVEventsName, events, false); err != nil {
+			d.fail(w, err)
+			return
+		}
+		if zone := strings.TrimSpace(r.FormValue("time_zone")); zone != "" {
+			if _, err := time.LoadLocation(zone); err != nil || zone == "Local" {
+				back(w, r, "/settings/integrations", "Unknown time zone. Use a name like America/Chicago.")
+				return
+			}
+			if err := settings.Set(r.Context(), d.DB, settings.TimeZone, zone, false); err != nil {
+				d.fail(w, err)
+				return
+			}
+		}
 		back(w, r, "/settings/integrations", "CalDAV settings saved.")
 	})
 	mux.HandleFunc("POST /settings/tokens/create", func(w http.ResponseWriter, r *http.Request) {
@@ -551,7 +570,14 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 			tokens = append(tokens, t)
 		}
 		rows.Close()
+		eventsName, err := settings.Get(ctx, d.DB, settings.CalDAVEventsName, "Calendar")
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
 		data["Collection"], data["DueMode"], data["Tokens"] = collection, due, tokens
+		data["EventsCollection"], data["EventsCalDAV"] = eventsName, taskhost.Prefix+"/user/calendars/events/"
+		data["TimeZone"], data["Zones"] = settings.ZoneName(settings.Zone(ctx, d.DB)), commonZones
 		data["CalDAV"], data["OAuthLabel"] = taskhost.Prefix+"/user/calendars/tasks/", oauth.TokenLabel
 	case "search", "recognition":
 		var providerView *providers.View
@@ -573,6 +599,19 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 		}
 		data["Providers"], data["DefaultOCRPrompt"] = providerView, notes.DefaultPrompt
 		data["DefaultMinutesInstructions"], data["MinutesFormat"] = minutes.DefaultInstructions, minutes.ResponseFormat
+		data["DefaultTaskInstructions"], data["DefaultEventInstructions"] = noteactions.DefaultTaskInstructions, noteactions.DefaultEventInstructions
+		data["TaskFormat"], data["EventFormat"] = noteactions.Format("task"), noteactions.Format("event")
+		if providerView != nil {
+			a := providerView.Config.Actions
+			data["ActionColors"] = []struct{ Name, Action string }{{"red", a.For("red")}, {"blue", a.For("blue")}}
+			if _, why := providerView.Config.ActionsReady(); why != "" {
+				data["ActionsWhy"] = why
+			} else if since, err := settings.Get(ctx, d.DB, settings.NoteActionsSince, ""); err == nil && since != "" {
+				data["ActionsSince"] = strings.Replace(strings.TrimSuffix(since, "Z"), "T", " ", 1) + " UTC"
+			} else {
+				data["ActionsSince"] = "the next recognized page"
+			}
+		}
 	}
 	name, title := "settings", i18n.M("Account")
 	switch tab {

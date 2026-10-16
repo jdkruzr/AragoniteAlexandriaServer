@@ -52,6 +52,11 @@ type Shape struct {
 	RevisionID   string
 	Points       []TinyPoint // populated from point files or inline pointList
 	UnderContent bool        // a marker drawn beneath the writing (darken blend)
+	// Recovered strokes came from point data whose shape archive was empty;
+	// their pen (and so color) is a guess.
+	Recovered bool
+	// CreatedAt and UpdatedAt are the firmware's epoch milliseconds (0 = unknown).
+	CreatedAt, UpdatedAt int64
 }
 
 // Rect is a bounding rectangle parsed from JSON.

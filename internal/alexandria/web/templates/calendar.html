@@ -1,0 +1,39 @@
+{{define "content"}}{{$d := .Data}}
+<div class="page-head"><h1>{{if $d.Trash}}{{t "Deleted Events"}}{{else}}{{t "Calendar"}}{{end}} {{template "help" "calendar.overview"}}</h1><a class="button secondary" href="{{if $d.Trash}}/calendar{{else}}/calendar?show=deleted{{end}}">{{if $d.Trash}}{{t "Back to calendar"}}{{else}}{{t "Deleted events"}}{{end}}</a></div>
+{{if not $d.Trash}}
+<form class="inline event-add" method="post" action="/calendar">
+  <input name="title" placeholder="{{t "New event"}}" required maxlength="500" aria-label="{{t "New event"}}">
+  <input type="date" name="date" value="{{$d.Today}}" required aria-label="{{t "Date"}}">
+  <input type="time" name="start" aria-label="{{t "Start time (optional)"}}">
+  <input type="time" name="end" aria-label="{{t "End time (optional)"}}">
+  <input name="location" placeholder="{{t "Location"}}" maxlength="500" aria-label="{{t "Location"}}">
+  <button>{{t "Add event"}}</button>
+</form>
+<p class="muted small">{{t "Times are in {{.Zone}}. Leave the time empty for an all-day event." "Zone" $d.Zone}}</p>
+{{end}}
+<h2>{{if $d.Trash}}{{t "Deleted"}}{{else}}{{t "Upcoming"}}{{end}}</h2>
+{{if not $d.Upcoming}}<p class="empty">{{t "No events."}}</p>{{else}}<ul class="tasks events">{{range $d.Upcoming}}{{template "event" (eventRow . $d.Trash)}}{{end}}</ul>{{end}}
+{{if $d.Past}}
+<h2>{{t "Past 30 Days"}}</h2>
+<ul class="tasks done events">{{range $d.Past}}{{template "event" (eventRow . false)}}{{end}}</ul>
+{{end}}
+{{end}}
+
+{{define "event"}}{{$e := .Row.Event}}
+<li>
+  <span class="title">{{$e.Title}}</span>
+  <span class="muted">{{.Row.When}}{{if $e.AllDay}} · {{t "all day"}}{{end}}</span>
+  {{if $e.Location}}<span class="muted small">{{$e.Location}}</span>{{end}}
+  {{with .Row.Source}}<span class="badge">{{t "From note"}}</span><a class="small" href="{{.URL}}">{{if .Notebook}}{{.Notebook}}{{else}}{{t "Notebook page"}}{{end}}</a>{{end}}
+  {{if $e.Detail}}<div class="muted small">{{$e.Detail}}</div>{{end}}
+  <span class="row-actions">
+  {{if .Trash}}
+    <form method="post" action="/calendar/{{$e.ID}}/restore"><button>{{t "Restore"}}</button></form>
+    <form method="post" action="/calendar/{{$e.ID}}/purge"><label class="small"><input type="checkbox" name="confirm" value="yes" required> {{t "Permanently"}}</label> <button class="danger">{{t "Delete permanently"}}</button></form>
+  {{else}}
+    <a class="button secondary" href="/calendar/{{$e.ID}}/edit">{{t "Edit"}}</a>
+    <form method="post" action="/calendar/{{$e.ID}}/delete"><button class="quiet">{{t "Delete"}}</button></form>
+  {{end}}
+  </span>
+</li>
+{{end}}

@@ -48,6 +48,7 @@ func NewServer(d Deps) *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: "aragonite-alexandria", Version: "1"}, &mcp.ServerOptions{SchemaCache: schemas})
 	registerNoteTools(s, d)
 	registerTaskTools(s, d)
+	registerEventTools(s, d)
 	return s
 }
 
