@@ -92,7 +92,10 @@ recognition card already says why.
     and Deleted Events with restore and permanent delete. It appears in the
     top navigation.
   - Settings → Tasks & Integrations adds the calendar name, the events
-    address and the **time zone** (IANA name). Without one, the server zone is
+    address and the **time zone**. It is a dropdown of tzdata's
+    `zone1970.tab` (312 zones plus UTC, embedded, public domain), grouped by
+    region and labeled with the current UTC offset. The browser's own zone is
+    offered when it differs (`static/timezone.js`). Without one, the server zone is
     used, which is UTC on .90. Task due dates typed in the web UI use the time
     zone too.
 - **MCP.** `list_events`, `get_event`, `create_event`, `update_event`,
@@ -109,7 +112,9 @@ recognition card already says why.
     on recreate
   - `library/web_test.go`: calendar pages, time zone save, add and edit
   - `caldav/vevent_test.go`, `booxpage/ink_test.go`, `noteactions`
-- **Deploy:** `9999484-actions1` from the working tree (uncommitted).
+- **Deploy:** `9999484-actions1` from the working tree, later committed as
+  `c3ae7d6`. The time zone dropdown followed as `1386a97-tz1` (app-only: 8/8
+  staged, drift 0, readiness 200, anonymous 401, no restarts).
   - drift 0, staged 40/40, pg_dump 28 MB, migration 0031 applied, grants
   - readiness 200, anonymous 401, no restarts
   - evidence under `deploy/compose/private/note-actions-20261016/`, rollback
