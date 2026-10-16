@@ -6,8 +6,13 @@
 <form method="post" action="/settings/caldav" class="stack">
 <label>{{t "Task list name"}} <input name="collection" value="{{$d.Collection}}" maxlength="200"></label>
 <label>{{t "Calendar name"}} <input name="events_collection" value="{{$d.EventsCollection}}" maxlength="200"></label>
-<label>{{t "Time zone"}} <input name="time_zone" value="{{$d.TimeZone}}" maxlength="100" placeholder="America/Chicago" list="time-zones"></label>
-<datalist id="time-zones">{{range $d.Zones}}<option value="{{.}}">{{end}}</datalist>
+<label>{{t "Time zone"}} <select name="time_zone" id="time-zone">
+<option value="" {{if not $d.TimeZone}}selected{{end}}>{{t "Server default ({{.Zone}})" "Zone" $d.ServerZone}}</option>
+{{with $d.LegacyZone}}<option value="{{.}}" selected>{{.}}</option>{{end}}
+{{range $d.ZoneGroups}}<optgroup label="{{.Region}}">{{range .Zones}}<option value="{{.Name}}" {{if eq .Name $d.TimeZone}}selected{{end}}>{{.Label}}</option>{{end}}</optgroup>{{end}}
+</select></label>
+<p class="small muted" id="tz-hint" hidden>{{t "Your browser is set to"}} <strong data-tz></strong>. <button type="button" class="secondary" data-tz-use>{{t "Use it"}}</button></p>
+<p class="small muted">{{t "Used for task due dates and event times written or typed without a time zone, including note actions."}}</p>
 <p class="small muted">{{t "Calendar events address:"}} <code>{{.Base}}{{$d.EventsCalDAV}}</code> {{template "help" "calendar.caldav"}}</p>
 <label>{{t "Due dates"}}
 <select name="due_mode">
@@ -35,4 +40,5 @@
 </table></div>
 {{else}}<p class="empty">{{t "No tokens yet."}}</p>{{end}}
 </section>
+<script src="/static/timezone.js?v={{version}}" defer></script>
 {{end}}

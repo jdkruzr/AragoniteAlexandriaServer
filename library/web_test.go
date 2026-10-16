@@ -110,6 +110,12 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 	if got := b.do("POST", "/settings/caldav", "collection=Tasks&due_mode=preserve&events_collection=Calendar&time_zone=America%2FChicago", sameSite, true); got.Code != 303 {
 		t.Fatalf("save time zone: %d", got.Code)
 	}
+	if page := b.do("GET", "/settings/integrations", "", nil, true).Body.String(); !strings.Contains(page, `<option value="America/Chicago" selected>Chicago (UTC`) || !strings.Contains(page, `<optgroup label="Europe">`) {
+		t.Fatalf("time zone menu:\n%s", page)
+	}
+	if got := b.do("POST", "/settings/caldav", "collection=Tasks&due_mode=preserve&time_zone=Mars%2FOlympus", sameSite, true); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "Choose+a+time+zone") {
+		t.Fatalf("unknown zone: %d %s", got.Code, got.Header().Get("Location"))
+	}
 	if got := b.do("POST", "/calendar", "title=Plant+garlic&date=2099-10-22&start=15:00&location=Bed+3", sameSite, true); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "Event+added") {
 		t.Fatalf("add event: %d %s", got.Code, got.Header().Get("Location"))
 	}
