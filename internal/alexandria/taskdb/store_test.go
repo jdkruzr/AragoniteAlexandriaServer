@@ -889,3 +889,105 @@ func TestMaxUpdatedAtAll_MovesOnUpdate(t *testing.T) {
 		t.Errorf("token did not move on update: got %d, want > %d", after, before)
 	}
 }
+
+// Delete permanently: the tombstone stays (sync-collection reports it), content
+// is erased, the trash no longer lists it, and neither Restore nor a device
+// re-creating the UID brings it back — even after the tombstone is pruned.
+func TestStore_PurgeKeepsTombstoneAndRefusesResurrection(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	mk := func(title string) *taskstore.Task {
+		task := &taskstore.Task{TaskID: "uid-" + title, Title: taskstore.SqlStr(title), Detail: taskstore.SqlStr("synthetic detail"),
+			ICalBlob: taskstore.SqlStr("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n")}
+		if err := store.Create(ctx, task); err != nil {
+			t.Fatalf("Create %s: %v", title, err)
+		}
+		return task
+	}
+	gone, kept, live := mk("gone"), mk("kept"), mk("live")
+
+	// Only trashed tasks can be purged.
+	if n, err := store.Purge(ctx, []string{live.TaskID}); err != nil || n != 0 {
+		t.Fatalf("Purge of a live task: n=%d err=%v", n, err)
+	}
+	for _, task := range []*taskstore.Task{gone, kept} {
+		if err := store.Delete(ctx, task.TaskID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A trashed (not purged) UID can't be recreated either, but can be restored.
+	if err := store.Create(ctx, &taskstore.Task{TaskID: kept.TaskID, Title: taskstore.SqlStr("again")}); err != taskstore.ErrDeleted {
+		t.Fatalf("Create over trashed task: %v", err)
+	}
+	before, _ := store.MaxUpdatedAtAll(ctx)
+	time.Sleep(2 * time.Millisecond)
+	if n, err := store.Purge(ctx, []string{gone.TaskID, gone.TaskID}); err != nil || n != 1 {
+		t.Fatalf("Purge: n=%d err=%v", n, err)
+	}
+	if n, err := store.Purge(ctx, []string{gone.TaskID}); err != nil || n != 0 {
+		t.Fatalf("second Purge: n=%d err=%v", n, err)
+	}
+
+	changed, err := store.ListChangedSince(ctx, before+1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changed) != 1 || changed[0].TaskID != gone.TaskID || changed[0].IsDeleted != "Y" {
+		t.Fatalf("sync-collection changes after purge: %+v", changed)
+	}
+	if changed[0].Title.Valid || changed[0].Detail.Valid || changed[0].ICalBlob.Valid {
+		t.Fatalf("purged tombstone kept content: %+v", changed[0])
+	}
+	trash, err := store.ListIncludingDeleted(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, task := range trash {
+		if task.TaskID == gone.TaskID {
+			t.Fatal("purged task still listed in the trash")
+		}
+	}
+
+	if err := store.Restore(ctx, gone.TaskID); err != taskstore.ErrPurged {
+		t.Fatalf("Restore of purged task: %v", err)
+	}
+	if err := store.Create(ctx, &taskstore.Task{TaskID: gone.TaskID, Title: taskstore.SqlStr("resurrected")}); err != taskstore.ErrPurged {
+		t.Fatalf("Create of purged UID: %v", err)
+	}
+	if err := store.Restore(ctx, kept.TaskID); err != nil {
+		t.Fatalf("Restore of trashed task: %v", err)
+	}
+	if got, err := store.Get(ctx, kept.TaskID); err != nil || got.Title.String != "kept" {
+		t.Fatalf("restored task: %+v %v", got, err)
+	}
+
+	// The tombstone prune removes the row; the UID stays reserved.
+	if _, _, err := store.HardDeleteOlderThan(ctx, time.Now().Add(time.Hour).UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Create(ctx, &taskstore.Task{TaskID: gone.TaskID, Title: taskstore.SqlStr("resurrected")}); err != taskstore.ErrPurged {
+		t.Fatalf("Create of purged UID after prune: %v", err)
+	}
+}
+
+// Pruning ordinary tombstones also reserves their UIDs.
+func TestStore_HardDeleteReservesUIDs(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	task := &taskstore.Task{TaskID: "uid-old", Title: taskstore.SqlStr("old")}
+	if err := store.Create(ctx, task); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Delete(ctx, task.TaskID); err != nil {
+		t.Fatal(err)
+	}
+	if purged, _, err := store.HardDeleteOlderThan(ctx, time.Now().Add(time.Hour).UnixMilli()); err != nil || purged != 1 {
+		t.Fatalf("HardDeleteOlderThan: %d %v", purged, err)
+	}
+	if ok, err := store.IsPurged(ctx, task.TaskID); err != nil || !ok {
+		t.Fatalf("IsPurged: %v %v", ok, err)
+	}
+	if err := store.Create(ctx, &taskstore.Task{TaskID: task.TaskID, Title: taskstore.SqlStr("old")}); err != taskstore.ErrPurged {
+		t.Fatalf("Create after prune: %v", err)
+	}
+}

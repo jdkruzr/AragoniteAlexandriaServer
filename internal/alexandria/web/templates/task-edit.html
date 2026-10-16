@@ -1,0 +1,11 @@
+{{define "content"}}{{$d := .Data}}{{$t := $d.Task}}
+<div class="page-head"><h1>{{t "Edit Task"}}</h1><a class="button secondary" href="{{$d.Return}}">{{t "Back to tasks"}}</a></div>
+<form class="stack" method="post" action="/tasks/{{$t.ID}}/edit">
+  <input type="hidden" name="return" value="{{$d.Return}}">
+  <label>{{t "Title"}} <input name="title" value="{{$t.Title}}" required maxlength="500"></label>
+  <label>{{t "Due date"}} <input type="date" name="due" value="{{$d.Due}}"></label>
+  <label>{{t "Notes"}} <textarea name="detail" rows="5">{{deref $t.Detail}}</textarea></label>
+  <p class="muted small">{{t "Created {{.Created}} · Updated {{.Updated}}" "Created" ($t.CreatedAt.Local.Format "2006-01-02 15:04") "Updated" ($t.UpdatedAt.Local.Format "2006-01-02 15:04")}}</p>
+  <div class="actions"><button>{{t "Save"}}</button><a class="button secondary" href="{{$d.Return}}">{{t "Cancel"}}</a></div>
+</form>
+{{end}}

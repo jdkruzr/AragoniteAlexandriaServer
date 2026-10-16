@@ -7,12 +7,16 @@ package caldav
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"path"
 	"strings"
 	"sync"
 
 	ical "github.com/emersion/go-ical"
+	"github.com/emersion/go-webdav"
 	gocaldav "github.com/emersion/go-webdav/caldav"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore"
@@ -207,6 +211,12 @@ func (b *Backend) PutCalendarObject(ctx context.Context, urlPath string, cal *ic
 			task.TaskID = taskID
 		}
 		if err := b.store.Create(ctx, task); err != nil {
+			// A device that missed a deletion must not bring the task back. 412
+			// tells the client its copy is stale; its next sync sees the removal.
+			if errors.Is(err, taskstore.ErrPurged) || errors.Is(err, taskstore.ErrDeleted) {
+				slog.Warn("CalDAV refused to recreate a deleted task", "task_id", task.TaskID, "reason", err.Error())
+				return nil, webdav.NewHTTPError(http.StatusPreconditionFailed, err)
+			}
 			return nil, err
 		}
 	} else {

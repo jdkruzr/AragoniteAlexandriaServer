@@ -20,6 +20,7 @@ type Task struct {
 	Title       string     `json:"title"`
 	Status      TaskStatus `json:"status"`
 	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 	DueAt       *time.Time `json:"due_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	Detail      *string    `json:"detail,omitempty"`
@@ -152,6 +153,13 @@ type TaskService interface {
 	// so a caller can tell "0 purged because nothing was eligible" apart from
 	// "0 purged because the gate broke." Irreversible.
 	PurgeDeleted(ctx context.Context, olderThanDays int) (purged, skipped int64, err error)
+	// Reopen marks a completed task as needing action again.
+	Reopen(ctx context.Context, id string) error
+	// Restore takes a task out of the trash; ErrPurged once purged.
+	Restore(ctx context.Context, id string) error
+	// Purge permanently deletes tasks that are in the trash and returns how
+	// many it purged. Their UIDs stay reserved so no device can recreate them.
+	Purge(ctx context.Context, ids []string) (int64, error)
 	BulkComplete(ctx context.Context, ids []string) error
 	BulkDelete(ctx context.Context, ids []string) error
 }

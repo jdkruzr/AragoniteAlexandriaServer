@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 	"io/fs"
 	"net/url"
 	"os"
@@ -48,12 +49,19 @@ func previewPages() []previewPage {
 	progress.State, progress.Total, progress.Pages, progress.Queued, progress.Awaiting, progress.Ready, progress.Processing, progress.Pending, progress.Failed, progress.Finished = "queued", 1040, 1624, 412, 1212, 389, 1, 21, 1, 390
 	progress.PerMinute, progress.ETA = 12.4, now.Add(129*time.Minute)
 	progress.Notebooks = []recognition.RunNotebook{{ID: "a", Title: "Synthetic planning", State: "queued", Pages: 4, Queued: 4}, {ID: "b", Title: "Synthetic retro", State: "ready", Pages: 4}, {ID: "c", Title: "Synthetic missing", State: "unavailable", Detail: "Catalog unavailable"}}
+	due, detail := now.Add(72*time.Hour), "Bring the synthetic budget sheet"
+	openTasks := []tasksvc.Task{
+		{ID: "t1", Title: "Synthetic follow-up with storage team", Status: tasksvc.StatusNeedsAction, DueAt: &due, Detail: &detail, CreatedAt: now.Add(-48 * time.Hour), UpdatedAt: now.Add(-2 * time.Hour)},
+		{ID: "t2", Title: "Synthetic sketch review", Status: tasksvc.StatusNeedsAction, CreatedAt: now.Add(-24 * time.Hour), UpdatedAt: now.Add(-24 * time.Hour),
+			ForestNote: &tasksvc.TaskForestNote{NotebookID: "n", PageID: "p1", NotebookName: "Synthetic notebook"}}}
+	doneTasks := []tasksvc.Task{{ID: "t3", Title: "Synthetic invoice sent", Status: tasksvc.StatusCompleted, CreatedAt: now.Add(-96 * time.Hour), UpdatedAt: now.Add(-30 * time.Minute)}}
+	trashTasks := []tasksvc.Task{{ID: "t4", Title: "Synthetic duplicate reminder", Status: tasksvc.StatusNeedsAction, Deleted: true, CreatedAt: now.Add(-72 * time.Hour), UpdatedAt: now.Add(-time.Hour)}}
 	clientPages := []notes.Page{{ID: "p1", Number: 1, Key: "forestnote://n/p1", BodyText: "Agenda\n- storage pilot\n- budget review", Model: "vision-model"}, {ID: "p2", Number: 2, Key: "forestnote://n/p2"}, {ID: "p3", Number: 3, Key: "forestnote://n/p3", BodyText: "Follow-ups"}}
 	return []previewPage{
-		{"overview", "overview", "Library", "overview", "/", overviewData{NativeBOOX: true, OCR: true, JobsKnown: true, Active: 3, Failed: 1,
+		{"overview", "overview", "Library", "overview", "/library", overviewData{NativeBOOX: true, OCR: true, JobsKnown: true, Active: 3, Failed: 1,
 			Client: SourceSummary{Notebooks: 4, Books: 2, Devices: 1, LastActivity: now.Add(-3 * time.Hour), ActivityLabel: "Last sync"},
 			BOOX:   &SourceSummary{Notebooks: 1038, Books: 130, Devices: 3, LastActivity: now.Add(-20 * time.Minute), ActivityLabel: "Last upload"}}},
-		{"overview-empty", "overview", "Library", "overview", "/", overviewData{Client: SourceSummary{Notebooks: 0, Books: 0, Devices: 0, ActivityLabel: "Last sync"}}},
+		{"overview-empty", "overview", "Library", "overview", "/library", overviewData{Client: SourceSummary{Notebooks: 0, Books: 0, Devices: 0, ActivityLabel: "Last sync"}}},
 		{"search", "search", "Search", "search", "/search", map[string]any{"Query": "trellis", "Semantic": true, "BOOX": true,
 			"Results": []notes.Result{{Source: "boox", Kind: "Notebook page", NotebookName: "Synthetic storage sync", PageNumber: 2, Snippet: "…build the bean trellis before May…", URL: "#"}},
 			"Native":  []sourceMatch{{Title: "Synthetic trellis notes", Kind: "Notebook", URL: "#"}}}},
@@ -72,7 +80,11 @@ func previewPages() []previewPage {
 		{"client-notebooks-empty", "notebooks", "Notebooks", "notebooks", "/files/forestnote", map[string]any{"Listing": listing.State{}}},
 		{"client-books", "books", "Books", "books", "/files/forestnote/books", map[string]any{"Listing": listing.State{}, "Entries": []books.LibraryBook{{ID: "b", Title: "Synthetic book", Authors: "A. Author", Format: "EPUB", FileState: "ready", ByteLength: 2 << 20}}}},
 		{"client-devices", "devices", "Client devices", "devices", "/settings/devices", map[string]any{"Devices": []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.UnixMilli(), FirstSeenMs: 1}}}},
-		{"tasks", "tasks", "Tasks", "tasks", "/tasks", map[string]any{}},
+		{"tasks", "tasks", "Tasks", "tasks", "/", map[string]any{"Open": openTasks, "Done": doneTasks, "View": taskView{Sort: "due", Dir: "asc"}, "Sorts": taskSorts}},
+		{"tasks-empty", "tasks", "Tasks", "tasks", "/", map[string]any{"View": taskView{Sort: "due", Dir: "asc"}, "Sorts": taskSorts}},
+		{"tasks-trash", "tasks", "Tasks", "tasks", "/?show=deleted", map[string]any{"Open": trashTasks, "Trash": true, "View": taskView{Trash: true, Sort: "updated", Dir: "desc"}, "Sorts": taskSorts}},
+		{"task-edit", "task-edit", "Edit Task", "tasks", "/tasks/t1/edit", map[string]any{"Task": openTasks[0], "Due": "2026-10-20", "Return": "/?sort=updated"}},
+		{"task-purge", "task-purge", "Delete Permanently", "tasks", "/tasks/bulk", map[string]any{"Tasks": trashTasks, "Return": "/?show=deleted"}},
 		{"sources", "sources", "Add source", "sources", "/sources", nil},
 		{"help", "help", "Help", "help", "/help", map[string]any{"NativeBOOX": true}},
 	}

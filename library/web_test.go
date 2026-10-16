@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"net/http/httptest"
@@ -62,10 +63,11 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/files/forestnote/books":                               "No books yet",
 		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, page 1",
 		"/tasks":                                                "Nothing to do",
+		"/library":                                              "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
 		"/files/forestnote/devices":                             "<h2>Connect a Device</h2>",
 		"/settings/integrations":                                "/caldav/user/calendars/tasks/",
 		"/help":                                                 "Handwriting recognition",
-		"/":                                                     "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
+		"/":                                                     "Nothing to do",
 	} {
 		got := b.do("GET", path, "", nil, true)
 		if got.Code != 200 || !strings.Contains(got.Body.String(), want) {
@@ -81,7 +83,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 			t.Fatalf("%s: double-escaped link", path)
 		}
 	}
-	if got := b.do("GET", "/", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Your Library") || !strings.Contains(got.Body.String(), "Alexandria Client") {
+	if got := b.do("GET", "/library", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Your Library") || !strings.Contains(got.Body.String(), "Alexandria Client") {
 		t.Fatalf("home: %d", got.Code)
 	}
 	if got := b.do("GET", "/files/forestnote/render?path=forestnote://00000000000000000000000NB1/00000000000000000000000PG1", "", nil, true); got.Code != 200 || got.Header().Get("Content-Type") != "image/jpeg" {
@@ -234,5 +236,91 @@ func TestDirectBOOXBrowserLinkChallengesForOwnerLogin(t *testing.T) {
 		if w.Code != 401 || !strings.Contains(w.Header().Get("WWW-Authenticate"), "Basic realm=") {
 			t.Fatalf("%s: %d missing login challenge", path, w.Code)
 		}
+	}
+}
+
+// The Tasks home page: bulk actions, restore, and a permanent delete that a
+// stale CalDAV client can't undo.
+func TestTasksBulkActionsAndPermanentDelete(t *testing.T) {
+	r, db, _ := fixture(t)
+	b := browser{t, r}
+	for _, title := range []string{"Synthetic alpha", "Synthetic beta"} {
+		if got := b.do("POST", "/tasks", "title="+url.QueryEscape(title)+"&return=%2F%3Fsort%3Dtitle", sameSite, true); got.Code != 303 || got.Header().Get("Location") != "/?sort=title" {
+			t.Fatalf("create %s: %d %s", title, got.Code, got.Header().Get("Location"))
+		}
+	}
+	ids := map[string]string{}
+	rows, err := db.Query(`SELECT title, task_id FROM alexandria_tasks`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var title, id string
+		if err := rows.Scan(&title, &id); err != nil {
+			t.Fatal(err)
+		}
+		ids[title] = id
+	}
+	rows.Close()
+	alpha, beta := ids["Synthetic alpha"], ids["Synthetic beta"]
+	home := b.do("GET", "/?sort=title&dir=desc", "", nil, true).Body.String()
+	if i, j := strings.Index(home, "Synthetic beta"), strings.Index(home, "Synthetic alpha"); i < 0 || j < 0 || i > j {
+		t.Fatal("title sort, descending: beta should come first")
+	}
+	if !strings.Contains(home, `value="`+alpha+`" form="task-bulk"`) || !strings.Contains(home, "Created ") {
+		t.Fatal("home page lacks task checkboxes or dates")
+	}
+	bulk := func(action string, extra string, ids ...string) *httptest.ResponseRecorder {
+		form := "action=" + action + "&return=%2F" + extra
+		for _, id := range ids {
+			form += "&id=" + url.QueryEscape(id)
+		}
+		return b.do("POST", "/tasks/bulk", form, sameSite, true)
+	}
+	if got := bulk("complete", "", alpha, beta); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "notice_n=2") {
+		t.Fatalf("bulk complete: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	if got := bulk("reopen", "", beta); got.Code != 303 {
+		t.Fatalf("bulk reopen: %d", got.Code)
+	}
+	var status string
+	if err := db.QueryRow(`SELECT status FROM alexandria_tasks WHERE task_id=$1`, beta).Scan(&status); err != nil || status != "needsAction" {
+		t.Fatalf("reopened status %q %v", status, err)
+	}
+	if got := bulk("delete", "", alpha, beta); got.Code != 303 {
+		t.Fatalf("bulk delete: %d", got.Code)
+	}
+	if got := bulk("restore", "", beta); got.Code != 303 {
+		t.Fatalf("bulk restore: %d", got.Code)
+	}
+	// Permanent delete asks first, then purges only what is in the trash.
+	if got := bulk("purge", "", alpha, beta); got.Code != 200 || !strings.Contains(got.Body.String(), "Synthetic alpha") || strings.Contains(got.Body.String(), "Synthetic beta") {
+		t.Fatalf("purge confirmation: %d", got.Code)
+	}
+	if got := bulk("purge", "&confirm=yes", alpha); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "notice_n=1") {
+		t.Fatalf("purge: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	if body := b.do("GET", "/?show=deleted", "", nil, true).Body.String(); strings.Contains(body, "Synthetic alpha") {
+		t.Fatal("purged task still in Deleted Tasks")
+	}
+	if got := bulk("restore", "", alpha); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "notice_n=0") {
+		t.Fatalf("restore after purge: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	// A device that never heard of the deletion PUTs the task again: refused.
+	vtodo := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nBEGIN:VTODO\r\nUID:" + alpha + "\r\nSUMMARY:Synthetic alpha\r\n" +
+		"DTSTAMP:20261001T000000Z\r\nSTATUS:NEEDS-ACTION\r\nEND:VTODO\r\nEND:VCALENDAR\r\n"
+	if got := b.do("PUT", "/caldav/user/calendars/tasks/"+alpha+".ics", vtodo, map[string]string{"Content-Type": "text/calendar"}, true); got.Code != 412 {
+		t.Fatalf("stale PUT of a purged task: %d %s", got.Code, got.Body)
+	}
+	var title sql.NullString
+	if err := db.QueryRow(`SELECT title FROM alexandria_tasks WHERE task_id=$1 AND deleted`, alpha).Scan(&title); err != nil || title.Valid {
+		t.Fatalf("purged tombstone: %v %v", title, err)
+	}
+	// Edit keeps the view it came from.
+	if got := b.do("POST", "/tasks/"+beta+"/edit", "title=Synthetic+gamma&due=2026-11-01&detail=notes&return=%2F%3Fsort%3Dupdated", sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/?sort=updated") {
+		t.Fatalf("edit: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	if got := b.do("GET", "/tasks/"+beta+"/edit", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), `value="2026-11-01"`) {
+		t.Fatalf("edit page: %d", got.Code)
 	}
 }

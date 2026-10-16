@@ -20,9 +20,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath"
@@ -319,76 +317,6 @@ func (d Deps) searchRoutes(mux *http.ServeMux) {
 			}
 		}
 		d.render(w, r, "search", "Search", "search", data)
-	})
-}
-
-// --- Tasks ---
-
-func (d Deps) taskRoutes(mux *http.ServeMux) {
-	svc := func() tasksvc.TaskService { return tasksvc.NewTaskService(taskdb.NewStore(d.DB), nil) }
-	mux.HandleFunc("GET /tasks", func(w http.ResponseWriter, r *http.Request) {
-		var list []tasksvc.Task
-		var err error
-		trash := r.URL.Query().Get("show") == "deleted"
-		if trash {
-			list, err = svc().ListIncludingDeleted(r.Context())
-		} else {
-			list, err = svc().List(r.Context())
-		}
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		var open, done []tasksvc.Task
-		for _, t := range list {
-			if trash && !t.Deleted {
-				continue
-			}
-			if t.Status == tasksvc.StatusCompleted || t.Status == tasksvc.StatusCancelled {
-				done = append(done, t)
-			} else {
-				open = append(open, t)
-			}
-		}
-		d.render(w, r, "tasks", "Tasks", "tasks", map[string]any{"Open": open, "Done": done, "Trash": trash})
-	})
-	mux.HandleFunc("POST /tasks", func(w http.ResponseWriter, r *http.Request) {
-		create := tasksvc.TaskCreate{Title: strings.TrimSpace(r.FormValue("title")), Detail: strings.TrimSpace(r.FormValue("detail"))}
-		if due := r.FormValue("due"); due != "" {
-			if t, err := time.ParseInLocation("2006-01-02", due, time.Local); err == nil {
-				create.DueAt = &t
-			}
-		}
-		if create.Title == "" {
-			back(w, r, "/tasks", "A task needs a title.")
-			return
-		}
-		if _, err := svc().Create(r.Context(), create); err != nil {
-			d.fail(w, err)
-			return
-		}
-		back(w, r, "/tasks", "")
-	})
-	mux.HandleFunc("POST /tasks/{id}/complete", func(w http.ResponseWriter, r *http.Request) {
-		if err := svc().Complete(r.Context(), r.PathValue("id")); err != nil {
-			d.fail(w, err)
-			return
-		}
-		back(w, r, "/tasks", "")
-	})
-	mux.HandleFunc("POST /tasks/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
-		if err := svc().Delete(r.Context(), r.PathValue("id")); err != nil {
-			d.fail(w, err)
-			return
-		}
-		back(w, r, "/tasks", "Task deleted.")
-	})
-	mux.HandleFunc("POST /tasks/purge-completed", func(w http.ResponseWriter, r *http.Request) {
-		if _, err := svc().PurgeCompleted(r.Context()); err != nil {
-			d.fail(w, err)
-			return
-		}
-		back(w, r, "/tasks", "Completed tasks cleared.")
 	})
 }
 

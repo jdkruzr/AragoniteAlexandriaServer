@@ -1,32 +1,51 @@
-{{define "content"}}{{$d := .Data}}
-<div class="page-head"><h1>{{t "Tasks"}} {{template "help" "tasks.overview"}}</h1><a class="button secondary" href="/tasks{{if not $d.Trash}}?show=deleted{{end}}">{{if $d.Trash}}{{t "Back to tasks"}}{{else}}{{t "Deleted tasks"}}{{end}}</a></div>
+{{define "content"}}{{$d := .Data}}{{$v := $d.View}}
+<div class="page-head"><h1>{{if $d.Trash}}{{t "Deleted Tasks"}}{{else}}{{t "Tasks"}}{{end}} {{template "help" "tasks.overview"}}</h1><a class="button secondary" href="{{$v.Toggle}}">{{if $d.Trash}}{{t "Back to tasks"}}{{else}}{{t "Deleted tasks"}}{{end}}</a></div>
 {{if not $d.Trash}}
 <form class="inline" method="post" action="/tasks">
+  <input type="hidden" name="return" value="{{$v.URL}}">
   <input name="title" placeholder="{{t "New task"}}" required maxlength="500" aria-label="{{t "New task"}}">
   <input type="date" name="due" aria-label="{{t "Due date"}}">
   <button>{{t "Add task"}}</button>
 </form>
 {{end}}
+<form class="inline task-sort" method="get" action="/">
+  {{if $d.Trash}}<input type="hidden" name="show" value="deleted">{{end}}
+  <label>{{t "Sort by"}} <select name="sort">{{range $d.Sorts}}<option value="{{.}}" {{if eq . $v.Sort}}selected{{end}}>{{if eq . "due"}}{{t "Due date"}}{{else if eq . "created"}}{{t "Created"}}{{else if eq . "updated"}}{{t "Updated"}}{{else}}{{t "Title"}}{{end}}</option>{{end}}</select></label>
+  <select name="dir" aria-label="{{t "Order"}}"><option value="asc" {{if eq $v.Dir "asc"}}selected{{end}}>{{t "Oldest or A–Z first"}}</option><option value="desc" {{if eq $v.Dir "desc"}}selected{{end}}>{{t "Newest or Z–A first"}}</option></select>
+  <button class="secondary">{{t "Sort"}}</button>
+</form>
+{{if or $d.Open $d.Done}}
+<form id="task-bulk" class="inline task-bulk" method="post" action="/tasks/bulk">
+  <input type="hidden" name="return" value="{{$v.URL}}">
+  <label class="select-all" hidden><input type="checkbox" data-select-all="task-bulk"> {{t "Select all"}}</label>
+  {{if $d.Trash}}<button name="action" value="restore">{{t "Restore"}}</button><button class="danger" name="action" value="purge">{{t "Delete permanently"}}</button>
+  {{else}}<button name="action" value="complete">{{t "Mark done"}}</button><button class="secondary" name="action" value="reopen">{{t "Reopen"}}</button><button class="quiet" name="action" value="delete">{{t "Delete"}}</button>{{end}}
+</form>
+{{end}}
 <h2>{{if $d.Trash}}{{t "Deleted"}}{{else}}{{t "To Do"}}{{end}}</h2>
-{{if not $d.Open}}<p class="empty">{{t "Nothing to do."}}</p>{{else}}<ul class="tasks">{{range $d.Open}}{{template "task" .}}{{end}}</ul>{{end}}
+{{if not $d.Open}}<p class="empty">{{t "Nothing to do."}}</p>{{else}}<ul class="tasks">{{range $d.Open}}{{template "task" (taskRow . $v)}}{{end}}</ul>{{end}}
 {{if $d.Done}}
 <h2>{{t "Done"}}</h2>
-<ul class="tasks done">{{range $d.Done}}{{template "task" .}}{{end}}</ul>
-{{if not $d.Trash}}<form method="post" action="/tasks/purge-completed"><button class="quiet">{{t "Clear Completed Tasks"}}</button></form>{{end}}
+<ul class="tasks done">{{range $d.Done}}{{template "task" (taskRow . $v)}}{{end}}</ul>
+{{if not $d.Trash}}<form method="post" action="/tasks/purge-completed"><input type="hidden" name="return" value="{{$v.URL}}"><button class="quiet">{{t "Clear Completed Tasks"}}</button></form>{{end}}
 {{end}}
+<script src="/static/tasks.js?v={{version}}" defer></script>
 {{end}}
 
-{{define "task"}}
+{{define "task"}}{{$t := .Task}}
 <li>
-  <span class="title">{{.Title}}</span>
-  {{if .DueAt}}<span class="muted">{{t "due {{.When}}" "When" (time .DueAt)}}</span>{{end}}
-  {{if .ForestNote}}<span class="badge">Alexandria Client</span><a class="small" href="/files/forestnote?notebook={{.ForestNote.NotebookID}}&page={{.ForestNote.PageID}}#page-{{.ForestNote.PageID}}">{{if .ForestNote.NotebookName}}{{.ForestNote.NotebookName}}{{else}}{{t "Notebook page"}}{{end}}</a>{{end}}
-  {{if .Detail}}<div class="muted small">{{deref .Detail}}</div>{{end}}
-  {{if not .Deleted}}
+  <input type="checkbox" name="id" value="{{$t.ID}}" form="task-bulk" aria-label="{{t "Select {{.Title}}" "Title" $t.Title}}">
+  <span class="title">{{$t.Title}}</span>
+  {{if $t.DueAt}}<span class="muted">{{t "due {{.When}}" "When" (time $t.DueAt)}}</span>{{end}}
+  {{if $t.ForestNote}}<span class="badge">Alexandria Client</span><a class="small" href="/files/forestnote?notebook={{$t.ForestNote.NotebookID}}&page={{$t.ForestNote.PageID}}#page-{{$t.ForestNote.PageID}}">{{if $t.ForestNote.NotebookName}}{{$t.ForestNote.NotebookName}}{{else}}{{t "Notebook page"}}{{end}}</a>{{end}}
+  {{if $t.Detail}}<div class="muted small">{{deref $t.Detail}}</div>{{end}}
+  {{if not $t.Deleted}}
   <span class="row-actions">
-    {{if ne .Status "completed"}}<form method="post" action="/tasks/{{.ID}}/complete"><button>{{t "Done"}}</button></form>{{end}}
-    <form method="post" action="/tasks/{{.ID}}/delete"><button class="quiet">{{t "Delete"}}</button></form>
+    {{if ne $t.Status "completed"}}<form method="post" action="/tasks/{{$t.ID}}/complete"><input type="hidden" name="return" value="{{.View.URL}}"><button>{{t "Done"}}</button></form>{{end}}
+    <a class="button secondary" href="/tasks/{{$t.ID}}/edit?return={{.View.URL}}">{{t "Edit"}}</a>
+    <form method="post" action="/tasks/{{$t.ID}}/delete"><input type="hidden" name="return" value="{{.View.URL}}"><button class="quiet">{{t "Delete"}}</button></form>
   </span>
   {{end}}
+  <span class="task-dates muted small">{{t "Created {{.Created}} · Updated {{.Updated}}" "Created" ($t.CreatedAt.Local.Format "2006-01-02 15:04") "Updated" ($t.UpdatedAt.Local.Format "2006-01-02 15:04")}}</span>
 </li>
 {{end}}

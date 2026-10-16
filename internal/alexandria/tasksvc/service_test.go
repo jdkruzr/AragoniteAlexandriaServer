@@ -86,6 +86,27 @@ func (m *mockTaskStore) HardDeleteOlderThan(ctx context.Context, cutoffMs int64)
 	return purged, skipped, nil
 }
 
+func (m *mockTaskStore) Restore(ctx context.Context, taskID string) error {
+	t, ok := m.tasks[taskID]
+	if !ok || t.IsDeleted != "Y" {
+		return taskstore.ErrNotFound
+	}
+	t.IsDeleted = "N"
+	m.tasks[taskID] = t
+	return nil
+}
+
+func (m *mockTaskStore) Purge(ctx context.Context, taskIDs []string) (int64, error) {
+	var n int64
+	for _, id := range taskIDs {
+		if t, ok := m.tasks[id]; ok && t.IsDeleted == "Y" {
+			delete(m.tasks, id)
+			n++
+		}
+	}
+	return n, nil
+}
+
 type mockNotifier struct {
 	notified int
 }
