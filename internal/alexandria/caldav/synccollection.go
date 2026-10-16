@@ -16,7 +16,12 @@ import (
 
 // syncTokenPrefix makes the token an opaque URI, as RFC 6578 §3.1 requires.
 // Clients must treat it as a blob; the millisecond suffix is ours to read.
-const syncTokenPrefix = "urn:ultrabridge:sync:"
+const syncTokenPrefix = "urn:alexandria:sync:"
+
+// legacySyncTokenPrefix is what earlier versions issued (the code came from
+// UltraBridge). It is still accepted, so a client holding one keeps syncing
+// incrementally instead of being told to start over.
+const legacySyncTokenPrefix = "urn:ultrabridge:sync:"
 
 // SyncStore is the slice of the task store the sync-collection report needs.
 // *taskdb.Store satisfies it.
@@ -186,10 +191,16 @@ func parseSyncToken(tok string) (int64, bool, bool) {
 	if tok == "" {
 		return 0, true, true
 	}
-	if !strings.HasPrefix(tok, syncTokenPrefix) {
+	var rest string
+	switch {
+	case strings.HasPrefix(tok, syncTokenPrefix):
+		rest = strings.TrimPrefix(tok, syncTokenPrefix)
+	case strings.HasPrefix(tok, legacySyncTokenPrefix):
+		rest = strings.TrimPrefix(tok, legacySyncTokenPrefix)
+	default:
 		return 0, false, false
 	}
-	ms, err := strconv.ParseInt(strings.TrimPrefix(tok, syncTokenPrefix), 10, 64)
+	ms, err := strconv.ParseInt(rest, 10, 64)
 	if err != nil || ms < 0 {
 		return 0, false, false
 	}

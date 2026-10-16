@@ -32,7 +32,7 @@ func TaskToVTODO(t *taskstore.Task, dueTimeMode string) *ical.Calendar {
 // This is the original implementation, used for tasks without iCal blobs.
 func taskToVTODOFromFields(t *taskstore.Task, dueTimeMode string) *ical.Calendar {
 	cal := ical.NewCalendar()
-	cal.Props.SetText("PRODID", "-//UltraBridge//CalDAV//EN")
+	cal.Props.SetText("PRODID", "-//Alexandria//CalDAV//EN")
 	cal.Props.SetText("VERSION", "2.0")
 
 	todo := ical.NewComponent("VTODO")
@@ -654,7 +654,7 @@ func BuildBlobWithMetadata(taskID string, meta BlobMetadata) string {
 		return ""
 	}
 	cal := ical.NewCalendar()
-	cal.Props.SetText("PRODID", "-//UltraBridge//CalDAV//EN")
+	cal.Props.SetText("PRODID", "-//Alexandria//CalDAV//EN")
 	cal.Props.SetText("VERSION", "2.0")
 
 	todo := ical.NewComponent("VTODO")
