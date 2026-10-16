@@ -59,7 +59,7 @@ func (s *Store) List(ctx context.Context) ([]taskstore.Task, error) {
 // inventory. The Deleted flag on the returned service.Task tells the
 // caller which is which.
 func (s *Store) ListIncludingDeleted(ctx context.Context) ([]taskstore.Task, error) {
-	return s.listRows(ctx, "SELECT "+taskColumns+" FROM alexandria_tasks ORDER BY created_at, task_id")
+	return s.listRows(ctx, "SELECT "+taskColumns+" FROM alexandria_tasks t WHERE NOT EXISTS (SELECT 1 FROM alexandria_task_purged p WHERE p.task_id = t.task_id) ORDER BY created_at, task_id")
 }
 
 func (s *Store) listRows(ctx context.Context, query string) ([]taskstore.Task, error) {
@@ -113,6 +113,21 @@ func (s *Store) Create(ctx context.Context, t *taskstore.Task) error {
 	}
 	if !t.Status.Valid {
 		t.Status = sql.NullString{String: "needsAction", Valid: true}
+	}
+
+	// A UID in the trash or the purge ledger is never recreated: a device that
+	// missed the deletion would otherwise bring the task back.
+	var deleted, purged bool
+	if err := s.db.QueryRowContext(ctx, `SELECT
+		EXISTS (SELECT 1 FROM alexandria_tasks WHERE task_id = $1 AND deleted),
+		EXISTS (SELECT 1 FROM alexandria_task_purged WHERE task_id = $1)`, t.TaskID).Scan(&deleted, &purged); err != nil {
+		return fmt.Errorf("check task %s: %w", t.TaskID, err)
+	}
+	if purged {
+		return taskstore.ErrPurged
+	}
+	if deleted {
+		return taskstore.ErrDeleted
 	}
 
 	t.CreatedAt, t.UpdatedAt = now, now
@@ -187,6 +202,90 @@ func (s *Store) Delete(ctx context.Context, taskID string) error {
 	return nil
 }
 
+// Restore takes a task out of the trash. Permanently deleted tasks can't be
+// restored (ErrPurged).
+func (s *Store) Restore(ctx context.Context, taskID string) error {
+	now := time.Now().UnixMilli()
+	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_tasks SET
+		deleted = false, last_modified = $1, updated_at = $1
+		WHERE task_id = $2 AND deleted
+		AND NOT EXISTS (SELECT 1 FROM alexandria_task_purged p WHERE p.task_id = $2)`,
+		now, taskID)
+	if err != nil {
+		return fmt.Errorf("restore task %s: %w", taskID, err)
+	}
+	if affected, err := result.RowsAffected(); err != nil {
+		return fmt.Errorf("restore task %s rows affected: %w", taskID, err)
+	} else if affected == 0 {
+		if purged, err := s.IsPurged(ctx, taskID); err == nil && purged {
+			return taskstore.ErrPurged
+		}
+		return taskstore.ErrNotFound
+	}
+	return nil
+}
+
+// Purge permanently deletes tasks that are already in the trash, returning how
+// many it purged. Content is erased but the tombstone row stays (deleted,
+// updated_at moved) so CalDAV sync-collection still reports the removal, and
+// the UID goes into alexandria_task_purged, which outlives the tombstone prune,
+// so no device can recreate the task by PUTting it again.
+func (s *Store) Purge(ctx context.Context, taskIDs []string) (int64, error) {
+	if len(taskIDs) == 0 {
+		return 0, nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin purge: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	now := time.Now().UnixMilli()
+	rows, err := tx.QueryContext(ctx, `UPDATE alexandria_tasks SET
+		title = NULL, detail = NULL, importance = NULL, due_time = 0, recurrence = NULL,
+		links = NULL, ical_blob = NULL, forestnote_notebook_id = NULL, forestnote_page_id = NULL,
+		forestnote_notebook_name = NULL, forestnote_source = NULL,
+		last_modified = $1, updated_at = $1
+		WHERE task_id = ANY($2) AND deleted
+		AND NOT EXISTS (SELECT 1 FROM alexandria_task_purged p WHERE p.task_id = alexandria_tasks.task_id)
+		RETURNING task_id`, now, taskIDs)
+	if err != nil {
+		return 0, fmt.Errorf("purge tasks: %w", err)
+	}
+	var purged []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("purge tasks: %w", err)
+		}
+		purged = append(purged, id)
+	}
+	if err := rows.Close(); err != nil {
+		return 0, fmt.Errorf("purge tasks: %w", err)
+	}
+	if len(purged) == 0 {
+		return 0, nil
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO alexandria_task_purged (task_id, purged_at)
+		SELECT unnest($1::text[]), $2::bigint ON CONFLICT DO NOTHING`, purged, now); err != nil {
+		return 0, fmt.Errorf("record purged tasks: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM alexandria_task_sync_map WHERE task_id = ANY($1)`, purged); err != nil {
+		return 0, fmt.Errorf("purge task sync map: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit purge: %w", err)
+	}
+	return int64(len(purged)), nil
+}
+
+// IsPurged reports whether a UID was permanently deleted.
+func (s *Store) IsPurged(ctx context.Context, taskID string) (bool, error) {
+	var purged bool
+	err := s.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM alexandria_task_purged WHERE task_id = $1)`, taskID).Scan(&purged)
+	return purged, err
+}
+
 // DeleteCompleted soft-deletes all completed tasks. Returns the number of tasks deleted.
 func (s *Store) DeleteCompleted(ctx context.Context) (int64, error) {
 	now := time.Now().UnixMilli()
@@ -233,6 +332,12 @@ func (s *Store) HardDeleteOlderThan(ctx context.Context, cutoffMs int64) (purged
 		`SELECT COUNT(*) FROM alexandria_tasks WHERE deleted AND updated_at >= $1`,
 		cutoffMs).Scan(&skipped); err != nil {
 		return 0, 0, fmt.Errorf("count skipped tasks at cutoff %d: %w", cutoffMs, err)
+	}
+	// The UIDs stay reserved after their rows are gone (see Purge).
+	if _, err = tx.ExecContext(ctx, `INSERT INTO alexandria_task_purged (task_id, purged_at)
+		SELECT task_id, $2::bigint FROM alexandria_tasks WHERE deleted AND updated_at < $1
+		ON CONFLICT DO NOTHING`, cutoffMs, time.Now().UnixMilli()); err != nil {
+		return 0, 0, fmt.Errorf("record purged tasks at cutoff %d: %w", cutoffMs, err)
 	}
 	result, err := tx.ExecContext(ctx,
 		`DELETE FROM alexandria_tasks WHERE deleted AND updated_at < $1`,

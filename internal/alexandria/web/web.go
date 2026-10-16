@@ -28,6 +28,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
 )
 
@@ -68,6 +69,13 @@ var funcs = withFormats(template.FuncMap{
 	},
 	// num groups thousands: 1624 → "1,624".
 	// until is a rounded time left before t, such as "2 h 5 min".
+	// taskRow pairs a task with the Tasks view its row links back to.
+	"taskRow": func(t tasksvc.Task, v taskView) any {
+		return struct {
+			Task tasksvc.Task
+			View taskView
+		}{t, v}
+	},
 	"deref": func(s *string) string {
 		if s == nil {
 			return ""
@@ -296,7 +304,7 @@ func back(w http.ResponseWriter, r *http.Request, path, notice string, count ...
 // Handler serves the UI for one admitted, authenticated request.
 func Handler(d Deps) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", d.overview)
+	mux.HandleFunc("GET /library", d.overview)
 	mux.Handle("GET /static/", http.FileServerFS(assets))
 	mux.HandleFunc("GET /help", func(w http.ResponseWriter, r *http.Request) {
 		d.render(w, r, "help", "Help", "help", map[string]any{"NativeBOOX": d.Status.NativeBOOX})
@@ -336,7 +344,7 @@ func Owns(path string) bool {
 			return true
 		}
 	}
-	return path == "/"
+	return path == "/" || path == "/library"
 }
 
 func sourceTab(path, section string) string {

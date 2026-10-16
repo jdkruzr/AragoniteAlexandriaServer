@@ -25,6 +25,8 @@ type TaskStore interface {
 	Delete(ctx context.Context, taskID string) error
 	DeleteCompleted(ctx context.Context) (int64, error)
 	HardDeleteOlderThan(ctx context.Context, cutoffMs int64) (purged, skipped int64, err error)
+	Restore(ctx context.Context, taskID string) error
+	Purge(ctx context.Context, taskIDs []string) (int64, error)
 }
 
 // SyncNotifier is the interface for triggering device sync.
@@ -290,6 +292,53 @@ func (s *taskService) PurgeDeleted(ctx context.Context, olderThanDays int) (purg
 	return purged, skipped, nil
 }
 
+// Reopen marks a completed or cancelled task as needing action again.
+func (s *taskService) Reopen(ctx context.Context, id string) error {
+	if s.store == nil {
+		return fmt.Errorf("task store not available")
+	}
+	task, err := s.store.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	task.Status = taskstore.SqlStr("needsAction")
+	task.CompletedAt = sql.NullInt64{}
+	if err := s.store.Update(ctx, task); err != nil {
+		return err
+	}
+	s.notify(ctx)
+	return nil
+}
+
+// Restore takes a task out of the trash.
+func (s *taskService) Restore(ctx context.Context, id string) error {
+	if s.store == nil {
+		return fmt.Errorf("task store not available")
+	}
+	if err := s.store.Restore(ctx, id); err != nil {
+		return err
+	}
+	s.notify(ctx)
+	return nil
+}
+
+// Purge permanently deletes tasks already in the trash (see taskdb.Store.Purge):
+// content is erased and the UIDs stay reserved, so devices learn of the
+// deletion and can't recreate the tasks. Irreversible.
+func (s *taskService) Purge(ctx context.Context, ids []string) (int64, error) {
+	if s.store == nil {
+		return 0, nil
+	}
+	n, err := s.store.Purge(ctx, ids)
+	if err != nil {
+		return 0, err
+	}
+	if n > 0 {
+		s.notify(ctx)
+	}
+	return n, nil
+}
+
 func (s *taskService) BulkComplete(ctx context.Context, ids []string) error {
 	for _, id := range ids {
 		if err := s.Complete(ctx, id); err != nil {
@@ -320,6 +369,7 @@ func mapInternalTask(it taskstore.Task) Task {
 		Title:     it.Title.String,
 		Status:    TaskStatus(it.Status.String),
 		CreatedAt: time.UnixMilli(it.CreatedAt), // taskdb.tasks.created_at (was mis-mapped from DueTime)
+		UpdatedAt: time.UnixMilli(it.UpdatedAt),
 		Deleted:   it.IsDeleted == "Y",
 	}
 
