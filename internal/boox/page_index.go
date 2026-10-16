@@ -62,7 +62,8 @@ func (s Service) queuePageHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/boox/notebook?id="+url.QueryEscape(id)+"&page="+strconv.Itoa(num), http.StatusSeeOther)
 }
 
-// ProcessPageIndex performs one leased job. Results are server-only derived
+// ProcessPageIndex performs one leased job, newest first: a page the owner
+// just wrote never waits behind a backlog (a library run, a re-sync wave). Results are server-only derived
 // text. Source triggers and a final snapshot check fence edits during inference.
 func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt string) (bool, error) {
 	var id, page, oldHash, oldOCR string
@@ -70,7 +71,7 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 	var num, attempts int
 	token := uuid.NewString()
 	e := s.DB.QueryRowContext(ctx, `UPDATE boox_page_index p SET state='processing',lease_token=$1,lease_until=now()+interval '5 minutes'
- WHERE (notebook_id,page_id)=(SELECT notebook_id,page_id FROM boox_page_index WHERE state IN ('queued','processing') AND next_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY next_at LIMIT 1 FOR UPDATE SKIP LOCKED)
+ WHERE (notebook_id,page_id)=(SELECT notebook_id,page_id FROM boox_page_index WHERE state IN ('queued','processing') AND next_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY next_at DESC LIMIT 1 FOR UPDATE SKIP LOCKED)
  RETURNING notebook_id,page_id,page_number,request_version,attempts,ocr_hash,ocr_text`, token).Scan(&id, &page, &num, &version, &attempts, &oldHash, &oldOCR)
 	if errors.Is(e, sql.ErrNoRows) {
 		return false, nil
