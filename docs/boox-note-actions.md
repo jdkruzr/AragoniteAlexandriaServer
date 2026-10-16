@@ -123,10 +123,24 @@ recognition card already says why.
     so note actions are active
   - no time zone set yet
 
+## First Live Test (2026-10-16, Palma)
+
+One page on the phone grid template: black "This should not convert.", red
+"Hello", blue "20261030 at 3PM: Buy milk".
+
+- Black ink was ignored. Blue became the event **Buy milk**, 2026-10-30 15:00
+  for one hour, linked to the page.
+- Red "Hello" made no task: the model judged it not a to-do, as the default
+  instructions say.
+- No time zone was saved, so 3 PM was read as UTC. Items are never edited
+  afterwards, so this one has to be corrected on the Calendar page.
+- The page first waited behind the re-save-wave backlog
+  ([boox-resave-waves.md](boox-resave-waves.md)). It was then blocked because
+  the grid template uses a canvas-sized `clipPath`, which is now accepted
+  (`f52d62c-svgclip1`).
+
 ## Not Yet
 
-- Live qualification on the Palma or Lumi: write red and blue ink, close the
-  note, check the items and links. Also add Alexandria CalDAV in Calendar
-  Memo and in a second client.
+- Add Alexandria CalDAV in Calendar Memo and in a second client.
 - The worker's detail text ("Made 1 task.") is English only.
 - Recognition jobs don't count note actions yet.
