@@ -1,103 +1,214 @@
 <p align="center">
-  <img src="assets/aragonite-alexandria-server-crystal-temple-v1.png" width="240" alt="Aragonite Alexandria Server crystal and Greek library">
+  <img src="assets/aragonite-alexandria-server-crystal-temple-v1.png" width="200" alt="Aragonite Alexandria Server crystal and Greek library">
 </p>
 
 # Aragonite Alexandria Server
 
-Aragonite Alexandria Server synchronizes notes and reading data from supported
-applications and e-ink devices, with a web interface for browsing, search, tasks
-and handwriting recognition. It supports self-hosted and managed deployments.
-Alexandria Client and native BOOX applications connect through separate sync
-interfaces while sharing server features.
+**Your e-ink notes, on your own server, actually doing something.**
 
-> **Status: active development.** Alexandria Client sync, native BOOX sync,
-> source browsing, recognition jobs and standalone deployment are implemented.
-> reMarkable and Supernote connectors remain planned; full UltraBridge parity
-> is not claimed. See the [source and data-store architecture](docs/architecture.md)
-> for implemented boundaries and planned interfaces.
+Alexandria Server is a self-hosted home for the handwriting, books and
+highlights on your e-ink tablets. It syncs BOOX tablets natively in place of
+the Onyx cloud, as well as the Alexandria Client app. Then it puts the library
+to work: it reads your handwriting with AI models you choose, searches
+everything, turns pen colors into tasks and calendar events, and writes
+minutes from the audio you record in your notes.
 
-## Architectural Contract
+> **Status: in active development, not yet released.** It runs every day
+> against a real library, but expect rough edges and changing setup steps.
+> Recognition, minutes and note actions call AI models you configure; nothing
+> is sent to them until you turn those features on. See [Current State](docs/current-state.md) for the details.
 
-- Alexandria-managed metadata and search use PostgreSQL plus `pgvector`.
-  Native BOOX replication additionally uses Couchbase Server and Sync Gateway.
-- S3-compatible object storage is the only production blob contract.
-- Pods and cloud tasks use local disk only for disposable scratch space.
-- Jobs are durable, leased, idempotent records. AWS Batch and Kubernetes are
-  execution mechanisms, never the source of truth.
-- Notification sockets are wake-up hints; native BOOX CBL/BLIP sockets carry
-  replication data. Durable state remains in the owning source repository.
-- AWS-specific code stays in infrastructure and adapter packages.
+<p align="center">
+  <img src="docs/images/boox-notebook.png" width="860" alt="A handwritten BOOX page in the notebook view, with its recognized text, and the tasks and event its red and blue ink created">
+</p>
 
-See [Architecture](docs/architecture.md), [development guide](docs/development.md),
-and [UltraBridge migration safety](docs/ultrabridge-migration.md).
+*Screenshots use a made-up demo library. See
+[Regenerating the Screenshots](#regenerating-the-screenshots).*
 
-## Local Stack
+## What It Does
+
+### Syncs Your BOOX Library Without the Onyx Cloud
+
+A BOOX tablet signs in to Alexandria instead of the Onyx cloud, using the
+companion app PowerSync, and keeps using its own Notes app and reader as
+usual. Notebooks and folders sync across several tablets, and reading
+records, highlights and tags come along. In the browser you can page through
+every notebook, rendered from the original pen strokes, templates and images, and
+read typed-text notes and book highlights.
+
+<p align="center"><img src="docs/images/boox-notebooks.png" width="760" alt="The BOOX notebook list"></p>
+
+### Reads Your Handwriting With Models You Pick
+
+Point Alexandria at a vision model: a local one served by vLLM or Ollama, or
+a hosted OpenAI- or Anthropic-compatible API. It turns pages into text.
+Recognize one page, a notebook or a whole library, or let automatic
+recognition pick up each page once you stop writing. The prompts are editable
+in Settings, and the Jobs page shows how every page is getting on.
+
+<p align="center"><img src="docs/images/settings-recognition.png" width="760" alt="AI Tools and Recognition settings with a self-hosted vision model"></p>
+
+### Searches Everything, by Word or by Meaning
+
+A single search covers recognized handwriting, BOOX tags, notebook titles,
+book highlights and Alexandria Client pages. Add an embedding model and it
+also matches by meaning, so a search for "fall planting" finds the page that
+says "garlic in October".
+
+<p align="center"><img src="docs/images/search.png" width="760" alt="Search results from BOOX pages, a book highlight and an Alexandria Client notebook"></p>
+
+### Turns Pen Colors Into Tasks and Events
+
+Write in **red** and it becomes a task; write in **sky blue** and it becomes
+a calendar event, with the date and time read from what you wrote. Each item
+links back to the page it came from. Both lists sync to phone and desktop
+calendar apps over CalDAV, and you can choose which color does what, or
+switch either off.
+
+<p align="center"><img src="docs/images/tasks.png" width="760" alt="Tasks made from a notebook page, marked From note"></p>
+<p align="center"><img src="docs/images/calendar.png" width="760" alt="The calendar with an event made from sky blue ink"></p>
+
+### Writes Minutes From Your Audio Notes
+
+Record audio while you take notes on a BOOX tablet, and Alexandria writes
+minutes. It transcribes the recordings with a Whisper-compatible model,
+reads them alongside your handwriting, and produces key points that note
+whether each one came from the recording, the notes or both. You can send
+the minutes back to your tablets as a new note. Each recording shows the
+pages it was made on, with a player right on the page.
+
+<p align="center"><img src="docs/images/boox-minutes.png" width="760" alt="Audio note minutes with key points marked by source"></p>
+
+### Lets Your AI Assistant Into Your Notes, on Your Terms
+
+A built-in [MCP](https://modelcontextprotocol.io) server lets Claude and
+other MCP clients search your notes, read pages and minutes, edit text boxes,
+and manage tasks and calendar events. Each client signs in with OAuth or an
+API token you can revoke.
+
+### Also
+
+- **Alexandria Client** (Android) syncs notebooks, books and annotations
+  through its own sync protocol and shares search, recognition and tasks.
+- **Book uploads** to your BOOX tablets from the browser.
+- **One overview** of every source, device and job.
+- **Translations:** English, plus a Spanish draft.
+
+<p align="center"><img src="docs/images/overview.png" width="760" alt="The library overview"></p>
+
+## Your Data
+
+- **It stays on hardware you run.** PostgreSQL holds the metadata, an
+  S3-compatible store holds the files, and for BOOX sync a bundled Couchbase
+  and Sync Gateway pair speaks the tablets' own protocol.
+- **Only the AI model endpoints you configure** receive page images, recordings
+  or text, and only for features you turn on. Pointing those at models on
+  your own network keeps everything at home.
+- **It is not end-to-end encrypted.** The server can read your library;
+  that's how it searches and recognizes it. Protect it with TLS, a strong
+  password and normal host security.
+- **A library has one owner** with any number of devices. It isn't a shared
+  workspace.
+
+## Getting Started
+
+Alexandria runs as a Docker Compose (or Podman Compose) stack on a single
+Linux host, behind the TLS reverse proxy you already use:
 
 ```bash
 cp deploy/compose/.env.example deploy/compose/.env
 # Set separate random hexadecimal database and runtime passwords in that file.
-# Do not use the example placeholders for a real installation.
 docker compose --env-file deploy/compose/.env \
-  -f deploy/compose/compose.yml up --build
+  -f deploy/compose/compose.yml up --build -d
 ```
 
-Then open `http://localhost:18443/health`. Alexandria Server intentionally uses host ports
-`18443` and `18089` so a live UltraBridge instance can retain `8443/8089`. The
-SPC listener deliberately returns `501` until its protocol port is ready.
+Then follow [Running Alexandria Server on Your Own Machine](docs/deployment-compose.md)
+to create your account, put it behind HTTPS and connect devices.
 
-## Commands
+| Guide | For |
+|---|---|
+| [Running on Your Own Machine](docs/deployment-compose.md) | Install, upgrade, backups |
+| [Native BOOX Setup](docs/boox-native-setup.md) | Couchbase, Sync Gateway and enrolling BOOX tablets |
+| [Local Models](docs/deployment-local-models.md) | Serving recognition, Whisper and embeddings on your own GPU |
+| [Provider Settings](docs/provider-settings.md) | Choosing and configuring AI models |
+| [Nginx Proxy Manager](docs/deployment-nginx-proxy-manager.md) | An example TLS proxy setup |
+| [Storage](docs/deployment-storage.md) | Object storage choices |
+
+Feature guides: [Note Actions](docs/boox-note-actions.md),
+[Audio Note Minutes](docs/note-minutes.md),
+[Recognition Jobs](docs/recognition-jobs.md),
+[Typed-Text Notes](docs/boox-text-notes.md),
+[BOOX Tags](docs/boox-tags.md), [Web UI](docs/web-ui.md),
+[Translating](docs/translating.md).
+
+## Under the Hood
+
+- **Go server**, one binary with gateway, worker and maintenance roles
+  (`ALEXANDRIA_ROLE`). Server-rendered HTML with almost no JavaScript.
+- **PostgreSQL with pgvector** for metadata and search. **S3-compatible
+  object storage** is the only durable blob store; local disk is scratch.
+- **Durable, leased, idempotent jobs.** Kubernetes or AWS Batch can run them,
+  but they never become the source of truth.
+- **Explicit, checksummed migrations,** with separate management and runtime
+  database credentials. Normal startup never runs privileged DDL.
+- **Deployment profiles:** `deploy/compose` (single host),
+  `deploy/helm/aragonite-alexandria-server` (Kubernetes against external
+  PostgreSQL and S3), and `deploy/terraform/aws` (ECS/Fargate, Aurora
+  Serverless v2, S3; it expects an existing VPC, DNS and certificate).
+  None of them needs a subscription or the separate Hosting service.
+
+See [Architecture](docs/architecture.md), the
+[AWS diagrams](docs/architecture-aws.md), the
+[Development Guide](docs/development.md) and
+[UltraBridge Migration](docs/ultrabridge-migration.md).
+
+### Commands
 
 ```bash
 go build ./cmd/alexandria-server
 
+# Apply embedded PostgreSQL migrations (management credentials).
+ALEXANDRIA_DATABASE_URL='postgres://...' ./alexandria-server migrate
+
 # Run the configured role (gateway, worker, maintenance, or all).
 ALEXANDRIA_DATABASE_URL='postgres://...' ALEXANDRIA_ROLE=all ./alexandria-server serve
 
-# Apply embedded PostgreSQL migrations.
-ALEXANDRIA_DATABASE_URL='postgres://...' ./alexandria-server migrate
-
-# Create/update the single local administrator without exposing a password in
-# process arguments, then mint a revocable API token (shown exactly once).
+# Create or update the local owner without a password in process arguments,
+# then mint a revocable API token (shown once).
 ALEXANDRIA_DATABASE_URL='postgres://...' ./alexandria-server seed-user \
   --username admin --password-file /run/secrets/alexandria_admin_password
 ALEXANDRIA_DATABASE_URL='postgres://...' ./alexandria-server create-token --label laptop
 
-# Produce a content-free inventory of UltraBridge snapshots.
+# A content-free inventory of UltraBridge snapshots (names, counts, sizes only).
 ./alexandria-server legacy-preflight \
-  --notes-db /snapshot/ultrabridge.db \
-  --task-db /snapshot/ultrabridge-tasks.db \
-  --root /snapshot/supernote \
-  --output /secure/location/manifest.json
+  --notes-db /snapshot/ultrabridge.db --task-db /snapshot/ultrabridge-tasks.db \
+  --root /snapshot/supernote --output /secure/location/manifest.json
 ```
 
-The preflight manifest contains database/table names, row counts, and aggregate
-file sizes. It does not extract settings values, filenames, notes, or tasks.
+`make check` runs `go vet` and the race-enabled tests. The integration tests
+need a fresh PostgreSQL and S3 endpoint; see the
+[Development Guide](docs/development.md).
 
-The first authenticated application surface is `/api/v1/tasks`, with list,
-create, read, update, and soft-delete operations. It accepts HTTP Basic auth or
-the hashed bearer tokens created above. This is an intentionally narrow first
-vertical slice, not an assertion of UltraBridge feature parity.
+### Regenerating the Screenshots
 
-## Deployment Profiles
+`scripts/docs-screenshots.sh` renders the images in `docs/images` from a
+made-up demo library (`TestWriteDocsScreens` in `internal/alexandria/web` and
+`internal/boox`) and a fake handwritten page
+(`docs/screenshots/demo-page.html`). There's no database or server
+involved, so no real library can end up in a screenshot. It needs Go and
+Google Chrome, and downloads the Caveat font (SIL OFL) at a pinned checksum.
 
-- `deploy/compose`: small on-prem stack with PostgreSQL/pgvector and SeaweedFS.
-- `deploy/helm/aragonite-alexandria-server`: Kubernetes deployment against external
-  PostgreSQL and S3-compatible endpoints.
-- `deploy/terraform/aws`: AWS economy or HA profile using ECS/Fargate, Aurora
-  Serverless v2, S3, and AWS Batch/Fargate.
+## Roadmap
 
-The AWS module expects an existing VPC, subnets, DNS management, and ACM
-certificate. It does not create a surprise network architecture on your behalf.
-The [AWS architecture diagrams](docs/architecture-aws.md) map the complete target
-design to AWS services and mark remaining deployment work as **To be implemented**.
-First-run management tasks and credential cutover are described in
-[deployment setup](docs/deployment-identity-upgrade.md). Neither standalone
-deployment requires the separate Hosting repository or subscriptions.
+reMarkable and Supernote connectors are planned. Alexandria takes over from
+[UltraBridge](https://github.com/jdkruzr/ultrabridge) but doesn't claim full
+feature parity yet. [Remaining Steps](docs/remaining-steps.md) tracks the
+plan.
 
-Brand usage and the reproducible generation brief for the project mark are in
+Brand usage and the generation brief for the project mark are in
 [the brand note](docs/brand.md).
 
 ## License
 
-Apache License 2.0. Selectively ported UltraBridge code must retain its original
-copyright/license notices and be identified in `NOTICE`.
+Apache License 2.0. Code ported selectively from UltraBridge keeps its
+original copyright and license notices and is listed in `NOTICE`.
