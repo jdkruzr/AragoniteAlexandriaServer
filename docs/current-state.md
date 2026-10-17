@@ -1,6 +1,6 @@
 # Alexandria Server handoff
 
-2026-10-17 (late night): **History rewritten** to remove a real person's name and other library-derived terms from fixtures and notes ([history-rewrite-20261017.md](history-rewrite-20261017.md)). Commits from 2026-10-12 on have new hashes; that page maps old to new. The README was rewritten for users, with screenshots from a made-up demo library (`scripts/docs-screenshots.sh`).
+2026-10-17 (late night): **History rewritten** to remove a real person's name, library-derived terms and the owner's host details ([history-rewrite-20261017.md](history-rewrite-20261017.md)). Commits from 2026-10-12 on have new hashes; that page maps old to new. The README was rewritten for users, with screenshots from a made-up demo library (`scripts/docs-screenshots.sh`).
 
 2026-10-17 (night): **Loose-ends batch** (`2a30efe-batch1`, app-only: drift 0, 21/21 staged, readiness 200, anonymous 401, no restarts). The owner's picks from the remaining-work list:
 - **Jobs page:** new Note Actions and Audio Note Minutes sections (counts by state, running or failed rows, links to the page or minutes).
