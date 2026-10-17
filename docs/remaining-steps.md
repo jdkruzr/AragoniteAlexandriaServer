@@ -31,7 +31,8 @@ independent state transfer here. This checklist does not authorize infrastructur
 
 Resumed by the user for a self-hosted Compose deployment (PostgreSQL+pgvector, S3/SeaweedFS),
 porting UltraBridge's qualified shared-library adapter slice by slice on branch
-`alexandria-sync-port`. Phases: P0 foundation, P1 identity/generation/capabilities, P2 relay,
+`alexandria-sync-port` (fast-forwarded into `main` and deleted on 2026-10-17; work
+continues on `main`). Phases: P0 foundation, P1 identity/generation/capabilities, P2 relay,
 P3 assets on S3, P4 reader materialization, P5 restore, P6 OCR/search, P7 reader search/MCP,
 P8 CalDAV, P9 web UI, P10 Compose completion and qualification. Rhizome is required at the
 Alexandria client's pinned revision (`1a5461a`, server rewind support) as a Go pseudo-version, not a fork or a new tag.

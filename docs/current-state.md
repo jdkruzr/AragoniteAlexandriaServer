@@ -1,5 +1,12 @@
 # Alexandria Server handoff
 
+2026-10-17: **Branches merged; work is on `main`.**
+- Server: `main` was fast-forwarded to `alexandria-sync-port` (169 commits, `e988e20`). `alexandria-sync-port` and the already-contained `integration/alexandria-foundation` were deleted. AGENTS.md now says to work on `main`.
+- rhizome: `main` was fast-forwarded to `integration/forestread` (8 commits; `1a5461a` is the commit this Server pins), and the branch was deleted.
+- PowerSync: 6 commits from 10-15 that had never been pushed are now on GitHub.
+- AragoniteAlexandria: two stale local branches were deleted (nothing on them was missing from `main`).
+- Unchanged: Hosting (it has only `integration/alexandria-foundation` and pins an older Server commit) and PowerSearch's uncommitted page-count audit.
+
 2026-10-17: **Settings tab renamed "AI Tools and Recognition"** (owner's name; `fb723fc-aitools1`, app-only: drift 0, 14/14 staged, readiness 200, anonymous 401, no restarts).
 - Renamed: the page title, heading and tab label, plus every "Settings → Recognition" pointer in pages, worker messages and help. Spanish was carried over as "Herramientas de IA y reconocimiento".
 - Unchanged: the URL (`/settings/recognition`), the top-level Recognition (jobs) link and the Handwriting Recognition feature cards.
