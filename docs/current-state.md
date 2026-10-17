@@ -1,5 +1,10 @@
 # Alexandria Server handoff
 
+2026-10-17: **Settings tab renamed "AI Tools and Recognition"** (owner's name; `fb723fc-aitools1`, app-only: drift 0, 14/14 staged, readiness 200, anonymous 401, no restarts).
+- Renamed: the page title, heading and tab label, plus every "Settings → Recognition" pointer in pages, worker messages and help. Spanish was carried over as "Herramientas de IA y reconocimiento".
+- Unchanged: the URL (`/settings/recognition`), the top-level Recognition (jobs) link and the Handwriting Recognition feature cards.
+- Fresh full race gate (47 packages) passes. Previews were checked at desktop and phone width.
+
 2026-10-17: **Embedding settings moved to Settings → Recognition** (`405d385-embedtab1`, app-only: drift 0, 7/7 staged, readiness 200, anonymous 401, no restarts).
 - The endpoint and model card is now **Search by Meaning** at `/settings/recognition#embedding`, beside the other AI models. Settings → Search keeps the index status, actions and coverage, with a pointer to it.
 - `back()` now puts the notice before any `#fragment`; saves that returned to `#note-actions` used to lose their notice.
