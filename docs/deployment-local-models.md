@@ -96,10 +96,17 @@ on API endpoints, not on models running on the app host's CPU.
   70 s, roughly 1,400 records a minute, with no failures. The first build on
   the VM's CPU ran at about 12 records a minute (2026-10-14, on 2 vCPUs shared
   with the worker): about 120× faster. The VM-built index is retired.
+- **VM Ollama retired (2026-10-17 03:00 UTC).** `ALEXANDRIA_OLLAMA_ENABLED=false`
+  in the VM's `deploy/compose/.env`; the previous file is in
+  `private/retire-vm-ollama-20261017/env-before`. The container was removed,
+  and the `aragonite-alexandria-server-ollama-models` volume (the model) is
+  kept. To bring it back, set the variable to `true`, run `compose up -d
+  ollama`, and build an index against `http://ollama:11434`. From the app
+  network, gpu-host answers an embedding in about 30 ms.
 - **Rollback.**
   - `sudo systemctl disable --now ollama-embed`
   - restore the two `.bak.20261017` units, then `daemon-reload` and restart
-  - point Settings back at `http://ollama:11434`
+  - re-enable the VM Ollama (above), then point Settings back at `http://ollama:11434` and build an index
 
 ## GPU power cap
 
