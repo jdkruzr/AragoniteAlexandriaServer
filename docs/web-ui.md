@@ -1,5 +1,7 @@
 # Web UI conventions
 
+> **Looking for how to use this?** See the guide [Using the Web App](guide/web-app.md). This page is an engineering note for people working on Alexandria.
+
 The browser UI is server-rendered HTML with one stylesheet
 (`internal/alexandria/web/static/app.css`) and almost no script. Core pages are
 templates in `internal/alexandria/web/templates/`. BOOX pages are Go-string

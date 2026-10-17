@@ -112,11 +112,12 @@ Point your TLS reverse proxy at it so it answers at $url, for example with Caddy
           }
       }
       request_body {
-          max_size 64MB
+          max_size 100MB
       }
   }
 
 Then sign in at $url, and on each tablet open Alexandria Settings > Sync >
 Connect This Device, with that address and the administrator account. See
-docs/deployment-compose.md for nginx, backups and upgrades.
+docs/guide/https-proxy.md for nginx and the other proxy settings, and
+docs/guide/install.md for backups and upgrades.
 DONE

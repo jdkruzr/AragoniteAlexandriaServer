@@ -1,5 +1,7 @@
 # Application-managed provider settings
 
+> **Looking for how to use this?** See the guide [Set Up AI Models](guide/ai-models.md). This page is an engineering note for people working on Alexandria.
+
 2026-10-09. `/settings` stores recognition and semantic-search configuration in
 PostgreSQL through migration 0021. It uses the existing site layout and theme.
 

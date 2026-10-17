@@ -1,5 +1,7 @@
 # Running Alexandria Server on Your Own Machine
 
+> **Looking for how to use this?** See the guide [Install Alexandria Server](guide/install.md). This page is an engineering note for people working on Alexandria.
+
 Alexandria Server keeps one Alexandria library in sync across your tablets.
 It serves the library on the web, keeps your tasks in sync with calendar apps,
 and gives Claude and other MCP clients access to your notes. This guide runs

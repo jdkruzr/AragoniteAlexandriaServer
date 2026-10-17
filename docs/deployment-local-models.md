@@ -1,5 +1,7 @@
 # Local models for Audio Note Minutes and Search
 
+> **Looking for how to use this?** See the guide [Run Models on Your Own Hardware](guide/local-models.md). This page is an engineering note for people working on Alexandria.
+
 2026-10-13. Audio Note Minutes on the home deployment use two local services on
 **gpu-host** (`192.0.2.20`, 2× RTX 3090, Ryzen 7 3700X). Alexandria
 (`192.0.2.10`) reaches both over the LAN.

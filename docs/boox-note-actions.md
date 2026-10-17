@@ -1,5 +1,7 @@
 # BOOX Note Actions and the Calendar
 
+> **Looking for how to use this?** See the guide [Turn Ink Into Tasks and Events](guide/note-actions.md). This page is an engineering note for people working on Alexandria.
+
 2026-10-16. Handwriting in two BOOX pen colors becomes tasks or calendar
 events. The events live in a new CalDAV calendar beside Tasks.
 
