@@ -4,3 +4,6 @@ fastapi==0.115.12
 uvicorn==0.34.2
 python-multipart==0.0.20
 requests==2.32.3
+# GPU: CTranslate2 4.x needs cuBLAS 12 and cuDNN 9 (installed 2026-10-17)
+nvidia-cublas-cu12==12.8.4.1
+nvidia-cudnn-cu12==9.10.2.21

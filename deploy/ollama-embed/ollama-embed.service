@@ -1,0 +1,24 @@
+[Unit]
+Description=Ollama 0.40.3 (nomic-embed-text) for Alexandria search embeddings, GPU1 only, on :11434
+After=network-online.target vllm-qwen38.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ops
+Group=ops
+# Listens on the LAN with no authentication (owner's choice, isolated LAN).
+Environment=OLLAMA_HOST=0.0.0.0:11434
+Environment=OLLAMA_MODELS=/opt/ollama/models
+Environment=OLLAMA_KEEP_ALIVE=-1
+# Pin by UUID; on gpu-host this is GPU1.
+Environment=CUDA_VISIBLE_DEVICES=GPU-REPLACE-WITH-GPU1-UUID
+# Ollama 0.40 also enumerates GPUs through Vulkan, which ignores
+# CUDA_VISIBLE_DEVICES and picked GPU0. Use CUDA only.
+Environment=OLLAMA_VULKAN=false
+ExecStart=/opt/ollama/0.40.3/bin/ollama serve
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target
