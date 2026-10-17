@@ -91,6 +91,11 @@ on API endpoints, not on models running on the app host's CPU.
   `http://192.0.2.20:11434`. Generations are keyed by endpoint and model,
   so the new URL starts a replacement index build. The current index serves
   search until the new one is ready.
+- **Replacement index (2026-10-17 02:58 UTC).** The owner queued it after
+  saving the gpu-host URL. It embedded all 1,633 records (1,646 vectors) in about
+  70 s, roughly 1,400 records a minute, with no failures. The first build on
+  the VM's CPU ran at about 12 records a minute (2026-10-14, on 2 vCPUs shared
+  with the worker): about 120× faster. The VM-built index is retired.
 - **Rollback.**
   - `sudo systemctl disable --now ollama-embed`
   - restore the two `.bak.20261017` units, then `daemon-reload` and restart
