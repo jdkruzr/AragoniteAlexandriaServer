@@ -139,6 +139,45 @@ logcat; the earlier waves had only rotated out of the buffer.
 - Evidence (gitignored):
   `deploy/compose/private/resave-waves-20261016/button-test-20261017/`.
 
+### What the Library Sync Button Is For
+
+From the Notes 45960 strings and code (`NoteListFragment.onSyncNoteFolderTreeEvent`):
+
+- **Officially, it's manual sync for when AutoSync is off.** The strings say:
+  - AutoSync: *"Automatically sync data when Wi-Fi is connected"*, with
+    separate options to sync when opening and when exiting a notebook.
+  - Turning AutoSync off: *"After closing it, you need to manually tap the
+    Sync icon to sync."*
+- **Gates.**
+  - It needs Wi-Fi; otherwise a "turn on Wi-Fi" dialog appears.
+  - It needs a signed-in account.
+  - It needs the master switch "Sync all notebooks to ONYX Cloud"
+    (`KEY_ENABLE_SYNC_NOTE_DATA`). With that off, it only shows a toast, *"ONYX
+    cloud sync has been turned off…"*. Manual sync isn't supported then.
+  - A first-time tips dialog and a migrate-notes dialog may appear first.
+- **What a tap does.** The code doesn't check AutoSync; every tap runs the
+  same sequence (all seen in the 01:12 logcat):
+  1. pushes every notebook record, changed or not (the wave);
+  2. retries notebooks that failed to sync earlier (`setSyncFailDoc(true)`);
+  3. uploads a snapshot of the notebook tree to cloud storage
+     (`SaveNoteTreePBToCloudAction`, `forceSave: true`), which was the one new
+     page file of the test;
+  4. pulls the whole tree back and checks each notebook's page data against
+     the server (743 notebooks in about 80 s);
+  5. runs third-party cloud exports and old-notebook migration where they
+     apply (neither did here: "has not bind third party account").
+- **AutoSync, by contrast, is incremental.** In the Sync Gateway log, ordinary
+  saves show up as small sessions (1–6 changes) around opening or closing a
+  notebook. This comes from the log; the code that reads the AutoSync setting
+  wasn't traced.
+- **In practice:**
+  - With AutoSync on, the button is a "resync everything / repair" button.
+  - It's useful when a notebook seems stuck, or when another tablet's new
+    notebooks haven't appeared.
+  - It isn't needed in normal use.
+  - Each tap costs about 1,600 re-saved records (harmless since 0032) and a
+    couple of minutes of churn.
+
 ### What to Do About It
 
 - **Nothing on the device.** Alexandria can't change the firmware, and 0032
