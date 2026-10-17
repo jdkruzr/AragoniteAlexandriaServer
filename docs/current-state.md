@@ -9,7 +9,7 @@
 - The endpoint and model card is now **Search by Meaning** at `/settings/recognition#embedding`, beside the other AI models. Settings → Search keeps the index status, actions and coverage, with a pointer to it.
 - `back()` now puts the notice before any `#fragment`; saves that returned to `#note-actions` used to lose their notice.
 - Fresh full race gate (47 packages), vet and gofmt pass. Spanish strings were added (drafts).
-- The owner saved the gpu-host embedding URL; each index keeps the endpoint it was built with. The replacement index built on gpu-host at 02:58 UTC: 1,633 records in about 70 s, against about 12 a minute on the VM CPU. The VM-built index is retired, and nothing uses the VM's Ollama container any more.
+- The owner saved the gpu-host embedding URL; each index keeps the endpoint it was built with. The replacement index built on gpu-host at 02:58 UTC: 1,633 records in about 70 s, against about 12 a minute on the VM CPU. The VM-built index is retired. The VM's Ollama container was then removed (`ALEXANDRIA_OLLAMA_ENABLED=false`; model volume kept; `.env` backup in `private/retire-vm-ollama-20261017/`).
 
 2026-10-17: **Models moved onto gpu-host's GPUs** ([deployment-local-models.md](deployment-local-models.md#gpu-layout-2026-10-17)), the plan agreed on 2026-10-14.
 - vLLM now uses 0.83 GPU memory and a 131,072-token context, down from 0.92 and 262,144.
