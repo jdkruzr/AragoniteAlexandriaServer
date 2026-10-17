@@ -626,7 +626,7 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 	case "search":
 		name, title = "settings-search", i18n.M("Search by Meaning")
 	case "recognition":
-		name, title = "settings-recognition", i18n.M("Handwriting Recognition")
+		name, title = "settings-recognition", i18n.M("AI Tools and Recognition")
 	case "integrations":
 		name, title = "settings-integrations", i18n.M("Tasks & Integrations")
 	}

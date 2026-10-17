@@ -24,7 +24,7 @@ templates in `internal/boox/*.go`, grafted into the same layout by
   `/boox/minutes/audio`, sending at POST `/boox/minutes/send`) open from the Audio Note Minutes card in the notebook reader's side
   panel. BOOX pages allow `media-src 'self'` for the recording player. See
   [Audio Note Minutes](note-minutes.md).
-- **Settings tabs:** Account (`/settings`), Search (`/settings/search`: index status and actions; the embedding endpoint is on Recognition, `#embedding`),
+- **Settings tabs:** Account (`/settings`), Search (`/settings/search`: index status and actions; the embedding endpoint is on AI Tools and Recognition, `/settings/recognition#embedding`),
   Recognition (`/settings/recognition`), Tasks & integrations
   (`/settings/integrations`). All four require an account (Basic) login, like the
   former single page; bearer tokens cannot open them (`library/runtime.go`).

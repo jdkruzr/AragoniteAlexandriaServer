@@ -1,5 +1,5 @@
 {{define "content"}}{{$d := .Data}}
-<h1>{{t "Handwriting Recognition"}}</h1>
+<h1>{{t "AI Tools and Recognition"}}</h1>
 {{if $d.Providers}}{{$p := $d.Providers}}
 <p class="lede">{{t "Turn handwriting into searchable text with a vision model you choose. Nothing is sent until you queue pages and confirm."}} {{template "help" "recognition.where"}}</p>
 <p class="actions">{{th "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs\">View recognition jobs</a>"}}</p>
@@ -124,5 +124,5 @@
 <p>{{t "Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages."}}</p>
 <form method="post" action="/settings/providers" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition"><label class="confirm"><input type="checkbox" name="confirm" required> {{t "I want these pages reprocessed, including any provider charges."}}</label><div><button name="action" value="reprocess" class="secondary" {{if not $p.CanSave}}disabled{{end}}>{{t "Reprocess previously requested pages"}}</button></div></form>
 </section>
-{{else}}<p>{{t "Handwriting recognition is configured by this deployment."}}</p>{{end}}
+{{else}}<p>{{t "AI tools and recognition are configured by this deployment."}}</p>{{end}}
 {{end}}

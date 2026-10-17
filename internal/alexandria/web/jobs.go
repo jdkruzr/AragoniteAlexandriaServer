@@ -182,7 +182,7 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			return
 		}
 		if d.Status.OCR == "" {
-			back(w, r, "/jobs/new", "Turn on a recognition provider in Settings → Recognition first.")
+			back(w, r, "/jobs/new", "Turn on a recognition provider in Settings → AI Tools and Recognition first.")
 			return
 		}
 		if r.Form.Get("confirm") != "on" || d.RecognitionCatalog == nil {

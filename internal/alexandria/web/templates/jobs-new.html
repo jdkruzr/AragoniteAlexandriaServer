@@ -1,5 +1,5 @@
 {{define "content"}}{{$d := .Data}}<p class="crumbs">{{th "<a href=\"/jobs\">Recognition jobs</a> /"}}</p><h1>{{t "Recognize Pages"}}</h1>
-{{if not $d.Enabled}}<p class="notice">{{th "Turn on handwriting recognition in <a href=\"/settings/recognition\">Settings → Recognition</a> before queueing pages."}}</p>{{end}}
+{{if not $d.Enabled}}<p class="notice">{{th "Turn on handwriting recognition in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> before queueing pages."}}</p>{{end}}
 {{if $d.Notebook}}{{$n := $d.Notebook}}<h2>{{$n.Title}}</h2><p>{{t "{{.Count}} pages" $d.Count}} · {{if eq $d.Source "boox"}}BOOX{{else}}Alexandria Client{{end}}</p>
 {{if $d.Skipped}}<p class="notice" id="notebook-skipped">{{t "This notebook is skipped in recognition: its pages aren't queued by library runs, retries or changes on the device. Recognized pages keep their text."}}</p>
 <form class="inline" method="post" action="/jobs/skip-notebook"><input type="hidden" name="source" value="{{$d.Source}}"><input type="hidden" name="notebook" value="{{$n.ID}}"><input type="hidden" name="skip" value="0"><button>{{t "Stop skipping this notebook"}}</button> {{template "help" "recognition.skip"}}</form>

@@ -219,7 +219,7 @@ func (s Service) RequestMinutes(ctx context.Context, id, request, version string
 		return errors.New("Invalid request token.")
 	}
 	if !cfg.Enabled {
-		return errors.New("Set up transcription and a summary model in Settings → Recognition first.")
+		return errors.New("Set up transcription and a summary model in Settings → AI Tools and Recognition first.")
 	}
 	n, e := s.notebookSnapshot(ctx, id)
 	if e != nil {
@@ -336,7 +336,7 @@ func (s Service) processTranscription(ctx context.Context, stt *speech.Client, i
 		return true, e
 	}
 	if stt == nil {
-		return fail("Set up transcription in Settings → Recognition, then retry.", true)
+		return fail("Set up transcription in Settings → AI Tools and Recognition, then retry.", true)
 	}
 	n, e := s.notebookSnapshot(ctx, id)
 	if errors.Is(e, sql.ErrNoRows) {
@@ -489,7 +489,7 @@ func (s Service) processSummary(ctx context.Context, summary minutes.Completer, 
 		return fail("Nothing to summarize: no speech was transcribed and no page has recognized text.", true)
 	}
 	if summary == nil {
-		return fail("Set up a summary model in Settings → Recognition, then retry.", true)
+		return fail("Set up a summary model in Settings → AI Tools and Recognition, then retry.", true)
 	}
 	_, in.Tags, e = s.notebookTags(ctx, id)
 	if e == nil {
