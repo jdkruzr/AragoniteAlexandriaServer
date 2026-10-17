@@ -1,5 +1,7 @@
 # Host storage and upstream binding
 
+> **Looking for how to use this?** See the guide [Install Alexandria Server](guide/install.md). This page is an engineering note for people working on Alexandria.
+
 Set `ALEXANDRIA_MAIN_HOST` and `ALEXANDRIA_MAIN_PORT` in `deploy/compose/.env` to select the HTTP upstream address. Defaults remain `127.0.0.1:18443`; an external TLS proxy needs a reachable LAN address. SPC has independent `ALEXANDRIA_SPC_HOST` / `ALEXANDRIA_SPC_PORT` settings and stays private by default.
 
 Set `ALEXANDRIA_DATA_DIR` to opt into host bind mounts. PostgreSQL defaults to `$ALEXANDRIA_DATA_DIR/postgres`, objects to `$ALEXANDRIA_DATA_DIR/objects`, backups to `$ALEXANDRIA_DATA_DIR/backups`. Override each with `ALEXANDRIA_POSTGRES_DIR`, `ALEXANDRIA_OBJECT_DIR`, `ALEXANDRIA_BACKUP_DIR`. Create directories explicitly before starting; Compose refuses missing host paths. Native BOOX additionally requires `ALEXANDRIA_BOOX_ENABLED=true`, its private Gateway configuration/credentials, and `ALEXANDRIA_COUCHBASE_DIR`.

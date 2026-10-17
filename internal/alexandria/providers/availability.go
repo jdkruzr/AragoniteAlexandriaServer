@@ -18,7 +18,7 @@ type Availability struct {
 // views never load a model, run inference, download weights or send note text.
 func EmbeddingAvailability(ctx context.Context, c EmbedConfig) Availability {
 	if c.URL == "" || c.Model == "" {
-		return Availability{Label: "Not configured", Detail: "Choose a provider in Advanced settings. The optional local Ollama service must be installed before it can be used."}
+		return Availability{Label: "Not configured", Detail: "Set an embedding endpoint under Search by Meaning in Settings → AI Tools and Recognition. The optional local Ollama service must be installed before it can be used."}
 	}
 	unavailable := Availability{Label: "Unavailable", Detail: "Alexandria could not check the saved provider. Check its address and service, then refresh."}
 	if endpoint(c.URL) != nil {

@@ -1,5 +1,7 @@
 # Recognition jobs
 
+> **Looking for how to use this?** See the guide [Recognize Handwriting](guide/recognition.md). This page is an engineering note for people working on Alexandria.
+
 2026-10-09 implementation: global owner-only `/jobs` and `/jobs/new`, shared job
 history around the existing BOOX and Alexandria-client page queues, and an
 independent recognition worker loop. This is recognition/page-processing

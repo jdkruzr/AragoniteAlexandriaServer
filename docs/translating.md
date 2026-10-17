@@ -1,5 +1,7 @@
 # Translating Alexandria Server
 
+> **Looking for how to use this?** See the guide [Translate Alexandria](guide/translating.md). This page is an engineering note for people working on Alexandria.
+
 The web interface reads its text from go-i18n JSON catalogs in
 `internal/alexandria/i18n/locales/`:
 

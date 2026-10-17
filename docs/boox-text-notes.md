@@ -1,5 +1,7 @@
 # Server-created BOOX text notes
 
+> **Looking for how to use this?** See the guide [Audio Note Minutes](guide/minutes.md). This page is an engineering note for people working on Alexandria.
+
 2026-10-13. The server can create a **new** native text notebook
 (`internal/boox/text_note.go`). It never edits an existing notebook; resending minutes may retire its own earlier, untouched copy. Audio Note
 Minutes uses this path for **Send to BOOX** ([details](note-minutes.md#send-to-boox)).

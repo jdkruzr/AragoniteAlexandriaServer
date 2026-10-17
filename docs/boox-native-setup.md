@@ -1,5 +1,7 @@
 # Native BOOX setup and current capability boundary
 
+> **Looking for how to use this?** See the guide [Connect BOOX Tablets](guide/boox.md). This page is an engineering note for people working on Alexandria.
+
 2026-10-09. The personal VM deployment and bounded Lumi existing-library upload
 are qualified; broader feature/restore boundaries remain below. Detailed device
 results are retained in PowerSync.

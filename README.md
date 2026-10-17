@@ -108,33 +108,34 @@ API token you can revoke.
 ## Getting Started
 
 Alexandria runs as a Docker Compose (or Podman Compose) stack on a single
-Linux host, behind the TLS reverse proxy you already use:
+Linux host, behind the TLS reverse proxy you already use. The installer asks
+for your public address and an administrator account, generates every other
+secret, and starts the stack:
 
 ```bash
-cp deploy/compose/.env.example deploy/compose/.env
-# Set separate random hexadecimal database and runtime passwords in that file.
-docker compose --env-file deploy/compose/.env \
-  -f deploy/compose/compose.yml up --build -d
+git clone https://github.com/jdkruzr/AragoniteAlexandriaServer.git alexandria-server
+cd alexandria-server/deploy/compose
+./install.sh
 ```
 
-Then follow [Running Alexandria Server on Your Own Machine](docs/deployment-compose.md)
-to create your account, put it behind HTTPS and connect devices.
+Then follow the [guides](docs/guide/README.md):
 
 | Guide | For |
 |---|---|
-| [Running on Your Own Machine](docs/deployment-compose.md) | Install, upgrade, backups |
-| [Native BOOX Setup](docs/boox-native-setup.md) | Couchbase, Sync Gateway and enrolling BOOX tablets |
-| [Local Models](docs/deployment-local-models.md) | Serving recognition, Whisper and embeddings on your own GPU |
-| [Provider Settings](docs/provider-settings.md) | Choosing and configuring AI models |
-| [Nginx Proxy Manager](docs/deployment-nginx-proxy-manager.md) | An example TLS proxy setup |
-| [Storage](docs/deployment-storage.md) | Object storage choices |
+| [Install Alexandria Server](docs/guide/install.md) | The installer, where data lives, upgrades, backups |
+| [Put Alexandria Behind HTTPS](docs/guide/https-proxy.md) | Caddy, nginx or Nginx Proxy Manager |
+| [Connect BOOX Tablets](docs/guide/boox.md) | The BOOX sync services, PowerSync, enrolling tablets |
+| [Set Up AI Models](docs/guide/ai-models.md) | Recognition, minutes, search by meaning |
+| [Run Models on Your Own Hardware](docs/guide/local-models.md) | Vision, Whisper and embeddings on your own GPU |
 
-Feature guides: [Note Actions](docs/boox-note-actions.md),
-[Audio Note Minutes](docs/note-minutes.md),
-[Recognition Jobs](docs/recognition-jobs.md),
-[Typed-Text Notes](docs/boox-text-notes.md),
-[BOOX Tags](docs/boox-tags.md), [Web UI](docs/web-ui.md),
-[Translating](docs/translating.md).
+Using it: [the web app](docs/guide/web-app.md),
+[recognition](docs/guide/recognition.md),
+[search and tags](docs/guide/search-and-tags.md),
+[tasks and calendar](docs/guide/tasks-and-calendar.md),
+[note actions](docs/guide/note-actions.md),
+[audio note minutes](docs/guide/minutes.md),
+[AI assistants](docs/guide/assistants.md) and
+[translating](docs/guide/translating.md).
 
 ## Under the Hood
 
@@ -152,7 +153,8 @@ Feature guides: [Note Actions](docs/boox-note-actions.md),
   Serverless v2, S3; it expects an existing VPC, DNS and certificate).
   None of them needs a subscription or the separate Hosting service.
 
-See [Architecture](docs/architecture.md), the
+Design and engineering notes live in [`docs/`](docs/), starting with
+[Current State](docs/current-state.md). See [Architecture](docs/architecture.md), the
 [AWS diagrams](docs/architecture-aws.md), the
 [Development Guide](docs/development.md) and
 [UltraBridge Migration](docs/ultrabridge-migration.md).

@@ -1,5 +1,7 @@
 # Nginx Proxy Manager: qualified Alexandria settings
 
+> **Looking for how to use this?** See the guide [Put Alexandria Behind HTTPS](guide/https-proxy.md). This page is an engineering note for people working on Alexandria.
+
 Initial deployment, 2026-10-09. Proxy host `proxy-host` (`192.0.2.30`), Nginx Proxy Manager container `proxy-app-1`, proxy-host record 22. Application VM `alexandria-host` (`192.0.2.10`). These identifiers describe this installation, not product defaults.
 
 ## Proxy Host settings

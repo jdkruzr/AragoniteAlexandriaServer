@@ -12,7 +12,7 @@
 <li>{{th "<a href=\"#recognition\">Handwriting recognition</a>"}}</li>
 {{if $d.NativeBOOX}}<li>{{th "<a href=\"#minutes\">Audio Note Minutes</a>"}}</li>{{end}}
 <li>{{th "<a href=\"#deleting\">Deleting and recovering</a>"}}</li>
-<li>{{th "<a href=\"#tasks\">Tasks and CalDAV</a>"}}</li>
+<li>{{th "<a href=\"#tasks\">Tasks, Calendar and CalDAV</a>"}}</li>
 <li>{{th "<a href=\"#api\">API and MCP access</a>"}}</li>
 <li>{{th "<a href=\"#account\">Your account</a>"}}</li>
 <li>{{th "<a href=\"#diagnostics\">Operator notes</a>"}}</li>
@@ -94,13 +94,13 @@
 </dl>
 </section>
 
-<section id="tasks"><h2>{{t "Tasks and CalDAV"}}</h2>
-<p>{{th "<a href=\"/tasks\">Tasks</a> is one list across your library. Tasks made from Alexandria Client pages link back to their page."}}{{if $d.NativeBOOX}} {{t "BOOX task extraction is not available yet."}}{{end}}</p>
-<p>{{th "Any CalDAV task app can sync the list using the address in <a href=\"/settings/integrations\">Settings → Tasks &amp; integrations</a> and your account. Choose <em>Date only</em> if your app mishandles due times."}}</p>
+<section id="tasks"><h2>{{t "Tasks, Calendar and CalDAV"}}</h2>
+<p>{{th "<a href=\"/tasks\">Tasks</a> is one list across your library, and <a href=\"/calendar\">Calendar</a> holds your events. Tasks made from Alexandria Client pages link back to their page."}}{{if $d.NativeBOOX}} {{th "On BOOX, red ink can become tasks and sky blue ink calendar events; see <a href=\"/settings/recognition#note-actions\">Note Actions</a>."}}{{end}}</p>
+<p>{{th "Any CalDAV app can sync tasks and events using the addresses in <a href=\"/settings/integrations\">Settings → Tasks &amp; Integrations</a> and your account. Choose <em>Date only</em> if your app mishandles due times."}}</p>
 </section>
 
 <section id="api"><h2>{{t "API and MCP Access"}}</h2>
-<p>{{th "Claude on the web connects using this server's MCP address. You approve it on a page here, and it then appears in your token list. Other MCP clients and scripts use an API token from <a href=\"/settings/integrations\">Settings → Tasks &amp; integrations</a>. A token can search and read your notebooks and books, edit text boxes and manage tasks, so revoke any you no longer use. A token is shown once, when you create it."}}</p>
+<p>{{th "Claude on the web connects using this server's MCP address. You approve it on a page here, and it then appears in your token list. Other MCP clients and scripts use an API token from <a href=\"/settings/integrations\">Settings → Tasks &amp; Integrations</a>. A token can search and read your notebooks and books, edit text boxes and manage tasks, so revoke any you no longer use. A token is shown once, when you create it."}}</p>
 </section>
 
 <section id="account"><h2>{{t "Your Account"}}</h2>

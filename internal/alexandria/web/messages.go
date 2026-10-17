@@ -15,7 +15,7 @@ var dynamicMessages = []string{
 	// BOOX library kinds (boox/library_browser.go).
 	i18n.M("Handwritten note"), i18n.M("Folder"), i18n.M("Reading note"), i18n.M("Associated note"), i18n.M("Text note"), i18n.M("Meeting note"), i18n.M("Draft note"), i18n.M("Other note"),
 	// Provider availability (providers/availability.go).
-	i18n.M("Not configured"), i18n.M("Choose a provider in Advanced settings. The optional local Ollama service must be installed before it can be used."),
+	i18n.M("Not configured"), i18n.M("Set an embedding endpoint under Search by Meaning in Settings → AI Tools and Recognition. The optional local Ollama service must be installed before it can be used."),
 	i18n.M("Unavailable"), i18n.M("Alexandria could not check the saved provider. Check its address and service, then refresh."),
 	i18n.M("Ready"), i18n.M("The saved Ollama provider is reachable and this model is installed. Availability was checked without running inference."),
 	i18n.M("Model missing"), i18n.M("Ollama is reachable, but the saved model is not installed. Install it on that service or choose an installed embedding model."),

@@ -1,5 +1,7 @@
 # BOOX Tags
 
+> **Looking for how to use this?** See the guide [Search Your Library](guide/search-and-tags.md). This page is an engineering note for people working on Alexandria.
+
 2026-10-16. How BOOX tags are stored on the device, how they reach Alexandria,
 and what Alexandria does with them. Alexandria only reads tags; it never
 creates, edits or removes them.
