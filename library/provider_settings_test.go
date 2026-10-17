@@ -58,12 +58,12 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if e != nil || p2.OCR == nil {
 		t.Fatal("worker stale", e)
 	}
-	// The Search tab saves both providers at once: posting its form exactly as
-	// rendered (hidden recognition fields included) must leave recognition and
-	// the saved key untouched.
-	search := b.do("GET", "/settings/search", "", nil, true).Body.String()
+	// The embedding card (Recognition tab) saves both providers at once:
+	// posting its form exactly as rendered (hidden recognition fields included)
+	// must leave recognition and the saved key untouched.
+	search := b.do("GET", "/settings/recognition", "", nil, true).Body.String()
 	if strings.Contains(search, "private-secret-value") {
-		t.Fatal("search tab exposed the key")
+		t.Fatal("recognition tab exposed the key")
 	}
 	start := strings.Index(search, `id="semantic-advanced"`)
 	end := strings.Index(search[start:], "</form>")
@@ -72,11 +72,11 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 		embedForm.Set(m[1], html.UnescapeString(m[2]))
 	}
 	embedForm.Set("embed_model", "synthetic-2")
-	if embedForm.Get("ocr_model") != "synthetic-vision" || embedForm.Get("anthropic_workspace") != "wrkspc_test123" || embedForm.Get("page") != "search" {
+	if embedForm.Get("ocr_model") != "synthetic-vision" || embedForm.Get("anthropic_workspace") != "wrkspc_test123" || embedForm.Get("page") != "embedding" {
 		t.Fatal("search tab does not carry recognition settings", embedForm)
 	}
-	if got := b.do("POST", "/settings/providers", embedForm.Encode(), sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/settings/search") {
-		t.Fatal("search tab save", got.Code, got.Header().Get("Location"))
+	if got := b.do("POST", "/settings/providers", embedForm.Encode(), sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/settings/recognition?notice=") || !strings.HasSuffix(got.Header().Get("Location"), "#embedding") {
+		t.Fatal("embedding card save", got.Code, got.Header().Get("Location"))
 	}
 	p, _, snap, e = r.pageConfiguration(ctx, db)
 	if e != nil || p.OCR == nil || p.OCR.Model() != "synthetic-vision" || snap.Config.OCR.AnthropicWorkspace != "wrkspc_test123" || snap.Config.Embedding.Model != "synthetic-2" || snap.Revision != 3 {

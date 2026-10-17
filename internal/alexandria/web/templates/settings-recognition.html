@@ -69,6 +69,23 @@
 <div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button name="action" value="test_transcription" class="secondary">{{t "Test transcription"}}</button><button name="action" value="test_summary" class="secondary">{{t "Test summary"}}</button></div>
 </form>
 </section>
+<section class="card" id="embedding">
+<h2>{{t "Search by Meaning"}} {{template "help" "semantic.provider"}}</h2>
+{{if $p.Locked}}<p class="coverage">{{t "Provider settings are locked by the deployment."}}</p>{{else if not $p.CanSave}}<p class="coverage">{{t "The deployment needs a settings encryption key before provider settings can be saved."}}</p>{{end}}
+{{if $p.SavedEmbedding.Model}}<p class="small muted">{{t "Saved model:"}} <code>{{$p.SavedEmbedding.Model}}</code>.</p>{{end}}
+<form method="post" action="/settings/providers" class="stack" id="semantic-advanced">
+<input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="embedding">
+{{/* The provider form saves both providers at once; carry the saved recognition settings unchanged. */}}
+{{with $p.Config.OCR}}{{if .Enabled}}<input type="hidden" name="ocr_enabled" value="on">{{end}}<input type="hidden" name="ocr_format" value="{{.Format}}"><input type="hidden" name="ocr_url" value="{{.URL}}"><input type="hidden" name="anthropic_workspace" value="{{.AnthropicWorkspace}}"><input type="hidden" name="ocr_model" value="{{.Model}}"><input type="hidden" name="ocr_prompt" value="{{.Prompt}}">{{if .VLLMDisableThinking}}<input type="hidden" name="vllm" value="on">{{end}}{{end}}<input type="hidden" name="key_action" value="keep">
+{{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Ollama-Compatible Endpoint"}}</legend>
+<label>{{t "Base URL"}} <input type="url" name="embed_url" value="{{$p.Config.Embedding.URL}}" maxlength="2048" placeholder="http://ollama:11434"></label>
+<label>{{t "Embedding model"}} <input name="embed_model" value="{{$p.Config.Embedding.Model}}" maxlength="256" placeholder="nomic-embed-text:v1.5"></label>
+<p class="hint">{{th "Changing the provider or model needs a new index build, started from <a href=\"/settings/search\">Settings → Search</a>."}}</p>
+</fieldset>
+<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button name="action" value="test_embedding" class="secondary">{{t "Test without saving"}}</button></div>
+</form>
+</section>
 <section class="card" id="automatic">
 <h2>{{t "Automatic Processing"}} {{template "help" "recognition.automatic"}}</h2>
 <form method="post" action="/settings/automatic" class="stack"><input type="hidden" name="revision" value="{{$p.Revision}}">

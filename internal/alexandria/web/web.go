@@ -301,6 +301,9 @@ func back(w http.ResponseWriter, r *http.Request, path, notice string, count ...
 		path = "/"
 	}
 	if notice != "" {
+		// The query goes before any #fragment, or the notice is lost in it.
+		var frag string
+		path, frag, _ = strings.Cut(path, "#")
 		sep := "?"
 		if strings.Contains(path, "?") {
 			sep = "&"
@@ -308,6 +311,9 @@ func back(w http.ResponseWriter, r *http.Request, path, notice string, count ...
 		path += sep + "notice=" + url.QueryEscape(notice)
 		if len(count) == 1 {
 			path += "&notice_n=" + strconv.Itoa(count[0])
+		}
+		if frag != "" {
+			path += "#" + frag
 		}
 	}
 	http.Redirect(w, r, path, http.StatusSeeOther)

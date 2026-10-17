@@ -68,7 +68,11 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 		}
 		return html
 	}
-	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", "Embedding Provider", "BOOX notebook pages")
+	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", "Embedding Model", `href="/settings/recognition#embedding"`, "BOOX notebook pages")
+	// The embedding endpoint itself is set on the Recognition tab.
+	if rec := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(rec, `id="embedding"`) || !strings.Contains(rec, `name="embed_url"`) {
+		t.Fatal("embedding settings missing from Recognition")
+	}
 	if inference.Load() != 0 {
 		t.Fatal("viewing Settings ran inference")
 	}
@@ -149,7 +153,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	advanced := url.Values{"revision": {strconv.FormatInt(snap.Revision, 10)}, "action": {"test_embedding"}, "page": {"search"}, "ocr_format": {"openai"}, "embed_enabled": {"on"}, "embed_url": {"http://127.0.0.1:1"}, "embed_model": {"unsaved-model"}, "key_action": {"keep"}}
+	advanced := url.Values{"revision": {strconv.FormatInt(snap.Revision, 10)}, "action": {"test_embedding"}, "page": {"embedding"}, "ocr_format": {"openai"}, "embed_enabled": {"on"}, "embed_url": {"http://127.0.0.1:1"}, "embed_model": {"unsaved-model"}, "key_action": {"keep"}}
 	res = b.do("POST", "/settings/providers", advanced.Encode(), sameSite, true)
 	if res.Code != 200 || !strings.Contains(res.Body.String(), "Saved model: <code>synthetic</code>") || !strings.Contains(res.Body.String(), `value="unsaved-model"`) {
 		t.Fatal("unsaved provider presented as saved", res.Code)
