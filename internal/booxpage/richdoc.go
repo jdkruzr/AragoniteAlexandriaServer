@@ -1,20 +1,25 @@
 package booxpage
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
 	"math"
+	"path"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gobolditalic"
 	"golang.org/x/image/font/gofont/goitalic"
+	_ "golang.org/x/image/webp" // typed-text images are often WebP
 )
 
 var italicTextFont, _ = truetype.Parse(goitalic.TTF)
@@ -22,6 +27,43 @@ var boldItalicTextFont, _ = truetype.Parse(gobolditalic.TTF)
 
 // RichTextDrawnNotice goes with a preview that draws a text notebook's typed text.
 const RichTextDrawnNotice = "Typed text is drawn with a substitute font; the device's layout may differ."
+
+// RichTextImageNotice is shown when a typed-text image couldn't be drawn.
+const RichTextImageNotice = "Some images in typed text haven't arrived or can't be read; placeholders mark them."
+
+// richImage finds and decodes a typed-text image: a data: URI, or the
+// note's resource/data file named like its dataKey or src. Nil if it can't.
+func richImage(b richBlock, load Load) image.Image {
+	var raw []byte
+	if data, ok := strings.CutPrefix(b.src, "data:"); ok {
+		if _, enc, ok := strings.Cut(data, ";base64,"); ok && len(enc) <= 16<<20 {
+			raw, _ = base64.StdEncoding.DecodeString(enc)
+		}
+	} else if load != nil {
+		for _, ref := range []string{b.dataKey, b.src} {
+			name := path.Base(strings.SplitN(ref, "?", 2)[0])
+			if ref == "" || name == "." || name == "/" || strings.Contains(name, "..") {
+				continue
+			}
+			if got, e := load("resource/data/" + name); e == nil {
+				raw = got
+				break
+			}
+		}
+	}
+	if len(raw) == 0 {
+		return nil
+	}
+	c, _, e := image.DecodeConfig(bytes.NewReader(raw))
+	if e != nil || c.Width <= 0 || c.Height <= 0 || int64(c.Width)*int64(c.Height) > 20e6 {
+		return nil
+	}
+	img, _, e := image.Decode(bytes.NewReader(raw))
+	if e != nil {
+		return nil
+	}
+	return img
+}
 
 // A text notebook's typed page is a document from the BOOX editor (JSON,
 // docVersion 2: doc → heading, paragraph, bulletList/orderedList/taskList →
@@ -35,6 +77,10 @@ type richBlock struct {
 	runs    []richRun
 	aspect  float64 // image height/width
 	unknown bool
+	// Images: the editor's src (a device path or data: URI) and dataKey
+	// (its cloud name); the file is resource/data/<base name> in the note.
+	src, dataKey string
+	img          image.Image
 }
 
 type richRun struct {
@@ -141,7 +187,7 @@ func collectBlocks(n docNode, indent int, marker string, out *[]richBlock, depth
 		if w > 0 && h > 0 {
 			aspect = math.Min(math.Max(h/w, 0.1), 3)
 		}
-		*out = append(*out, richBlock{kind: "image", indent: indent, aspect: aspect})
+		*out = append(*out, richBlock{kind: "image", indent: indent, aspect: aspect, src: n.attr("src"), dataKey: n.attr("dataKey")})
 	case "attach":
 		title := n.attr("title")
 		if title == "" || title == "null" {
@@ -265,6 +311,7 @@ type placed struct {
 	underline, strike  bool
 	box                *[4]float64 // images and rules: x, y, w, h
 	boxLabel, checkbox string
+	img                image.Image // a drawn image fills box
 }
 
 // layout returns what to draw and the height used.
@@ -289,9 +336,19 @@ func (l *richLayout) layout(blocks []richBlock) ([]placed, float64) {
 		switch b.kind {
 		case "image":
 			w := right - left
-			h := math.Min(w*b.aspect, 12*l.body)
-			out = append(out, placed{box: &[4]float64{left, y, w, h}, boxLabel: "Image not shown"})
-			y += h
+			if b.img == nil {
+				h := math.Min(w*b.aspect, 12*l.body)
+				out = append(out, placed{box: &[4]float64{left, y, w, h}, boxLabel: "Image not shown"})
+				y += h
+				continue
+			}
+			// A drawn image keeps its proportions, at most 24 lines tall.
+			h := w * b.aspect
+			if limit := 24 * l.body; h > limit {
+				h, w = limit, limit/b.aspect
+			}
+			out = append(out, placed{box: &[4]float64{left, y, w, h}, img: b.img})
+			y += h + 0.4*l.body
 			continue
 		case "rule":
 			out = append(out, placed{box: &[4]float64{left, y + l.body*0.5, right - left, 2}})
@@ -411,6 +468,14 @@ func splitWords(s string) []string {
 
 func (l *richLayout) draw(dc *gg.Context, items []placed) {
 	for _, p := range items {
+		if p.box != nil && p.img != nil {
+			b := *p.box
+			if dst, ok := dc.Image().(draw.Image); ok {
+				r := image.Rect(int(b[0]), int(b[1]), int(math.Round(b[0]+b[2])), int(math.Round(b[1]+b[3])))
+				draw.BiLinear.Scale(dst, r, p.img, p.img.Bounds(), draw.Over, nil)
+			}
+			continue
+		}
 		if p.box != nil {
 			b := *p.box
 			dc.SetRGB(0.6, 0.6, 0.6)
@@ -465,13 +530,26 @@ func (l *richLayout) draw(dc *gg.Context, items []placed) {
 // shows its handwriting layer above the text. The canvas grows downward to
 // fit the text, within the preview size limit. It returns notices describing
 // the approximation; resources that can't be read are reported, not fatal.
-func ComposeRichText(ink image.Image, resources [][]byte) (image.Image, []string) {
+func ComposeRichText(ink image.Image, resources [][]byte, load Load) (image.Image, []string) {
 	var blocks []richBlock
 	for _, raw := range resources {
 		blocks = append(blocks, richDocument(raw)...)
 	}
 	if len(blocks) == 0 {
 		return ink, nil
+	}
+	missingImage := false
+	for i := range blocks {
+		if blocks[i].kind != "image" {
+			continue
+		}
+		if img := richImage(blocks[i], load); img != nil {
+			blocks[i].img = img
+			c := img.Bounds()
+			blocks[i].aspect = math.Min(math.Max(float64(c.Dy())/float64(c.Dx()), 0.1), 3)
+		} else {
+			missingImage = true
+		}
 	}
 	bounds := ink.Bounds()
 	w := bounds.Dx()
@@ -483,11 +561,8 @@ func ComposeRichText(ink image.Image, resources [][]byte) (image.Image, []string
 		h = min(limit, 32768)
 		notices = append(notices, "Typed text is longer than the preview can show; the end is cut off.")
 	}
-	for _, b := range blocks {
-		if b.kind == "image" {
-			notices = append(notices, "Images in typed text are shown as placeholders.")
-			break
-		}
+	if missingImage {
+		notices = append(notices, RichTextImageNotice)
 	}
 	for _, b := range blocks {
 		if b.unknown {

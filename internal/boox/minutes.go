@@ -433,6 +433,7 @@ func (s Service) processSummary(ctx context.Context, summary minutes.Completer, 
 		meta.Folder = in.Folder
 	}
 	var ids []string
+	onPages := s.recordingPages(ctx, n)
 	for _, src := range sources {
 		ids = append(ids, src.Key+"@"+src.SHA256)
 		var state, detail, text, language, tmodel string
@@ -451,7 +452,7 @@ func (s Service) processSummary(ctx context.Context, summary minutes.Completer, 
 		case "failed":
 			return fail("A recording could not be transcribed: "+detail, true)
 		}
-		r := minutes.Recording{Title: src.Title, RecordedAt: src.RecordedAt, Duration: time.Duration(src.DurationMS) * time.Millisecond, Language: language, Text: text}
+		r := minutes.Recording{Title: src.Title, RecordedAt: src.RecordedAt, Duration: time.Duration(src.DurationMS) * time.Millisecond, Pages: onPages[src.Key], Language: language, Text: text}
 		if r.Duration == 0 {
 			r.Duration = time.Duration(ms) * time.Millisecond
 		}

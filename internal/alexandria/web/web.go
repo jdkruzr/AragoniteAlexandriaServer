@@ -151,6 +151,8 @@ type Deps struct {
 	Logger             *slog.Logger
 	// BOOXSummary reports the native source for the overview; nil without BOOX.
 	BOOXSummary func(context.Context) (SourceSummary, error)
+	// BOOXWork lists note actions and minutes on the Jobs page; nil without BOOX.
+	BOOXWork BOOXWorkFunc
 }
 
 type page struct {

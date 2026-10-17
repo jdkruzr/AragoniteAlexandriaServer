@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +20,7 @@ type minutesView struct {
 	ID, Title, Progress string
 	Has, Stale, Enabled bool
 	Recordings          int
+	OnPages             map[string][]int // recording key → pages showing its chip
 	Stored              minutes.Stored
 	// Sending to BOOX; Sendable is false for a deleted notebook.
 	Sendable                       bool
@@ -61,7 +61,7 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 		failure(w, e)
 		return
 	}
-	d := minutesView{ID: id, Title: n.Meta.Title, Has: has, Stored: stored, Enabled: s.Minutes.Enabled, Recordings: len(audioKeys(n))}
+	d := minutesView{ID: id, Title: n.Meta.Title, Has: has, Stored: stored, Enabled: s.Minutes.Enabled, Recordings: len(audioKeys(n)), OnPages: s.recordingPages(r.Context(), n)}
 	if has && stored.Topic != "" && n.Meta.Status == 1 {
 		d.Sendable, d.NoteTitle, d.Folder, d.SendRequest = true, n.Meta.Title+"_Minutes", s.folderTitle(r.Context(), n.Meta.ParentUniqueID), uuid.NewString()
 		if d.Sent, e = s.sentMinutesNote(r.Context(), id); e != nil {
@@ -115,7 +115,7 @@ func (s Service) minutesProgress(r *http.Request, n notebookSnapshot, m minutes.
 		}
 	}
 	if done < len(m.Recordings) {
-		return "Transcribing recordings: " + strconv.Itoa(done) + " of " + strconv.Itoa(len(m.Recordings)) + " done."
+		return web.T(r, "Transcribing recordings: {{.Done}} of {{.Total}} done.", "Done", done, "Total", len(m.Recordings))
 	}
 	pages, e := s.pageTexts(r.Context(), n)
 	if e == nil {
@@ -126,13 +126,10 @@ func (s Service) minutesProgress(r *http.Request, n notebookSnapshot, m minutes.
 			}
 		}
 		if waiting > 0 {
-			if waiting == 1 {
-				return "Waiting for handwriting recognition on 1 page."
-			}
-			return "Waiting for handwriting recognition on " + strconv.Itoa(waiting) + " pages."
+			return web.T(r, "Waiting for handwriting recognition on {{.Count}} pages.", "Count", waiting)
 		}
 	}
-	return "Writing the minutes."
+	return web.T(r, "Writing the minutes.")
 }
 
 func (s Service) minutesRequestPage(w http.ResponseWriter, r *http.Request) {

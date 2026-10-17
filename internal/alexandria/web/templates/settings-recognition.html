@@ -1,7 +1,7 @@
 {{define "content"}}{{$d := .Data}}
 <h1>{{t "AI Tools and Recognition"}}</h1>
 {{if $d.Providers}}{{$p := $d.Providers}}
-<p class="lede">{{t "Turn handwriting into searchable text with a vision model you choose. Nothing is sent until you queue pages and confirm."}} {{template "help" "recognition.where"}}</p>
+<p class="lede">{{t "Choose the AI models Alexandria uses: a vision model for handwriting, plus models for audio note minutes, search by meaning and note actions. Nothing is sent until you queue work, or automatically once you turn on automatic processing below."}} {{template "help" "recognition.where"}}</p>
 <p class="actions">{{th "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs\">View recognition jobs</a>"}}</p>
 <section class="card">
 <h2>{{t "Provider"}} {{template "help" "recognition.provider"}}</h2>
