@@ -1,5 +1,11 @@
 # Alexandria Server handoff
 
+2026-10-17 (late night): **User guides** in [docs/guide](guide/README.md) (13 guides, checked against the code; the README and the old engineering notes point to them). The guide's Couchbase `cluster-init`/`bucket-create` commands were run against a throwaway `community-7.6.2` container. UI copy fixes deployed as `5075d19-copy1` (app-only, base `a2b10a66c633`: 9/9 staged, readiness 200, anonymous 401, no restarts; the only drift was README.md and install.sh, which app-only deploys don't sync). Findings left open:
+- A BOOX install on named volumes has no supported backup: `backup.sh` refuses BOOX, and `backup-cold.sh` needs `ALEXANDRIA_DATA_DIR`.
+- `/metrics` is unauthenticated on the main port; the guide's proxy examples return 404 for it.
+- Automatic processing is opt-in in code, though the owner's stated default is on once endpoints are configured (note actions do default on).
+- `.env.example` and the installer's `.env` don't mention `ALEXANDRIA_BOOX_ENABLED`.
+
 2026-10-17 (late night): **History rewritten** to remove a real person's name, library-derived terms and the owner's host details ([history-rewrite-20261017.md](history-rewrite-20261017.md)). Most commits have new hashes (Hosting's `45eb491` pin is unchanged); that page maps old to new. The README was rewritten for users, with screenshots from a made-up demo library (`scripts/docs-screenshots.sh`).
 
 2026-10-17 (night): **Loose-ends batch** (`2a30efe-batch1`, app-only: drift 0, 21/21 staged, readiness 200, anonymous 401, no restarts). The owner's picks from the remaining-work list:
