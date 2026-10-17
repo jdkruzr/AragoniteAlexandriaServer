@@ -19,7 +19,8 @@ the whole library.
   2026-10-09 06:00–08:00 (first sync after enrollment), 10-10 22:40,
   10-11 09:33 and 10-16 20:19–20:23. 10-13 19:31 also re-saved at least some
   notebooks.
-- Possible triggers, **unconfirmed**:
+- Triggers considered before the decompile (see Root Cause below for the
+  answer):
   - The 10-16 wave began about 90 s after Alexandria published a text note
     (`create_text_note`, 20:17:44), and the 10-11 wave began about 2 min after
     a `repair_asset`. But 20-odd `set_note_status` operations on 10-13 caused
@@ -54,10 +55,71 @@ the whole library.
   no stored result were left to re-recognize. A dump was taken first (see the
   deploy evidence below).
 
-## Still to Do
+## Root Cause (2026-10-16, Decompiled)
 
-Find out why the firmware re-saves everything. That needs the Palma's ksync
-v32173 decompiled; the earlier ADB pull stalled at 37 of 72 MB. Look at
-`NoteTreeReplicator` and `CalendarTreeReplicator` (full-push and reset paths)
-and at how a pulled server-written notebook (`create_text_note`) is handled.
-If Alexandria's own writes trigger it, change how they are written.
+The firmware re-saves everything whenever the Notes app does a **full note-tree
+push**. Alexandria's writes don't cause it, and neither does Calendar Memo.
+Sources: Palma Notes 45960 and ksync 32173 (the installed versions), decompiled
+with JADX, with the methods JADX failed on redone in CFR. They live under
+`~/booxreverse/palma2pro/2026-10-16_ksync/`. The Lumi's ksync 32073 and Notes
+match.
+
+1. **Full push.** `BuildPushFullTreeArgsAction` pages through every local
+   notebook, 20 at a time. It writes them all to one protobuf and hands it to
+   ksync with `syncAll=true`.
+2. **ksync saves without diffing.** `SaveNoteTreeAction` → `SaveNoteTreeRequest`
+   → `NoteTreeReplicator.saveNoteTree` calls `saveList` on every entry.
+   Couchbase Lite gives each save a new revision even when the body is
+   unchanged, and the push replicator sends them all to the server. That's the
+   wave. `updatedAt` changes only where the local row has a newer time.
+3. **What starts a full push** (Notes `NoteService`, service action
+   `SYNC_ONYX_NOTE` with `syncNoteTree=true`, method `R0`: full push, then a
+   full pull):
+   - **The cloud/sync button in the Notes library**:
+     `LibraryViewModel.onSyncFolderTree` → `syncFolderTreeByUser` →
+     `SyncNoteTreeAction`. The retry in the sync-error dialog does the same. The
+     launcher's library (`com.onyx`) has the same action.
+   - **Any incremental tree push, escalated.** After an incremental push,
+     `CheckPushNoteTreeCompleteAction` compares the local count of
+     sync-enabled notebooks with the "remote" total ksync returns. That total
+     is the bean's `noteTreeCount`, which is only the size of *this* push. ksync
+     computes the real Couchbase count (`SaveNoteTreeRequest.totalCount`) and
+     never uses it; CFR agrees with JADX here. So an incremental push smaller
+     than the library always looks incomplete, and a full push follows.
+     Incremental pushes happen on:
+     - **account login.** ksync `LoginOnyxAccountAction` broadcasts
+       `KSYNC_ACCOUNT_LOGIN_ACTION`. Notes `NoteService.q` (JADX failed on it,
+       CFR recovered it) runs `HandleNoteDataWhenLoginAction` →
+       `PushNoteTreeAction`.
+     - **Notes backup** (`BACKUP_NOTE`, requested by another app; new in 45960).
+4. **Exonerated.**
+   - Calendar Memo's cloud button (`CalendarBundle.syncMemo`) saves the open
+     memo and pushes only the calendar tree (`PushCalendarTreeRequest`, changed
+     memos).
+   - Alexandria's publishes only add documents. Nothing in the pull path
+     (`SavePullNoteTreeRecordAction`) starts a push.
+   - Token expiry runs `PrepareSyncAction` without a login.
+5. **Matching the waves.**
+   - 10-09 06:00–08:00 matches enrollment, which is a login (Lumi device row at
+     06:24, Palma at 07:08).
+   - 10-10 22:40 came 38 minutes after the Palma's second enrollment (22:02).
+   - No new session grant was made on 10-16, so the 20:19 wave fits the Notes
+     library sync button. The owner had just saved the test note.
+   - The release build's `Debug` logging is off, the Alexandria container logs
+     reset on each deploy, and Sync Gateway barely logs. So none of these is
+     proven from logs.
+   - PowerSync's `NativeBridge.login` (Lumi account restore only) is a login
+     too, and would cause a wave.
+
+### What to Do About It
+
+- **Nothing on the device.** Alexandria can't change the firmware, and 0032
+  already makes waves harmless for recognition and search.
+- A wave still stores about 1,600 new `boox_revision` bodies. That's
+  acceptable for now; deduplicating revision-only bodies would be a separate,
+  owner-approved storage change.
+- Optional confirmation: tap the Notes library cloud button once and count new
+  `boox_revision` rows. Expect about one per notebook within a few minutes,
+  with no requeued pages.
+- Open: whether ksync `switchCluster` (PowerSync connect) logs in internally.
+  Its handler wasn't located in 32173.
