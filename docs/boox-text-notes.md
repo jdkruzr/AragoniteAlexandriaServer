@@ -80,3 +80,22 @@ becomes searchable when its handwriting page is recognized, for example by a
 library run. `booxpage.RichText` reads the editor JSON; the text is stored on
 the first handwriting page without a model call. See
 [current state](current-state.md).
+
+## Images (2026-10-17)
+
+- **Where the file is.** An editor image node (`onyxImg`) has `src` (a device
+  path, or a `data:` URI when pasted) and `dataKey` (its cloud name). The file
+  is `resource/data/<base name>` in the same note, which is what the device
+  itself rebuilds (`ParseRichTextImageAction`). This was checked against the
+  one real image (2026-10-17): `federation.webp`, a plain (not ONY1) WebP
+  (`VP8X`), 553 × 420, matching the node's `width`/`height`.
+- **Drawing.**
+  - `ComposeRichText` (`internal/booxpage/richdoc.go`) resolves `dataKey`,
+    then `src`, or decodes a `data:` URI.
+  - It decodes PNG, JPEG or WebP (`x/image/webp`), with the 20-million-pixel
+    guard, and draws the image across the text width, keeping its
+    proportions, at most 24 lines tall.
+  - An image that hasn't arrived or can't be read keeps the grey placeholder,
+    plus the notice "Some images in typed text haven't arrived or can't be
+    read; placeholders mark them."
+- Page notices on the notebook view are now translated (`td`).

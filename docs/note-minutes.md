@@ -174,3 +174,25 @@ Client pages need no option: sync already queues each changed page. The minutes
 page's "On Your BOOX" section now says a sent note is an ordinary notebook that
 syncs on its own; resending is "Replace It on Your BOOX" and never summarizes again.
 
+
+## Recordings and Pages (2026-10-17)
+
+- **Which page.** A recording's own resource record has no page. The page is
+  where its chip sits: native shape type 23, whose `resource.relativePath`
+  names `resource/data/<file>`. `recordingPages` (`internal/boox/recording_pages.go`)
+  walks the notebook's pages once per notebook version, caching complete
+  results, and maps each recording to the pages showing it. A recording whose
+  chip was deleted is on no page, as on the device.
+- **Shown:**
+  - The minutes page shows "On page N" links on each recording, or "Not on a
+    page".
+  - The notebook page view has a **Recordings on This Page** card with
+    players (the same owner-only `/boox/minutes/audio`).
+- **Prompt.** Each recording line ends with "on page N" (`PromptVersion`
+  `minutes-v3`), so the summary model can pair speech with that page's
+  handwriting. Existing minutes show as out of date; the owner accepted this
+  before release.
+- **Jobs page.** Minutes that are queued, running or failed, and ready minutes
+  whose sending to BOOX failed, are listed with links.
+- Audio in the Alexandria Client viewer was dropped (2026-10-17): the Android
+  Client has no recording feature or synced audio table.

@@ -1,5 +1,20 @@
 # Alexandria Server handoff
 
+2026-10-17 (night): **Loose-ends batch** (`2a30efe-batch1`, app-only: drift 0, 21/21 staged, readiness 200, anonymous 401, no restarts). The owner's picks from the remaining-work list:
+- **Jobs page:** new Note Actions and Audio Note Minutes sections (counts by state, running or failed rows, links to the page or minutes).
+- **Status lines translate:**
+  - Counted sentences use plurals ("Made 2 tasks." → "Se crearon 2 tareas.").
+  - Provider HTTP errors and the minutes and typed-text notices are catalogued.
+  - Multi-sentence details translate sentence by sentence.
+  - Spanish strings are drafts.
+- **Recordings know their pages** through their chips ([note-minutes.md](note-minutes.md#recordings-and-pages-2026-10-17)): "On page N" on minutes, players on the page view, and pages in the summary prompt (`minutes-v3`, so existing minutes show as out of date, as the owner accepted).
+- **Typed-text images are drawn** ([boox-text-notes.md](boox-text-notes.md#images-2026-10-17)). The one real image, a plain WebP, decodes at its native 553 × 420.
+- **Intro rewritten:** the AI Tools and Recognition intro now covers the whole page.
+- **Scratched by the owner:** the Buy milk fix (it was a test), Calendar Memo CalDAV (a third-party CalDAV app instead), the second client and task edit/delete (DAVx5 and Vivaldi already work), and audio in the Client viewer (the Android Client can't record).
+- **Accepted:** re-save waves stay as they are (harmless).
+- **Gate:** fresh full race gate (47 packages), vet and gofmt pass. Previews were checked at desktop and phone width.
+- **Tomorrow:** the owner joins a third BOOX device: [boox-device-join-20261018.md](boox-device-join-20261018.md). Conflicts are decided by revision ID, and the server's records carry inflated generations from re-save waves. Today's baseline has 0 losing branches across 4,013 winners.
+
 2026-10-17: **Branches merged; work is on `main`.**
 - Server: `main` was fast-forwarded to `alexandria-sync-port` (169 commits, `e988e20`). `alexandria-sync-port` and the already-contained `integration/alexandria-foundation` were deleted. AGENTS.md now says to work on `main`.
 - rhizome: `main` was fast-forwarded to `integration/forestread` (8 commits; `1a5461a` is the commit this Server pins), and the branch was deleted.
