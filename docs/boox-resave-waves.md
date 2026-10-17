@@ -178,6 +178,27 @@ From the Notes 45960 strings and code (`NoteListFragment.onSyncNoteFolderTreeEve
   - Each tap costs about 1,600 re-saved records (harmless since 0032) and a
     couple of minutes of churn.
 
+### Aftershock: a Slow Queue (Fixed 2026-10-17)
+
+After the button test, the page queue ran at one page every ~109 s, even for
+blank pages that need no model call. The inference host was idle. The cause
+was automatic recognition's notebook check (`quietNotebooks`,
+`internal/boox/auto.go`):
+- It considers notebooks whose record changed since automatic recognition was
+  turned on. A wave makes that the whole library (1,043 notebooks).
+- For each notebook it found the newest page file with `starts_with`, which
+  scans all ~41,000 live page files: about 45 s per pass.
+- It runs twice per worker cycle (recognition, then minutes), so the cycle
+  took ~100 s.
+
+The fix (`cbec953-autorange1`, app-only, evidence
+`deploy/compose/private/auto-range-20261017/`) looks a notebook's files up as
+the C-collated key range `[prefix/, prefix0)` instead, which is an index range
+scan. On production it returns the same rows with an identical checksum, in
+0.55 s instead of 44 s. A regression test shows that sibling notebook IDs
+(`note0`, `note1`) don't count as the notebook's files; it fails if the bound
+is widened. After the deploy the 57 queued pages cleared in about two minutes.
+
 ### What to Do About It
 
 - **Nothing on the device.** Alexandria can't change the firmware, and 0032
