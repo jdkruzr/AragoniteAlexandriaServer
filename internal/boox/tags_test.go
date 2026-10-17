@@ -25,7 +25,7 @@ func putTag(t *testing.T, s Service, id, notebook, page, content string, status 
 
 func TestNoteTagRecognition(t *testing.T) {
 	uid := "u"
-	tag := map[string]any{"_id": "t", "uniqueId": "t", "modeType": float64(1), "dbId": "u-NOTE_TREE", "user": "u", "content": "mulch", "status": float64(0)}
+	tag := map[string]any{"_id": "t", "uniqueId": "t", "modeType": float64(1), "dbId": "u-NOTE_TREE", "user": "u", "content": "compost", "status": float64(0)}
 	if !noteTag(tag, uid) {
 		t.Fatal("tag rejected")
 	}
@@ -50,11 +50,11 @@ func TestNoteTagRecognition(t *testing.T) {
 func TestBOOXTagsSearchAndPages(t *testing.T) {
 	s := indexFixture(t)
 	ctx := context.Background()
-	if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_page_index(notebook_id,page_id,page_number,state,text,input_version) VALUES('note','page',1,'ready','Cluster scheduler upgrade notes for the spring maintenance window.','v1')`); e != nil {
+	if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_page_index(notebook_id,page_id,page_number,state,text,input_version) VALUES('note','page',1,'ready','Turn the compost bins before the first frost.','v1')`); e != nil {
 		t.Fatal(e)
 	}
 	putTag(t, s, "tag-person", "note", "page", "Marisol Vega", 0)
-	putTag(t, s, "tag-topic", "note", "page", "mulch", 0)
+	putTag(t, s, "tag-topic", "note", "page", "compost", 0)
 	putTag(t, s, "tag-gone", "note", "page", "Abandoned", 2)
 	putTag(t, s, "tag-common", "", "", "Telescope time", 0)
 	putTag(t, s, "tag-elsewhere", "missing-notebook", "p", "Orphan", 0)
@@ -69,7 +69,7 @@ func TestBOOXTagsSearchAndPages(t *testing.T) {
 		}
 		return k
 	}
-	if k := keywords(); k != "Marisol Vega mulch" {
+	if k := keywords(); k != "compost Marisol Vega" {
 		t.Fatalf("page keywords %q", k)
 	}
 	// A tag finds its page although the page text doesn't mention it.
@@ -80,7 +80,7 @@ func TestBOOXTagsSearchAndPages(t *testing.T) {
 		}
 		return r
 	}
-	if r := search("Vega"); len(r) != 1 || r[0].PageID != "page" || strings.Join(r[0].Tags, "|") != "Marisol Vega|mulch" {
+	if r := search("Vega"); len(r) != 1 || r[0].PageID != "page" || strings.Join(r[0].Tags, "|") != "compost|Marisol Vega" {
 		t.Fatalf("tag search %+v", r)
 	}
 	if r := search("Abandoned"); len(r) != 0 {
@@ -104,19 +104,19 @@ func TestBOOXTagsSearchAndPages(t *testing.T) {
 	if strings.Contains(list, "Abandoned") {
 		t.Fatal("removed tag listed")
 	}
-	if body := get("/boox/tags?tag=MULCH"); !strings.Contains(body, `href="/boox/notebook?id=note&amp;page_id=page"`) || !strings.Contains(body, "Synthetic, page 1") || !strings.Contains(body, "Cluster scheduler upgrade") {
+	if body := get("/boox/tags?tag=COMPOST"); !strings.Contains(body, `href="/boox/notebook?id=note&amp;page_id=page"`) || !strings.Contains(body, "Synthetic, page 1") || !strings.Contains(body, "Turn the compost bins") {
 		t.Fatal("tagged pages", body)
 	}
 	if body := get("/boox/tags?tag=Orphan"); !strings.Contains(body, "No live notebook page has this tag.") {
 		t.Fatal("orphan tag pages", body)
 	}
-	if body := get("/boox/notebook?id=note&page=1"); !strings.Contains(body, "On this page") || !strings.Contains(body, `href="/boox/tags?tag=mulch"`) {
+	if body := get("/boox/notebook?id=note&page=1"); !strings.Contains(body, "On this page") || !strings.Contains(body, `href="/boox/tags?tag=compost"`) {
 		t.Fatal("notebook view tags", body)
 	}
 
 	// Removing a tag on the device takes it out of search and the page.
 	putTag(t, s, "tag-person", "note", "page", "Marisol Vega", 1)
-	if k := keywords(); k != "mulch" {
+	if k := keywords(); k != "compost" {
 		t.Fatalf("keywords after removal %q", k)
 	}
 	if r := search("Vega"); len(r) != 0 {
