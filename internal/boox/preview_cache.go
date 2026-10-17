@@ -171,7 +171,7 @@ func (s Service) typedPreview(ctx context.Context, n notebookSnapshot, num int) 
 	if err != nil {
 		return v, false, err
 	}
-	img, notices := booxpage.ComposeRichText(ink, docs)
+	img, notices := booxpage.ComposeRichText(ink, docs, load)
 	var b bytes.Buffer
 	if err = png.Encode(&b, img); err != nil {
 		return v, false, err

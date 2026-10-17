@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -15,7 +16,7 @@ import (
 
 // PromptVersion and the system prompt are part of every input hash: changing
 // either marks existing minutes as out of date.
-const PromptVersion = "minutes-v2"
+const PromptVersion = "minutes-v3"
 
 // MaxPromptRunes bounds a request (~100k tokens); longer transcripts are cut.
 const MaxPromptRunes = 400_000
@@ -29,6 +30,7 @@ type Recording struct {
 	Title      string
 	RecordedAt time.Time // zero when the device didn't record it
 	Duration   time.Duration
+	Pages      []int // pages showing the recording, when known
 	Language   string
 	Text       string
 	Segments   []Segment
@@ -134,6 +136,17 @@ func Prompt(in Input) string {
 		}
 		if r.Duration > 0 {
 			fmt.Fprintf(&b, ", length %s", Clock(r.Duration))
+		}
+		if len(r.Pages) > 0 {
+			nums := make([]string, len(r.Pages))
+			for j, p := range r.Pages {
+				nums[j] = strconv.Itoa(p)
+			}
+			label := "page"
+			if len(nums) > 1 {
+				label = "pages"
+			}
+			fmt.Fprintf(&b, ", on %s %s", label, strings.Join(nums, ", "))
 		}
 		b.WriteString("\n")
 		b.WriteString(cut(transcript(r), share))

@@ -300,6 +300,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	var booxSummary func(context.Context) (web.SourceSummary, error)
+	var booxWork web.BOOXWorkFunc
 	if r.cfg.NativeBOOX != nil {
 		native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil}
 		if err := native.ResolveIdentity(req.Context()); err != nil {
@@ -307,6 +308,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		booxSummary = native.Summary
+		booxWork = native.Work
 		if native.Owns(req) {
 			ctx, cancel := context.WithCancel(req.Context())
 			stop := context.AfterFunc(r.nativeContext, cancel)
@@ -380,7 +382,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		status.Embedding = searcher.Embedder.Model()
 	}
 	catalog := r.recognitionCatalog(conn)
-	mux.Handle("/", web.Handler(web.Deps{LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status, BOOXSummary: booxSummary}))
+	mux.Handle("/", web.Handler(web.Deps{LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status, BOOXSummary: booxSummary, BOOXWork: booxWork}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {

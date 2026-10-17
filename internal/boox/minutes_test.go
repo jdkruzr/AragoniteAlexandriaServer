@@ -1,6 +1,7 @@
 package boox
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -17,7 +19,9 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
+	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 func putNoteBlob(t *testing.T, s Service, rel string, b []byte) {
@@ -76,9 +80,14 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 	plain := []byte("ID3 synthetic mp3 body")
 	putNoteBlob(t, s, "resource/data/rec.mp3", syntheticONY1(t, plain))
 	putNoteBlob(t, s, "resource/pb/res#1", syntheticResource("res", "Standup", "rec.mp3", 1791928241345, 61000))
+	// The recording's chip sits on page 1; a chip-less file would be on no page.
+	putNoteBlob(t, s, "shape/page#chip#1.zip", audioChipZip(t, "rec.mp3"))
 	n, e := s.notebookSnapshot(ctx, "note")
 	if e != nil {
 		t.Fatal(e)
+	}
+	if on := s.recordingPages(ctx, n); len(on) != 1 || !slices.Equal(on["resource/data/rec.mp3"], []int{1}) {
+		t.Fatalf("recording pages %v", on)
 	}
 	recs := s.recordings(ctx, n)
 	if len(recs) != 1 || recs[0].Title != "Standup" || recs[0].DurationMS != 61000 || recs[0].RecordedAt.UnixMilli() != 1791928241345 {
@@ -158,7 +167,7 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 	if sends != 1 {
 		t.Fatal("automatic send repeated", sends)
 	}
-	if len(summary.prompts) != 1 || !strings.Contains(summary.prompts[0], "synthetic quasar transcript") || !strings.Contains(summary.prompts[0], "nebula survey") || !strings.Contains(summary.prompts[0], "Recording 1: Standup, started 2026-10-13 21:50:41 UTC, length 1:01") {
+	if len(summary.prompts) != 1 || !strings.Contains(summary.prompts[0], "synthetic quasar transcript") || !strings.Contains(summary.prompts[0], "nebula survey") || !strings.Contains(summary.prompts[0], "Recording 1: Standup, started 2026-10-13 21:50:41 UTC, length 1:01, on page 1\n") {
 		t.Fatal("prompt lacks notes, transcript or metadata", summary.prompts)
 	}
 	if !strings.Contains(summary.prompts[0], "This notebook's tags: Nebula\nOther tags the author uses: Telescope time\n") {
@@ -187,8 +196,14 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 		}
 		return w.Body.String()
 	}
-	if body := page(); !strings.Contains(body, "Synthetic nebula review") || strings.Contains(body, "have changed") {
+	if body := page(); !strings.Contains(body, "Synthetic nebula review") || strings.Contains(body, "have changed") || !strings.Contains(body, `<a href="/boox/notebook?id=note&amp;page=1">On page 1</a>`) {
 		t.Fatal("ready minutes page", body)
+	}
+	// The page the chip is on plays the recording.
+	nb := httptest.NewRecorder()
+	s.notebook(nb, httptest.NewRequest("GET", "/boox/notebook?id=note&page=1", nil))
+	if !strings.Contains(nb.Body.String(), `id="page-recordings"`) || !strings.Contains(nb.Body.String(), `/boox/minutes/audio?id=note&amp;key=resource%2fdata%2frec.mp3`) {
+		t.Fatal("page recordings missing", nb.Code)
 	}
 	// "nebula" is the tag Nebula; "schedule" isn't a tag.
 	if body := page(); !strings.Contains(body, `<a class="tag" href="/boox/tags?tag=Nebula"`) || !strings.Contains(body, `<span class="tag new" title="Not a BOOX tag">schedule</span>`) {
@@ -307,4 +322,23 @@ func TestAudioPlaintextAcceptsBothLayouts(t *testing.T) {
 	if w := wav16k([]byte{1, 2, 3, 4}); len(w) != 48 || string(w[:4]) != "RIFF" || string(w[36:40]) != "data" {
 		t.Fatal("wav header", w)
 	}
+}
+
+// audioChipZip is a page shape file with one recording chip (native type 23).
+func audioChipZip(t *testing.T, file string) []byte {
+	t.Helper()
+	shape := &pb.ShapeInfoProto{UniqueId: "chip", ShapeType: 23, BoundingRect: `{"left":10,"top":40,"right":60,"bottom":60}`, MatrixValues: `{"values":[1,0,0,0,1,0,0,0,1]}`,
+		Resource: `{"audioDuration":0,"relativePath":"/` + file + `","title":"Standup","type":2,"uniqueId":"res"}`}
+	b, e := proto.Marshal(&pb.ShapeInfoProtoList{Proto: []*pb.ShapeInfoProto{shape}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	var out bytes.Buffer
+	z := zip.NewWriter(&out)
+	f, _ := z.Create("shapes")
+	f.Write(b)
+	if e = z.Close(); e != nil {
+		t.Fatal(e)
+	}
+	return out.Bytes()
 }

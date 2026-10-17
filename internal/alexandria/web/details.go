@@ -2,6 +2,8 @@ package web
 
 import (
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 )
@@ -20,6 +22,39 @@ var detailPatterns = []struct {
 	{regexp.MustCompile(`^Page files aren't all readable yet: (.+)$`), i18n.M("Page files aren't all readable yet: {{.Reason}}")},
 	{regexp.MustCompile(`^The server was too busy to draw this page; retrying: (.+)$`), i18n.M("The server was too busy to draw this page; retrying: {{.Reason}}")},
 	{regexp.MustCompile(`^Stopped after 5 attempts\. Last problem: (.+) Retry once that's resolved\.$`), i18n.M("Stopped after 5 attempts. Last problem: {{.Reason}} Retry once that's resolved.")},
+	{regexp.MustCompile(`^A recording could not be transcribed: (.+)$`), i18n.M("A recording could not be transcribed: {{.Reason}}")},
+	{regexp.MustCompile(`^Couldn't send these minutes to BOOX automatically: (.+)$`), i18n.M("Couldn't send these minutes to BOOX automatically: {{.Reason}}")},
+}
+
+// countedDetails are sentences with a number in them. Each translates with
+// the number as its plural count (or HTTP status), so they are listed as
+// literal T calls the catalog tooling can see.
+var countedDetails = []struct {
+	re *regexp.Regexp
+	tr func(l i18n.Localizer, n int) string
+}{
+	// Note actions (boox actionDetail).
+	{regexp.MustCompile(`^Made (\d+) tasks?\.$`), func(l i18n.Localizer, n int) string { return l.T("Made {{.Count}} tasks.", "Count", n) }},
+	{regexp.MustCompile(`^Made (\d+) events?\.$`), func(l i18n.Localizer, n int) string { return l.T("Made {{.Count}} events.", "Count", n) }},
+	{regexp.MustCompile(`^(\d+) already made from this page\.$`), func(l i18n.Localizer, n int) string {
+		return l.T("{{.Count}} already made from this page.", "Count", n)
+	}},
+	{regexp.MustCompile(`^(\d+) without a recognizable date skipped\.$`), func(l i18n.Localizer, n int) string {
+		return l.T("{{.Count}} without a recognizable date skipped.", "Count", n)
+	}},
+	// Provider failures (ocr.Failure), with the word minutes swaps in.
+	{regexp.MustCompile(`^Recognition provider returned HTTP (\d+)\.$`), func(l i18n.Localizer, n int) string {
+		return l.T("Recognition provider returned HTTP {{.Status}}.", "Status", strconv.Itoa(n))
+	}},
+	{regexp.MustCompile(`^Transcription provider returned HTTP (\d+)\.$`), func(l i18n.Localizer, n int) string {
+		return l.T("Transcription provider returned HTTP {{.Status}}.", "Status", strconv.Itoa(n))
+	}},
+	{regexp.MustCompile(`^Summary provider returned HTTP (\d+)\.$`), func(l i18n.Localizer, n int) string {
+		return l.T("Summary provider returned HTTP {{.Status}}.", "Status", strconv.Itoa(n))
+	}},
+	{regexp.MustCompile(`^Provider rejected the request \(HTTP (\d+)\)\. Check endpoint, model and API format, then retry\.$`), func(l i18n.Localizer, n int) string {
+		return l.T("Provider rejected the request (HTTP {{.Status}}). Check endpoint, model and API format, then retry.", "Status", strconv.Itoa(n))
+	}},
 }
 
 // storedDetails are fixed sentences that end up in job and page details.
@@ -40,6 +75,35 @@ var storedDetails = []string{
 	i18n.M("Page list changed after review. Prepare and confirm this notebook again."),
 	i18n.M("Active or paused pages keep their existing jobs and are not counted as completed in this run."),
 	i18n.M("The summary model didn't return minutes in the expected format; retrying."),
+	// Provider failures (ocr.Failure); minutes swaps "Recognition" for its own word.
+	i18n.M("Anthropic requires a valid workspace ID. Update Server settings, then retry."),
+	i18n.M("The provider rejected authentication or model access. Check Server settings, then retry."),
+	i18n.M("Provider rate or quota limit; waiting to retry. Check provider billing if this persists."),
+	i18n.M("Recognition or page processing failed; waiting to retry."),
+	i18n.M("Transcription or page processing failed; waiting to retry."),
+	i18n.M("Summary or page processing failed; waiting to retry."),
+	// Audio Note Minutes (boox minutes.go, minutes_send.go).
+	i18n.M("Set up transcription in Settings → AI Tools and Recognition, then retry."),
+	i18n.M("Set up a summary model in Settings → AI Tools and Recognition, then retry."),
+	i18n.M("Notebook unavailable."),
+	i18n.M("Could not read the notebook; retrying."),
+	i18n.M("The recording changed after it was requested. Request minutes again."),
+	i18n.M("The recording could not be read or decrypted."),
+	i18n.M("The recording is larger than the transcription upload limit (64 MiB)."),
+	i18n.M("The request is unreadable. Request minutes again."),
+	i18n.M("A recording's transcription is missing. Request minutes again."),
+	i18n.M("Could not read transcripts; retrying."),
+	i18n.M("Could not read page text; retrying."),
+	i18n.M("Nothing to summarize: no speech was transcribed and no page has recognized text."),
+	i18n.M("Could not read BOOX tags; retrying."),
+	i18n.M("Transcribing recordings."),
+	i18n.M("Waiting for handwriting recognition."),
+	i18n.M("Couldn't send these minutes to BOOX automatically. Use Send to BOOX to try again."),
+	// Typed-text preview notices (booxpage richdoc.go).
+	i18n.M("Typed text is drawn with a substitute font; the device's layout may differ."),
+	i18n.M("Some images in typed text haven't arrived or can't be read; placeholders mark them."),
+	i18n.M("Typed text is longer than the preview can show; the end is cut off."),
+	i18n.M("Some typed-text formatting isn't reproduced; its text is shown plainly."),
 	// Common preview warnings that appear as reasons.
 	i18n.M("Page resources cannot be rendered yet."),
 	i18n.M("Template metadata is unreadable."),
@@ -51,10 +115,17 @@ var storedDetails = []string{
 }
 
 func detailIn(l i18n.Localizer) func(string) string {
-	var tr func(string, int) string
-	tr = func(s string, depth int) string {
+	var tr, one func(string, int) string
+	one = func(s string, depth int) string {
 		if i18n.Known(s) {
 			return l.T(s)
+		}
+		for _, p := range countedDetails {
+			if m := p.re.FindStringSubmatch(s); m != nil {
+				if n, err := strconv.Atoi(m[1]); err == nil {
+					return p.tr(l, n)
+				}
+			}
 		}
 		for _, p := range detailPatterns {
 			if m := p.re.FindStringSubmatch(s); m != nil {
@@ -66,6 +137,27 @@ func detailIn(l i18n.Localizer) func(string) string {
 			}
 		}
 		return s
+	}
+	// A detail can be several stored sentences ("Made 2 tasks. 1 already
+	// made from this page."): when the whole doesn't match, each sentence is
+	// translated on its own.
+	tr = func(s string, depth int) string {
+		if out := one(s, depth); out != s || !strings.Contains(s, ". ") {
+			return out
+		}
+		parts := strings.SplitAfter(s, ". ")
+		changed := false
+		for i, p := range parts {
+			t := one(strings.TrimSpace(p), depth)
+			if t != strings.TrimSpace(p) {
+				changed = true
+			}
+			parts[i] = t
+		}
+		if !changed {
+			return s
+		}
+		return strings.Join(parts, " ")
 	}
 	return func(s string) string { return tr(s, 1) }
 }

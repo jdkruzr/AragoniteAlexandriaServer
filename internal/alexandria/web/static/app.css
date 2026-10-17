@@ -283,7 +283,7 @@ dl.meta dt { color:var(--muted); }
 dl.meta dd { margin:0; overflow-wrap:anywhere; }
 .recording + .recording { border-top:1px solid var(--line); margin-top:1rem; padding-top:1rem; }
 .recording h3 { margin-bottom:.15rem; }
-.recording audio { width:100%; max-width:32rem; margin:.5rem 0; }
+.recording audio, #page-recordings audio { width:100%; max-width:32rem; margin:.5rem 0; }
 dl.transcript { display:grid; grid-template-columns:auto 1fr; gap:.25rem .75rem; margin:.5rem 0 0; }
 dl.transcript dt { color:var(--faint); font-variant-numeric:tabular-nums; }
 dl.transcript dd { margin:0; }

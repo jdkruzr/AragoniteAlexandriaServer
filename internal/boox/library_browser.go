@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
@@ -267,6 +268,8 @@ type notebookView struct {
 	Number, Count                                                 int
 	Deleted                                                       bool
 	Warnings                                                      []string
+	// PageRecordings are the recordings whose chips are on this page.
+	PageRecordings []minutes.Source
 }
 
 var notebookTemplate = template.Must(template.New("notebook.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/notebook.html"))
@@ -317,6 +320,13 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(ids) > 0 {
 		d.Page = ids[num-1]
+		if on := s.recordingPages(r.Context(), n); len(on) > 0 {
+			for _, rec := range s.recordings(r.Context(), n) {
+				if slices.Contains(on[rec.Key], num) {
+					d.PageRecordings = append(d.PageRecordings, rec)
+				}
+			}
+		}
 		preview, typed, err := s.typedPreview(r.Context(), n, num)
 		if err != nil {
 			d.Warnings = append(d.Warnings, "Preview unavailable: "+err.Error())

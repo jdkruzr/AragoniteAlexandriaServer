@@ -37,7 +37,8 @@
 </section>{{end}}</aside></div>{{end}}
 {{if $m.Recordings}}<section class="card"><h2>{{t "Recordings"}}</h2>
 {{range $m.Recordings}}<article class="recording"><h3>{{.Title}}</h3>
-<p class="small muted">{{if not .RecordedAt.IsZero}}{{t "Recorded {{.When}}" "When" (utc .RecordedAt)}} · {{end}}{{clock .DurationMS}}{{if .Language}} · {{.Language}}{{end}} · {{if eq .State "ready"}}{{t "Transcribed"}}{{else if eq .State "failed"}}{{t "Transcription failed: {{.Detail}}" "Detail" .Detail}}{{else if eq .State "missing"}}{{t "Not transcribed"}}{{else}}{{t "Transcribing…"}}{{end}}</p>
+<p class="small">{{with index $d.OnPages .Key}}{{range $i, $n := .}}{{if $i}}, {{end}}<a href="/boox/notebook?id={{$d.ID}}&amp;page={{$n}}">{{t "On page {{.Number}}" "Number" $n}}</a>{{end}}{{else}}{{t "Not on a page"}}{{end}}</p>
+<p class="small muted">{{if not .RecordedAt.IsZero}}{{t "Recorded {{.When}}" "When" (utc .RecordedAt)}} · {{end}}{{clock .DurationMS}}{{if .Language}} · {{.Language}}{{end}} · {{if eq .State "ready"}}{{t "Transcribed"}}{{else if eq .State "failed"}}{{t "Transcription failed: {{.Detail}}" "Detail" (td .Detail)}}{{else if eq .State "missing"}}{{t "Not transcribed"}}{{else}}{{t "Transcribing…"}}{{end}}</p>
 <audio controls preload="none" src="/boox/minutes/audio?id={{$d.ID}}&amp;key={{.Key}}&amp;sha={{.SHA256}}">{{t "Your browser can't play this recording."}}</audio>
 {{if .Segments}}<details><summary>{{t "Transcript"}}</summary><dl class="transcript">{{range .Segments}}<dt>{{clock .Start}}</dt><dd>{{.Text}}</dd>{{end}}</dl></details>{{else if .Text}}<details><summary>{{t "Transcript"}}</summary><p>{{.Text}}</p></details>{{end}}
 </article>{{end}}</section>{{end}}
