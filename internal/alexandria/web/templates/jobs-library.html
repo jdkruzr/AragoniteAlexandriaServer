@@ -1,6 +1,6 @@
 {{define "content"}}{{$d:=.Data}}
 <p class="crumbs">{{th "<a href=\"/jobs\">Recognition jobs</a> /"}}</p><h1>{{t "Recognize a Library"}} {{template "help" "recognition.library"}}</h1>
-{{if $d.SourceUnavailable}}<p class="notice">{{t "This source is disabled in this deployment. Existing batch history remains available."}}</p>{{else if not $d.Enabled}}<p class="notice">{{th "Recognition is off. You can prepare a review now; turn on recognition in <a href=\"/settings/recognition\">Settings → Recognition</a> before confirming it."}}</p>{{end}}
+{{if $d.SourceUnavailable}}<p class="notice">{{t "This source is disabled in this deployment. Existing batch history remains available."}}</p>{{else if not $d.Enabled}}<p class="notice">{{th "Recognition is off. You can prepare a review now; turn on recognition in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> before confirming it."}}</p>{{end}}
 {{if not $d.Run}}
 <form class="inline" method="get" action="/jobs/library"><label>{{t "Source"}} <select name="source"><option value="client" {{if eq $d.Source "client"}}selected{{end}}>Alexandria Client</option>{{if $d.NativeBOOX}}<option value="boox" {{if eq $d.Source "boox"}}selected{{end}}>BOOX</option>{{end}}</select></label><button class="secondary">{{t "Choose source"}}</button></form>
 <ol class="steps">

@@ -1,7 +1,7 @@
 {{define "content"}}{{$d:=.Data}}
 <p class="crumbs"><a href="/boox">{{t "Notebooks"}}</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">{{t "Audio Note Minutes"}}</a> /</p>
 <h1>{{t "Summarize This Note"}} {{template "help" "boox.minutes"}}</h1>
-{{if not $d.Enabled}}<div class="callout"><p>{{th "Set up transcription and a summary model in <a href=\"/settings/recognition#minutes\">Settings → Recognition</a> first."}}</p></div>{{else}}
+{{if not $d.Enabled}}<div class="callout"><p>{{th "Set up transcription and a summary model in <a href=\"/settings/recognition#minutes\">Settings → AI Tools and Recognition</a> first."}}</p></div>{{else}}
 <form method="post" action="/boox/minutes/new"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="request" value="{{$d.Request}}">
 <section class="card"><h2>{{t "Recordings"}}</h2>
 {{if $d.Recordings}}<div class="table-scroll"><table><thead><tr><th>{{t "Recording"}}</th><th>{{t "Recorded"}}</th><th>{{t "Length"}}</th><th>{{t "Size"}}</th></tr></thead><tbody>
@@ -11,11 +11,11 @@
 <section class="card"><h2>{{t "Handwriting"}}</h2>
 <p>{{t "{{.Done}} of {{.Count}} pages have recognized text." "Done" $d.WithText "Count" $d.Pages}}{{if $d.InProgress}} {{t "{{.Count}} are being recognized now." $d.InProgress}}{{end}}</p>
 {{if $d.Missing}}{{if $d.RecognitionEnabled}}<label class="confirm"><input type="checkbox" name="recognize" checked> {{t "Recognize the {{.Count}} pages without text first" $d.Missing}}</label><p class="small muted">{{t "Sends those pages to your recognition provider. Provider charges may apply. Minutes wait until recognition finishes." $d.Missing}}</p>
-{{else}}<p class="small muted">{{th "{{.Count}} pages have no text and will be left out. Turn on recognition in <a href=\"/settings/recognition\">Settings → Recognition</a> to include them." $d.Missing}}</p>{{end}}{{end}}
+{{else}}<p class="small muted">{{th "{{.Count}} pages have no text and will be left out. Turn on recognition in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> to include them." $d.Missing}}</p>{{end}}{{end}}
 </section>
 <section class="card"><h2>{{t "Send"}}</h2>
 <p>Transcription: <strong>{{$d.Transcriber}}</strong> {{t "· Summary:"}} <strong>{{$d.Summarizer}}</strong></p>
 <label class="confirm"><input type="checkbox" name="confirm" required> {{t "Send the recordings and this notebook's text to these providers"}}</label>
-{{if $d.AutoSend}}<p class="small muted">{{t "When they're ready, the minutes are also sent to your BOOX as “{{.Title}}”." "Title" (printf "%s_Minutes" $d.Title)}} <a href="/settings/recognition#minutes">{{t "Change this in Settings → Recognition."}}</a></p>{{end}}
+{{if $d.AutoSend}}<p class="small muted">{{t "When they're ready, the minutes are also sent to your BOOX as “{{.Title}}”." "Title" (printf "%s_Minutes" $d.Title)}} <a href="/settings/recognition#minutes">{{t "Change this in Settings → AI Tools and Recognition."}}</a></p>{{end}}
 <p><button>{{t "Summarize"}}</button></p>
 </section></form>{{end}}{{end}}
