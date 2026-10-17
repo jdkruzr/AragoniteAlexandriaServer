@@ -103,13 +103,41 @@ match.
    - 10-09 06:00–08:00 matches enrollment, which is a login (Lumi device row at
      06:24, Palma at 07:08).
    - 10-10 22:40 came 38 minutes after the Palma's second enrollment (22:02).
-   - No new session grant was made on 10-16, so the 20:19 wave fits the Notes
-     library sync button. The owner had just saved the test note.
-   - The release build's `Debug` logging is off, the Alexandria container logs
-     reset on each deploy, and Sync Gateway barely logs. So none of these is
-     proven from logs.
+   - 10-16 20:19: Sync Gateway's own info log
+     (`/var/log/sync_gateway/sg_info.log` inside the container, kept about 6
+     days) shows the device pulling our 20:17:44 `create_text_note` at
+     20:17:47 with **0** changes to push. Then, at 20:19:14, one `NOTE_TREE`
+     push session proposed 1,627 changes in 3 s (200-change batches). No new
+     session grant was made that day, so this was not a login.
    - PowerSync's `NativeBridge.login` (Lumi account restore only) is a login
      too, and would cause a wave.
+
+### Live Confirmation (2026-10-17 01:12 UTC, Palma)
+
+The owner tapped the Notes library cloud button once. We watched the Sync
+Gateway info log and the Palma's logcat. Onyx's `KS-->` lines *do* reach
+logcat; the earlier waves had only rotated out of the buffer.
+
+- **Device** (times in CDT):
+  - 20:12:26 `PushNoteTreeAction: build full tree arg`
+  - 20:12:33 `push tree: … dataCount=1534, completed=true`
+  - ksync `SaveNoteTreeAction` took 3.7 s
+  - ksync then pushed in batches (`NoteTreeReplicator: push doc count`)
+  - 20:12:37–20:13:51: the full pull, with per-notebook data checks
+    (`NoteDocDataReplicator … pull`, 743 notebooks) and the tree pulled back
+    (`SavePullNoteTreeAction`, 1,043 sync-enabled notebooks)
+- **Gateway:** one push session at 01:12:34 UTC proposed **1,630** changes
+  (8 × 200 + 29) and closed at 01:12:37. The update sequence went from 15,816
+  to 17,459.
+- **Alexandria:**
+  - It ingested the 1,630 revisions by 01:15:49, reading the changes feed 64
+    at a time.
+  - 1,552 changed only `_rev`/`_revisions`, 74 also changed `updatedAt`, and 4
+    changed other fields. One new page file arrived.
+  - Recognition touched 5 pages, all ready again within a minute. The queue
+    kept draining (89 → 87). With 0032, nothing was cleared or requeued.
+- Evidence (gitignored):
+  `deploy/compose/private/resave-waves-20261016/button-test-20261017/`.
 
 ### What to Do About It
 
@@ -118,8 +146,5 @@ match.
 - A wave still stores about 1,600 new `boox_revision` bodies. That's
   acceptable for now; deduplicating revision-only bodies would be a separate,
   owner-approved storage change.
-- Optional confirmation: tap the Notes library cloud button once and count new
-  `boox_revision` rows. Expect about one per notebook within a few minutes,
-  with no requeued pages.
 - Open: whether ksync `switchCluster` (PowerSync connect) logs in internally.
   Its handler wasn't located in 32173.
