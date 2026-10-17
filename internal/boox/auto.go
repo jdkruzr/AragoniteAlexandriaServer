@@ -31,10 +31,15 @@ const (
 // quietNotebooks lists live, unskipped BOOX notebooks that changed after since
 // and have been quiet for at least quiet. Changes are the notebook record and
 // any of its files.
+//
+// A notebook's files are the C-collated key range [prefix/, prefix0) ('0' is
+// the byte after '/'), so each lookup is an index range scan. starts_with
+// scanned every page file once per notebook: about 45 s per pass once a
+// re-save wave marked the whole library changed (2026-10-17).
 const quietNotebooks = `WITH changed AS (
  SELECT n.document_id, n.updated_at, n.body,
  greatest(n.updated_at, coalesce((SELECT max(v.created_at) FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id
-  WHERE starts_with(l.native_key, $1||'/note/'||n.document_id||'/')), n.updated_at)) AS last_change
+  WHERE l.native_key >= ($1||'/note/'||n.document_id||'/') COLLATE "C" AND l.native_key < ($1||'/note/'||n.document_id||'0') COLLATE "C"), n.updated_at)) AS last_change
  FROM boox_search_notebooks n
  WHERE n.updated_at>=$2 AND NOT EXISTS(SELECT 1 FROM alexandria_recognition_skip s WHERE s.source='boox' AND s.notebook_id=n.document_id))
 SELECT document_id, body FROM changed WHERE last_change>=$2 AND last_change<now()-$3::interval`
@@ -119,7 +124,7 @@ func (s Service) autoRecognize(ctx context.Context, since time.Time) (bool, erro
 // minutes that failed, are left for the owner.
 func (s Service) autoSummarize(ctx context.Context, since time.Time, cfg MinutesConfig) (bool, error) {
 	rows, e := s.DB.QueryContext(ctx, quietNotebooks+` AND EXISTS(SELECT 1 FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id
- WHERE starts_with(l.native_key, $1||'/note/'||document_id||'/resource/data/') AND lower(right(l.native_key,4)) IN ('.mp3','.pcm') AND v.created_at>=$2 AND NOT v.deleted)
+ WHERE l.native_key >= ($1||'/note/'||document_id||'/resource/data/') COLLATE "C" AND l.native_key < ($1||'/note/'||document_id||'/resource/data0') COLLATE "C" AND lower(right(l.native_key,4)) IN ('.mp3','.pcm') AND v.created_at>=$2 AND NOT v.deleted)
  ORDER BY last_change LIMIT 20`, s.uid(), since, interval(autoSummarizeQuiet))
 	if e != nil {
 		return false, e

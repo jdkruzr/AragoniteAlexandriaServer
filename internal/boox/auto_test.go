@@ -50,8 +50,15 @@ func TestAutomaticProcessingWaitsForQuietNewNotes(t *testing.T) {
 	if run(on) {
 		t.Fatal("processed a notebook that isn't quiet yet")
 	}
-	// Quiet for five minutes: its new page is queued, once.
+	// Quiet for five minutes: its new page is queued, once. Fresh files of
+	// notebooks whose IDs share its prefix (note0, note1) aren't its files.
 	age(6 * time.Minute)
+	for _, k := range []string{"note0/shape/x#1", "note1/shape/x#1"} {
+		if _, e := s.DB.ExecContext(ctx, `WITH v AS (INSERT INTO boox_blob_version(native_key,sha256,md5,bytes) VALUES($1,repeat('a',64),repeat('b',32),1) RETURNING id,native_key)
+ INSERT INTO boox_blob_live(native_key,version_id) SELECT native_key,id FROM v`, s.uid()+"/note/"+k); e != nil {
+			t.Fatal(e)
+		}
+	}
 	if !run(on) || count(`SELECT count(*) FROM boox_page_index WHERE notebook_id='note' AND state='queued'`) != 1 {
 		t.Fatal("new page not queued")
 	}
