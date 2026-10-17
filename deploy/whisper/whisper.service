@@ -1,5 +1,5 @@
 [Unit]
-Description=Whisper speech-to-text (OpenAI-compatible) for Alexandria note minutes
+Description=Whisper speech-to-text (OpenAI-compatible) for Alexandria note minutes, GPU0 (CUDA)
 After=network-online.target
 Wants=network-online.target
 
@@ -10,9 +10,14 @@ Group=ops
 # WHISPER_API_KEY lives here, never on the command line.
 EnvironmentFile=/etc/whisper/whisper.env
 Environment=WHISPER_MODEL_DIR=/opt/whisper/models
-Environment=WHISPER_DEVICE=cpu
-Environment=WHISPER_COMPUTE_TYPE=int8
+Environment=WHISPER_DEVICE=cuda
+Environment=WHISPER_COMPUTE_TYPE=int8_float16
 Environment=WHISPER_CPU_THREADS=8
+# Pin by UUID (nvidia-smi --query-gpu=index,uuid): CUDA's default device order
+# need not match nvidia-smi's. On gpu-host this is GPU0.
+Environment=CUDA_VISIBLE_DEVICES=GPU-REPLACE-WITH-GPU0-UUID
+# cuBLAS and cuDNN for CUDA 12 come from the venv's NVIDIA wheels.
+Environment=LD_LIBRARY_PATH=/opt/whisper/env/lib/python3.12/site-packages/nvidia/cublas/lib:/opt/whisper/env/lib/python3.12/site-packages/nvidia/cudnn/lib
 WorkingDirectory=/opt/whisper
 ExecStart=/opt/whisper/env/bin/uvicorn server:app --host 0.0.0.0 --port 8090 --workers 1
 Nice=5

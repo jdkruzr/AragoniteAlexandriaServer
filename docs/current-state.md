@@ -1,5 +1,12 @@
 # Alexandria Server handoff
 
+2026-10-17: **Models moved onto gpu-host's GPUs** ([deployment-local-models.md](deployment-local-models.md#gpu-layout-2026-10-17)), the plan agreed on 2026-10-14.
+- vLLM now uses 0.83 GPU memory and a 131,072-token context, down from 0.92 and 262,144.
+- Whisper runs on GPU0 (CUDA, `int8_float16`). A 20 s clip takes 0.6 s.
+- A new Ollama 0.40.3 runs `nomic-embed-text:v1.5` on GPU1 at `http://192.0.2.20:11434`. It is open on the LAN by the owner's choice. Its embeddings match the VM's to cosine 1.000000.
+- Units and backups are on gpu-host, and the repo has `deploy/ollama-embed/` and an updated `deploy/whisper/`.
+- **Pending:** the owner switches Settings → Search to the gpu-host URL, which starts a replacement index build. After that the VM's bundled Ollama container can be retired.
+
 2026-10-17: **Slow page queue after a re-save wave, fixed** (`cbec953-autorange1`, app-only: drift 0, 1/1 staged, readiness 200, anonymous 401, no restarts; evidence `deploy/compose/private/auto-range-20261017/`). After the sync-button test, recognition moved one page every ~109 s with the model idle. Automatic recognition's notebook check scanned every page file (`starts_with`) once per notebook, and the wave made every notebook a candidate. It now uses an index range on the C-collated key (0.55 s instead of 44 s on production, same rows). The 57 queued pages cleared in two minutes. Fresh full race gate (47 packages), vet and gofmt pass. Details in [boox-resave-waves.md](boox-resave-waves.md).
 
 2026-10-16 (after midnight): **Re-save waves explained** ([boox-resave-waves.md](boox-resave-waves.md#root-cause-2026-10-16-decompiled)). Palma Notes 45960 and ksync 32173 were decompiled (JADX, plus CFR where JADX failed) under `~/booxreverse/palma2pro/2026-10-16_ksync/`. A wave is a full note-tree push. Notes sends every local notebook and ksync saves each one without diffing, so Couchbase Lite gives each a new revision. Full pushes come from the Notes library's cloud/sync button, and from any incremental push (account login, Notes backup). An incremental push always escalates, because the completeness check compares the local notebook count with the size of that push. Calendar Memo and Alexandria's writes are cleared. Confirmed live at 2026-10-17 01:12 UTC: one tap of the Palma's Notes library cloud button pushed 1,630 changes in 3 s. 1,552 were revision-only, and recognition requeued nothing (0032 works). Nothing to change on the device. No code change, no deploy.
