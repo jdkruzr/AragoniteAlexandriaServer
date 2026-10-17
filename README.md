@@ -13,11 +13,6 @@ to work: it reads your handwriting with AI models you choose, searches
 everything, turns pen colors into tasks and calendar events, and writes
 minutes from the audio you record in your notes.
 
-> **Status: in active development, not yet released.** It runs every day
-> against a real library, but expect rough edges and changing setup steps.
-> Recognition, minutes and note actions call AI models you configure; nothing
-> is sent to them until you turn those features on. See [Current State](docs/current-state.md) for the details.
-
 <p align="center">
   <img src="docs/images/boox-notebook.png" width="860" alt="A handwritten BOOX page in the notebook view, with its recognized text, and the tasks and event its red and blue ink created">
 </p>
@@ -92,7 +87,7 @@ API token you can revoke.
   through its own sync protocol and shares search, recognition and tasks.
 - **Book uploads** to your BOOX tablets from the browser.
 - **One overview** of every source, device and job.
-- **Translations:** English, plus a Spanish draft.
+- **Translations:** English and Spanish.
 
 <p align="center"><img src="docs/images/overview.png" width="760" alt="The library overview"></p>
 
@@ -198,12 +193,10 @@ made-up demo library (`TestWriteDocsScreens` in `internal/alexandria/web` and
 involved, so no real library can end up in a screenshot. It needs Go and
 Google Chrome, and downloads the Caveat font (SIL OFL) at a pinned checksum.
 
-## Roadmap
+## Coming From UltraBridge
 
-reMarkable and Supernote connectors are planned. Alexandria takes over from
-[UltraBridge](https://github.com/jdkruzr/ultrabridge) but doesn't claim full
-feature parity yet. [Remaining Steps](docs/remaining-steps.md) tracks the
-plan.
+Alexandria succeeds [UltraBridge](https://github.com/jdkruzr/ultrabridge).
+[UltraBridge Migration](docs/ultrabridge-migration.md) covers moving over safely.
 
 Brand usage and the generation brief for the project mark are in
 [the brand note](docs/brand.md).
