@@ -44,20 +44,8 @@
 </section>
 
 <section class="card">
-<h2>{{t "Embedding Provider"}} {{template "help" "semantic.provider"}}</h2>
-{{if $p.Locked}}<p class="coverage">{{t "Provider settings are locked by the deployment."}}</p>{{else if not $p.CanSave}}<p class="coverage">{{t "The deployment needs a settings encryption key before provider settings can be saved."}}</p>{{end}}
-<form method="post" action="/settings/providers" class="stack" id="semantic-advanced">
-<input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="search">
-{{/* The provider form saves both providers at once; carry the saved recognition settings unchanged. */}}
-{{with $p.Config.OCR}}{{if .Enabled}}<input type="hidden" name="ocr_enabled" value="on">{{end}}<input type="hidden" name="ocr_format" value="{{.Format}}"><input type="hidden" name="ocr_url" value="{{.URL}}"><input type="hidden" name="anthropic_workspace" value="{{.AnthropicWorkspace}}"><input type="hidden" name="ocr_model" value="{{.Model}}"><input type="hidden" name="ocr_prompt" value="{{.Prompt}}">{{if .VLLMDisableThinking}}<input type="hidden" name="vllm" value="on">{{end}}{{end}}<input type="hidden" name="key_action" value="keep">
-{{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}
-<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Ollama-Compatible Endpoint"}}</legend>
-<label>{{t "Base URL"}} <input type="url" name="embed_url" value="{{$p.Config.Embedding.URL}}" maxlength="2048" placeholder="http://ollama:11434"></label>
-<label>{{t "Embedding model"}} <input name="embed_model" value="{{$p.Config.Embedding.Model}}" maxlength="256" placeholder="nomic-embed-text:v1.5"></label>
-<p class="hint">{{t "Changing the provider or model needs a new index build."}}</p>
-</fieldset>
-<div class="actions"><button name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button name="action" value="test_embedding" class="secondary">{{t "Test without saving"}}</button></div>
-</form>
+<h2>{{t "Embedding Model"}} {{template "help" "semantic.provider"}}</h2>
+<p>{{th "The embedding endpoint and model are set with the other AI models in <a href=\"/settings/recognition#embedding\">Settings → Recognition</a>."}}</p>
 </section>
 {{else}}<p>{{t "Search by meaning is configured by this deployment."}}</p>{{end}}
 {{end}}
