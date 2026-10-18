@@ -29,7 +29,7 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	offset := state.Offset
 	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,body,count(*) OVER() FROM boox_projection p WHERE `+booxvisibility.Reading("p")+` AND native_uid=$1 AND ($2='' OR document_id=$2) ORDER BY `+state.NativeOrder()+` LIMIT 60 OFFSET $3`, s.uid(), r.URL.Query().Get("record"), offset)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "reading", e)
 		return
 	}
 	defer rows.Close()
@@ -38,7 +38,7 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		var v readingItem
 		var b []byte
 		if rows.Scan(&v.ID, &b, &d.Listing.Total) != nil {
-			failure(w, errors.New("reading inventory failed"))
+			s.failure(w, "reading", errors.New("reading inventory failed"))
 			return
 		}
 		var m map[string]any
@@ -71,7 +71,7 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		d.Items = append(d.Items, v)
 	}
 	if rows.Err() != nil {
-		failure(w, rows.Err())
+		s.failure(w, "reading", rows.Err())
 		return
 	}
 	if len(d.Items) == 0 && offset > 0 {

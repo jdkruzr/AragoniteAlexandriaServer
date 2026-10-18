@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -74,6 +75,8 @@ type OCRProviderConfig = providers.OCRConfig
 type EmbeddingProviderConfig = providers.EmbedConfig
 
 type Config struct {
+	// Logger receives safe runtime diagnostics; nil uses slog.Default().
+	Logger           *slog.Logger
 	ProviderSettings *ProviderSettings
 	NativeBOOX       *NativeBOOXConfig
 	ID               string
@@ -135,6 +138,9 @@ func Initialize(ctx context.Context, db *sql.DB, id string) error {
 }
 
 func Open(ctx context.Context, cfg Config) (*Runtime, error) {
+	if cfg.Logger == nil {
+		cfg.Logger = slog.Default()
+	}
 	if cfg.NativeBOOX != nil {
 		if err := cfg.NativeBOOX.Validate(); err != nil {
 			return nil, err
@@ -310,7 +316,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var booxSummary func(context.Context) (web.SourceSummary, error)
 	var booxWork web.BOOXWorkFunc
 	if r.cfg.NativeBOOX != nil {
-		native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil}
+		native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil}
 		if err := native.ResolveIdentity(req.Context()); err != nil {
 			http.Error(w, "native identity unavailable", http.StatusServiceUnavailable)
 			return
@@ -390,7 +396,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		status.Embedding = searcher.Embedder.Model()
 	}
 	catalog := r.recognitionCatalog(conn)
-	mux.Handle("/", web.Handler(web.Deps{LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status, BOOXSummary: booxSummary, BOOXWork: booxWork}))
+	mux.Handle("/", web.Handler(web.Deps{Logger: r.cfg.Logger, LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status, BOOXSummary: booxSummary, BOOXWork: booxWork}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {
@@ -571,7 +577,7 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 			found, err = pages.Step(ctx, conn)
 		case 1:
 			if r.cfg.NativeBOOX != nil {
-				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil, RecognitionIdentity: pages.OCRIdentity, RecognitionRevision: pages.SettingsRevision, Actions: r.actionsConfig(snapshot)}
+				native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil, RecognitionIdentity: pages.OCRIdentity, RecognitionRevision: pages.SettingsRevision, Actions: r.actionsConfig(snapshot)}
 				if err = native.ResolveIdentity(ctx); err == nil {
 					found, err = native.ProcessPageIndex(ctx, pages.OCR, pages.Prompt)
 				}
@@ -580,7 +586,7 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 			// Note actions queued by recognition. They still run if their
 			// settings changed meanwhile, failing with guidance when a model is off.
 			if r.cfg.NativeBOOX != nil {
-				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Actions: r.actionsConfig(snapshot)}
+				native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Actions: r.actionsConfig(snapshot)}
 				if err = native.ResolveIdentity(ctx); err == nil {
 					var summary noteactions.Completer
 					if snapshot.Config.Summary.Enabled {
@@ -593,7 +599,7 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 			found, err = (recognition.Store{DB: conn}).StepRun(ctx, r.recognitionCatalog(conn), pages.OCR != nil)
 		case 3:
 			if r.cfg.NativeBOOX != nil {
-				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Minutes: minutesConfig(snapshot), RecognitionEnabled: pages.OCR != nil}
+				native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Minutes: minutesConfig(snapshot), RecognitionEnabled: pages.OCR != nil}
 				if err = native.ResolveIdentity(ctx); err == nil {
 					// Queued work fails with guidance when its provider is off.
 					var stt *speech.Client
@@ -681,7 +687,7 @@ func (r *Runtime) ProcessNativeBOOX(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	defer done()
-	native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: r.cfg.Pages.OCR != nil}
+	native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: r.cfg.Pages.OCR != nil}
 	n, err := native.Observe(ctx)
 	if err == nil {
 		_, err = native.PublishOne(ctx)
@@ -729,7 +735,7 @@ func (r *Runtime) recognitionCatalog(db pg.DB) recognition.Catalog {
 			return recognition.ClientNotebook(ctx, db, id)
 		}
 		if source == "boox" && r.cfg.NativeBOOX != nil {
-			native := boox.Service{Config: *r.cfg.NativeBOOX, DB: db, Objects: r.objects, LibraryID: r.cfg.ID}
+			native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: db, Objects: r.objects, LibraryID: r.cfg.ID}
 			if e := native.ResolveIdentity(ctx); e != nil {
 				return recognition.Notebook{}, e
 			}

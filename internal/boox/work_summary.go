@@ -5,15 +5,15 @@ import (
 	"database/sql"
 	"net/url"
 
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/status"
 )
 
 // workRows is how many note-action and minutes rows the Jobs page lists.
 const workRows = 20
 
 // Work reports note actions and Audio Note Minutes for the Jobs page.
-func (s Service) Work(ctx context.Context) (web.WorkSummary, error) {
-	var out web.WorkSummary
+func (s Service) Work(ctx context.Context) (status.WorkSummary, error) {
+	var out status.WorkSummary
 	var e error
 	if out.Actions.Counts, e = s.workCounts(ctx, `SELECT state,count(*) FROM alexandria_note_action WHERE source='boox' GROUP BY state`); e != nil {
 		return out, e
@@ -30,7 +30,7 @@ func (s Service) Work(ctx context.Context) (web.WorkSummary, error) {
 	}
 	for rows.Next() {
 		var id, page string
-		var r web.WorkRow
+		var r status.WorkRow
 		if e = rows.Scan(&id, &page, &r.Title, &r.Color, &r.Action, &r.State, &r.Detail, &r.Updated); e != nil {
 			rows.Close()
 			return out, e
@@ -51,7 +51,7 @@ func (s Service) Work(ctx context.Context) (web.WorkSummary, error) {
 	}
 	for rows.Next() {
 		var id string
-		var r web.WorkRow
+		var r status.WorkRow
 		if e = rows.Scan(&id, &r.Title, &r.State, &r.Detail, &r.Updated); e != nil {
 			rows.Close()
 			return out, e
@@ -80,7 +80,7 @@ func (s Service) workCounts(ctx context.Context, q string) (map[string]int, erro
 	return counts, closeRows(rows)
 }
 
-func untitled(r web.WorkRow, id string) web.WorkRow {
+func untitled(r status.WorkRow, id string) status.WorkRow {
 	if r.Title == "" {
 		r.Title = id
 	}

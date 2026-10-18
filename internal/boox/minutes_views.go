@@ -53,31 +53,31 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "minutesPage", e)
 		return
 	}
 	stored, has, e := minutes.Load(r.Context(), s.DB, "boox", id)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "minutesPage", e)
 		return
 	}
 	d := minutesView{ID: id, Title: n.Meta.Title, Has: has, Stored: stored, Enabled: s.Minutes.Enabled, Recordings: len(audioKeys(n)), OnPages: s.recordingPages(r.Context(), n)}
 	if has && stored.Topic != "" && n.Meta.Status == 1 {
 		d.Sendable, d.NoteTitle, d.Folder, d.SendRequest = true, n.Meta.Title+"_Minutes", s.folderTitle(r.Context(), n.Meta.ParentUniqueID), uuid.NewString()
 		if d.Sent, e = s.sentMinutesNote(r.Context(), id); e != nil {
-			failure(w, e)
+			s.failure(w, "minutesPage", e)
 			return
 		}
 	}
 	if has && stored.State == "ready" {
 		pages, e := s.pageTexts(r.Context(), n)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "minutesPage", e)
 			return
 		}
 		_, tags, e := s.notebookTags(r.Context(), id)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "minutesPage", e)
 			return
 		}
 		d.Stale = minutesInputHash(recordingIDs(n), pages, tags, s.Minutes.Instructions) != stored.InputHash
@@ -85,7 +85,7 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 	if has && len(stored.Keywords) > 0 {
 		known, e := s.libraryTags(r.Context(), 100000)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "minutesPage", e)
 			return
 		}
 		byLower := map[string]string{}
@@ -140,12 +140,12 @@ func (s Service) minutesRequestPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "minutesRequestPage", e)
 		return
 	}
 	pages, e := s.pageTexts(r.Context(), n)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "minutesRequestPage", e)
 		return
 	}
 	d := minutesRequestView{ID: id, Title: n.Meta.Title, Version: n.Version, Request: uuid.NewString(), Transcriber: s.Minutes.Transcriber, Summarizer: s.Minutes.Summarizer, Enabled: s.Minutes.Enabled, AutoSend: s.Minutes.AutoSend, RecognitionEnabled: s.RecognitionEnabled, Recordings: s.recordings(r.Context(), n), Pages: len(pages)}

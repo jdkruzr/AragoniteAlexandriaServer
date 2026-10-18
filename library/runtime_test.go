@@ -3,17 +3,13 @@ package library
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"io"
 	"net/http/httptest"
-	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/schema"
 )
 
@@ -33,51 +29,13 @@ func (emptyObjects) SignedGetURL(context.Context, string, time.Duration) (string
 
 func fixture(t *testing.T) (*Runtime, *sql.DB, string) {
 	t.Helper()
-	raw := os.Getenv("ALEXANDRIA_TEST_DATABASE_URL")
-	if raw == "" {
-		if os.Getenv("ALEXANDRIA_REQUIRE_INTEGRATION") == "1" {
-			t.Fatal("database required")
-		}
-		t.Skip("database not configured")
-	}
-	u, err := url.Parse(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	admin, err := sql.Open("pgx", raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	name := fmt.Sprintf("alexandria_runtime_test_%d", time.Now().UnixNano())
-	if _, err = admin.Exec(`CREATE DATABASE "` + name + `"`); err != nil {
-		admin.Close()
-		t.Fatal(err)
-	}
-	u.Path = "/" + name
-	db, err := sql.Open("pgx", u.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		db.Close()
-		_, err := admin.Exec(`DROP DATABASE "` + name + `" WITH (FORCE)`)
-		admin.Close()
-		if err != nil {
-			t.Error(err)
-		}
-	})
+	fixture := testenv.Database(t)
+	db, id := fixture.DB, fixture.ID
 	ctx := context.Background()
-	id := uuid.NewString()
-	if err := Migrations().Apply(ctx, db, nil); err != nil {
-		t.Fatal(err)
-	}
-	if err := Initialize(ctx, db, id); err != nil {
-		t.Fatal(err)
-	}
 	if err := SetAdministrator(ctx, db, "author", "a-long-test-password"); err != nil {
 		t.Fatal(err)
 	}
-	r, err := Open(ctx, Config{ID: id, DatabaseURL: u.String(), Objects: emptyObjects{}, MaxConnections: 1})
+	r, err := Open(ctx, Config{ID: id, DatabaseURL: fixture.URL, Objects: emptyObjects{}, MaxConnections: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

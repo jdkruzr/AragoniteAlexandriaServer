@@ -155,7 +155,7 @@ func (s Service) repairPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	tx, e := s.DB.BeginTx(r.Context(), nil)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "repairPreview", e)
 		return
 	}
 	defer tx.Rollback()
@@ -187,7 +187,7 @@ func (s Service) repairPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	resource, _, e := s.Objects.Get(r.Context(), "boox/bodies/"+sha)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "repairPreview", e)
 		return
 	}
 	raw, e := io.ReadAll(io.LimitReader(resource, maxObject+1))
@@ -199,11 +199,11 @@ func (s Service) repairPreview(w http.ResponseWriter, r *http.Request) {
 	var live int64
 	e = tx.QueryRowContext(r.Context(), `SELECT version_id FROM boox_blob_live WHERE native_key=$1`, in.Key).Scan(&live)
 	if e != nil && !errors.Is(e, sql.ErrNoRows) {
-		failure(w, e)
+		s.failure(w, "repairPreview", e)
 		return
 	}
 	if tx.QueryRowContext(r.Context(), `SELECT generation FROM sync_library_generation WHERE id=1 FOR SHARE`).Scan(&generation) != nil {
-		failure(w, errors.New("generation unavailable"))
+		s.failure(w, "repairPreview", errors.New("generation unavailable"))
 		return
 	}
 	id := uuid.NewString()
@@ -213,7 +213,7 @@ func (s Service) repairPreview(w http.ResponseWriter, r *http.Request) {
 		e = tx.Commit()
 	}
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "repairPreview", e)
 		return
 	}
 	reply(w, 200, map[string]any{"operationId": id, "state": "preview", "nativeKey": in.Key, "sha256": sha, "versionId": in.Version, "expectedLiveVersion": live, "application": "unverified"})

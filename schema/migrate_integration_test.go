@@ -3,56 +3,20 @@ package schema_test
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"io/fs"
-	"net/url"
-	"os"
 	"sync"
 	"testing"
 	"testing/fstest"
-	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/migrations"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/schema"
 )
 
 func testDB(t *testing.T) *sql.DB {
 	t.Helper()
-	raw := os.Getenv("ALEXANDRIA_TEST_DATABASE_URL")
-	if raw == "" {
-		if os.Getenv("ALEXANDRIA_REQUIRE_INTEGRATION") == "1" {
-			t.Fatal("integration database required")
-		}
-		t.Skip("integration database not configured")
-	}
-	u, err := url.Parse(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	admin, err := sql.Open("pgx", raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	name := fmt.Sprintf("alexandria_test_%d", time.Now().UnixNano())
-	if _, err = admin.Exec(`CREATE DATABASE "` + name + `"`); err != nil {
-		admin.Close()
-		t.Fatal(err)
-	}
-	u.Path = "/" + name
-	db, err := sql.Open("pgx", u.String())
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := testenv.UnmigratedDatabase(t).DB
 	db.SetMaxOpenConns(8)
-	t.Cleanup(func() {
-		db.Close()
-		_, err := admin.Exec(`DROP DATABASE "` + name + `" WITH (FORCE)`)
-		admin.Close()
-		if err != nil {
-			t.Error(err)
-		}
-	})
 	return db
 }
 

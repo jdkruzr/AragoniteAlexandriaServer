@@ -106,7 +106,7 @@ func (s Service) readerRefreshHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err != nil {
-			failure(w, err)
+			s.failure(w, "readerRefreshHTTP", err)
 			return
 		}
 		q := url.Values{"record": {d.Document}, "operation": {id}}
@@ -124,7 +124,7 @@ func (s Service) readerRefreshHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		failure(w, err)
+		s.failure(w, "readerRefreshHTTP", err)
 		return
 	}
 	var body map[string]any
@@ -148,7 +148,7 @@ func (s Service) readerRefreshHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err != nil {
-			failure(w, err)
+			s.failure(w, "readerRefreshHTTP", err)
 			return
 		}
 		if d.State == "blocked" || d.State == "superseded" {

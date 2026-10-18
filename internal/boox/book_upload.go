@@ -275,7 +275,7 @@ func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 			} else if errors.Is(err, errBookConflict) {
 				data.Error = "A book with this native fingerprint is already known. No existing book was replaced."
 			} else if err != nil {
-				failure(w, err)
+				s.failure(w, "uploadBookHTTP", err)
 				return
 			} else {
 				http.Redirect(w, r, "/boox/books/upload?operation="+id, http.StatusSeeOther)
@@ -297,7 +297,7 @@ func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "uploadBookHTTP", e)
 			return
 		}
 	}

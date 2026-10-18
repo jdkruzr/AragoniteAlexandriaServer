@@ -167,7 +167,7 @@ func (s Service) minutesSendHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, back+"&notice="+url.QueryEscape(e.Error()), http.StatusSeeOther)
 		return
 	} else if e != nil {
-		failure(w, e)
+		s.failure(w, "minutesSendHTTP", e)
 		return
 	}
 	http.Redirect(w, r, back+"&notice="+url.QueryEscape(noticeMinutesSent), http.StatusSeeOther)

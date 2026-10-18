@@ -18,7 +18,7 @@ func (s Service) proxy(w http.ResponseWriter, r *http.Request) {
 	}
 	cookie, e := r.Cookie("SyncGatewaySession")
 	if e != nil {
-		failure(w, errAuth)
+		s.failure(w, "proxy", errAuth)
 		return
 	}
 	check := func(ctx context.Context) error {
@@ -30,12 +30,12 @@ func (s Service) proxy(w http.ResponseWriter, r *http.Request) {
 		return e
 	}
 	if e = check(r.Context()); e != nil {
-		failure(w, e)
+		s.failure(w, "proxy", e)
 		return
 	}
 	backend, e := s.sessionBackend(r.Context(), cookie.Value, "")
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "proxy", e)
 		return
 	}
 	ctx, cancel := context.WithCancel(r.Context())

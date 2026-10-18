@@ -57,7 +57,7 @@ func (s Service) textNoteHTTP(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(e, errTextNoteFolder) || errors.Is(e, errBookEnrollment) {
 			d.Error = e.Error()
 		} else if e != nil {
-			failure(w, e)
+			s.failure(w, "textNoteHTTP", e)
 			return
 		} else {
 			http.Redirect(w, r, "/boox/text-notes/new?operation="+id, http.StatusSeeOther)
@@ -68,7 +68,7 @@ func (s Service) textNoteHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if e := s.ResolveIdentity(r.Context()); e != nil {
-		failure(w, e)
+		s.failure(w, "textNoteHTTP", e)
 		return
 	}
 	if id := r.URL.Query().Get("operation"); id != "" {
@@ -82,27 +82,27 @@ func (s Service) textNoteHTTP(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		} else if e != nil {
-			failure(w, e)
+			s.failure(w, "textNoteHTTP", e)
 			return
 		}
 		d.Code = code.String
 	}
 	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,coalesce(body->>'title','') FROM boox_projection WHERE native_uid=$1 AND body->>'dbId'=$2 AND body->>'type'='0' AND body->>'status'='1' ORDER BY lower(body->>'title') LIMIT 500`, s.uid(), s.uid()+"-NOTE_TREE")
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "textNoteHTTP", e)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var f struct{ ID, Title string }
 		if e = rows.Scan(&f.ID, &f.Title); e != nil {
-			failure(w, e)
+			s.failure(w, "textNoteHTTP", e)
 			return
 		}
 		d.Folders = append(d.Folders, f)
 	}
 	if e = rows.Err(); e != nil {
-		failure(w, e)
+		s.failure(w, "textNoteHTTP", e)
 		return
 	}
 	s.renderPage(w, r, textNoteTemplate, "Create a Test Text Note", d)

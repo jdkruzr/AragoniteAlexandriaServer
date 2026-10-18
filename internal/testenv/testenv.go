@@ -45,43 +45,55 @@ func required(t testing.TB, name string) string {
 // the library singleton. It is dropped (forcibly) when the test ends.
 func Database(t testing.TB) Library {
 	t.Helper()
+	lib := UnmigratedDatabase(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := database.Migrator().Apply(ctx, lib.DB, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lib.DB.ExecContext(ctx, `INSERT INTO alexandria_library_runtime(singleton,library_id) VALUES(true,$1)`, lib.ID); err != nil {
+		t.Fatal(err)
+	}
+	return lib
+}
+
+// UnmigratedDatabase provides the same isolated lifecycle without applying DDL.
+// Migration tests use it to exercise the actual fresh-schema path.
+func UnmigratedDatabase(t testing.TB) Library {
+	t.Helper()
 	raw := required(t, "ALEXANDRIA_TEST_DATABASE_URL")
 	base, err := url.Parse(raw)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("invalid test database URL")
 	}
 	admin, err := sql.Open("pgx", raw)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { admin.Close() })
 	name := fmt.Sprintf("alexandria_test_%d", time.Now().UnixNano())
-	if _, err := admin.Exec(`CREATE DATABASE "` + name + `"`); err != nil {
-		admin.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if _, err = admin.ExecContext(ctx, `CREATE DATABASE "`+name+`"`); err != nil {
 		t.Fatal(err)
 	}
-	base.Path = "/" + name
-	db, err := sql.Open("pgx", base.String())
-	if err != nil {
-		t.Fatal(err)
-	}
+	var db *sql.DB
 	t.Cleanup(func() {
-		db.Close()
-		_, err := admin.Exec(`DROP DATABASE "` + name + `" WITH (FORCE)`)
-		admin.Close()
-		if err != nil {
+		if db != nil {
+			db.Close()
+		}
+		cleanup, done := context.WithTimeout(context.Background(), 30*time.Second)
+		defer done()
+		if _, err := admin.ExecContext(cleanup, `DROP DATABASE "`+name+`" WITH (FORCE)`); err != nil {
 			t.Error(err)
 		}
 	})
-	ctx := context.Background()
-	if err := database.Migrator().Apply(ctx, db, nil); err != nil {
+	base.Path = "/" + name
+	db, err = sql.Open("pgx", base.String())
+	if err != nil {
 		t.Fatal(err)
 	}
-	id := uuid.NewString()
-	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_library_runtime(singleton, library_id) VALUES(true, $1)
-		ON CONFLICT (singleton) DO UPDATE SET library_id=EXCLUDED.library_id`, id); err != nil {
-		t.Fatal(err)
-	}
-	return Library{ID: id, URL: base.String(), DB: db}
+	return Library{ID: uuid.NewString(), URL: base.String(), DB: db}
 }
 
 // Objects returns an S3 store scoped to a fresh library prefix in the shared
@@ -89,7 +101,8 @@ func Database(t testing.TB) Library {
 func Objects(t testing.TB, libraryID string) *blob.Scoped {
 	t.Helper()
 	endpoint := required(t, "ALEXANDRIA_TEST_S3_ENDPOINT")
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	store, err := blob.NewS3(ctx, blob.S3Config{
 		Endpoint: endpoint, Region: "us-east-1", Bucket: "aragonite-alexandria-server",
 		AccessKey: envOr("ALEXANDRIA_TEST_S3_ACCESS_KEY", "alexandria-local"),

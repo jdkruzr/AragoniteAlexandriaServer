@@ -75,7 +75,7 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 	offset := d.Listing.Offset
 	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,revision,body,count(*) OVER() FROM boox_projection p WHERE `+notebookPredicate+` AND native_uid=$1 AND body->>'status'=$2 AND (NOT $7 OR body->>'type'='1') AND (body->>'type'='0' OR $8='all' OR $8='handwritten' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') IN ('0','3') OR $8='text' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND body->>'activeScene'='1' OR $8='reading' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='1' OR $8='other' AND (coalesce(body#>>'{association,associationType}',body->>'associationType','0') NOT IN ('0','1') OR coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') NOT IN ('0','1','3'))) AND ($3<>'' AND strpos(lower(coalesce(body->>'title','')),lower($3))>0 OR $3='' AND ($7 OR $5 OR coalesce(body->>'parentUniqueId','')=$4)) ORDER BY `+d.Listing.NativeOrder()+` LIMIT 60 OFFSET $6`, s.uid(), status, d.Query, d.Folder, d.Deleted, offset, d.All, d.Category)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "notebooks", e)
 		return
 	}
 	for rows.Next() {
@@ -131,7 +131,7 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 	re := rows.Err()
 	rows.Close()
 	if e != nil || re != nil {
-		failure(w, errors.New("notebook inventory read failed"))
+		s.failure(w, "notebooks", errors.New("notebook inventory read failed"))
 		return
 	}
 	if len(d.Entries) == 0 && offset > 0 {
@@ -153,7 +153,7 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "notebooks", e)
 			return
 		}
 		d.Crumbs = append([]notebookEntry{c}, d.Crumbs...)
@@ -280,7 +280,7 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(e, sql.ErrNoRows) {
 			http.NotFound(w, r)
 		} else {
-			failure(w, e)
+			s.failure(w, "notebook", e)
 		}
 		return
 	}
@@ -346,7 +346,7 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	byPage, all, err := s.notebookTags(r.Context(), d.ID)
 	if err != nil {
-		failure(w, err)
+		s.failure(w, "notebook", err)
 		return
 	}
 	d.PageTags = byPage[d.Page]
@@ -357,19 +357,19 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	d.Recordings = len(audioKeys(n))
 	if err := s.DB.QueryRowContext(r.Context(), `SELECT state,topic FROM alexandria_note_minutes WHERE source='boox' AND notebook_id=$1`, d.ID).Scan(&d.MinutesState, &d.MinutesTopic); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		failure(w, err)
+		s.failure(w, "notebook", err)
 		return
 	}
 	if d.Page != "" {
 		err := s.DB.QueryRowContext(r.Context(), `SELECT state,detail,text FROM boox_page_index WHERE notebook_id=$1 AND page_id=$2`, d.ID, d.Page).Scan(&d.RecognitionState, &d.RecognitionDetail, &d.RecognizedText)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			failure(w, err)
+			s.failure(w, "notebook", err)
 			return
 		}
 	}
 	if d.Page != "" {
 		if d.Actions, d.ActionItems, err = s.pageActions(r.Context(), d.ID, d.Page); err != nil {
-			failure(w, err)
+			s.failure(w, "notebook", err)
 			return
 		}
 	}

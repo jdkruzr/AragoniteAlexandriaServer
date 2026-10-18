@@ -17,7 +17,7 @@ import (
 // also requires an exact configured Origin; bearer tokens cannot enroll devices.
 func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 	if e := s.ResolveIdentity(r.Context()); e != nil {
-		failure(w, e)
+		s.failure(w, "Admin", e)
 		return
 	}
 	if r.Method != "GET" {
@@ -34,14 +34,14 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/v1/boox/admin/enrollment" && r.Method == "POST":
 		code, e := s.IssueCode(r.Context())
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "Admin", e)
 			return
 		}
 		reply(w, 200, map[string]any{"code": code, "expiresIn": 600})
 	case r.URL.Path == "/api/v1/boox/admin/devices" && r.Method == "GET":
 		rows, e := s.DB.QueryContext(r.Context(), `SELECT id::text,model,revoked,created_at FROM boox_device ORDER BY created_at`)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "Admin", e)
 			return
 		}
 		defer rows.Close()
@@ -51,13 +51,13 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 			var revoked bool
 			var at time.Time
 			if e = rows.Scan(&id, &model, &revoked, &at); e != nil {
-				failure(w, e)
+				s.failure(w, "Admin", e)
 				return
 			}
 			out = append(out, map[string]any{"id": id, "model": model, "revoked": revoked, "createdAt": at})
 		}
 		if rows.Err() != nil {
-			failure(w, rows.Err())
+			s.failure(w, "Admin", rows.Err())
 			return
 		}
 		reply(w, 200, out)
@@ -75,7 +75,7 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 		}
 		_, e := s.DB.ExecContext(r.Context(), `UPDATE boox_device SET revoked=true WHERE id=$1`, input.DeviceID)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "Admin", e)
 			return
 		}
 		principal := "ps_" + strings.ReplaceAll(input.DeviceID, "-", "")
@@ -96,7 +96,7 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 		}
 		body, _, e := s.Objects.Get(r.Context(), "boox/revisions/"+sha)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "Admin", e)
 			return
 		}
 		defer body.Close()
@@ -104,7 +104,7 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", `attachment; filename="boox-native-revision.json"`)
 		var exact json.RawMessage
 		if json.NewDecoder(body).Decode(&exact) != nil || hash(exact) != sha {
-			failure(w, errors.New("archive integrity failure"))
+			s.failure(w, "Admin", errors.New("archive integrity failure"))
 			return
 		}
 		_, _ = w.Write(exact)
@@ -126,7 +126,7 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 		}
 		result, e := s.DB.ExecContext(r.Context(), `UPDATE boox_operation SET state='queued',updated_at=now() WHERE id=$1 AND state='preview'`, in.OperationID)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "Admin", e)
 			return
 		}
 		n, _ := result.RowsAffected()
@@ -138,7 +138,7 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/v1/boox/admin/operations" && r.Method == "GET":
 		rows, e := s.DB.QueryContext(r.Context(), `SELECT id::text,kind,document_id,state,coalesce(published_revision,''),coalesce(error_code,'') FROM boox_operation ORDER BY created_at DESC LIMIT 100`)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "Admin", e)
 			return
 		}
 		defer rows.Close()
@@ -146,13 +146,13 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var id, k, d, state, rev, err string
 			if rows.Scan(&id, &k, &d, &state, &rev, &err) != nil {
-				failure(w, errors.New("operation read failed"))
+				s.failure(w, "Admin", errors.New("operation read failed"))
 				return
 			}
 			out = append(out, map[string]string{"id": id, "kind": k, "documentId": d, "state": state, "revision": rev, "error": err, "application": "unverified"})
 		}
 		if rows.Err() != nil {
-			failure(w, rows.Err())
+			s.failure(w, "Admin", rows.Err())
 			return
 		}
 		reply(w, 200, out)
@@ -165,7 +165,7 @@ func (s Service) Admin(w http.ResponseWriter, r *http.Request) {
 func (s Service) history(w http.ResponseWriter, r *http.Request) {
 	rows, e := s.DB.QueryContext(r.Context(), `SELECT revision,body_sha256,deleted,observed_at FROM boox_revision WHERE document_id=$1 ORDER BY observed_at DESC LIMIT 100`, r.URL.Query().Get("documentId"))
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "history", e)
 		return
 	}
 	defer rows.Close()
@@ -175,13 +175,13 @@ func (s Service) history(w http.ResponseWriter, r *http.Request) {
 		var deleted bool
 		var at time.Time
 		if rows.Scan(&rev, &sha, &deleted, &at) != nil {
-			failure(w, errors.New("history read failed"))
+			s.failure(w, "history", errors.New("history read failed"))
 			return
 		}
 		out = append(out, map[string]any{"revision": rev, "sha256": sha, "deleted": deleted, "observedAt": at, "provenance": "gateway_changes"})
 	}
 	if rows.Err() != nil {
-		failure(w, rows.Err())
+		s.failure(w, "history", rows.Err())
 		return
 	}
 	reply(w, 200, out)
@@ -206,7 +206,7 @@ func (s Service) preview(w http.ResponseWriter, r *http.Request) {
 	}
 	tx, e := s.DB.BeginTx(r.Context(), nil)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "preview", e)
 		return
 	}
 	defer tx.Rollback()
@@ -220,7 +220,7 @@ func (s Service) preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if e = tx.QueryRowContext(r.Context(), `SELECT generation FROM sync_library_generation WHERE id=1 FOR SHARE`).Scan(&generation); e != nil {
-		failure(w, e)
+		s.failure(w, "preview", e)
 		return
 	}
 	var changes map[string]any
@@ -279,7 +279,7 @@ func (s Service) preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !errors.Is(e, sql.ErrNoRows) {
-		failure(w, e)
+		s.failure(w, "preview", e)
 		return
 	}
 	_, e = tx.ExecContext(r.Context(), `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,selected_revision,payload) VALUES($1,$2,$3,$4,$5,$6,$7)`, id, in.Idempotency, in.Kind, in.DocumentID, in.Expected, in.Selected, payload)
@@ -287,7 +287,7 @@ func (s Service) preview(w http.ResponseWriter, r *http.Request) {
 		e = tx.Commit()
 	}
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "preview", e)
 		return
 	}
 	reply(w, 200, map[string]any{"operationId": id, "state": "preview", "kind": in.Kind, "documentId": in.DocumentID, "expectedRevision": in.Expected, "selectedRevision": in.Selected, "changes": map[string]any{"title": in.Title, "status": in.Status, "readerFields": changes}, "scope": "bounded native fields only; original resource identities preserved", "application": "unverified"})
@@ -313,14 +313,14 @@ func (s Service) browse(w http.ResponseWriter, r *http.Request) {
 	}{Domain: domain}
 	rows, e := s.DB.QueryContext(r.Context(), `SELECT DISTINCT domain FROM boox_projection ORDER BY domain`)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "browse", e)
 		return
 	}
 	for rows.Next() {
 		var v string
 		if rows.Scan(&v) != nil {
 			rows.Close()
-			failure(w, errors.New("projection read failed"))
+			s.failure(w, "browse", errors.New("projection read failed"))
 			return
 		}
 		d.Domains = append(d.Domains, v)
@@ -328,20 +328,20 @@ func (s Service) browse(w http.ResponseWriter, r *http.Request) {
 	rows.Close()
 	rows, e = s.DB.QueryContext(r.Context(), `SELECT document_id,revision,domain,coalesce(body->>'title',body->>'content',document_id),supported,count(*) OVER() FROM boox_projection WHERE $1='' OR domain=$1 ORDER BY domain,document_id LIMIT $2 OFFSET $3`, domain, size, offset)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "browse", e)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var v item
 		if rows.Scan(&v.ID, &v.Revision, &v.Domain, &v.Title, &v.Supported, &d.Total) != nil {
-			failure(w, errors.New("projection read failed"))
+			s.failure(w, "browse", errors.New("projection read failed"))
 			return
 		}
 		d.Items = append(d.Items, v)
 	}
 	if rows.Err() != nil {
-		failure(w, rows.Err())
+		s.failure(w, "browse", rows.Err())
 		return
 	}
 	page := func(n int) string {
@@ -371,7 +371,7 @@ func (s Service) assetHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, e := s.DB.QueryContext(r.Context(), `SELECT id,coalesce(sha256,''),coalesce(bytes,0),deleted,created_at FROM boox_blob_version WHERE native_key=$1 ORDER BY id DESC LIMIT 100`, key)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "assetHistory", e)
 		return
 	}
 	defer rows.Close()
@@ -382,13 +382,13 @@ func (s Service) assetHistory(w http.ResponseWriter, r *http.Request) {
 		var deleted bool
 		var at time.Time
 		if rows.Scan(&id, &sha, &size, &deleted, &at) != nil {
-			failure(w, errors.New("asset history read failed"))
+			s.failure(w, "assetHistory", errors.New("asset history read failed"))
 			return
 		}
 		out = append(out, map[string]any{"versionId": id, "sha256": sha, "bytes": size, "deleted": deleted, "observedAt": at})
 	}
 	if rows.Err() != nil {
-		failure(w, rows.Err())
+		s.failure(w, "assetHistory", rows.Err())
 		return
 	}
 	reply(w, 200, out)

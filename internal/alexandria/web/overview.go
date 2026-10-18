@@ -2,20 +2,16 @@ package web
 
 import (
 	"context"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics"
 	"net/http"
 	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/status"
 )
 
-// SourceSummary is a source's at-a-glance state for the library overview.
-// Counts are -1 when unknown so a failed query never shows a misleading zero.
-type SourceSummary struct {
-	Notebooks, Books, Devices int
-	LastActivity              time.Time // zero when nothing has been received
-	ActivityLabel             string    // what LastActivity measures, e.g. "Last sync"
-}
+type SourceSummary = status.SourceSummary
 
 type overviewData struct {
 	NativeBOOX         bool
@@ -36,7 +32,7 @@ func (d Deps) overview(w http.ResponseWriter, r *http.Request) {
 		if s, err := d.BOOXSummary(ctx); err == nil {
 			v.BOOX = &s
 		} else if d.Logger != nil {
-			d.Logger.Warn("BOOX overview summary unavailable", "error", err.Error())
+			d.Logger.Warn("BOOX overview summary unavailable", "code", diagnostics.Code(err))
 		}
 	}
 	if jobs, err := (recognition.Store{DB: d.DB}).List(ctx, recognition.Filter{}); err == nil {

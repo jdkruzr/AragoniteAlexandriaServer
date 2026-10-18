@@ -18,24 +18,14 @@ spec:
         app.kubernetes.io/component: gateway
     spec:
       securityContext:
-        runAsNonRoot: true
-        seccompProfile: { type: RuntimeDefault }
+        {{- include "alexandria.podSecurity" . | nindent 8 }}
       containers:
         - name: alexandria
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - { name: ALEXANDRIA_ROLE, value: gateway }
-            - name: ALEXANDRIA_DATABASE_URL
-              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: database-url } }
-            - { name: ALEXANDRIA_OBJECT_ENDPOINT, value: {{ .Values.objectStore.endpoint | quote }} }
-            - { name: ALEXANDRIA_OBJECT_REGION, value: {{ .Values.objectStore.region | quote }} }
-            - { name: ALEXANDRIA_OBJECT_BUCKET, value: {{ .Values.objectStore.bucket | quote }} }
-            - name: ALEXANDRIA_OBJECT_ACCESS_KEY
-              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: object-access-key } }
-            - name: ALEXANDRIA_OBJECT_SECRET_KEY
-              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: object-secret-key } }
-            - { name: ALEXANDRIA_OBJECT_PATH_STYLE, value: {{ .Values.objectStore.pathStyle | quote }} }
+            {{- include "alexandria.runtimeEnv" . | nindent 12 }}
           ports:
             - { name: main, containerPort: 8443 }
             - { name: spc, containerPort: 8089 }
@@ -43,9 +33,7 @@ spec:
           livenessProbe: { httpGet: { path: /livez, port: main }, periodSeconds: 20 }
           resources: {{- toYaml .Values.gateway.resources | nindent 12 }}
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities: { drop: ["ALL"] }
+            {{- include "alexandria.containerSecurity" . | nindent 12 }}
           volumeMounts:
             - { name: scratch, mountPath: /tmp }
       volumes:

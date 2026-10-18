@@ -47,6 +47,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 10b complete: book/text publication shares immutable body staging, owner/generation locking and new-key bindings. Lost-acknowledgment and owner-change regressions pass; cumulative full gate `11` passes. The redundant queued standalone gate was cancelled before starting.
 
+- Batch 11 complete: neutral summary DTOs, safe injected diagnostics, shared bounded fixtures, object write/read/delete readiness and Helm helpers. Full gate `11` passes; the final `12` gate also covers standalone JSON-logger wiring. Hosting compiles against the replacement runtime in a temporary checkout; Helm lint and template equivalence pass. The timestamp-sensitive note-action fixture is repaired.
+
 ## Validation adjustment
 
 The first batch-8 full gate exposed a pre-existing timing dependency in

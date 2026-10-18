@@ -14,6 +14,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -281,7 +282,7 @@ func notice(l i18n.Localizer, r *http.Request) string {
 
 func (d Deps) fail(w http.ResponseWriter, err error) {
 	if d.Logger != nil {
-		d.Logger.Error("web page failed", "error", err.Error())
+		d.Logger.Error("web page failed", "code", diagnostics.Code(err))
 	}
 	http.Error(w, "Something went wrong. Please try again.", http.StatusInternalServerError)
 }

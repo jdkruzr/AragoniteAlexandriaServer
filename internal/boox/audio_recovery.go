@@ -57,7 +57,7 @@ func (s Service) audioRecoveryDevice(w http.ResponseWriter, r *http.Request) {
 		}
 		rows, err := s.DB.QueryContext(r.Context(), `SELECT o.id::text,p.document_id,coalesce(p.body->>'title',''),l.native_key`+recoverableAudioSQL+` AND o.id::text>$2 ORDER BY o.id::text LIMIT 51`, s.uid(), after)
 		if err != nil {
-			failure(w, err)
+			s.failure(w, "audioRecoveryDevice", err)
 			return
 		}
 		defer rows.Close()
@@ -65,14 +65,14 @@ func (s Service) audioRecoveryDevice(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var v audioRecoveryItem
 			if err = rows.Scan(&v.ID, &v.Document, &v.Title, &v.File); err != nil {
-				failure(w, err)
+				s.failure(w, "audioRecoveryDevice", err)
 				return
 			}
 			v.File = path.Base(v.File)
 			items = append(items, v)
 		}
 		if err = rows.Err(); err != nil {
-			failure(w, err)
+			s.failure(w, "audioRecoveryDevice", err)
 			return
 		}
 		next := ""
@@ -93,7 +93,7 @@ func (s Service) audioRecoveryDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		failure(w, err)
+		s.failure(w, "audioRecoveryDevice", err)
 		return
 	}
 	reply(w, 200, packet)
@@ -160,7 +160,7 @@ func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			result, err := s.DB.ExecContext(r.Context(), `UPDATE boox_operation SET state='queued',updated_at=now() WHERE id=$1 AND document_id=$2 AND state='preview' AND kind='repair_asset' AND payload->>'transform'=$3`, d.Operation, d.Document, audioTransform)
 			if err != nil {
-				failure(w, err)
+				s.failure(w, "audioRecoveryHTTP", err)
 				return
 			}
 			n, _ := result.RowsAffected()
@@ -180,7 +180,7 @@ func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 				if errors.As(err, &rejected) {
 					http.Error(w, rejected.message, rejected.status)
 				} else {
-					failure(w, err)
+					s.failure(w, "audioRecoveryHTTP", err)
 				}
 				return
 			}
@@ -200,7 +200,7 @@ func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		failure(w, err)
+		s.failure(w, "audioRecoveryHTTP", err)
 		return
 	}
 	var b map[string]any
@@ -220,7 +220,7 @@ func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err != nil {
-			failure(w, err)
+			s.failure(w, "audioRecoveryHTTP", err)
 			return
 		}
 		if d.State == "blocked" || d.State == "superseded" {
@@ -230,21 +230,21 @@ func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 		prefix := s.uid() + "/note/" + d.Document + "/resource/data/"
 		rows, err := s.DB.QueryContext(r.Context(), `SELECT l.native_key,v.id,v.bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE NOT v.deleted AND l.native_key >= $1 COLLATE "C" AND l.native_key < $2 COLLATE "C" AND lower(right(l.native_key,4)) IN ('.mp3','.pcm') ORDER BY l.native_key`, prefix, directoryUpper(prefix))
 		if err != nil {
-			failure(w, err)
+			s.failure(w, "audioRecoveryHTTP", err)
 			return
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var a audioRecoveryAsset
 			if err = rows.Scan(&a.Key, &a.Version, &a.Bytes); err != nil {
-				failure(w, err)
+				s.failure(w, "audioRecoveryHTTP", err)
 				return
 			}
 			a.Name = path.Base(a.Key)
 			d.Items = append(d.Items, a)
 		}
 		if err = rows.Err(); err != nil {
-			failure(w, err)
+			s.failure(w, "audioRecoveryHTTP", err)
 			return
 		}
 	}

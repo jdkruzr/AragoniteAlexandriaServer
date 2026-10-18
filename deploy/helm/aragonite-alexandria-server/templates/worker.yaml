@@ -19,8 +19,7 @@ spec:
         app.kubernetes.io/component: worker
     spec:
       securityContext:
-        runAsNonRoot: true
-        seccompProfile: { type: RuntimeDefault }
+        {{- include "alexandria.podSecurity" . | nindent 8 }}
       containers:
         - name: alexandria
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -29,21 +28,10 @@ spec:
             - { name: ALEXANDRIA_ROLE, value: worker }
             - name: ALEXANDRIA_WORKER_ID
               valueFrom: { fieldRef: { fieldPath: metadata.name } }
-            - name: ALEXANDRIA_DATABASE_URL
-              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: database-url } }
-            - { name: ALEXANDRIA_OBJECT_ENDPOINT, value: {{ .Values.objectStore.endpoint | quote }} }
-            - { name: ALEXANDRIA_OBJECT_REGION, value: {{ .Values.objectStore.region | quote }} }
-            - { name: ALEXANDRIA_OBJECT_BUCKET, value: {{ .Values.objectStore.bucket | quote }} }
-            - name: ALEXANDRIA_OBJECT_ACCESS_KEY
-              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: object-access-key } }
-            - name: ALEXANDRIA_OBJECT_SECRET_KEY
-              valueFrom: { secretKeyRef: { name: {{ include "alexandria.secretName" . }}, key: object-secret-key } }
-            - { name: ALEXANDRIA_OBJECT_PATH_STYLE, value: {{ .Values.objectStore.pathStyle | quote }} }
+            {{- include "alexandria.runtimeEnv" . | nindent 12 }}
           resources: {{- toYaml .Values.worker.resources | nindent 12 }}
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities: { drop: ["ALL"] }
+            {{- include "alexandria.containerSecurity" . | nindent 12 }}
           volumeMounts:
             - { name: scratch, mountPath: /tmp }
       volumes:

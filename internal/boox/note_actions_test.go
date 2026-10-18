@@ -56,7 +56,13 @@ func (m *actionsModel) Complete(_ context.Context, system, _ string, _ int) (str
 func TestNoteActionsMakeItemsOnce(t *testing.T) {
 	s := indexFixture(t)
 	ctx := context.Background()
-	now := time.Now().UnixMilli()
+	// The action clock must precede this ink. Starting it implicitly during
+	// recognition raced the wall-clock second boundary and sometimes skipped it.
+	inkTime := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	now := inkTime.UnixMilli()
+	if err := settings.Set(ctx, s.DB, settings.NoteActionsSince, inkTime.Add(-time.Hour).Format(time.RFC3339), false); err != nil {
+		t.Fatal(err)
+	}
 	ink := func(id string, color int32, x float32) *pb.ShapeInfoProto {
 		return &pb.ShapeInfoProto{UniqueId: id, ShapeType: 2, Color: color, Thickness: 2, PointList: inlinePoints(x), CreatedAt: now, UpdatedAt: now}
 	}

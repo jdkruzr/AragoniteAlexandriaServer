@@ -91,20 +91,20 @@ func (s Service) tagsPage(w http.ResponseWriter, r *http.Request) {
 		rows, err := s.DB.QueryContext(r.Context(), `SELECT t.content,count(DISTINCT (t.notebook_id,t.page_id)) FILTER (WHERE n.document_id IS NOT NULL),count(DISTINCT t.notebook_id) FILTER (WHERE n.document_id IS NOT NULL)
 		 FROM boox_tag t LEFT JOIN boox_search_notebooks n ON n.document_id=t.notebook_id GROUP BY t.content ORDER BY 2 DESC,lower(t.content)`)
 		if err != nil {
-			failure(w, err)
+			s.failure(w, "tagsPage", err)
 			return
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var t tagSummary
 			if err := rows.Scan(&t.Content, &t.Pages, &t.Notebooks); err != nil {
-				failure(w, err)
+				s.failure(w, "tagsPage", err)
 				return
 			}
 			d.Tags = append(d.Tags, t)
 		}
 		if err := rows.Err(); err != nil {
-			failure(w, err)
+			s.failure(w, "tagsPage", err)
 			return
 		}
 		s.renderPage(w, r, tagsTemplate, "BOOX Tags", d)
@@ -117,7 +117,7 @@ func (s Service) tagsPage(w http.ResponseWriter, r *http.Request) {
 	 LEFT JOIN boox_page_index p ON p.notebook_id=t.notebook_id AND p.page_id=t.page_id
 	 WHERE lower(t.content)=lower($1) AND ids.ord IS NOT NULL`, d.Tag)
 	if err != nil {
-		failure(w, err)
+		s.failure(w, "tagsPage", err)
 		return
 	}
 	defer rows.Close()
@@ -125,14 +125,14 @@ func (s Service) tagsPage(w http.ResponseWriter, r *http.Request) {
 		var p taggedPage
 		var text, content string
 		if err := rows.Scan(&p.NotebookID, &p.Title, &p.PageID, &p.Number, &text, &content); err != nil {
-			failure(w, err)
+			s.failure(w, "tagsPage", err)
 			return
 		}
 		d.Tag, p.Snippet = content, snippet(text, 200)
 		d.Pages = append(d.Pages, p)
 	}
 	if err := rows.Err(); err != nil {
-		failure(w, err)
+		s.failure(w, "tagsPage", err)
 		return
 	}
 	sort.Slice(d.Pages, func(i, j int) bool {

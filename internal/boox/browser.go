@@ -89,7 +89,7 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			code, e := s.IssueCode(r.Context())
 			if e != nil {
-				failure(w, e)
+				s.failure(w, "browser", e)
 				return
 			}
 			s.renderPage(w, r, setupTemplate, "Connect a BOOX Device", code)
@@ -105,7 +105,7 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		}
 		rows, e := s.DB.QueryContext(r.Context(), `SELECT id::text,model,revoked,(SELECT max(v.created_at) FROM boox_blob_version v WHERE v.device_id=d.id) FROM boox_device d ORDER BY revoked,created_at`)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "browser", e)
 			return
 		}
 		defer rows.Close()
@@ -118,13 +118,13 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var v item
 			if rows.Scan(&v.ID, &v.Model, &v.Revoked, &v.LastUpload) != nil {
-				failure(w, errors.New("device read failed"))
+				s.failure(w, "browser", errors.New("device read failed"))
 				return
 			}
 			out = append(out, v)
 		}
 		if rows.Err() != nil {
-			failure(w, rows.Err())
+			s.failure(w, "browser", rows.Err())
 			return
 		}
 		s.renderPage(w, r, devicesTemplate, "BOOX Devices", out)
@@ -144,7 +144,7 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if e := s.revoke(r.Context(), id); e != nil {
-			failure(w, e)
+			s.failure(w, "browser", e)
 			return
 		}
 		http.Redirect(w, r, "/boox/devices", 303)

@@ -183,7 +183,7 @@ func (s Service) cleanupHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			_, e := s.DB.ExecContext(r.Context(), `UPDATE boox_operation SET state='cancelled',updated_at=now() WHERE payload->>'cleanupBatch'=$1 AND state='queued'`, token)
 			if e != nil {
-				failure(w, e)
+				s.failure(w, "cleanupHTTP", e)
 				return
 			}
 		} else if r.PostForm.Get("action") == "queue" {
@@ -206,7 +206,7 @@ func (s Service) cleanupHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if e != nil {
-				failure(w, e)
+				s.failure(w, "cleanupHTTP", e)
 				return
 			}
 		} else {
@@ -252,7 +252,7 @@ func (s Service) cleanupHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "cleanupHTTP", e)
 		return
 	}
 	s.renderPage(w, r, cleanupTemplate, "Clean Up BOOX Notebooks", d)

@@ -21,6 +21,8 @@ batched without changing selected-result order.
 Batch 9 passes: provider settings and processing-clock changes commit atomically.
 Batch 10 passes: shared provider HTTP transport and publication prerequisites
 retain their operation-specific behavior and failure checks.
+Batch 11 passes: safe diagnostics, neutral DTOs, shared fixtures and Helm
+helpers; the Hosting compatibility compile passes.
 No implementation changes have been deployed yet.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,

@@ -10,7 +10,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics"
 	"io"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"strings"
@@ -18,6 +20,7 @@ import (
 )
 
 type Service struct {
+	Logger              *slog.Logger
 	RecognitionEnabled  bool
 	RecognitionIdentity string
 	RecognitionRevision int64
@@ -58,7 +61,12 @@ func reply(w http.ResponseWriter, n int, v any) {
 	w.WriteHeader(n)
 	_ = json.NewEncoder(w).Encode(v)
 }
-func failure(w http.ResponseWriter, e error) {
+func (s Service) failure(w http.ResponseWriter, operation string, e error) {
+	logger := s.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+	logger.Error("BOOX request failed", "operation", operation, "code", diagnostics.Code(e))
 	n := 503
 	if errors.Is(e, errAuth) {
 		n = 401
@@ -161,23 +169,23 @@ func (s Service) enroll(w http.ResponseWriter, r *http.Request) {
 	}
 	tx, e := s.DB.BeginTx(r.Context(), nil)
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "enroll", e)
 		return
 	}
 	defer tx.Rollback()
 	var unused bool
 	e = tx.QueryRowContext(r.Context(), `SELECT used_at IS NULL AND expires_at>now() FROM boox_enrollment WHERE code_hash=$1 FOR UPDATE`, tokenHash(input.Code)).Scan(&unused)
 	if errors.Is(e, sql.ErrNoRows) || e == nil && !unused {
-		failure(w, errAuth)
+		s.failure(w, "enroll", errAuth)
 		return
 	}
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "enroll", e)
 		return
 	}
 	var bound sql.NullString
 	if e = tx.QueryRowContext(r.Context(), `SELECT native_uid FROM boox_identity WHERE id=1 FOR UPDATE`).Scan(&bound); e != nil {
-		failure(w, e)
+		s.failure(w, "enroll", e)
 		return
 	}
 	uid := bound.String
@@ -191,7 +199,7 @@ func (s Service) enroll(w http.ResponseWriter, r *http.Request) {
 			uid = nativeUID(s.LibraryID)
 		}
 		if _, e = tx.ExecContext(r.Context(), `UPDATE boox_identity SET native_uid=$1,bound_at=now() WHERE id=1`, uid); e != nil {
-			failure(w, e)
+			s.failure(w, "enroll", e)
 			return
 		}
 	} else if input.NativeUID != "" && input.NativeUID != uid {
@@ -206,7 +214,7 @@ func (s Service) enroll(w http.ResponseWriter, r *http.Request) {
 	previousErr := tx.QueryRowContext(r.Context(), `SELECT id::text,account,identity_hint FROM boox_device WHERE installation_id=$1 FOR UPDATE`, input.InstallationID).Scan(&previousID, &previousAccount, &previousHint)
 	if previousErr == nil {
 		if previousHint != tokenHash(input.NativeDeviceID) {
-			failure(w, errAuth)
+			s.failure(w, "enroll", errAuth)
 			return
 		}
 		id = previousID
@@ -227,7 +235,7 @@ func (s Service) enroll(w http.ResponseWriter, r *http.Request) {
 		e = tx.Commit()
 	}
 	if e != nil {
-		failure(w, e)
+		s.failure(w, "enroll", e)
 		return
 	}
 	reply(w, 200, s.Config.profile(s.LibraryID, id, account, login, companion, s.uid()))
@@ -286,7 +294,7 @@ func nativeBearer(r *http.Request) string {
 }
 func (s Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := s.ResolveIdentity(r.Context()); e != nil {
-		failure(w, e)
+		s.failure(w, "ServeHTTP", e)
 		return
 	}
 	if r.URL.Path == "/api/v1/boox/enroll" {
@@ -304,7 +312,7 @@ func (s Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/api/v1/boox/device/") {
 		d, e := s.auth(r.Context(), "companion", bearer(r), "")
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "ServeHTTP", e)
 			return
 		}
 		if r.URL.Path == "/api/v1/boox/device/audio-recovery" {
@@ -339,7 +347,7 @@ func (s Service) account(w http.ResponseWriter, r *http.Request) {
 	f, e := fingerprint(r)
 	if e != nil {
 		if r.Method == "POST" && (p == "/users/signin" || p == "/users/checkRegistrationStatus") {
-			failure(w, e)
+			s.failure(w, "account", e)
 			return
 		}
 		f = ""
@@ -359,14 +367,14 @@ func (s Service) account(w http.ResponseWriter, r *http.Request) {
 			e = errAuth
 		}
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "account", e)
 			return
 		}
 		if p == "/users/checkRegistrationStatus" {
 			data = map[string]bool{"isRegistered": true}
 		} else {
 			if subtle.ConstantTimeCompare([]byte(expected), []byte(tokenHash(code))) != 1 || (bound != "" && bound != f) {
-				failure(w, errAuth)
+				s.failure(w, "account", errAuth)
 				return
 			}
 			t := token()
@@ -378,7 +386,7 @@ func (s Service) account(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if e != nil {
-				failure(w, e)
+				s.failure(w, "account", e)
 				return
 			}
 			data = map[string]any{"token": t, "tokenExpiredAt": responseExpiry.Unix()}
@@ -390,7 +398,7 @@ func (s Service) account(w http.ResponseWriter, r *http.Request) {
 		}
 		d, e := s.auth(r.Context(), authKind, nativeBearer(r), f)
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "account", e)
 			return
 		}
 		responseExpiry = d.BearerExpires
@@ -469,7 +477,7 @@ func (s Service) account(w http.ResponseWriter, r *http.Request) {
 		case r.Method == "GET" && p == "/statistics/v2/user/storage":
 			data, e = s.storageStatus(r.Context())
 			if e != nil {
-				failure(w, e)
+				s.failure(w, "account", e)
 				return
 			}
 			reply(w, 200, data)
@@ -481,7 +489,7 @@ func (s Service) account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if e != nil {
-			failure(w, e)
+			s.failure(w, "account", e)
 			return
 		}
 	}

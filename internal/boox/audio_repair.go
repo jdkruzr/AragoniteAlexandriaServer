@@ -152,7 +152,7 @@ func (s Service) audioRepairPreview(w http.ResponseWriter, r *http.Request) {
 		if errors.As(err, &rejected) {
 			reply(w, rejected.status, map[string]string{"error": rejected.message})
 		} else {
-			failure(w, err)
+			s.failure(w, "audioRepairPreview", err)
 		}
 		return
 	}
