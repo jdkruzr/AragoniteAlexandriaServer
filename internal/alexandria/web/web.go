@@ -85,6 +85,7 @@ var funcs = withFormats(template.FuncMap{
 		}{t, v, src}
 	},
 	// eventRow pairs a Calendar row with whether it is in the trash.
+	"connection": connection,
 	"eventRow": func(r calendarRow, trash bool) any {
 		return struct {
 			Row   calendarRow
@@ -133,7 +134,7 @@ func withFormats(f template.FuncMap) template.FuncMap {
 // the layout (BOOX views) parse with these so names resolve identically.
 func Funcs() template.FuncMap { return funcs }
 
-var layout = template.Must(template.New("layout.html").Funcs(funcs).ParseFS(assets, "templates/layout.html"))
+var layout = template.Must(template.New("layout.html").Funcs(funcs).ParseFS(assets, "templates/layout.html", "templates/connection.html"))
 
 // Bases are immutable and never executed; each render clones before binding
 // request-specific localization and performing html/template escaping.
@@ -144,7 +145,7 @@ var contentTemplates = func() map[string]*template.Template {
 	}
 	out := make(map[string]*template.Template, len(names))
 	for _, name := range names {
-		if path.Base(name) == "layout.html" {
+		if path.Base(name) == "layout.html" || path.Base(name) == "connection.html" {
 			continue
 		}
 		base := template.Must(layout.Clone())
@@ -368,7 +369,7 @@ func Handler(d Deps) http.Handler {
 	d.authorizeRoutes(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
-		h.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; form-action 'self' https: http://localhost:* http://127.0.0.1:*")
+		h.Set("Content-Security-Policy", "default-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; form-action 'self' https: http://localhost:* http://127.0.0.1:*")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")

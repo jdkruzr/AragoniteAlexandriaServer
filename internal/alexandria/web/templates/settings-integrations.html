@@ -2,7 +2,7 @@
 <h1>{{t "Tasks & Integrations"}}</h1>
 <section class="card">
 <h2>{{t "Tasks Over CalDAV"}} {{template "help" "tasks.caldav"}}</h2>
-<p>{{t "CalDAV address:"}} <code>{{.Base}}{{$d.CalDAV}}</code></p>
+{{template "connection" (connection .Base "both")}}
 <form method="post" action="/settings/caldav" class="stack">
 <label>{{t "Task list name"}} <input name="collection" value="{{$d.Collection}}" maxlength="200"></label>
 <label>{{t "Calendar name"}} <input name="events_collection" value="{{$d.EventsCollection}}" maxlength="200"></label>
@@ -13,7 +13,7 @@
 </select></label>
 <p class="small muted" id="tz-hint" hidden>{{t "Your browser is set to"}} <strong data-tz></strong>. <button type="button" class="secondary" data-tz-use>{{t "Use it"}}</button></p>
 <p class="small muted">{{t "Used for task due dates and event times written or typed without a time zone, including note actions."}}</p>
-<p class="small muted">{{t "Calendar events address:"}} <code>{{.Base}}{{$d.EventsCalDAV}}</code> {{template "help" "calendar.caldav"}}</p>
+
 <label>{{t "Due dates"}}
 <select name="due_mode">
 <option value="preserve" {{if eq $d.DueMode "preserve"}}selected{{end}}>{{t "Keep the time of day"}}</option>

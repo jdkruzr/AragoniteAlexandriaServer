@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"html"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -119,15 +121,19 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 	if got := b.do("POST", "/calendar", "title=Plant+garlic&date=2099-10-22&start=15:00&location=Bed+3", sameSite, true); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "Event+added") {
 		t.Fatalf("add event: %d %s", got.Code, got.Header().Get("Location"))
 	}
-	cal := b.do("GET", "/calendar", "", nil, true).Body.String()
-	if !strings.Contains(cal, "Plant garlic") || !strings.Contains(cal, "2099-10-22 15:00–16:00") || !strings.Contains(cal, "America/Chicago") {
+	landing := b.do("GET", "/calendar", "", nil, true).Body.String()
+	if strings.Contains(landing, "Plant garlic") {
+		t.Fatal("event in 2099 leaked into the bounded upcoming horizon")
+	}
+	cal := b.do("GET", "/calendar?date=2099-10-22&view=month", "", nil, true).Body.String()
+	if !strings.Contains(cal, "Plant garlic") || !strings.Contains(cal, "2099-10-22 15:00 -0500 – 16:00 -0500") || !strings.Contains(cal, "America/Chicago") {
 		t.Fatalf("calendar page:\n%s", cal)
 	}
-	editAt := strings.Index(cal, "/calendar/")
-	editLink := cal[editAt : editAt+strings.Index(cal[editAt:], `"`)]
-	if !strings.HasSuffix(editLink, "/edit") {
-		t.Fatalf("edit link %q", editLink)
+	match := regexp.MustCompile(`href="(/calendar/[^"/]+/edit\?[^"]*)"`).FindStringSubmatch(cal)
+	if len(match) != 2 {
+		t.Fatal("missing event edit link")
 	}
+	editLink := html.UnescapeString(match[1])
 	if got := b.do("GET", editLink, "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), `value="15:00"`) {
 		t.Fatalf("edit page: %d", got.Code)
 	}

@@ -287,3 +287,59 @@ dl.meta dd { margin:0; overflow-wrap:anywhere; }
 dl.transcript { display:grid; grid-template-columns:auto 1fr; gap:.25rem .75rem; margin:.5rem 0 0; }
 dl.transcript dt { color:var(--faint); font-variant-numeric:tabular-nums; }
 dl.transcript dd { margin:0; }
+
+/* Calendar: real links/forms throughout; elapsed-time grids retain DST hours. */
+.caldav-connection { margin:.75rem 0 1.25rem; }
+.caldav-connection summary { cursor:pointer; font-weight:650; }
+.caldav-connection label { display:block; margin:.7rem 0; }
+.copy-address { display:flex; gap:.5rem; }
+.copy-address input { flex:1; min-width:0; width:100%; font-family:monospace; }
+.calendar-order { margin:1rem 0; }
+.calendar-section, #upcoming { margin:1.5rem 0 2rem; min-width:0; }
+.calendar-section .page-head { margin-bottom:.5rem; }
+.button.secondary[aria-current=true] { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+.calendar-navigation { flex-wrap:wrap; align-items:end; }
+.calendar-navigation form { flex-wrap:wrap; }
+.calendar-month { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); border-top:1px solid var(--line-strong); border-left:1px solid var(--line-strong); }
+.calendar-weekday { font-weight:650; padding:.4rem; overflow:hidden; }
+.calendar-cell { min-height:9rem; padding:.3rem; border-right:1px solid var(--line-strong); border-bottom:1px solid var(--line-strong); background:var(--panel); min-width:0; }
+.calendar-cell.outside { background:var(--panel-2); }
+.calendar-cell.is-today { box-shadow:inset 0 0 0 2px var(--ink); }
+.calendar-date { display:inline-block; padding:0 .35rem; font-weight:700; }
+.calendar-entry { display:block; background:var(--accent-soft); color:var(--ink); border-left:3px solid var(--accent); margin:.25rem 0; padding:.15rem .3rem; line-height:1.35; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-decoration:none; }
+.calendar-entry:focus { white-space:normal; overflow:visible; }
+.calendar-more { display:block; font-size:.85rem; }
+.calendar-time-scroll { overflow-x:auto; border:1px solid var(--line-strong); }
+.calendar-time-days { display:flex; align-items:stretch; }
+.calendar-time-day { flex:1; min-width:0; border-right:1px solid var(--line-strong); }
+.calendar-time-days.week { min-width:1400px; }
+.calendar-time-day h3 { padding:.5rem; margin:0; font-size:.95rem; }
+.calendar-time-day.is-today h3 { border-bottom:3px solid var(--ink); }
+.calendar-all-day { min-height:5rem; padding:.4rem; border-bottom:2px solid var(--line-strong); }
+.calendar-hours { position:relative; }
+.calendar-slot { position:absolute; left:0; right:0; height:60px; border-top:1px solid var(--line-strong); text-decoration:none; font-size:.7rem; color:var(--muted); }
+.calendar-slot span { display:block; width:4.5rem; padding:.15rem; }
+.calendar-slot:hover { background:var(--hover); }
+.calendar-block { position:absolute; overflow:hidden; border:1px solid var(--accent); border-radius:3px; padding:1px 3px; background:var(--accent-soft); color:var(--ink); text-decoration:none; font-size:.8rem; line-height:1.2; }
+.calendar-block strong,.calendar-block span { display:block; overflow-wrap:anywhere; }
+.calendar-block:focus { z-index:2; min-height:4rem; overflow:visible; }
+.event-detail { white-space:pre-wrap; }
+@media(max-width:600px) {
+ .calendar-cell { padding:.15rem; min-height:7.5rem; }
+ .calendar-entry { font-size:.7rem; padding:.1rem; border-left-width:2px; }
+ .calendar-entry .small { display:block; font-size:.65rem; }
+ .calendar-weekday { font-size:.65rem; padding:.2rem 0; text-align:center; }
+ .calendar-more { font-size:.7rem; }
+ .calendar-navigation form { width:100%; }
+}
+
+.calendar-all-day .calendar-entry { height:28px; line-height:22px; padding:2px 3px; margin:2px 0; }
+
+@media(max-width:600px) {
+ .calendar-section .page-head h2 { font-size:1.1rem; margin:.6rem 0; }
+ .calendar-section .page-head .actions { gap:.35rem; }
+ .calendar-section .page-head .button { padding:.3rem .5rem; }
+ .calendar-navigation form { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) auto; gap:.5rem; align-items:end; }
+ .calendar-navigation form label { display:grid; gap:.2rem; font-size:.85rem; min-width:0; }
+ .calendar-navigation form input, .calendar-navigation form select { width:100%; min-width:0; }
+}

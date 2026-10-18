@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"html/template"
 	"time"
 
@@ -11,6 +12,18 @@ import (
 // times, in one language. Dates stay in the neutral 2006-01-02 15:04 form.
 func formatFuncs(l i18n.Localizer) template.FuncMap {
 	return template.FuncMap{
+		"clockTime": func(t time.Time) string { return t.Format("15:04") },
+		"calDate": func(t time.Time, kind string) string {
+			weekdays := []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
+			months := []string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
+			if kind == "weekday" {
+				return l.T(weekdays[t.Weekday()])
+			}
+			if kind == "heading" {
+				return fmt.Sprintf("%s %d", l.T(months[t.Month()-1]), t.Year())
+			}
+			return l.T(weekdays[t.Weekday()]) + " " + t.Format("2006-01-02")
+		},
 		"num": func(n int) string { return l.Number(n, 0) },
 		"count": func(n int) string {
 			if n < 0 {

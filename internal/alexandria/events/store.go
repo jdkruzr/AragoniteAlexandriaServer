@@ -20,6 +20,7 @@ var (
 	ErrDeleted  = errors.New("event is deleted")
 	ErrPurged   = errors.New("event was permanently deleted")
 	ErrInvalid  = errors.New("invalid event")
+	ErrChanged  = errors.New("event changed")
 )
 
 // Event is one calendar entry. For an all-day event Start and End are
@@ -207,18 +208,35 @@ func Create(ctx context.Context, db Execer, e *Event) error {
 }
 
 // Update replaces a live event's fields.
-func (s *Store) Update(ctx context.Context, e *Event) error {
+func (s *Store) Update(ctx context.Context, e *Event) error { return s.update(ctx, e, nil) }
+
+// UpdateOrdinary fences the web read/edit against concurrent CalDAV imports.
+func (s *Store) UpdateOrdinary(ctx context.Context, e *Event, previous Event) error {
+	if Protected(previous) {
+		return ErrChanged
+	}
+	return s.update(ctx, e, &previous)
+}
+func (s *Store) update(ctx context.Context, e *Event, previous *Event) error {
 	if err := e.Normalize(); err != nil {
 		return err
 	}
 	now := time.Now().UnixMilli()
+	guard := ""
+	args := []any{e.ID, text(e.Title), text(e.Detail), text(e.Location), text(e.URL), e.Start, e.End, e.AllDay, e.TZID, text(e.Blob), now}
+	if previous != nil {
+		guard = " AND ical_blob=$12 AND updated_at=$13"
+		args = append(args, previous.Blob, previous.UpdatedAt)
+	}
 	res, err := s.db.ExecContext(ctx, `UPDATE alexandria_events SET title=$2,detail=$3,location=$4,url=$5,start_at=$6,end_at=$7,
-		all_day=$8,tzid=$9,ical_blob=$10,updated_at=$11 WHERE event_id=$1 AND NOT deleted`,
-		e.ID, text(e.Title), text(e.Detail), text(e.Location), text(e.URL), e.Start, e.End, e.AllDay, e.TZID, text(e.Blob), now)
+		all_day=$8,tzid=$9,ical_blob=$10,updated_at=$11 WHERE event_id=$1 AND NOT deleted`+guard, args...)
 	if err != nil {
 		return fmt.Errorf("update event: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
+		if previous != nil {
+			return ErrChanged
+		}
 		return ErrNotFound
 	}
 	e.UpdatedAt = now
@@ -233,6 +251,21 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
+	}
+	return nil
+}
+
+// DeleteOrdinary cannot delete a series imported since the web handler read it.
+func (s *Store) DeleteOrdinary(ctx context.Context, previous Event) error {
+	if Protected(previous) {
+		return ErrChanged
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE alexandria_events SET deleted=true,updated_at=$2 WHERE event_id=$1 AND NOT deleted AND ical_blob=$3 AND updated_at=$4`, previous.ID, time.Now().UnixMilli(), previous.Blob, previous.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrChanged
 	}
 	return nil
 }

@@ -85,19 +85,34 @@ gone, and a device that still has an old copy can't bring it back.
 
 ## Calendar
 
-Select **Calendar** in the top bar. It lists **Upcoming** events and the
-**Past 30 Days**.
+Select **Calendar** in the top bar. **Upcoming** starts with the next 30 days,
+anchored to today; **Show next 30 days** extends that list. **Past 30 Days**
+stays below the main sections, and **Deleted events** has its own page.
 
-![The Calendar page](../images/calendar.png)
+Use **Day**, **Week**, or **Month** to browse the calendar. **Previous**,
+**Today**, **Next**, and the date picker move through dates. Month shows up to
+three entries per day; **+N more** opens that Day view. Week scrolls sideways
+on a small screen. Day and Week separate overlapping appointments into columns.
+
+The defaults are **Upcoming first**, **Month**, and **Sunday** as the first day
+of the week. Change the section order above the sections, or choose Monday in
+**Week starts on** and select **Go**. This browser remembers those preferences;
+a different browser has its own. Returning to Calendar starts at today's date.
+Links and forms work with JavaScript disabled.
+
+![Calendar Month view with synthetic events](../calendar/20261018/desktop-month.png)
 
 ### Adding an Event
 
-1. Type a title into **New event**.
-2. Pick the date. Optionally add a start time, an end time and a **Location**.
-3. Select **Add event**.
+1. Select **Add event**, or select a date in the calendar for an all-day event.
+   Selecting an hourly slot prefills a one-hour appointment.
+2. Enter a title and adjust the dates, times, location, link or notes.
+3. Select **Save**. Save and Cancel return to the same calendar view.
 
 Leave the time empty for an all-day event. Times are in the time zone from
-Settings, which the page reminds you of.
+Settings, which the page reminds you of. When daylight saving time repeats a
+local hour, the UTC offset fields distinguish its two occurrences. A local time
+that does not exist produces a validation message and keeps your form values.
 
 ### Editing an Event
 
@@ -111,9 +126,14 @@ Select **Edit** to change the **Title**, **Date**, **Start time (optional)**,
 **Delete** moves an event to **Deleted events**. There you can **Restore** it,
 or tick **Permanently** and select **Delete permanently** to erase it.
 
-Repeat rules, reminders and attendees that a calendar app adds are kept when
-the event syncs, so they survive round trips, but the web app doesn't edit
-them.
+Imported recurring events and their exceptions appear in every calendar view
+and both event lists. Selecting one opens read-only occurrence details: edit
+or delete the series in your CalDAV app. Web edits cannot flatten the series.
+Repeat rules, reminders, attendees and original calendar blobs are preserved.
+
+If a series is malformed, unsupported, or too large to expand safely, a notice
+names it and marks the results incomplete. Use your CalDAV app to inspect it;
+an incomplete result does not mean the series has no events.
 
 ## Connect a CalDAV App
 
@@ -124,9 +144,13 @@ Alexandria serves two CalDAV collections under one account:
 | Task list | Tasks (VTODO) | `https://alexandria.example.com/caldav/user/calendars/tasks/` |
 | Calendar | Events (VEVENT) | `https://alexandria.example.com/caldav/user/calendars/events/` |
 
-The exact addresses for your server are shown in **Settings → Tasks &
-Integrations** as **CalDAV address** and **Calendar events address**. Apps that
-support discovery can start from the server address alone:
+Open **Connect a CalDAV app** near the heading on Tasks or Calendar, or in
+**Settings → Tasks & Integrations**. It shows your server's discovery address
+and the relevant collection address, with Copy buttons. If copying is blocked,
+the address is selected so you can copy it manually. The address fields also
+work without JavaScript.
+
+Apps that support discovery can start from the server address alone:
 `https://alexandria.example.com/` (Alexandria answers `/.well-known/caldav`).
 
 **Credentials:** your Alexandria username and password, the same ones you use

@@ -1,0 +1,13 @@
+{{define "connection"}}
+<details class="caldav-connection card">
+<summary>{{t "Connect a CalDAV app"}}</summary>
+{{template "help" "calendar.caldav"}}
+<p>{{t "Sign in with the same account name and password you use for Alexandria. Start with the discovery address; use a collection address if your app asks for one."}}</p>
+<label>{{t "Discovery address"}} <span class="copy-address"><input readonly value="{{.Discovery}}" aria-label="{{t "Discovery address"}}"><button type="button" class="secondary" data-copy hidden>{{t "Copy"}}</button></span></label>
+{{if ne .Kind "calendar"}}<label>{{t "Tasks collection address"}} <span class="copy-address"><input readonly value="{{.Tasks}}" aria-label="{{t "Tasks collection address"}}"><button type="button" class="secondary" data-copy hidden>{{t "Copy"}}</button></span></label>{{end}}
+{{if ne .Kind "tasks"}}<label>{{t "Calendar collection address"}} <span class="copy-address"><input readonly value="{{.Calendar}}" aria-label="{{t "Calendar collection address"}}"><button type="button" class="secondary" data-copy hidden>{{t "Copy"}}</button></span></label>{{end}}
+<p class="small" role="status" data-copy-status data-success="{{t "Copied."}}" data-failure="{{t "Copy is unavailable. The address is selected; copy it using your browser."}}">{{t "You can also select and copy these addresses yourself."}}</p>
+<a href="/settings/integrations">{{t "Tasks & Integrations"}}</a>
+</details>
+<script src="/static/connections.js?v={{version}}" defer></script>
+{{end}}

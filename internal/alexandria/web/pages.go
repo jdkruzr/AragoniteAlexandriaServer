@@ -21,7 +21,6 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath"
@@ -576,7 +575,7 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 			return
 		}
 		data["Collection"], data["DueMode"], data["Tokens"] = collection, due, tokens
-		data["EventsCollection"], data["EventsCalDAV"] = eventsName, taskhost.Prefix+"/user/calendars/events/"
+		data["EventsCollection"] = eventsName
 		zone, err := settings.Get(ctx, d.DB, settings.TimeZone, "")
 		if err != nil {
 			d.fail(w, err)
@@ -586,7 +585,7 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 		if zone != "" && !settings.KnownZone(zone) {
 			data["LegacyZone"] = zone
 		}
-		data["CalDAV"], data["OAuthLabel"] = taskhost.Prefix+"/user/calendars/tasks/", oauth.TokenLabel
+		data["OAuthLabel"] = oauth.TokenLabel
 	case "search", "recognition":
 		var providerView *providers.View
 		if d.Providers != nil {

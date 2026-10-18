@@ -1,5 +1,6 @@
 {{define "content"}}{{$d := .Data}}{{$v := $d.View}}
 <div class="page-head"><h1>{{if $d.Trash}}{{t "Deleted Tasks"}}{{else}}{{t "Tasks"}}{{end}} {{template "help" "tasks.overview"}}</h1><a class="button secondary" href="{{$v.Toggle}}">{{if $d.Trash}}{{t "Back to tasks"}}{{else}}{{t "Deleted tasks"}}{{end}}</a></div>
+{{template "connection" (connection .Base "tasks")}}
 {{if not $d.Trash}}
 <form class="inline" method="post" action="/tasks">
   <input type="hidden" name="return" value="{{$v.URL}}">

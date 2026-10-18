@@ -6,6 +6,26 @@ import "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 // ({{t .State}}, {{t .Label}}, {{t .Kind}}). They are listed here so the
 // catalogs carry them and the catalog test can check every language has them.
 var dynamicMessages = []string{
+	"Sunday",
+	"Monday",
+	"Tuesday",
+	"Wednesday",
+	"Thursday",
+	"Friday",
+	"Saturday",
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
+
 	// Recognition job states (listJobStates).
 	i18n.M("queued"), i18n.M("processing"), i18n.M("ready"), i18n.M("blocked"), i18n.M("failed"), i18n.M("paused"), i18n.M("cancelled"), i18n.M("skipped"),
 	// Library batch labels (recognition.Run.Label).

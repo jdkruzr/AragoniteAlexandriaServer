@@ -385,4 +385,33 @@ func TestCalDAVEventsThroughRuntime(t *testing.T) {
 	if got := call("PUT", "/caldav/user/calendars/events/ev-1.ics", ics("VEVENT", "ev-1", "20261022T200000Z"), cal); got.Code != 412 {
 		t.Fatalf("deleted event recreated: %d", got.Code)
 	}
+	// Browser occurrence expansion must not change either the stored import or
+	// the CalDAV representation/ETag, including a moved detached exception.
+	recurring := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Synthetic calendar qualification//EN\r\nBEGIN:VEVENT\r\nUID:calendar-uid-independent-of-filename\r\nDTSTAMP:20260101T000000Z\r\nSUMMARY:Synthetic series\r\nDTSTART;TZID=America/Chicago:20200101T090000\r\nDTEND;TZID=America/Chicago:20200101T100000\r\nRRULE:FREQ=YEARLY;COUNT=10\r\nEXDATE;TZID=America/Chicago:20260101T090000\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:calendar-uid-independent-of-filename\r\nDTSTAMP:20260101T000000Z\r\nRECURRENCE-ID;TZID=America/Chicago:20270101T090000\r\nDTSTART;TZID=America/Chicago:20261022T110000\r\nDTEND;TZID=America/Chicago:20261022T120000\r\nSUMMARY:Moved synthetic occurrence\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+	seriesPath := "/caldav/user/calendars/events/series-qualification.ics"
+	if got := call("PUT", seriesPath, recurring, cal); got.Code/100 != 2 {
+		t.Fatal("series import", got.Code)
+	}
+	before := call("GET", seriesPath, "", nil)
+	var storedBefore, storedAfter string
+	if err := db.QueryRow(`SELECT ical_blob FROM alexandria_events WHERE event_id='series-qualification'`).Scan(&storedBefore); err != nil {
+		t.Fatal(err)
+	}
+	if storedBefore == "" {
+		t.Fatal("CalDAV import lost its calendar blob")
+	}
+	for _, view := range []string{"day", "week", "month"} {
+		got := call("GET", "/calendar?date=2026-10-22&view="+view, "", nil)
+		if got.Code != 200 || !strings.Contains(got.Body.String(), "Moved synthetic occurrence") {
+			t.Fatalf("moved occurrence in %s: status %d\nstored: %s\nbody: %s", view, got.Code, storedBefore, got.Body.String())
+		}
+	}
+	after := call("GET", seriesPath, "", nil)
+	if err := db.QueryRow(`SELECT ical_blob FROM alexandria_events WHERE event_id='series-qualification'`).Scan(&storedAfter); err != nil {
+		t.Fatal(err)
+	}
+	if storedBefore != storedAfter || before.Body.String() != after.Body.String() || before.Header().Get("ETag") != after.Header().Get("ETag") {
+		t.Fatal("browser expansion changed the CalDAV import")
+	}
+
 }

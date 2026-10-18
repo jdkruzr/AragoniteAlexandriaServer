@@ -74,6 +74,8 @@ func (b *Backend) SetTaskAttach(store *taskattach.BlobStore, signer *taskattach.
 	b.attach = AttachDeps{Store: store, Signer: signer, BaseURL: strings.TrimRight(baseURL, "/")}
 }
 
+const TasksCollection = "/user/calendars/tasks/"
+
 func NewBackend(store TaskStore, prefix, collectionName, dueTimeMode string, notifier SyncNotifier) *Backend {
 	return &Backend{
 		store:          store,
@@ -260,7 +262,7 @@ func (b *Backend) DeleteCalendarObject(ctx context.Context, urlPath string) erro
 
 func (b *Backend) collection() gocaldav.Calendar {
 	return gocaldav.Calendar{
-		Path:                  b.prefix + "/user/calendars/tasks/",
+		Path:                  b.prefix + TasksCollection,
 		Name:                  b.CollectionName(),
 		Description:           "Tasks in Alexandria",
 		SupportedComponentSet: []string{"VTODO"},
@@ -289,7 +291,7 @@ func (b *Backend) RenderCalendar(t *taskstore.Task) *ical.Calendar {
 // ObjectPath is the href of a task resource within the collection. Shared with
 // the sync-collection report so both surfaces address resources identically.
 func (b *Backend) ObjectPath(taskID string) string {
-	return b.prefix + "/user/calendars/tasks/" + taskID + ".ics"
+	return b.prefix + TasksCollection + taskID + ".ics"
 }
 
 func (b *Backend) taskToCalendarObject(t *taskstore.Task) *gocaldav.CalendarObject {

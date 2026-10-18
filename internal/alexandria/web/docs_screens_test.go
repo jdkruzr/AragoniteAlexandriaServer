@@ -68,7 +68,7 @@ func docsPages() []previewPage {
 			"Native": []sourceMatch{{Title: "Garlic varieties to try", Kind: "Notebook", URL: "#"}}}},
 		{"tasks", "tasks", "Tasks", "tasks", "/", map[string]any{"Open": open, "Done": done, "View": taskView{Sort: "due", Dir: "asc"}, "Sorts": taskSorts,
 			"Sources": map[string]*NoteSource{"t1": garden, "t2": garden}}},
-		{"calendar", "calendar", "Calendar", "calendar", "/calendar", map[string]any{"Upcoming": upcoming, "Past": past, "Trash": false, "Zone": "America/Chicago", "Today": "2026-10-16"}},
+		{"calendar", "calendar", "Calendar", "calendar", "/calendar", map[string]any{"View": calendarView{"month", "upcoming", "sunday", at(10, 18, 0, 0), 30}, "Days": calendarDays(calendarView{"month", "upcoming", "sunday", at(10, 18, 0, 0), 30}, upcoming, now), "Upcoming": upcoming, "Past": past, "Trash": false, "Zone": "America/Chicago", "Today": "2026-10-16"}},
 		{"settings-recognition", "settings-recognition", "AI tools and recognition", "settings", "/settings/recognition", map[string]any{"Providers": models,
 			"DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
 		{"jobs", "jobs", "Recognition jobs", "jobs", "/jobs", map[string]any{"View": jobs, "Filter": recognition.Filter{}, "ProgressTotal": 3, "ProgressDone": 2, "Start": 1, "End": 3, "Refresh": "/jobs",

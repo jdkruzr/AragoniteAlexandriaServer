@@ -1,0 +1,9 @@
+{{define "content"}}{{$d := .Data}}
+<div class="page-head"><h1>{{t "Event details"}}</h1><a class="button secondary" href="{{$d.Return}}">{{t "Back to calendar"}}</a></div>
+<p class="notice">{{t "Edit this series in your CalDAV app."}}</p>
+{{if $d.Row}}<h2>{{$d.Row.Event.Title}}</h2><p>{{$d.Row.When}}</p><p>{{$d.Row.Event.Location}}</p><p class="event-detail">{{$d.Row.Event.Detail}}</p>{{with $d.Row.Event.URL}}<p><a href="{{.}}">{{t "Link"}}</a></p>{{end}}
+{{else}}<h2>{{$d.Event.Title}}</h2><p>{{t "This occurrence is unavailable. It may have moved or been cancelled; return to the calendar to refresh."}}</p>{{end}}
+{{with $d.Source}}<p><a href="{{.URL}}">{{t "From note"}}: {{.Notebook}}</a></p>{{end}}
+{{if $d.Incomplete}}<p class="notice">{{t "Some calendar results are incomplete."}} {{t "This series has malformed or unsupported calendar data. View it in your CalDAV app."}}</p>{{end}}
+{{template "connection" (connection .Base "calendar")}}
+{{end}}

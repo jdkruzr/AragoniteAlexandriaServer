@@ -1,5 +1,42 @@
 # Alexandria Server handoff
 
+2026-10-18: **Calendar views and CalDAV connection links implemented and deployed**
+on `feature/calendar-views`, based on PowerSync Server branch `5237c46`.
+Tasks, Calendar and Settings share a connection disclosure with discovery and
+collection addresses, copy/fallback support and account guidance. Calendar now
+has Day/Week/Month views, click-to-add, overlap columns, multi-day splitting,
+30-day Upcoming expansion, and browser-local view/order/week-start preferences.
+Defaults: Upcoming first, Month, Sunday. Navigation and forms work without JS.
+
+A read-only occurrence projection serves all views and lists, including imported
+recurrences, exclusions, moved/cancelled exceptions and THISANDFUTURE overrides.
+It preserves original blobs and CalDAV responses, respects display/series zones
+and DST, and names incomplete series when unsupported or over budget. Recurring
+web edits/deletes are guarded; ordinary edits and deletes also fence concurrent
+CalDAV replacements. No migration or public event API change.
+
+Validation: fresh required Go 1.25 PostgreSQL/object-store race gate passes
+**50 packages**; build/vet, the Hosting compatibility compile and 10 packaging
+checks pass. **49 browser scenarios** cover desktop, phone, Palma and Lumi
+viewport layouts, English/Spanish, both section orders, all views, no-JS forms,
+clipboard success/fallback, keyboard focus and dark mode. These are synthetic
+browser viewport checks, not physical-device qualification.
+See [validation and known expansion limits](calendar/20261018/validation.txt),
+[browser evidence](calendar/20261018/browser.json), and the updated
+[Tasks and Calendar guide](guide/tasks-and-calendar.md).
+
+Deployed app-only as `calendar-72b4131c0ece`: **38 live checks pass**, readiness
+200, zero restarts, no startup warnings/errors. All 303 runtime input paths
+(including seven new files) matched the baseline and 21 staged paths were
+checksum-verified. Existing live event content, schema and provider revision
+are unchanged. The synthetic event was purged; only its content-free tombstone
+and reserved UID remain. [Live evidence](calendar/20261018/deployment.json).
+Rollback image, source/config archives and a catalog-checked metadata dump
+remain on the instance under `deploy/compose/private/calendar-72b4131c0ece/`;
+its `rollback.sh` restores the prior app without restoring the database.
+The dump is a metadata safety copy, not a coordinated native BOOX backup.
+Commits remain local; no branch was pushed or merged.
+
 2026-10-18: **PowerSync 0.3 setup wording deployed**, on
 `feature/powersync-setup-copy`. Setup, enrollment help and audio recovery copy
 match the guided Android flow and its Troubleshooting screen; English/Spanish

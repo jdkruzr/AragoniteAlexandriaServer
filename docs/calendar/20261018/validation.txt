@@ -1,0 +1,108 @@
+Tasks connection links and Calendar views — 2026-10-18
+
+Source: feature/calendar-views, based on 5237c46 (PowerSync setup wording).
+Runtime build: calendar-72b4131c0ece.
+Exact runtime hashes: build-source.json; staged before/after hashes: deployment-inputs.json.
+Live Docker image: sha256:7d25f6da15c8d36184b6548c3bd3d8f90a3849683e66d0f6b23c39c0dcdc6bc1.
+Binary SHA256 (local image and live container match):
+120443071d94460a2117cfcca55309647e9c53a0922496a8f99886554e57d6c5.
+
+Validation
+- GOTOOLCHAIN=go1.25.0 go vet ./...: passed.
+- GOTOOLCHAIN=go1.25.0 go build ./cmd/alexandria-server: passed.
+- Fresh required PostgreSQL/object-store go test -race -count=1 ./...:
+  50 tested packages passed; output in race.txt. Disposable databases were
+  created/dropped by the fixture helpers, with isolated object prefixes.
+  Existing alexandria-test-pg and alexandria-test-s3 containers were reused and
+  preserved. ALEXANDRIA_REQUIRE_INTEGRATION=1; no cached integration output.
+- Hosting temporary checkout, local Server module replacement:
+  GOTOOLCHAIN=go1.25.0 GOWORK=off go test -mod=mod -run '^$' ./... passed.
+  hosting-compile.txt records compilation, not Hosting deployment.
+- python3 -m unittest discover -s deploy/compose/tests: 10 passed (packaging.txt).
+- node --check passed for connection enhancement and browser qualification script.
+- Browser matrix: 4 viewport sizes x 2 languages x 2 orders x 3 views = 48;
+  additional lifecycle/accessibility/clipboard/preference scenario passed.
+  Desktop 1440x1000, phone 390x844, Palma 412x824, Lumi 1100x1467.
+  Both clipboard paths, no-JS create/edit/delete/cancel/navigation, recurring
+  read-only details, preference isolation, visible focus, dark mode, overlap
+  columns and contained horizontal Week scrolling passed. No page overflow.
+  The final browser run also checks visible selection styling and the compact
+  phone controls. Screenshots and browser.json are synthetic fixtures only.
+  Physical e-ink device behavior has not been claimed.
+- Final image built with the repository Dockerfile; all runtime inputs were
+  rehashed against the package before deployment. The last changes after the
+  Go race gate were CSS selection/phone spacing fixes, verified by the final
+  browser run and included in this image.
+
+Regression coverage
+Calendar bounds and leap days, Sunday/Monday weeks, zero-duration and overlapping
+entries, midnight/exclusive ends, multi-day/date-only events, 23/25-hour days,
+nonexistent and repeated local input times (including a half-hour DST shift),
+month overflow, per-browser cookies, explicit query precedence and safe return
+navigation. Recurrence tests cover COUNT/UNTIL, RDATE/EXDATE, moved/cancelled
+exceptions, THISANDFUTURE across DST and negative shifts, old masters, duplicate
+identities, nominal P1D versus exact PT24H, candidate/display limits and notices.
+The runtime CalDAV fixture uses a UID different from its resource filename and
+verifies moved occurrences in all three views; stored blob, response and ETag
+stay unchanged (caldav-roundtrip.txt). SQL fences reject web edits/deletes if a
+concurrent CalDAV replacement introduces recurrence.
+
+The first full gate (and an already-running repeat) failed an old web fixture
+that expected an event in 2099 in today's unbounded list. The test now checks
+that the event is absent from the 30-day landing horizon and present when
+browsing October 2099, including its query-bearing edit link and UTC offset.
+The final fresh full gate passes. A new recurrence test also caught and fixed
+the pinned iterator's normalization of nonexistent wall-clock occurrences:
+these are skipped without consuming COUNT.
+
+Expansion contract and deliberate limits
+- Shared internal read-only projection, no migration or public event API change.
+- Ordinary events queried by bounded windows; imported blobs remain candidates
+  even when their master DTSTART is old. Calendar, Upcoming and Past share one
+  request budget and occurrence expansion.
+- At most 10,000 displayed occurrences and 100,000 generated candidates across
+  the request. Conservative work estimation can reject a costly sparse rule
+  before iteration. Cancellation is checked between records and candidates.
+- Uses pinned go-ical and rrule-go 1.8.2. Calendar candidates are generated on a
+  floating clock then resolved in the recurrence zone to avoid DST-gap shifting.
+- Unsupported cases are visible and name the series: EXRULE, period-valued
+  RDATE, unknown/non-IANA TZIDs, multiple/missing masters, multiple RRULEs,
+  duplicate overrides, recurrence rules on overrides, non-THISANDFUTURE ranges,
+  BYEASTER and filtered subdaily RRULEs. Custom VTIMEZONE definitions are not
+  interpreted independently of IANA zones. Original blobs are untouched.
+- Selected date stays in navigation URLs, not the landing preference cookie.
+  Browsed dates accept years 1900–9998; Upcoming extends in 30-day steps to
+  3,660 days, with occurrence limits still applying.
+- CSP permits inline style attributes for server-generated numeric grid
+  positions; scripts remain local external files and event content is escaped.
+
+Reproducing browser checks
+1. Configure disposable integration fixtures as in .github/workflows/ci.yml.
+2. Create an empty output directory, then run:
+   ALEXANDRIA_CALENDAR_BROWSER=<directory> go test -count=1 \
+     -run '^TestCalendarBrowserFixture$' ./internal/alexandria/web
+3. Once <directory>/url exists, run:
+   ALEXANDRIA_CALENDAR_BROWSER=<directory> node scripts/calendar-browser.cjs
+   Install Playwright for the driver or set PLAYWRIGHT_MODULE to its module path.
+   The driver uses /usr/bin/google-chrome. It writes a stop sentinel on completion
+   so the fixture server exits and testenv drops the synthetic database.
+
+Deployment and cleanup
+App-only update of the existing self-hosted instance; no migration, infra change,
+Hosting deployment, branch push or merge. All 303 runtime paths (296 existing +
+7 new) matched the expected baseline; 21 changed paths were staged and verified.
+The existing instance passed 38 live checks: public readiness/liveness,
+anonymous refusal, Tasks/Calendar/Settings connection addresses, both languages,
+all views and orders, forms, and synthetic creation/edit/deletion/purge.
+Existing live-event content fingerprints, schema and provider revision match
+before/after; the native observation cursor did not regress. Startup logs have
+no warnings/errors; container running with zero restarts. deployment.json records
+these checks. Its only test write was a newly marked synthetic ordinary event;
+content was purged, leaving the normal content-free sync tombstone/reserved UID.
+
+The instance retains its previous image, source/config archives, container
+configuration and a catalog-checked 43,071,570-byte metadata dump in:
+deploy/compose/private/calendar-72b4131c0ece/
+From the deployed repository, sudo bash <that directory>/rollback.sh verifies
+source drift and restores the prior source/image without restoring the DB.
+The dump is not a coordinated BOOX backup. Existing volumes were preserved.
