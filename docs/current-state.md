@@ -14,6 +14,8 @@ engine selection preserve cold-backup failure/restart guards.
 Batch 5 passes its full gate: generic-job completion/failure is fenced by claim
 attempt, including same-host reclaim.
 Batch 6 passes: native prefix bounds and page-count normalization are shared.
+Batch 7 passes: bounded idle pooling, uncertain-lock disposal and request-local
+owner authentication reuse.
 No implementation changes have been deployed yet.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,

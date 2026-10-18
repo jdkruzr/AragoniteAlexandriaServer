@@ -129,7 +129,7 @@ func (s *Store) Middleware(next http.Handler) http.Handler {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), identityKey{}, identity)))
+		next.ServeHTTP(w, r.WithContext(WithIdentity(r.Context(), identity)))
 	})
 }
 
@@ -143,4 +143,10 @@ type identityKey struct{}
 func tokenHash(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+// WithIdentity binds an identity already verified for this request and library.
+// It is not an authentication operation and must not be populated from input.
+func WithIdentity(ctx context.Context, identity string) context.Context {
+	return context.WithValue(ctx, identityKey{}, identity)
 }

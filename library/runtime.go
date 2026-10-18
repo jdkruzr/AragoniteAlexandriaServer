@@ -5,6 +5,7 @@ package library
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"io"
@@ -159,9 +160,7 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if cfg.MaxConnections < 1 || cfg.MaxConnections > 64 {
 		return nil, errors.New("invalid pool limit")
 	}
-	db.SetMaxOpenConns(cfg.MaxConnections)
-	db.SetMaxIdleConns(0)
-	db.SetConnMaxLifetime(15 * time.Minute)
+	database.ConfigurePool(db, cfg.MaxConnections)
 	if err := database.Ready(ctx, db); err != nil {
 		return nil, err
 	}
@@ -227,6 +226,9 @@ func (r *Runtime) admit(ctx context.Context, action Action) (*sql.Conn, func(), 
 	}
 	var acquired bool
 	if err = conn.QueryRowContext(ctx, `SELECT pg_try_advisory_lock_shared($1)`, schema.LockID).Scan(&acquired); err != nil || !acquired {
+		if err != nil {
+			_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+		}
 		conn.Close()
 		r.active.Done()
 		return nil, nil, ErrUnavailable
@@ -292,11 +294,17 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		return true
 	}
+	ownerAuthenticated := false
 	if strings.HasPrefix(req.URL.Path, "/jobs") || r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || req.URL.Path == "/settings/search" || req.URL.Path == "/settings/recognition" || req.URL.Path == "/settings/integrations" || strings.HasPrefix(req.URL.Path, "/settings/providers") || strings.HasPrefix(req.URL.Path, "/settings/semantic") || strings.HasPrefix(req.URL.Path, "/settings/minutes")) {
 		if e := r.account(conn)(req); e != nil {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
 			http.Error(w, "unauthorized", 401)
 			return
+		}
+		if r.cfg.Authenticate == nil && r.cfg.AuthenticateAccount == nil {
+			ownerAuthenticated = true
+			username, _, _ := req.BasicAuth()
+			req = req.WithContext(auth.WithIdentity(req.Context(), username))
 		}
 	}
 	var booxSummary func(context.Context) (web.SourceSummary, error)
@@ -390,6 +398,10 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
+		mux.ServeHTTP(w, req)
+		return
+	}
+	if ownerAuthenticated {
 		mux.ServeHTTP(w, req)
 		return
 	}

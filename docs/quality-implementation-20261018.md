@@ -37,6 +37,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 6 complete: native prefix queries use explicit C-collated ranges, including Unicode boundaries and generic prepared plans; page sorting shares the canonical decoder. Focused tests and full Go 1.25 race gate pass (`06`).
 
+- Batch 7 complete: pooled admission discards uncertain-lock sessions; owner authentication is reused only for default callbacks. Cancellation/reuse tests and full Go 1.25 race gate pass (`07`). Local median for 100 admissions: 676 ms with zero idle sessions, 49 ms with one; reconnects fall from 100 to zero.
+
 ## REST task compatibility
 
 POST and PUT remain live upserts (201 and 200 respectively). Creation and live
