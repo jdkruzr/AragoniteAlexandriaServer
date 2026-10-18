@@ -4,10 +4,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"crypto/md5"
 	"database/sql"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -331,28 +329,23 @@ func (s Service) QueueTextNote(ctx context.Context, n TextNote) (string, error) 
 	}
 	type bound struct{ Key, SHA256 string }
 	var binds []bound
+	staged := make([]publicationAsset, 0, len(assets))
 	for _, a := range assets {
-		sha := hash(a.Body)
-		if _, e = s.Objects.Put(ctx, "boox/bodies/"+sha, a.ContentType, bytes.NewReader(a.Body), int64(len(a.Body))); e != nil {
-			return "", e
+		asset, err := s.stagePublicationAsset(ctx, a.Body, a.ContentType)
+		if err != nil {
+			return "", err
 		}
-		binds = append(binds, bound{a.Key, sha})
+		staged = append(staged, asset)
+		binds = append(binds, bound{a.Key, asset.SHA256})
 	}
 	tx, e := s.DB.BeginTx(ctx, nil)
 	if e != nil {
 		return "", e
 	}
 	defer tx.Rollback()
-	var generation string
-	if e = tx.QueryRowContext(ctx, `SELECT generation FROM sync_library_generation WHERE id=1 FOR SHARE`).Scan(&generation); e != nil {
+	generation, e := s.publicationOwner(ctx, tx)
+	if e != nil {
 		return "", e
-	}
-	var owner sql.NullString
-	if e = tx.QueryRowContext(ctx, `SELECT native_uid FROM boox_identity WHERE id=1 FOR SHARE`).Scan(&owner); e != nil {
-		return "", e
-	}
-	if owner.String != s.uid() {
-		return "", errBookEnrollment
 	}
 	idem := "text-note:" + hash([]byte(generation+":"+s.uid()+":"+n.Request))
 	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, idem); e != nil {
@@ -375,15 +368,11 @@ func (s Service) QueueTextNote(ctx context.Context, n TextNote) (string, error) 
 	id := uuid.NewString()
 	record["alexandriaOperationId"] = id
 	for i, a := range assets {
-		md := md5.Sum(a.Body)
-		var version int64
-		if e = tx.QueryRowContext(ctx, `INSERT INTO boox_blob_version(native_key,sha256,md5,bytes,content_type) VALUES($1,$2,$3,$4,$5) RETURNING id`, a.Key, binds[i].SHA256, hex.EncodeToString(md[:]), len(a.Body), a.ContentType).Scan(&version); e != nil {
-			return "", e
-		}
-		if _, e = tx.ExecContext(ctx, `INSERT INTO boox_blob_live(native_key,version_id) VALUES($1,$2)`, a.Key, version); e != nil {
+		if e = bindPublicationAsset(ctx, tx, a.Key, staged[i]); e != nil {
 			return "", e
 		}
 	}
+
 	payload, _ := json.Marshal(map[string]any{"generation": generation, "nativeUid": s.uid(), "request": n.Request, "metadata": record, "updatedAt": record["updatedAt"], "assets": binds, "title": n.Title, "parent": n.Parent, "minutesOf": n.MinutesOf})
 	if _, e = tx.ExecContext(ctx, `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,payload,state) VALUES($1,$2,'create_text_note',$3,'',$4,'queued')`, id, idem, ids.Doc, payload); e != nil {
 		return "", e

@@ -45,6 +45,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 10a complete: provider clients share redirect refusal, bounded JSON and safe HTTP errors while retaining payloads/timeouts/retry semantics. Focused regressions and the full Go 1.25 race gate pass (`10a`).
 
+- Batch 10b complete: book/text publication shares immutable body staging, owner/generation locking and new-key bindings. Lost-acknowledgment and owner-change regressions pass; cumulative full gate `11` passes. The redundant queued standalone gate was cancelled before starting.
+
 ## Validation adjustment
 
 The first batch-8 full gate exposed a pre-existing timing dependency in

@@ -19,6 +19,8 @@ owner authentication reuse.
 Batch 8 passes its focused and cumulative full checks: search enrichment is
 batched without changing selected-result order.
 Batch 9 passes: provider settings and processing-clock changes commit atomically.
+Batch 10 passes: shared provider HTTP transport and publication prerequisites
+retain their operation-specific behavior and failure checks.
 No implementation changes have been deployed yet.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,

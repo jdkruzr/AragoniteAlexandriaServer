@@ -139,31 +139,25 @@ func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string
 	if s.identity == "" {
 		return "", errBookEnrollment
 	}
-	sha := hash(raw)
 	fingerprint := bookFingerprint(raw)
-	md := md5.Sum(raw)
 	ct := "application/pdf"
 	if kind == "epub" {
 		ct = "application/epub+zip"
 	}
-	if _, e = s.Objects.Put(ctx, "boox/bodies/"+sha, ct, bytes.NewReader(raw), int64(len(raw))); e != nil {
+	asset, e := s.stagePublicationAsset(ctx, raw, ct)
+	if e != nil {
 		return "", e
 	}
+	sha := asset.SHA256
+
 	tx, e := s.DB.BeginTx(ctx, nil)
 	if e != nil {
 		return "", e
 	}
 	defer tx.Rollback()
-	var generation string
-	if e = tx.QueryRowContext(ctx, `SELECT generation FROM sync_library_generation WHERE id=1 FOR SHARE`).Scan(&generation); e != nil {
+	generation, e := s.publicationOwner(ctx, tx)
+	if e != nil {
 		return "", e
-	}
-	var owner sql.NullString
-	if e = tx.QueryRowContext(ctx, `SELECT native_uid FROM boox_identity WHERE id=1 FOR SHARE`).Scan(&owner); e != nil {
-		return "", e
-	}
-	if owner.String != s.uid() {
-		return "", errBookEnrollment
 	}
 	// Serialize native fingerprint decisions, including concurrent uploads with
 	// different whole-file hashes but identical BOOX sampled fingerprints.
@@ -205,11 +199,7 @@ func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string
 	nativePath := "/storage/emulated/0/.ksync/" + s.uid() + "/reader/" + book + "/book/" + book + "." + kind
 	metadata := map[string]any{"_id": doc, "uniqueId": book, "user": s.uid(), "dbId": s.uid() + "-READER_LIBRARY", "modeType": 4, "name": name, "title": strings.TrimSuffix(name, path.Ext(name)), "type": kind, "size": len(raw), "fileOriginSize": len(raw), "hashTag": fingerprint, "status": 0, "fetchSource": 0, "fileSyncStatus": 1, "userDataSyncStatus": 1, "nativeAbsolutePath": nativePath, "idString": nativePath, "location": nativePath, "readingStatus": 0, "createdAt": now, "updatedAt": now, "lastModified": now, "extraAttributes": "{}", "alexandriaOperationId": id}
 	payload, _ := json.Marshal(map[string]any{"generation": generation, "nativeUid": s.uid(), "fingerprint": fingerprint, "sha256": sha, "nativeKey": key, "metadata": metadata, "updatedAt": now, "name": name})
-	var version int64
-	e = tx.QueryRowContext(ctx, `INSERT INTO boox_blob_version(native_key,sha256,md5,bytes,content_type) VALUES($1,$2,$3,$4,$5) RETURNING id`, key, sha, hex.EncodeToString(md[:]), len(raw), ct).Scan(&version)
-	if e == nil {
-		_, e = tx.ExecContext(ctx, `INSERT INTO boox_blob_live(native_key,version_id) VALUES($1,$2)`, key, version)
-	}
+	e = bindPublicationAsset(ctx, tx, key, asset)
 	if e == nil {
 		_, e = tx.ExecContext(ctx, `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,payload,state) VALUES($1,$2,'upload_book',$3,'',$4,'queued')`, id, idem, doc, payload)
 	}
