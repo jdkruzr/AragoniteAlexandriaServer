@@ -94,9 +94,9 @@ func (s *Store) ClaimID(ctx context.Context, id uuid.UUID, owner string, lease t
 	return &job, nil
 }
 
-func (s *Store) Complete(ctx context.Context, id uuid.UUID, owner string) error {
+func (s *Store) Complete(ctx context.Context, job Job, owner string) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_jobs SET status='done',finished_at=now(),lease_owner=NULL,lease_until=NULL
-		WHERE id=$1 AND status='leased' AND lease_owner=$2`, id, owner)
+		WHERE id=$1 AND status='leased' AND lease_owner=$2 AND attempts=$3`, job.ID, owner, job.Attempts)
 	return leaseResult(result, err)
 }
 
@@ -109,7 +109,7 @@ func (s *Store) Fail(ctx context.Context, job Job, owner string, cause error) er
 	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_jobs SET status=$3::alexandria_job_status,last_error=$4,
 		available_at=CASE WHEN $3='pending' THEN now()+$5::interval ELSE available_at END,
 		finished_at=CASE WHEN $3='failed' THEN now() ELSE NULL END,lease_owner=NULL,lease_until=NULL
-		WHERE id=$1 AND status='leased' AND lease_owner=$2`, job.ID, owner, status, cause.Error(), interval(delay))
+		WHERE id=$1 AND status='leased' AND lease_owner=$2 AND attempts=$6`, job.ID, owner, status, cause.Error(), interval(delay), job.Attempts)
 	return leaseResult(result, err)
 }
 

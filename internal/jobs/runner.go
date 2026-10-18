@@ -39,7 +39,7 @@ func (r *Runner) RunOne(ctx context.Context, id uuid.UUID) error {
 		}
 		return err
 	}
-	return r.Store.Complete(ctx, job.ID, r.Owner)
+	return r.Store.Complete(ctx, *job, r.Owner)
 }
 
 func (r *Runner) Run(ctx context.Context) error {
@@ -84,7 +84,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			if failErr := r.Store.Fail(ctx, *job, r.Owner, err); failErr != nil {
 				r.Logger.Error("record job failure", "job_id", job.ID, "error", failErr)
 			}
-		} else if err := r.Store.Complete(ctx, job.ID, r.Owner); err != nil {
+		} else if err := r.Store.Complete(ctx, *job, r.Owner); err != nil {
 			r.Logger.Error("complete job", "job_id", job.ID, "error", err)
 		}
 		timer.Reset(0)

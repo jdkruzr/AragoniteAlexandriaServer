@@ -11,6 +11,8 @@ notebooks and concurrent schedulers preserve the active request.
 Batch 3 also passes: CalDAV applies complete filters and bounds XML bodies.
 Batch 4 passes ten packaging tests: shared backup paths and Docker/Podman
 engine selection preserve cold-backup failure/restart guards.
+Batch 5 passes its full gate: generic-job completion/failure is fenced by claim
+attempt, including same-host reclaim.
 No implementation changes have been deployed yet.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,
