@@ -207,3 +207,15 @@ Brand usage and the generation brief for the project mark are in
 
 Apache License 2.0. Code ported selectively from UltraBridge keeps its
 original copyright and license notices and is listed in `NOTICE`.
+
+## About Software Development with AI
+
+The robots are extremely good at writing code, and Aragonite projects are
+built with their help. The maintainers remain responsible for what ships.
+
+These models learned from massive amounts of open-source software, built
+and shared by people. We believe in giving back to that commons:
+**all Aragonite projects are and will always remain open-source software.**
+You can inspect the code, learn from it, change it, and share your improvements
+under each project's license. The robots got to learn from open source;
+the humans should get to keep doing that, too.

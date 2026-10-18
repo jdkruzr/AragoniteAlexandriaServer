@@ -1,0 +1,175 @@
+# History Rewrite (2026-10-18)
+
+At the owner's request, 21 AI co-author trailers were removed from commit
+messages. This changed 151 of the 184 commit hashes, including descendants
+whose own messages did not change. Every commit retains its exact file tree,
+author, committer and timestamps. Hosting's `45eb49115071` pin is unchanged.
+
+The rewritten `main` was pushed with a lease against the previous remote tip
+`0aa07f48cebbe0902ee4416f09ab1b4b87303290`; its replacement is
+`e8d77fbf11faae1d2c892c09677402ae65504c40`. There were no other published
+branches or tags. A verified recovery bundle and full commit map are retained
+locally outside the repository.
+
+Existing deployment tags keep their names. Use this map to resolve commit
+references in earlier documentation; for references predating the
+[October 17 rewrite](history-rewrite-20261017.md), apply that map first, then
+this one. A hash absent from this map was unchanged by this rewrite.
+Other checkouts need to reconcile their history before pushing; do not merge
+the old history back into `main`.
+
+Old → new (first 12 characters):
+
+```text
+2f86b7007cb9 9956d87cbb58
+b5c3b47b92ab 5be113bf4268
+140069e37485 1bf94588f52a
+5f97376ef445 d36c04a90578
+c858613645b4 1ef765ef435c
+d18e0758763d 3b39c75ca1fd
+47d5f706f9cd 86f5dab0e47b
+298906aa0b1b 4d58c8c2081a
+3a66dc399e2b 23714b38ae5e
+9d7b4212a0ce ed7eba8dd7be
+748a18ef39f9 f02bdd6fa68b
+ed4cfaeb0b4e c4337c0ca4c5
+2be2c34a8574 bbf30345be65
+dc029bb2064c 516aea6f386b
+d01ee732cc65 4eee564a8beb
+2107f8fc7258 d49eb68acaae
+954e7f8a63de 1ab86077b412
+3b573053f621 59e0c29d6296
+7b6e3bb00251 2c9c1d1f88b8
+cd141e3a337a 50c5608c10bf
+e361116ed4d4 b3eb7d4cd632
+9ecb6341a403 0500b5a12f2d
+c402602b1a4f 85dfe4e17abb
+2f3e8e9b01b2 875ecb68e15f
+aa4bd3348014 5134a7b3e9a2
+23bd5c9e8f6c a637ab79b597
+f1fc05724813 707bbbbc1e6e
+f57dfece6581 1a620edba1da
+4fa65dd165e0 7c0f67aa822b
+5192e59b404c 14a2282360a0
+d619a6fccb7a 02653259723f
+0af02f3552e9 63d57b8cc9b4
+f38d45ed4ddd 4b84316a15fd
+4d05a9c3b18a b368a1e93025
+3c5fce4532bd bca575a99f21
+917ddc5829ce 7fea824d9a8f
+8b3e946281f7 3bb79baa1bfd
+5229e4c93373 46d0f4644804
+80c6486d292d 4dc4fb3fed43
+c48d0f110d02 62a89d50b681
+ae80f5df25dc d38efec13ed5
+f38f5dfb4273 893449d98fe3
+d0431ea13037 99bd61303248
+d7722585c36d f72a47db77c4
+ad50023114e6 9b78b95581c9
+d8e9ab8379cd 153e419a1d95
+3fad3bafb613 248351890870
+c2c98a090db2 1170f1202fe6
+d2cb67788b17 f6e2158216d3
+d551e88228dd 0c70bb988bec
+35717adc8e97 7464ffbc9d5a
+08cdb2784b2e b7d466a5c00c
+0eb791b81962 a74099f7eabc
+b7b70e8fc390 2f230ec657be
+7b9d6302ffec 90bfd81d5fd3
+7ff8cca42511 396717cbd998
+ba73d936a759 b68cef2f855d
+8b3c6f92a306 2811a7147890
+a4aa106a9217 5be247a1f8da
+93645a9fdf54 7616e1157744
+c73a0c9a5742 be1864d1f973
+05e68c72a5ef 6a5f46ee1058
+435ef3bc0de5 3f26eeca65aa
+2e8b1ab93cf8 92f72dc9581f
+1174fbd6108c 07143486701d
+13e2e9afe8d9 d7e1d503d782
+d71c9e5d70fd 65982c1e51bb
+e2feba61fd97 90c0492e90b1
+65189bd87e66 892abfbc7d7f
+306c77da9218 ef84a21cc2db
+f7f4bb248274 daa55b913912
+94ac548c241d 71f563c54882
+c5708df309d2 fa465642a486
+01c80560ad19 dc3a5bfb6386
+225d11f40a14 a6c883d31fc3
+d0d2e39b8c11 6270512cd6a3
+d6f65d0965be 861474ecf6b3
+790fb277ef7d a2e589804998
+f351a8ddef94 f49993f4b9ad
+b3cfeae806a3 a7a420067139
+f50f1265eb9c f6cf6cc5360b
+f6f59c4e6630 f414f2fd7206
+4ac54d3b97e5 f6e871f31de0
+1e35f144bf80 16eb726e6363
+bacf680d4e10 dc69df8d2abf
+2478097901d7 44fc9e5c78bb
+5f019f0aa502 4465c1a27048
+958bc6af592b 1b8df5ec38be
+db0e0ccc53fc c22ef9054d3c
+7e77c38ffdd1 981f3496f461
+035af36b559d e854fc2b48e0
+dc251c326d77 b4f7184b77b1
+f63cdbf49216 c593cecf32e1
+90d5fee8aa33 21e7c9de9ea9
+132e00240c6d eb722a0634fe
+e907966264bd dbb5084a7514
+4e90eacc07d0 3b1d0658ed49
+90eee6b974aa e9fd158b6bf4
+a3620ddbe610 77efb793e9e0
+684a0a052206 e6e8973db4a5
+5d470019b85c a54fff10c53e
+4ec4be3636ad 8702fd885f69
+04ef0c45e48c 7ebb0d85ce6d
+8308f52d2596 75f003de33f2
+a8d470410f4b 3e58a20ab5b5
+8b714fafd1d3 1c31723f4f92
+f3e50233429f 02dfec2593a1
+834950f4b450 103aa148adff
+95027ae85d05 82f814d45722
+3902fcdce98e d99808342fbd
+686d18a2d28e b9952141f3bc
+16e0b7f9ea73 009b0faa5717
+68c9b27e2604 0e482be7f4ac
+957adcbfea93 228abb81da66
+4565dc22759e 15498fca5006
+0bc4725520ee 04bce7503c7d
+c51edf55eae8 65415152b900
+6f2dde9a7349 250f6008acf9
+6366f751405e 1e1b7734a8da
+b51aa1a880bf 6fb8be473a3e
+306e90565025 1b611e2fb87f
+ede56cdf255d babdcaca3c2d
+b756d8928290 4b0016f95623
+6e55741f5334 5fa11b9e5ed1
+eb07f3bcf136 aaae6c64cdf9
+c3533e881556 953123049d99
+7ec43112d6be 4f965bafb8c9
+d265357d5f72 5a7c7ea8121e
+018504afb4b1 e5fefebefebc
+a02554acea39 bde9b8d556ae
+ae5e1f2e045c 1b49559e6660
+8543a9ae7303 8432c8773936
+7efd10be67a7 75fa9abf626e
+abebbc30f581 49b6055b2992
+3102703ca607 4e5faaded9f8
+462c811e692d df1aedb916ad
+50657df3d343 5fdd41ee7778
+4a2624ecc2d3 9c111b0174ab
+420e3e5581bd 6e73cbfd94ad
+a2b10a66c633 c0e8a69c51cf
+08b3eacbcd01 e48be0d3164c
+42c4f36b7e83 99257a7e00ef
+7eede1cf41c9 12ccc5ef7649
+9db5b3687004 6d07ef23a619
+f51e6cde1914 2f2f2bf71767
+dc9d9b6aeffa 9f39f736c811
+5075d19f43be c81d20a523cc
+24997a9dcf6f fc5d04ac4431
+1b80fcde4e3e 0faffc266115
+a5fe9a187815 8dbf745bf072
+0aa07f48cebb e8d77fbf11fa
+```
