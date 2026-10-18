@@ -73,12 +73,10 @@ func ProppatchStub(next http.Handler, opts ProppatchOptions) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		body, err := io.ReadAll(r.Body)
+		body, err := readXMLBody(w, r)
 		if err != nil {
-			http.Error(w, "read body", http.StatusBadRequest)
 			return
 		}
-		r.Body.Close()
 		sets, removes, err := parseProppatchProps(body)
 		if err != nil {
 			http.Error(w, "parse PROPPATCH body", http.StatusBadRequest)

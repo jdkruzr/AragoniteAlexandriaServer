@@ -29,6 +29,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 2 complete: bounded keyset traversal and queued-work priority; competing automatic workers cannot replace each other's request. Focused and full Go 1.25 race gates pass (`02-final`).
 
+- Batch 3 complete: task/event query filtering shares the matcher; REPORT, PROPFIND and PROPPATCH use an 8 MiB XML limit (413 oversized; 400 malformed). Existing discovery/sync/attachment tests and the full Go 1.25 race gate pass (`03`).
+
 ## REST task compatibility
 
 POST and PUT remain live upserts (201 and 200 respectively). Creation and live

@@ -153,39 +153,8 @@ func (b *Backend) ListCalendarObjects(ctx context.Context, urlPath string, req *
 }
 
 func (b *Backend) QueryCalendarObjects(ctx context.Context, urlPath string, query *gocaldav.CalendarQuery) ([]gocaldav.CalendarObject, error) {
-	// List all tasks, then apply the query filter.
-	// The go-webdav library does NOT filter results after QueryCalendarObjects returns —
-	// it expects us to apply the filter. Use gocaldav.Filter() if available,
-	// or apply CompFilter manually. For a small VTODO collection this is acceptable.
-	tasks, err := b.store.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var objects []gocaldav.CalendarObject
-	for i := range tasks {
-		obj := b.taskToCalendarObject(&tasks[i])
-		// Apply filter: check if the object matches the query's CompFilter.
-		// At minimum, verify the component type matches (VTODO).
-		// The implementor should check if go-webdav exports a Filter() or Match()
-		// helper and use it here. If not, a simple component name check suffices
-		// since all our objects are VTODO.
-		if query != nil && query.CompFilter.Name != "" &&
-			query.CompFilter.Name != "VCALENDAR" {
-			// If filter requests a specific component (e.g., VTODO), check it
-			hasMatch := false
-			for _, child := range obj.Data.Children {
-				if child.Name == query.CompFilter.Name {
-					hasMatch = true
-					break
-				}
-			}
-			if !hasMatch {
-				continue
-			}
-		}
-		objects = append(objects, *obj)
-	}
-	return objects, nil
+	all, err := b.ListCalendarObjects(ctx, urlPath, nil)
+	return filterCalendarObjects(all, query, err)
 }
 
 func (b *Backend) PutCalendarObject(ctx context.Context, urlPath string, cal *ical.Calendar, opts *gocaldav.PutCalendarObjectOptions) (*gocaldav.CalendarObject, error) {

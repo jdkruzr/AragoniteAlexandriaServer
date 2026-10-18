@@ -114,10 +114,8 @@ func SyncCollectionSource(next http.Handler, src SyncSource) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		body, err := io.ReadAll(r.Body)
-		r.Body.Close()
+		body, err := readXMLBody(w, r)
 		if err != nil {
-			http.Error(w, "read body", http.StatusBadRequest)
 			return
 		}
 		// Restore the body for the library on every path that isn't ours.

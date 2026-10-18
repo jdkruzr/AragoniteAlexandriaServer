@@ -44,10 +44,8 @@ func SyncPropsStub(next http.Handler, store interface {
 			next.ServeHTTP(w, r)
 			return
 		}
-		body, err := io.ReadAll(r.Body)
-		r.Body.Close()
+		body, err := readXMLBody(w, r)
 		if err != nil {
-			http.Error(w, "read body", http.StatusBadRequest)
 			return
 		}
 		r.Body = io.NopCloser(bytes.NewReader(body))

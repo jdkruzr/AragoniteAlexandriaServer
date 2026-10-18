@@ -8,6 +8,7 @@ race gate pass (47 packages). The [implementation log](quality-implementation-20
 tracks the remaining batches and the user-requested final test deployment.
 Batch 2 also passes its full gate: automatic minutes traverses completed
 notebooks and concurrent schedulers preserve the active request.
+Batch 3 also passes: CalDAV applies complete filters and bounds XML bodies.
 No implementation changes have been deployed yet.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,

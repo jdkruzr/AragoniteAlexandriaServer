@@ -163,10 +163,7 @@ func (b *EventBackend) ListCalendarObjects(ctx context.Context, _ string, _ *goc
 // properties and time ranges) with go-webdav's matcher.
 func (b *EventBackend) QueryCalendarObjects(ctx context.Context, urlPath string, query *gocaldav.CalendarQuery) ([]gocaldav.CalendarObject, error) {
 	all, err := b.ListCalendarObjects(ctx, urlPath, nil)
-	if err != nil || query == nil {
-		return all, err
-	}
-	return gocaldav.Filter(query, all)
+	return filterCalendarObjects(all, query, err)
 }
 
 func (b *EventBackend) PutCalendarObject(ctx context.Context, urlPath string, cal *ical.Calendar, _ *gocaldav.PutCalendarObjectOptions) (*gocaldav.CalendarObject, error) {
