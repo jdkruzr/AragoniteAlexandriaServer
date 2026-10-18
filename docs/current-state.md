@@ -6,6 +6,8 @@ serializes mutations and blocks resurrection; server change stamps advance on
 live writes. Focused regressions, build, vet and the fresh Go 1.25 PostgreSQL/S3
 race gate pass (47 packages). The [implementation log](quality-implementation-20261018.md)
 tracks the remaining batches and the user-requested final test deployment.
+Batch 2 also passes its full gate: automatic minutes traverses completed
+notebooks and concurrent schedulers preserve the active request.
 No implementation changes have been deployed yet.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,

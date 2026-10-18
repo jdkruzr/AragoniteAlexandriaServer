@@ -38,13 +38,15 @@ const (
 // the byte after '/'), so each lookup is an index range scan. starts_with
 // scanned every page file once per notebook: about 45 s per pass once a
 // re-save wave marked the whole library changed (2026-10-17).
-const quietNotebooks = `WITH changed AS (
+const quietNotebookChanges = `WITH changed AS (
  SELECT n.document_id, n.updated_at, n.body,
  greatest(n.updated_at, coalesce((SELECT max(v.created_at) FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id
   WHERE l.native_key >= ($1||'/note/'||n.document_id||'/') COLLATE "C" AND l.native_key < ($1||'/note/'||n.document_id||'0') COLLATE "C"), n.updated_at)) AS last_change
  FROM boox_search_notebooks n
  WHERE n.updated_at>=$2 AND NOT EXISTS(SELECT 1 FROM alexandria_recognition_skip s WHERE s.source='boox' AND s.notebook_id=n.document_id))
-SELECT document_id, body FROM changed WHERE last_change>=$2 AND last_change<now()-$3::interval`
+`
+const quietNotebookFilter = ` FROM changed WHERE last_change>=$2 AND last_change<now()-$3::interval`
+const quietNotebooks = quietNotebookChanges + `SELECT document_id, body` + quietNotebookFilter
 
 // AutoProcess queues at most one notebook's automatic work and reports whether
 // it did. Recognition goes first; summaries recognize missing pages themselves.
@@ -151,64 +153,82 @@ func (s Service) autoRecognize(ctx context.Context, since time.Time) (bool, erro
 // summarized. Minutes that are only out of date because of handwriting, and
 // minutes that failed, are left for the owner.
 func (s Service) autoSummarize(ctx context.Context, since time.Time, cfg MinutesConfig) (bool, error) {
-	rows, e := s.DB.QueryContext(ctx, quietNotebooks+` AND EXISTS(SELECT 1 FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id
+	// Freeze eligibility for this pass. Keyset pages avoid repeatedly stopping
+	// at the same finished notebooks, without loading the entire library at once.
+	cutoff := time.Now().Add(-autoSummarizeQuiet)
+	var after time.Time
+	var afterID string
+	for {
+		if err := ctx.Err(); err != nil {
+			return false, err
+		}
+		query := quietNotebookChanges + `SELECT document_id, last_change` + quietNotebookFilter
+		rows, e := s.DB.QueryContext(ctx, query+` AND last_change <= $4
+ AND ($5::timestamptz IS NULL OR (last_change,document_id)>($5,$6))
+ AND EXISTS(SELECT 1 FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id
  WHERE l.native_key >= ($1||'/note/'||document_id||'/resource/data/') COLLATE "C" AND l.native_key < ($1||'/note/'||document_id||'/resource/data0') COLLATE "C" AND lower(right(l.native_key,4)) IN ('.mp3','.pcm') AND v.created_at>=$2 AND NOT v.deleted)
- ORDER BY last_change LIMIT 20`, s.uid(), since, interval(autoSummarizeQuiet))
-	if e != nil {
-		return false, e
-	}
-	var ids []string
-	for rows.Next() {
-		var id string
-		var body []byte
-		if e = rows.Scan(&id, &body); e != nil {
-			break
-		}
-		ids = append(ids, id)
-	}
-	re := rows.Err()
-	rows.Close()
-	if e != nil || re != nil {
-		return false, errors.Join(e, re)
-	}
-	for _, id := range ids {
-		n, e := s.notebookSnapshot(ctx, id)
-		if e != nil || n.Meta.Status != 1 {
-			continue
-		}
-		have := map[string]bool{}
-		var state string
-		var raw []byte
-		e = s.DB.QueryRowContext(ctx, `SELECT state,recordings FROM alexandria_note_minutes WHERE source='boox' AND notebook_id=$1`, id).Scan(&state, &raw)
-		if e != nil && !errors.Is(e, sql.ErrNoRows) {
+ ORDER BY last_change,document_id LIMIT 20`, s.uid(), since, interval(autoSummarizeQuiet), cutoff, sql.NullTime{Time: after, Valid: !after.IsZero()}, afterID)
+		if e != nil {
 			return false, e
 		}
-		if state == "queued" || state == "processing" {
-			continue
-		}
-		if e == nil {
-			for _, r := range recordingRefs(raw) {
-				have[r] = true
+		var ids []string
+		for rows.Next() {
+			var id string
+			if e = rows.Scan(&id, &after); e != nil {
+				break
 			}
+			afterID = id
+			ids = append(ids, id)
 		}
-		fresh := false
-		for _, r := range s.recordings(ctx, n) {
-			if !have[r.Key+"\x00"+r.SHA256] {
-				fresh = true
+		re := rows.Err()
+		rows.Close()
+		if e != nil || re != nil {
+			return false, errors.Join(e, re)
+		}
+		if len(ids) == 0 {
+			return false, nil
+		}
+		for _, id := range ids {
+			n, e := s.notebookSnapshot(ctx, id)
+			if e != nil || n.Meta.Status != 1 {
+				continue
 			}
-		}
-		if !fresh {
-			continue
-		}
-		if e = s.RequestMinutes(ctx, id, uuid.NewString(), n.Version, true, cfg); e != nil {
-			if errors.Is(e, errMinutesChanged) {
-				continue // the note changed under us; next turn sees it settle
+			have := map[string]bool{}
+			var state string
+			var raw []byte
+			e = s.DB.QueryRowContext(ctx, `SELECT state,recordings FROM alexandria_note_minutes WHERE source='boox' AND notebook_id=$1`, id).Scan(&state, &raw)
+			if e != nil && !errors.Is(e, sql.ErrNoRows) {
+				return false, e
 			}
-			return false, e
+			if state == "queued" || state == "processing" {
+				continue
+			}
+			if e == nil {
+				for _, r := range recordingRefs(raw) {
+					have[r] = true
+				}
+			}
+			fresh := false
+			for _, r := range s.recordings(ctx, n) {
+				if !have[r.Key+"\x00"+r.SHA256] {
+					fresh = true
+				}
+			}
+			if !fresh {
+				continue
+			}
+			if e = s.requestMinutes(ctx, id, uuid.NewString(), n.Version, true, cfg, true); e != nil {
+				if errors.Is(e, errMinutesChanged) || errors.Is(e, errMinutesAlreadyHandled) {
+					continue // the note changed under us; next turn sees it settle
+				}
+				return false, e
+			}
+			return true, nil
 		}
-		return true, nil
+		if len(ids) < 20 {
+			return false, nil
+		}
 	}
-	return false, nil
 }
 
 // interval is a Postgres interval literal.

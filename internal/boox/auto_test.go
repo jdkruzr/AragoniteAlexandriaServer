@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
+	"strings"
 	"testing"
 	"time"
 )
@@ -113,5 +114,70 @@ func TestAutomaticProcessingWaitsForQuietNewNotes(t *testing.T) {
 	age(11 * time.Minute)
 	if run(on) {
 		t.Fatal("processed a skipped notebook")
+	}
+}
+
+func TestAutomaticMinutesTraversesFinishedNotebooks(t *testing.T) {
+	for _, size := range []int{21, 101} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			s := testService(t)
+			ctx := context.Background()
+			for i := 1; i <= size; i++ {
+				id := fmt.Sprintf("survey-%03d", i)
+				body := fmt.Sprintf(`{"uniqueId":%q,"type":1,"status":1,"pageNameList":[]}`, id)
+				age := "3600 seconds"
+				if _, err := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body,updated_at) VALUES($1,'1-a','notebook','1',$2,$3,now()-$4::interval)`, id, s.uid(), body, age); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := s.DB.ExecContext(ctx, `WITH v AS (INSERT INTO boox_blob_version(native_key,sha256,md5,bytes,created_at) VALUES($1,repeat('a',64),repeat('b',32),1,now()-$2::interval) RETURNING id,native_key) INSERT INTO boox_blob_live(native_key,version_id) SELECT native_key,id FROM v`, s.uid()+"/note/"+id+"/resource/data/rec.mp3", age); err != nil {
+					t.Fatal(err)
+				}
+				if i < size {
+					raw := `[{"key":"resource/data/rec.mp3","sha256":"` + strings.Repeat("a", 64) + `"}]`
+					if _, err := s.DB.ExecContext(ctx, `INSERT INTO alexandria_note_minutes(source,notebook_id,request_id,state,recordings) VALUES('boox',$1,gen_random_uuid(),'ready',$2)`, id, raw); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			cfg := MinutesConfig{Enabled: true, Identity: "synthetic"}
+			since := time.Now().Add(-2 * time.Hour)
+			type result struct {
+				found bool
+				err   error
+			}
+			start := make(chan struct{})
+			results := make(chan result, 2)
+			for i := 0; i < 2; i++ {
+				go func() { <-start; found, err := s.autoSummarize(ctx, since, cfg); results <- result{found, err} }()
+			}
+			close(start)
+			queued := 0
+			for i := 0; i < 2; i++ {
+				r := <-results
+				if r.err != nil {
+					t.Fatal(r.err)
+				}
+				if r.found {
+					queued++
+				}
+			}
+			if queued != 1 {
+				t.Fatalf("concurrent workers queued %d requests", queued)
+			}
+			var found bool
+			var err error
+			var state string
+			if err = s.DB.QueryRowContext(ctx, `SELECT state FROM alexandria_note_minutes WHERE notebook_id=$1`, fmt.Sprintf("survey-%03d", size)).Scan(&state); err != nil || state != "queued" {
+				t.Fatalf("last candidate: %s %v", state, err)
+			}
+			if found, err = s.autoSummarize(ctx, since, cfg); err != nil || found {
+				t.Fatalf("queued twice: %v %v", found, err)
+			}
+			cancelled, cancel := context.WithCancel(ctx)
+			cancel()
+			if _, err = s.autoSummarize(cancelled, since, cfg); err == nil {
+				t.Fatal("cancelled scan succeeded")
+			}
+		})
 	}
 }

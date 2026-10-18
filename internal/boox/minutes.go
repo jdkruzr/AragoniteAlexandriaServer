@@ -215,6 +215,12 @@ var errMinutesChanged = errors.New("The notebook changed while you were reviewin
 // optionally recognize pages without text, then summarize. Replays of the same
 // request are no-ops.
 func (s Service) RequestMinutes(ctx context.Context, id, request, version string, recognize bool, cfg MinutesConfig) error {
+	return s.requestMinutes(ctx, id, request, version, recognize, cfg, false)
+}
+
+var errMinutesAlreadyHandled = errors.New("automatic minutes already handled")
+
+func (s Service) requestMinutes(ctx context.Context, id, request, version string, recognize bool, cfg MinutesConfig, automatic bool) error {
 	if _, e := uuid.Parse(request); e != nil {
 		return errors.New("Invalid request token.")
 	}
@@ -241,6 +247,35 @@ func (s Service) RequestMinutes(ctx context.Context, id, request, version string
 		return e
 	}
 	defer tx.Rollback()
+	// Serialize explicit and automatic requests for the same notebook. A second
+	// automatic worker must not replace a request or reset a processing lease.
+	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('boox-minutes:' || $1,0))`, id); e != nil {
+		return e
+	}
+	if automatic {
+		var state string
+		var raw []byte
+		e = tx.QueryRowContext(ctx, `SELECT state,recordings FROM alexandria_note_minutes WHERE source='boox' AND notebook_id=$1 FOR UPDATE`, id).Scan(&state, &raw)
+		if e != nil && !errors.Is(e, sql.ErrNoRows) {
+			return e
+		}
+		if state == "queued" || state == "processing" {
+			return errMinutesAlreadyHandled
+		}
+		have := map[string]bool{}
+		for _, key := range recordingRefs(raw) {
+			have[key] = true
+		}
+		fresh := false
+		for _, r := range recs {
+			if !have[r.Key+"\x00"+r.SHA256] {
+				fresh = true
+			}
+		}
+		if !fresh {
+			return errMinutesAlreadyHandled
+		}
+	}
 	var seen bool
 	if e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM alexandria_note_minutes WHERE source='boox' AND notebook_id=$1 AND request_id=$2)`, id, request).Scan(&seen); e != nil || seen {
 		return e

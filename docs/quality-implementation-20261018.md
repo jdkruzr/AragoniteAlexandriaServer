@@ -27,6 +27,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 1 complete: focused task/import regressions, build, vet and full fresh Go 1.25 race gate pass (47 packages). Evidence: `01-race.log` in the local `/tmp/alexandria-quality-evidence` workspace; final evidence will be retained with the completed handoff. No deployed changes yet.
 
+- Batch 2 complete: bounded keyset traversal and queued-work priority; competing automatic workers cannot replace each other's request. Focused and full Go 1.25 race gates pass (`02-final`).
+
 ## REST task compatibility
 
 POST and PUT remain live upserts (201 and 200 respectively). Creation and live
