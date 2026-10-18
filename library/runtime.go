@@ -584,8 +584,8 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 				native := boox.Service{Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, Minutes: minutesConfig(snapshot), RecognitionEnabled: pages.OCR != nil}
 				if err = native.ResolveIdentity(ctx); err == nil {
 					// New pages and recordings the owner asked to have handled.
-					a := snapshot.Config.Automatic
-					if found, err = native.AutoProcess(ctx, boox.AutoConfig{Recognize: a.Recognize, Summarize: a.Summarize, Since: a.Since}, minutesConfig(snapshot)); found || err != nil {
+					c := snapshot.Config
+					if found, err = native.AutoProcess(ctx, boox.AutoConfig{Recognize: c.AutoRecognize(), Summarize: c.AutoSummarize(), Seed: c.Automatic.Since}, minutesConfig(snapshot)); found || err != nil {
 						break
 					}
 					// Queued work fails with guidance when its provider is off.

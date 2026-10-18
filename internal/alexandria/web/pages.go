@@ -619,6 +619,17 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 			} else {
 				data["ActionsSince"] = "the next recognized page"
 			}
+			c := providerView.Config
+			switch {
+			case c.AutoRecognize() || c.AutoSummarize():
+				if since, err := settings.Get(ctx, d.DB, settings.AutomaticSince, ""); err == nil && since != "" {
+					data["AutoSince"] = strings.Replace(strings.TrimSuffix(since, "Z"), "T", " ", 1) + " UTC"
+				} else {
+					data["AutoNew"] = true
+				}
+			case c.Automatic.Chosen():
+				data["AutoWhy"] = "Automatic processing starts once a recognition provider, or transcription and a summary model, is set up."
+			}
 		}
 	}
 	name, title := "settings", i18n.M("Account")

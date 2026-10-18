@@ -11,14 +11,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 )
 
 // AutoConfig is the owner's automatic processing: recognize new pages and
-// summarize notes with new recordings, for notebooks that change after Since.
+// summarize notes with new recordings, for notebooks that change after it
+// started. Seed is a start time saved by earlier versions (zero for none).
 type AutoConfig struct {
 	Recognize, Summarize bool
-	Since                time.Time
+	Seed                 time.Time
 }
 
 // How long a notebook must be quiet before automatic processing touches it:
@@ -47,18 +49,44 @@ SELECT document_id, body FROM changed WHERE last_change>=$2 AND last_change<now(
 // AutoProcess queues at most one notebook's automatic work and reports whether
 // it did. Recognition goes first; summaries recognize missing pages themselves.
 func (s Service) AutoProcess(ctx context.Context, auto AutoConfig, cfg MinutesConfig) (bool, error) {
-	if auto.Since.IsZero() {
+	recognize, summarize := auto.Recognize && s.RecognitionEnabled, auto.Summarize && cfg.Enabled
+	if !recognize && !summarize {
 		return false, nil
 	}
-	if auto.Recognize && s.RecognitionEnabled {
-		if found, e := s.autoRecognize(ctx, auto.Since); found || e != nil {
+	since, e := s.automaticSince(ctx, auto.Seed)
+	if e != nil {
+		return false, e
+	}
+	if recognize {
+		if found, e := s.autoRecognize(ctx, since); found || e != nil {
 			return found, e
 		}
 	}
-	if auto.Summarize && cfg.Enabled {
-		return s.autoSummarize(ctx, auto.Since, cfg)
+	if summarize {
+		return s.autoSummarize(ctx, since, cfg)
 	}
 	return false, nil
+}
+
+// automaticSince is when automatic processing started: only notebooks that
+// change afterwards are processed, so it never sweeps up the existing library.
+// It is set once, the first time automatic processing has something to run
+// (from seed when an earlier version saved one), and reset when the owner
+// turns automatic processing off or back on.
+func (s Service) automaticSince(ctx context.Context, seed time.Time) (time.Time, error) {
+	start := time.Now().UTC()
+	if !seed.IsZero() {
+		start = seed.UTC()
+	}
+	if _, e := s.DB.ExecContext(ctx, `INSERT INTO alexandria_settings(key,value,secret) VALUES($1,to_jsonb($2::text),false) ON CONFLICT (key) DO NOTHING`,
+		settings.AutomaticSince, start.Truncate(time.Second).Format(time.RFC3339)); e != nil {
+		return time.Time{}, e
+	}
+	v, e := settings.Get(ctx, s.DB, settings.AutomaticSince, "")
+	if e != nil {
+		return time.Time{}, e
+	}
+	return time.Parse(time.RFC3339, v)
 }
 
 func (s Service) autoRecognize(ctx context.Context, since time.Time) (bool, error) {

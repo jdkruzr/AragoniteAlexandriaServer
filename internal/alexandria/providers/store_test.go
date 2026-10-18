@@ -494,32 +494,33 @@ func TestFirstBuildReportsItsOwnProgress(t *testing.T) {
 	}
 }
 
-func TestAutomaticProcessingStartsItsClockWhenTurnedOn(t *testing.T) {
+func TestAutomaticProcessingIsOnUnlessTurnedOff(t *testing.T) {
 	ctx := context.Background()
 	s := fixture(t)
 	v, _ := s.Load(ctx)
-	before := time.Now().Add(-time.Second)
-	c, e := s.AutomaticCandidate(ctx, v.Revision, true, false)
-	if e != nil || !c.Config.Automatic.Recognize || c.Config.Automatic.Since.Before(before) {
-		t.Fatal(e, c.Config.Automatic)
+	// On by default wherever its models are set up.
+	c := Config{OCR: OCRConfig{Enabled: true}, Transcription: TranscriptionConfig{Enabled: true}, Summary: SummaryConfig{Enabled: true}}
+	if !c.AutoRecognize() || !c.AutoSummarize() || !c.Automatic.Chosen() {
+		t.Fatal("not on by default", c.Automatic)
 	}
-	if e = s.Save(ctx, c); e != nil {
+	if (Config{}).AutoRecognize() || (Config{OCR: OCRConfig{Enabled: true}}).AutoSummarize() {
+		t.Fatal("on without its models")
+	}
+	if ok, _ := c.ActionsReady(); !ok {
+		t.Fatal("note actions need automatic recognition, which is on by default")
+	}
+	// The owner's choices are saved as opt-outs, and an old start time is dropped.
+	v.Config.Automatic.Since = time.Now()
+	if e := s.Save(ctx, v); e != nil {
 		t.Fatal(e)
 	}
-	since := c.Config.Automatic.Since
 	v, _ = s.Load(ctx)
-	if !v.Config.Automatic.Since.Equal(since) {
-		t.Fatal("start time not saved", v.Config.Automatic)
+	got, e := s.AutomaticCandidate(ctx, v.Revision, true, false)
+	if e != nil || got.Config.Automatic.RecognizeOff || !got.Config.Automatic.SummarizeOff || !got.Config.Automatic.Since.IsZero() {
+		t.Fatal(e, got.Config.Automatic)
 	}
-	// Adding the other option keeps the original start time.
-	c, _ = s.AutomaticCandidate(ctx, v.Revision, true, true)
-	if !c.Config.Automatic.Since.Equal(since) || !c.Config.Automatic.Summarize {
-		t.Fatal(c.Config.Automatic)
-	}
-	s.Save(ctx, c)
-	v, _ = s.Load(ctx)
-	if c, _ = s.AutomaticCandidate(ctx, v.Revision, false, false); c.Config.Automatic.On() || !c.Config.Automatic.Since.IsZero() {
-		t.Fatal("turning it off kept a start time", c.Config.Automatic)
+	if got, _ = s.AutomaticCandidate(ctx, v.Revision, false, false); got.Config.Automatic.Chosen() {
+		t.Fatal("turning both off", got.Config.Automatic)
 	}
 	if _, e = s.AutomaticCandidate(ctx, v.Revision-1, true, true); e != ErrStale {
 		t.Fatal("stale revision accepted", e)

@@ -124,10 +124,10 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 		t.Fatal("automatic save", got.Code, got.Body.String())
 	}
 	_, _, snap, e = r.pageConfiguration(ctx, db)
-	if e != nil || !snap.Config.Automatic.Recognize || !snap.Config.Automatic.Summarize || snap.Config.Automatic.Since.IsZero() || snap.Config.Summary.Model != "synthetic-llm" || snap.SummaryKey != "private-summary-key" {
+	if e != nil || snap.Config.Automatic.RecognizeOff || snap.Config.Automatic.SummarizeOff || snap.Config.Summary.Model != "synthetic-llm" || snap.SummaryKey != "private-summary-key" {
 		t.Fatal("automatic save", e, snap.Config.Automatic)
 	}
-	if page := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(page, `name="a_recognize" checked`) || !strings.Contains(page, "On since") {
+	if page := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(page, `name="a_recognize" checked`) || !strings.Contains(page, "On. It applies to notebooks that change from now on.") {
 		t.Fatal("automatic settings view")
 	}
 	// Enabling/saving never queues existing content for paid processing.

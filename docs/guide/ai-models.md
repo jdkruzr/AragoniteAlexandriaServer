@@ -1,6 +1,6 @@
 # Set Up AI Models
 
-Alexandria uses AI models you choose for four jobs: a **vision model** that reads handwriting, a **transcription** service and a **summary model** for [Audio Note Minutes](minutes.md), and an **embedding model** for search by meaning. They're all set on one page, **Settings → AI Tools and Recognition**. Each one is just an HTTP endpoint, so it can be a hosted service, a model on your own GPU box, or a mix. Nothing is sent to any model until you queue work, or until you turn on automatic processing.
+Alexandria uses AI models you choose for four jobs: a **vision model** that reads handwriting, a **transcription** service and a **summary model** for [Audio Note Minutes](minutes.md), and an **embedding model** for search by meaning. They're all set on one page, **Settings → AI Tools and Recognition**. Each one is just an HTTP endpoint, so it can be a hosted service, a model on your own GPU box, or a mix. Once a model is set up, automatic processing sends new BOOX material to it (you can turn that off); everything else waits until you queue it.
 
 ![Settings → AI Tools and Recognition](../images/settings-recognition.png)
 
@@ -25,7 +25,7 @@ The first card, **Provider**, holds the **Vision Model** settings.
 5. Enter the **API key**, if the provider needs one.
 6. Choose **Test without saving**, then **Save**.
 
-Saving doesn't queue anything. Existing pages are recognized only when you ask, from a notebook, **Recognition** jobs, or **Recognize a library…**, or automatically if you turn that on below. See [Recognize Handwriting](recognition.md).
+Saving doesn't queue anything. Existing pages are recognized only when you ask, from a notebook, **Recognition** jobs, or **Recognize a library…**, or automatically for notebooks that change from now on (see below). See [Recognize Handwriting](recognition.md).
 
 ### API Keys
 
@@ -98,12 +98,12 @@ Search by meaning only indexes text that already exists. It never starts handwri
 
 ## Automatic Processing
 
-Without this, BOOX pages are recognized only when you ask.
+Automatic processing is **on by default** once its models are set up. Untick a box and choose **Save automatic processing** to turn that half off; then BOOX pages are recognized only when you ask.
 
-- **Recognize new BOOX pages automatically** queues pages that have never been recognized, in notebooks that change after you turn it on, once a notebook has been quiet for five minutes.
-- **Summarize notes with new recordings automatically** starts Audio Note Minutes for a note whose recording arrived after you turned it on, ten minutes after the note goes quiet. It recognizes the note's unrecognized pages first.
+- **Recognize new BOOX pages automatically** queues pages that have never been recognized, in notebooks that change after it starts, once a notebook has been quiet for five minutes.
+- **Summarize notes with new recordings automatically** starts Audio Note Minutes for a note whose recording arrived after it started, ten minutes after the note goes quiet. It recognizes the note's unrecognized pages first.
 
-Choose **Save automatic processing**. It never sweeps up your existing library; use **Recognize a library…** for that. Pages are sent to your provider, so charges may apply. Alexandria Client pages don't need this: they're recognized as they sync.
+It never sweeps up your existing library; use **Recognize a library…** for that. Pages are sent to your provider, so charges may apply. Alexandria Client pages don't need this: they're recognized as they sync.
 
 ## Note Actions
 
@@ -143,4 +143,4 @@ Note actions run only when a recognition provider, a summary model and **Recogni
 | Recognition returns empty text or rambles | A reasoning model is spending its answer on thinking. | With vLLM, tick **vLLM only: disable thinking**, or use a non-reasoning vision model. |
 | **Provider** on Settings → Search says **Model missing** | The embedding model isn't installed on that Ollama. | Pull it there (for example `ollama pull nomic-embed-text:v1.5`). |
 | *Provider credential cannot be decrypted.* | `ALEXANDRIA_SETTINGS_KEY` changed since the key was saved. | Restore the original `.env` value, or re-enter the keys. |
-| Changing settings didn't recognize anything | Saving never queues work. | Queue pages, run **Recognize a library…**, or turn on automatic processing. |
+| Changing settings didn't recognize anything | Saving never queues work. | Queue pages, run **Recognize a library…**, or check that automatic processing is ticked. |

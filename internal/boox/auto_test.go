@@ -3,6 +3,7 @@ package boox
 import (
 	"context"
 	"fmt"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"testing"
 	"time"
 )
@@ -38,13 +39,24 @@ func TestAutomaticProcessingWaitsForQuietNewNotes(t *testing.T) {
 		}
 		return n
 	}
-	on := AutoConfig{Recognize: true, Summarize: true, Since: time.Now().Add(-time.Hour)}
-
-	// Changes from before it was turned on are never swept up.
-	age(6 * time.Minute)
-	if run(AutoConfig{Recognize: true, Summarize: true, Since: time.Now()}) {
-		t.Fatal("processed a notebook that changed before automatic processing was on")
+	on := AutoConfig{Recognize: true, Summarize: true}
+	started := func(at time.Time) {
+		t.Helper()
+		if _, e := s.DB.ExecContext(ctx, `UPDATE alexandria_settings SET value=to_jsonb($2::text) WHERE key=$1`, settings.AutomaticSince, at.UTC().Format(time.RFC3339)); e != nil {
+			t.Fatal(e)
+		}
 	}
+
+	// Its clock starts the first time it has something to run, so changes
+	// from before then are never swept up.
+	age(6 * time.Minute)
+	if run(on) {
+		t.Fatal("processed a notebook that changed before automatic processing started")
+	}
+	if since, e := settings.Get(ctx, s.DB, settings.AutomaticSince, ""); e != nil || since == "" {
+		t.Fatal("clock not started", since, e)
+	}
+	started(time.Now().Add(-time.Hour))
 	// A notebook still being written isn't touched.
 	age(time.Minute)
 	if run(on) {

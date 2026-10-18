@@ -125,12 +125,13 @@ themselves are written in the recordings' language.
 
 ## Automatic Summaries and Sending
 
-Under **Settings → AI Tools and Recognition → Automatic Processing**, tick
-**Summarize notes with new recordings automatically** and choose **Save
-automatic processing**.
+Automatic summaries are **on by default** once transcription and a summary
+model are set up. To turn them off, untick **Summarize notes with new
+recordings automatically** under **Settings → AI Tools and Recognition →
+Automatic Processing** and choose **Save automatic processing**.
 
-- It starts minutes for a note whose recording arrived **after you turned it
-  on**, **ten minutes** after the note goes quiet, recognizing its
+- It starts minutes for a note whose recording arrived **after automatic
+  processing started**, **ten minutes** after the note goes quiet, recognizing its
   unrecognized pages first.
 - Minutes that went out of date only because of handwriting wait for you to
   update them, and failed minutes wait for your retry.

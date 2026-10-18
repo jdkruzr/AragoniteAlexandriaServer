@@ -39,7 +39,8 @@ func newGateway(db *sql.DB, mainAddr, spcAddr string, shutdownTimeout time.Durat
 	registry := prometheus.NewRegistry()
 	metrics := NewMetrics(registry)
 	mainMux := http.NewServeMux()
-	mainMux.Handle("GET /metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	// Metrics need the owner's login (Basic or an API token), like the API.
+	mainMux.Handle("GET /metrics", auth.NewStore(db).Middleware(promhttp.HandlerFor(registry, promhttp.HandlerOpts{})))
 	registerProbes(mainMux, db, readiness...)
 	protected := http.NewServeMux()
 	api.Tasks{Store: tasks.NewStore(db)}.Register(protected)

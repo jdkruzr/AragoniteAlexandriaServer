@@ -20,8 +20,8 @@ find:
    **Settings → AI Tools and Recognition → Provider**.
 2. **A summary model** with **Enable summaries** ticked, in the **Audio Note
    Minutes** section of the same page. See [Set Up AI Models](ai-models.md).
-3. **Automatic recognition**: **Recognize new BOOX pages automatically** under
-   **Automatic Processing**. See [Recognize Handwriting](recognition.md#automatic-recognition).
+3. **Automatic recognition**, which is on by default: **Recognize new BOOX
+   pages automatically** under **Automatic Processing** must stay ticked. See [Recognize Handwriting](recognition.md#automatic-recognition).
 
 **Costs:** each page with colored ink makes one more request to your vision
 model (for the colored ink alone) and one to your summary model. Pages without

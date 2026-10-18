@@ -8,9 +8,10 @@ stays on this server: it becomes searchable here but never changes your BOOX
 notebooks. Alexandria Client text can sync back to Client devices.
 
 **It can cost money.** Every page sent to a hosted model is a billable request.
-Alexandria never sends anything until you confirm a request or turn on
-automatic recognition yourself, and pages that haven't changed reuse their
-earlier result instead of being sent again.
+Once a recognition provider is set up, automatic recognition sends new BOOX
+pages to it (you can turn that off); anything else waits for you to confirm a
+request. Pages that haven't changed reuse their earlier result instead of
+being sent again.
 
 ## What You Need First
 
@@ -44,22 +45,23 @@ setting only concerns BOOX.
 
 ### Automatic Recognition
 
-1. Open **Settings → AI Tools and Recognition** and scroll to **Automatic
-   Processing**.
-2. Tick **Recognize new BOOX pages automatically**.
-3. Choose **Save automatic processing**. The card then says when it has been
-   on since.
+Automatic recognition is **on by default** as soon as a recognition provider
+is set up. The **Automatic Processing** card on **Settings → AI Tools and
+Recognition** says when it has been on since. To turn it off, untick
+**Recognize new BOOX pages automatically** and choose **Save automatic
+processing**.
 
 What it does, precisely:
 
 - It queues pages that have **never been recognized**, in notebooks that
-  **change after you turn it on**. Your existing library isn't swept up the
-  moment you tick the box; use a library run for that.
+  **change after it starts**. Your existing library isn't swept up when you
+  set up a provider; use a library run for that.
 - It waits until a notebook has been **quiet for five minutes**, because pages
   sync in pieces and you may still be writing.
 - **Skipped** notebooks and pages are left alone (see [Skipping](#skipping)).
-- Turning automatic processing completely off and on again restarts the clock:
-  only notebooks that change after the new "on" time count.
+- It starts the first time it has something to do, once its provider is set
+  up. Turning automatic processing completely off and on again restarts the
+  clock: only notebooks that change after the new start count.
 
 Separately from this setting, a page that has already been recognized is
 re-read when its ink changes, so its text stays current.
@@ -221,7 +223,7 @@ halfway through the invoice.
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
 | Buttons are disabled or say to set up a provider | Recognition isn't enabled | Tick **Enable recognition** in Settings → AI Tools and Recognition and save. |
-| Nothing happens automatically | Automatic recognition is off, the notebook hasn't changed since you turned it on, or it hasn't been quiet for five minutes | Check **Automatic Processing**; use **Recognize one notebook…** or a library run for older notebooks. |
+| Nothing happens automatically | Automatic recognition is turned off, the notebook hasn't changed since it started, or it hasn't been quiet for five minutes | Check **Automatic Processing**; use **Recognize one notebook…** or a library run for older notebooks. |
 | Jobs **failed** with "The provider rejected authentication or model access" | Wrong key, model name or API format | Fix the provider in Settings, use **Test without saving**, then **Retry**. |
 | "Provider rejected the request (HTTP …)" | Wrong endpoint, model or format | Check the base URL (no `/v1`), model and API format, then retry. |
 | "Anthropic requires a valid workspace ID" | Your Anthropic key can reach several workspaces | Fill in **Anthropic workspace ID** under **More Options**. |

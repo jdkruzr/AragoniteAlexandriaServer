@@ -51,7 +51,7 @@ func docsPages() []previewPage {
 			Embedding:     providers.EmbedConfig{Enabled: true, URL: "http://models.home.arpa:11434", Model: "nomic-embed-text:v1.5"},
 			Transcription: providers.TranscriptionConfig{Enabled: true, URL: "http://models.home.arpa:9000", Model: "whisper-large-v3-turbo"},
 			Summary:       providers.SummaryConfig{Enabled: true, Format: "openai", URL: "http://models.home.arpa:8000", Model: "qwen2.5-7b-instruct"},
-			Automatic:     providers.AutomaticConfig{Recognize: true, Summarize: true, Since: now.AddDate(0, 0, -9)}},
+			Automatic:     providers.AutomaticConfig{}},
 		Coverage: []providers.Coverage{{Label: "Alexandria Client pages", Texts: 64}, {Label: "BOOX reading records", Texts: 212}, {Label: "BOOX notebook pages", Texts: 1598}}}
 	jobs := recognition.View{Total: 3, Counts: map[string]int{"ready": 2, "processing": 1}, Jobs: []recognition.Job{
 		{ID: "j1", Source: "boox", Notebook: "garden", Title: "Garden Committee", Number: 1, State: "ready", Detail: "Recognized", Model: "qwen2.5-vl-7b-instruct", ImageWidth: 1404, ImageHeight: 1872, ImageBytes: 211000, Created: now.Add(-9 * time.Minute), Updated: now.Add(-8 * time.Minute)},

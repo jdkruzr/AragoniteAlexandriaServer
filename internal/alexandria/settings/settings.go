@@ -27,6 +27,9 @@ const (
 	// NoteActionsSince is when note actions started (RFC 3339): older ink
 	// is only acted on from a page's Find actions button.
 	NoteActionsSince = "note_actions_since"
+	// AutomaticSince is when automatic processing started (RFC 3339): only
+	// notebooks that change afterwards are processed automatically.
+	AutomaticSince = "automatic_since"
 )
 
 // Zone returns the owner's time zone: the saved setting, else the server's

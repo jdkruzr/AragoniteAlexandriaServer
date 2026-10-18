@@ -33,7 +33,8 @@ ALEXANDRIA_SPC_PORT=18089
 ALEXANDRIA_MAX_CONNECTIONS=16
 ALEXANDRIA_BACKUP_DIR=./backups
 
-# Optional handwriting recognition (see docs/deployment-compose.md):
+# Optional startup defaults for AI models; after the first start, use
+# Settings > AI Tools and Recognition instead (see docs/guide/ai-models.md):
 #ALEXANDRIA_OCR_URL=https://api.anthropic.com
 #ALEXANDRIA_OCR_API_KEY=
 #ALEXANDRIA_OCR_MODEL=
@@ -47,6 +48,16 @@ ALEXANDRIA_BACKUP_DIR=./backups
 #ALEXANDRIA_OLLAMA_ENABLED=true
 #ALEXANDRIA_OLLAMA_CPUS=1.0
 #ALEXANDRIA_OLLAMA_MEMORY=2g
+# Optional BOOX tablets through PowerSync (see docs/guide/boox.md for the
+# Couchbase and Sync Gateway setup these need):
+#ALEXANDRIA_BOOX_ENABLED=true
+#ALEXANDRIA_BOOX_GATEWAY_CONFIG=/absolute/path/to/boox-gateway.json
+#ALEXANDRIA_BOOX_GATEWAY_USERNAME=
+#ALEXANDRIA_BOOX_GATEWAY_PASSWORD=
+# Optional host directories instead of named volumes (create them first; see
+# docs/guide/install.md before switching an existing install):
+#ALEXANDRIA_DATA_DIR=/srv/alexandria
+#ALEXANDRIA_COUCHBASE_DIR=/srv/alexandria/couchbase
 ENV
 	echo "Wrote .env with new random secrets."
 fi

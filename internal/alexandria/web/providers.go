@@ -90,7 +90,11 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			http.Error(w, "Reload the Settings page.", 409)
 			return
 		}
-		candidate, e := d.Providers.AutomaticCandidate(r.Context(), rev, r.Form.Get("a_recognize") == "on", r.Form.Get("a_summarize") == "on")
+		saved, e := d.Providers.Load(r.Context())
+		candidate := saved
+		if e == nil {
+			candidate, e = d.Providers.AutomaticCandidate(r.Context(), rev, r.Form.Get("a_recognize") == "on", r.Form.Get("a_summarize") == "on")
+		}
 		if e == nil {
 			e = d.Providers.Save(r.Context(), candidate)
 		}
@@ -98,9 +102,21 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			back(w, r, "/settings/recognition", e.Error())
 			return
 		}
+		// Turning it off, or back on from off, restarts the clock, so notebooks
+		// changed while it was off aren't swept up.
+		was, now := saved.Config.Automatic.Chosen(), candidate.Config.Automatic.Chosen()
+		if was != now {
+			if _, e := d.DB.ExecContext(r.Context(), `DELETE FROM alexandria_settings WHERE key=$1`, settings.AutomaticSince); e != nil {
+				d.fail(w, e)
+				return
+			}
+		}
 		notice := "Automatic processing is off."
-		if candidate.Config.Automatic.On() {
+		switch {
+		case now && !was:
 			notice = "Automatic processing saved. It applies to notebooks that change from now on."
+		case now:
+			notice = "Automatic processing saved."
 		}
 		back(w, r, "/settings/recognition", notice)
 	})

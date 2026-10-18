@@ -62,16 +62,29 @@ type SummaryConfig struct {
 
 // AutomaticConfig processes new BOOX material without a request: pages are
 // recognized and notes with new recordings summarized once they stop changing.
+// It is on by default wherever the models are set up; the owner can turn
+// either half off.
 type AutomaticConfig struct {
-	Recognize, Summarize bool
-	// Since is when automatic processing was turned on. Only notebooks that
-	// change afterwards are processed, so turning it on never sweeps up the
-	// existing library.
+	RecognizeOff, SummarizeOff bool `json:",omitempty"`
+	// Since is a start time saved by earlier versions, which kept automatic
+	// processing opt-in. The start time now lives in the automatic_since
+	// setting, set the first time it's needed; this only seeds it.
 	Since time.Time
 }
 
-// On reports whether any automatic processing is turned on.
-func (a AutomaticConfig) On() bool { return a.Recognize || a.Summarize }
+// Chosen reports whether the owner leaves any automatic processing on.
+func (a AutomaticConfig) Chosen() bool { return !a.RecognizeOff || !a.SummarizeOff }
+
+// AutoRecognize reports whether new BOOX pages are recognized automatically:
+// a recognition provider is set up and the owner hasn't turned it off.
+func (c Config) AutoRecognize() bool { return c.OCR.Enabled && !c.Automatic.RecognizeOff }
+
+// AutoSummarize reports whether notes with new recordings get minutes
+// automatically: transcription and a summary model are set up, and the owner
+// hasn't turned it off.
+func (c Config) AutoSummarize() bool {
+	return c.Transcription.Enabled && c.Summary.Enabled && !c.Automatic.SummarizeOff
+}
 
 // ActionsConfig turns BOOX handwriting in assigned pen colors into tasks and
 // calendar events. It is on by default: it runs wherever automatic
@@ -107,7 +120,7 @@ func (c Config) ActionsReady() (bool, string) {
 		return false, "Note actions need a recognition provider."
 	case !c.Summary.Enabled:
 		return false, "Note actions need a summary model."
-	case !c.Automatic.Recognize:
+	case c.Automatic.RecognizeOff:
 		return false, "Note actions need automatic recognition."
 	}
 	return true, ""
@@ -474,7 +487,8 @@ type KeyChange struct{ Key, Action string }
 // MinutesCandidate validates the transcription and summary providers, keeping
 // the recognition and search settings exactly as saved.
 // AutomaticCandidate applies the owner's automatic-processing choices to the
-// saved settings. Turning it on from off starts the clock for what counts as new.
+// saved settings. The start time is kept separately (the web handler resets it
+// when processing is turned back on), so the legacy one is dropped here.
 func (s Store) AutomaticCandidate(ctx context.Context, revision int64, recognize, summarize bool) (Snapshot, error) {
 	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
 		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")
@@ -486,14 +500,7 @@ func (s Store) AutomaticCandidate(ctx context.Context, revision int64, recognize
 	if v.Revision != revision {
 		return v, ErrStale
 	}
-	a := AutomaticConfig{Recognize: recognize, Summarize: summarize, Since: v.Config.Automatic.Since}
-	switch {
-	case !a.On():
-		a.Since = time.Time{}
-	case !v.Config.Automatic.On():
-		a.Since = time.Now().UTC().Truncate(time.Second)
-	}
-	v.Config.Automatic = a
+	v.Config.Automatic = AutomaticConfig{RecognizeOff: !recognize, SummarizeOff: !summarize}
 	return v, nil
 }
 
