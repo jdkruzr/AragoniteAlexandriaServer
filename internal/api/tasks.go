@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks"
 )
 
@@ -33,6 +34,10 @@ func (a Tasks) create(w http.ResponseWriter, r *http.Request) {
 	var task tasks.Task
 	if err := decode(w, r, &task); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if task.Deleted {
+		http.Error(w, "use DELETE to delete a task", 400)
 		return
 	}
 	if task.ID == "" {
@@ -63,6 +68,10 @@ func (a Tasks) put(w http.ResponseWriter, r *http.Request) {
 	var task tasks.Task
 	if err := decode(w, r, &task); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if task.Deleted {
+		http.Error(w, "use DELETE to delete a task", 400)
 		return
 	}
 	task.ID = r.PathValue("id")
@@ -96,6 +105,10 @@ func decode(w http.ResponseWriter, r *http.Request, target any) error {
 }
 
 func writeError(w http.ResponseWriter, err error) {
+	if errors.Is(err, taskstore.ErrDeleted) || errors.Is(err, taskstore.ErrPurged) {
+		http.Error(w, "task ID is deleted or purged", http.StatusConflict)
+		return
+	}
 	if errors.Is(err, tasks.ErrNotFound) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return

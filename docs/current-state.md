@@ -1,5 +1,13 @@
 # Alexandria Server handoff
 
+2026-10-18: **Quality implementation underway** on `refactor/server-quality`.
+Batch 1 consolidates REST task persistence with the shared task lifecycle,
+serializes mutations and blocks resurrection; server change stamps advance on
+live writes. Focused regressions, build, vet and the fresh Go 1.25 PostgreSQL/S3
+race gate pass (47 packages). The [implementation log](quality-implementation-20261018.md)
+tracks the remaining batches and the user-requested final test deployment.
+No implementation changes have been deployed yet.
+
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,
 based on `b0f6607`. The [survey](code-quality-survey-20261018.md) ranks ten
 findings, records smaller DRY opportunities and sequences fixes with regression

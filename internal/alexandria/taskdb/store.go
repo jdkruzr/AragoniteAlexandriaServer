@@ -17,21 +17,25 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore"
 )
 
-// DB is satisfied by *sql.DB, *sql.Conn and (for writes without
-// HardDeleteOlderThan) *sql.Tx's owner.
-type DB interface {
+// Queryer is satisfied by *sql.DB, *sql.Conn and *sql.Tx.
+// Writes require a transaction or a DB capable of starting one.
+type Queryer interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+type DB interface {
+	Queryer
 	BeginTx(context.Context, *sql.TxOptions) (*sql.Tx, error)
 }
 
 // Store implements caldav.TaskStore against alexandria_tasks.
 type Store struct {
-	db DB
+	db Queryer
 }
 
-func NewStore(db DB) *Store {
+func NewStore(db Queryer) *Store {
 	return &Store{db: db}
 }
 
@@ -52,6 +56,15 @@ var taskColumns = `task_id, title, detail, status, importance, due_time,
 
 func (s *Store) List(ctx context.Context) ([]taskstore.Task, error) {
 	return s.listRows(ctx, "SELECT "+taskColumns+" FROM alexandria_tasks WHERE NOT deleted ORDER BY created_at, task_id")
+}
+
+// ListByUpdated preserves the REST listing order, including tombstones when requested.
+func (s *Store) ListByUpdated(ctx context.Context, includeDeleted bool) ([]taskstore.Task, error) {
+	query := "SELECT " + taskColumns + " FROM alexandria_tasks"
+	if !includeDeleted {
+		query += " WHERE NOT deleted"
+	}
+	return s.listRows(ctx, query+" ORDER BY updated_at DESC, task_id")
 }
 
 // ListIncludingDeleted returns every row — soft-deleted included. Powers
@@ -95,6 +108,13 @@ func (s *Store) Get(ctx context.Context, taskID string) (*taskstore.Task, error)
 }
 
 func (s *Store) Create(ctx context.Context, t *taskstore.Task) error {
+	if t.TaskID == "" {
+		t.TaskID = taskstore.GenerateTaskID(taskstore.NullStr(t.Title), time.Now().UnixMilli())
+	}
+	return s.write(ctx, []string{t.TaskID}, func(w *Store) error { return w.create(ctx, t) })
+}
+
+func (s *Store) create(ctx context.Context, t *taskstore.Task) error {
 	now := time.Now().UnixMilli()
 	if t.TaskID == "" {
 		t.TaskID = taskstore.GenerateTaskID(taskstore.NullStr(t.Title), now)
@@ -102,9 +122,7 @@ func (s *Store) Create(ctx context.Context, t *taskstore.Task) error {
 	if !t.CompletedTime.Valid {
 		t.CompletedTime = sql.NullInt64{Int64: now, Valid: true}
 	}
-	if !t.LastModified.Valid {
-		t.LastModified = sql.NullInt64{Int64: now, Valid: true}
-	}
+	t.LastModified = sql.NullInt64{Int64: now, Valid: true}
 	if t.IsDeleted == "" {
 		t.IsDeleted = "N"
 	}
@@ -115,19 +133,8 @@ func (s *Store) Create(ctx context.Context, t *taskstore.Task) error {
 		t.Status = sql.NullString{String: "needsAction", Valid: true}
 	}
 
-	// A UID in the trash or the purge ledger is never recreated: a device that
-	// missed the deletion would otherwise bring the task back.
-	var deleted, purged bool
-	if err := s.db.QueryRowContext(ctx, `SELECT
-		EXISTS (SELECT 1 FROM alexandria_tasks WHERE task_id = $1 AND deleted),
-		EXISTS (SELECT 1 FROM alexandria_task_purged WHERE task_id = $1)`, t.TaskID).Scan(&deleted, &purged); err != nil {
-		return fmt.Errorf("check task %s: %w", t.TaskID, err)
-	}
-	if purged {
-		return taskstore.ErrPurged
-	}
-	if deleted {
-		return taskstore.ErrDeleted
+	if err := s.checkLive(ctx, t.TaskID); err != nil {
+		return err
 	}
 
 	t.CreatedAt, t.UpdatedAt = now, now
@@ -148,7 +155,19 @@ func (s *Store) Create(ctx context.Context, t *taskstore.Task) error {
 }
 
 func (s *Store) Update(ctx context.Context, t *taskstore.Task) error {
-	now := time.Now().UnixMilli()
+	return s.write(ctx, []string{t.TaskID}, func(w *Store) error { return w.update(ctx, t) })
+}
+
+func (s *Store) update(ctx context.Context, t *taskstore.Task) error {
+	if err := s.checkLive(ctx, t.TaskID); err != nil {
+		return err
+	}
+	old, err := s.Get(ctx, t.TaskID)
+	if err != nil {
+		return err
+	}
+	now := max(time.Now().UnixMilli(), old.UpdatedAt+1)
+	t.CreatedAt = old.CreatedAt
 	// last_modified mirrors updated_at: it is an SPC-facing field only, and the
 	// device requires it to be non-zero to show the task at all. It deliberately
 	// no longer carries the completion time — that lives in completed_at, which
@@ -184,9 +203,13 @@ func (s *Store) Update(ctx context.Context, t *taskstore.Task) error {
 }
 
 func (s *Store) Delete(ctx context.Context, taskID string) error {
+	return s.write(ctx, []string{taskID}, func(w *Store) error { return w.delete(ctx, taskID) })
+}
+
+func (s *Store) delete(ctx context.Context, taskID string) error {
 	now := time.Now().UnixMilli()
 	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_tasks SET
-		deleted = true, last_modified = $1, updated_at = $1
+		deleted = true, last_modified = GREATEST($1, updated_at+1), updated_at = GREATEST($1, updated_at+1)
 		WHERE task_id = $2`,
 		now, taskID)
 	if err != nil {
@@ -205,9 +228,13 @@ func (s *Store) Delete(ctx context.Context, taskID string) error {
 // Restore takes a task out of the trash. Permanently deleted tasks can't be
 // restored (ErrPurged).
 func (s *Store) Restore(ctx context.Context, taskID string) error {
+	return s.write(ctx, []string{taskID}, func(w *Store) error { return w.restore(ctx, taskID) })
+}
+
+func (s *Store) restore(ctx context.Context, taskID string) error {
 	now := time.Now().UnixMilli()
 	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_tasks SET
-		deleted = false, last_modified = $1, updated_at = $1
+		deleted = false, last_modified = GREATEST($1, updated_at+1), updated_at = GREATEST($1, updated_at+1)
 		WHERE task_id = $2 AND deleted
 		AND NOT EXISTS (SELECT 1 FROM alexandria_task_purged p WHERE p.task_id = $2)`,
 		now, taskID)
@@ -234,17 +261,20 @@ func (s *Store) Purge(ctx context.Context, taskIDs []string) (int64, error) {
 	if len(taskIDs) == 0 {
 		return 0, nil
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.db.(DB).BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin purge: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := lockTasks(ctx, tx, taskIDs); err != nil {
+		return 0, err
+	}
 	now := time.Now().UnixMilli()
 	rows, err := tx.QueryContext(ctx, `UPDATE alexandria_tasks SET
 		title = NULL, detail = NULL, importance = NULL, due_time = 0, recurrence = NULL,
 		links = NULL, ical_blob = NULL, forestnote_notebook_id = NULL, forestnote_page_id = NULL,
 		forestnote_notebook_name = NULL, forestnote_source = NULL,
-		last_modified = $1, updated_at = $1
+		last_modified = GREATEST($1, updated_at+1), updated_at = GREATEST($1, updated_at+1)
 		WHERE task_id = ANY($2) AND deleted
 		AND NOT EXISTS (SELECT 1 FROM alexandria_task_purged p WHERE p.task_id = alexandria_tasks.task_id)
 		RETURNING task_id`, now, taskIDs)
@@ -288,15 +318,29 @@ func (s *Store) IsPurged(ctx context.Context, taskID string) (bool, error) {
 
 // DeleteCompleted soft-deletes all completed tasks. Returns the number of tasks deleted.
 func (s *Store) DeleteCompleted(ctx context.Context) (int64, error) {
-	now := time.Now().UnixMilli()
-	result, err := s.db.ExecContext(ctx, `UPDATE alexandria_tasks SET
-		deleted = true, last_modified = $1, updated_at = $1
-		WHERE NOT deleted AND status = 'completed'`,
-		now)
+	tx, err := s.db.(DB).BeginTx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("delete completed tasks: %w", err)
+		return 0, err
 	}
-	return result.RowsAffected()
+	defer tx.Rollback()
+	ids, err := selectedIDs(ctx, tx, `NOT deleted AND status='completed'`)
+	if err != nil {
+		return 0, err
+	}
+	if err = lockTasks(ctx, tx, ids); err != nil {
+		return 0, err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE alexandria_tasks SET deleted=true,
+ last_modified=GREATEST($1,updated_at+1),updated_at=GREATEST($1,updated_at+1)
+ WHERE task_id=ANY($2) AND NOT deleted AND status='completed'`, time.Now().UnixMilli(), ids)
+	if err != nil {
+		return 0, err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return n, tx.Commit()
 }
 
 // HardDeleteOlderThan permanently removes soft-deleted rows whose
@@ -318,7 +362,7 @@ func (s *Store) DeleteCompleted(ctx context.Context) (int64, error) {
 // The transaction runs at REPEATABLE READ so the count and the delete see
 // one snapshot.
 func (s *Store) HardDeleteOlderThan(ctx context.Context, cutoffMs int64) (purged, skipped int64, err error) {
-	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+	tx, err := s.db.(DB).BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
 	if err != nil {
 		return 0, 0, fmt.Errorf("begin tx for hard delete: %w", err)
 	}
@@ -327,6 +371,10 @@ func (s *Store) HardDeleteOlderThan(ctx context.Context, cutoffMs int64) (purged
 		// idempotent-Rollback contract makes the post-Commit call a no-op.
 		_ = tx.Rollback()
 	}()
+
+	if err = lockSelected(ctx, tx, `deleted`); err != nil {
+		return 0, 0, err
+	}
 
 	if err = tx.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM alexandria_tasks WHERE deleted AND updated_at >= $1`,

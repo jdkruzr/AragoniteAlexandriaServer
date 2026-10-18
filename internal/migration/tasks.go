@@ -100,7 +100,7 @@ func ImportTasks(ctx context.Context, target *sql.DB, sourcePath string) (result
 		task.CreatedAt, task.UpdatedAt = created.Int64, updated.Int64
 		task.ForestNoteNotebookID, task.ForestNotePageID = stringPtr(fnNotebook), stringPtr(fnPage)
 		task.ForestNoteNotebookName, task.ForestNoteSource = stringPtr(fnName), stringPtr(fnSource)
-		if err := store.Upsert(ctx, task); err != nil {
+		if err := store.Import(ctx, task); err != nil {
 			return result, err
 		}
 		result.Tasks++
