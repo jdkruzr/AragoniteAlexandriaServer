@@ -191,7 +191,7 @@ func (s Service) notebookSnapshot(ctx context.Context, id string) (notebookSnaps
 		return out, e
 	}
 	prefix := s.uid() + "/note/" + id + "/"
-	rows, e := tx.QueryContext(ctx, `SELECT v.native_key,v.sha256,v.bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE starts_with(l.native_key,$1) AND NOT v.deleted ORDER BY l.native_key LIMIT 20001`, prefix)
+	rows, e := tx.QueryContext(ctx, `SELECT v.native_key,v.sha256,v.bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE l.native_key >= $1 COLLATE "C" AND l.native_key < $2 COLLATE "C" AND NOT v.deleted ORDER BY l.native_key LIMIT 20001`, prefix, directoryUpper(prefix))
 	if e != nil {
 		return out, e
 	}

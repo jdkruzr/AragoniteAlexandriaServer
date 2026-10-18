@@ -35,6 +35,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 5 complete: generic jobs match the claimed attempt as well as owner/status for success and failure. Reclaim/duplicate/terminal tests, build, vet and full Go 1.25 race gate pass (`05`); no schema or public Job changes.
 
+- Batch 6 complete: native prefix queries use explicit C-collated ranges, including Unicode boundaries and generic prepared plans; page sorting shares the canonical decoder. Focused tests and full Go 1.25 race gate pass (`06`).
+
 ## REST task compatibility
 
 POST and PUT remain live upserts (201 and 200 respectively). Creation and live

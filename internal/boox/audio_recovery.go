@@ -36,7 +36,8 @@ const recoverableAudioSQL = ` FROM boox_operation o
  WHERE o.kind='repair_asset' AND o.state='published' AND o.payload->>'transform'='ony1-remove-duplicate-iv-v1'
  AND p.native_uid=$1 AND p.body->>'user'=$1 AND p.body->>'dbId'=$1||'-NOTE_TREE'
  AND p.body->>'type'='1' AND p.body->>'status'='1' AND p.body->>'uniqueId'=p.document_id
- AND starts_with(l.native_key,$1||'/note/'||p.document_id||'/resource/data/')
+ AND l.native_key >= ($1||'/note/'||p.document_id||'/resource/data/') COLLATE "C"
+ AND l.native_key < ($1||'/note/'||p.document_id||'/resource/data0') COLLATE "C"
  AND right(l.native_key,4)='.mp3' AND v.bytes <= 16778272`
 
 func (s Service) audioRecoveryDevice(w http.ResponseWriter, r *http.Request) {
@@ -226,7 +227,8 @@ func (s Service) audioRecoveryHTTP(w http.ResponseWriter, r *http.Request) {
 			d.Error = "The notebook or recording changed. Review it again before requesting a new repair."
 		}
 	} else {
-		rows, err := s.DB.QueryContext(r.Context(), `SELECT l.native_key,v.id,v.bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE NOT v.deleted AND starts_with(l.native_key,$1) AND lower(right(l.native_key,4)) IN ('.mp3','.pcm') ORDER BY l.native_key`, s.uid()+"/note/"+d.Document+"/resource/data/")
+		prefix := s.uid() + "/note/" + d.Document + "/resource/data/"
+		rows, err := s.DB.QueryContext(r.Context(), `SELECT l.native_key,v.id,v.bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE NOT v.deleted AND l.native_key >= $1 COLLATE "C" AND l.native_key < $2 COLLATE "C" AND lower(right(l.native_key,4)) IN ('.mp3','.pcm') ORDER BY l.native_key`, prefix, directoryUpper(prefix))
 		if err != nil {
 			failure(w, err)
 			return

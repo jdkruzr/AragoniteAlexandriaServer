@@ -13,6 +13,7 @@ Batch 4 passes ten packaging tests: shared backup paths and Docker/Podman
 engine selection preserve cold-backup failure/restart guards.
 Batch 5 passes its full gate: generic-job completion/failure is fenced by claim
 attempt, including same-host reclaim.
+Batch 6 passes: native prefix bounds and page-count normalization are shared.
 No implementation changes have been deployed yet.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,

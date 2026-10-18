@@ -85,7 +85,7 @@ func (s State) NativeOrder() string {
 	case "created":
 		expr = DateSQL("createdAt")
 	case "pages":
-		expr = "CASE WHEN jsonb_typeof(body#>'{pageNameList,pageNameList}')='array' THEN jsonb_array_length(body#>'{pageNameList,pageNameList}') ELSE 0 END"
+		expr = "jsonb_array_length(boox_search_page_ids(body->'pageNameList'))"
 	}
 	direction := " DESC"
 	if s.Order == "asc" {

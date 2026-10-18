@@ -255,7 +255,20 @@ func (s Service) list(w http.ResponseWriter, r *http.Request, bucket string) {
 		}
 		max = n
 	}
-	rows, e := s.DB.QueryContext(r.Context(), `SELECT l.native_key,v.md5,v.bytes,l.published_at FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE starts_with(l.native_key,$1) AND l.native_key>$2 AND starts_with(l.native_key,$4) ORDER BY l.native_key LIMIT $3`, prefix, q.Get("marker"), max+1, uid+"/")
+	// Intersect the requested prefix with the authenticated account prefix.
+	// This also gives empty-prefix listings a selective finite index range.
+	effective := prefix
+	if effective == "" || effective == uid {
+		effective = uid + "/"
+	}
+	upper, bounded := prefixUpper(effective)
+	predicate := `l.native_key >= $1 COLLATE "C" AND starts_with(l.native_key,$1)`
+	args := []any{effective, q.Get("marker"), max + 1}
+	if bounded {
+		predicate += ` AND l.native_key < $4 COLLATE "C"`
+		args = append(args, upper)
+	}
+	rows, e := s.DB.QueryContext(r.Context(), `SELECT l.native_key,v.md5,v.bytes,l.published_at FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE `+predicate+` AND l.native_key>$2 ORDER BY l.native_key LIMIT $3`, args...)
 	if e != nil {
 		ossError(w, 503, "ServiceUnavailable")
 		return

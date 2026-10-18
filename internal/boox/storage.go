@@ -7,7 +7,8 @@ import "context"
 const nativeStorageLimit int64 = 1 << 40
 
 func (s Service) storageStatus(ctx context.Context) (map[string]any, error) {
-	rows, e := s.DB.QueryContext(ctx, `SELECT split_part(l.native_key,'/',2),sum(v.bytes) FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE NOT v.deleted AND starts_with(l.native_key,$1) GROUP BY 1`, s.uid()+"/")
+	prefix := s.uid() + "/"
+	rows, e := s.DB.QueryContext(ctx, `SELECT split_part(l.native_key,'/',2),sum(v.bytes) FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE NOT v.deleted AND l.native_key >= $1 COLLATE "C" AND l.native_key < $2 COLLATE "C" GROUP BY 1`, prefix, directoryUpper(prefix))
 	if e != nil {
 		return nil, e
 	}
