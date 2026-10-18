@@ -381,11 +381,12 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	mux.Handle("GET /api/v1/search", searcher.Handler())
-	mcp := mcptools.Handler(mcptools.Deps{DB: conn, Search: searcher, PublicURL: r.cfg.PublicURL,
-		Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil)})
+	mcp := admittedHandler(func() http.Handler {
+		return mcptools.Handler(mcptools.Deps{DB: conn, Search: searcher, PublicURL: r.cfg.PublicURL, Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil)})
+	})
 	mux.Handle("/mcp", mcp)
 	mux.Handle("/mcp/", mcp)
-	mux.Handle(taskhost.Prefix+"/", taskhost.CalDAV(taskDeps))
+	mux.Handle(taskhost.Prefix+"/", admittedHandler(func() http.Handler { return taskhost.CalDAV(taskDeps) }))
 	mux.Handle("/.well-known/caldav", taskhost.WellKnown())
 	mux.Handle("/.well-known/caldav/", taskhost.WellKnown())
 	status := web.Status{NativeBOOX: r.cfg.NativeBOOX != nil}
@@ -395,8 +396,9 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if searcher.Embedder != nil {
 		status.Embedding = searcher.Embedder.Model()
 	}
-	catalog := r.recognitionCatalog(conn)
-	mux.Handle("/", web.Handler(web.Deps{Logger: r.cfg.Logger, LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: catalog, Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status, BOOXSummary: booxSummary, BOOXWork: booxWork}))
+	mux.Handle("/", admittedHandler(func() http.Handler {
+		return web.Handler(web.Deps{Logger: r.cfg.Logger, LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: r.recognitionCatalog(conn), Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status, BOOXSummary: booxSummary, BOOXWork: booxWork})
+	}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
 	if r.cfg.Authenticate != nil {
@@ -743,4 +745,10 @@ func (r *Runtime) recognitionCatalog(db pg.DB) recognition.Catalog {
 		}
 		return recognition.Notebook{}, errors.New("Unknown source")
 	}
+}
+
+// admittedHandler delays constructing a surface until the request is routed
+// to it. The factory belongs to one admission; it is never cached or shared.
+func admittedHandler(factory func() http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { factory().ServeHTTP(w, r) })
 }

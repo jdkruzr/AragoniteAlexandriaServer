@@ -49,6 +49,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 11 complete: neutral summary DTOs, safe injected diagnostics, shared bounded fixtures, object write/read/delete readiness and Helm helpers. Full gate `11` passes; the final `12` gate also covers standalone JSON-logger wiring. Hosting compiles against the replacement runtime in a temporary checkout; Helm lint and template equivalence pass. The timestamp-sensitive note-action fixture is repaired.
 
+- Batch 12 complete: immutable parsed template bases are cloned for localization, and surface construction waits until routing selects it. Concurrent localized output remains byte-identical. Final Go 1.25 build, vet and uncached required race gate pass (49 packages, `12`); Compose rendering, Terraform validation and packaging tests pass.
+
 ## Validation adjustment
 
 The first batch-8 full gate exposed a pre-existing timing dependency in

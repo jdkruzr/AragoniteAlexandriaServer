@@ -16,9 +16,11 @@ import (
 	"fmt"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics"
 	"html/template"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -133,6 +135,24 @@ func Funcs() template.FuncMap { return funcs }
 
 var layout = template.Must(template.New("layout.html").Funcs(funcs).ParseFS(assets, "templates/layout.html"))
 
+// Bases are immutable and never executed; each render clones before binding
+// request-specific localization and performing html/template escaping.
+var contentTemplates = func() map[string]*template.Template {
+	names, err := fs.Glob(assets, "templates/*.html")
+	if err != nil {
+		panic(err)
+	}
+	out := make(map[string]*template.Template, len(names))
+	for _, name := range names {
+		if path.Base(name) == "layout.html" {
+			continue
+		}
+		base := template.Must(layout.Clone())
+		out[strings.TrimSuffix(path.Base(name), ".html")] = template.Must(base.ParseFS(assets, name))
+	}
+	return out
+}()
+
 // Status describes optional, operator-configured features for display.
 type Status struct {
 	NativeBOOX bool
@@ -173,10 +193,12 @@ type page struct {
 }
 
 func (d Deps) render(w http.ResponseWriter, r *http.Request, name, title, section string, data any) {
-	t, err := layout.Clone()
-	if err == nil {
-		_, err = t.ParseFS(assets, "templates/"+name+".html")
+	base, ok := contentTemplates[name]
+	if !ok {
+		d.fail(w, fmt.Errorf("unknown content template"))
+		return
 	}
+	t, err := base.Clone()
 	d.renderTemplate(w, r, t, err, title, section, data)
 }
 
