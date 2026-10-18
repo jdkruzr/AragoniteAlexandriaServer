@@ -1,0 +1,402 @@
+diff --git a/library/survey_test.go b/library/survey_test.go
+--- /dev/null
++++ b/library/survey_test.go
+@@ -0,0 +1,84 @@
++package library
++
++import (
++	"context"
++	"fmt"
++	"testing"
++	"time"
++
++	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
++)
++
++// These characterize the audited revision, including undesirable behavior.
++func TestSurveyTaskResurrection(t *testing.T) {
++	r, db, _ := fixture(t)
++	ctx := context.Background()
++	token, err := CreateToken(ctx, db, "survey")
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, purge := range []bool{false, true} {
++		id := fmt.Sprintf("survey-%t", purge)
++		if w := request(r, "POST", "/api/v1/tasks", `{"id":"`+id+`","title":"Original"}`, token); w.Code != 201 {
++			t.Fatal(w.Code)
++		}
++		store := taskdb.NewStore(db)
++		if err := store.Delete(ctx, id); err != nil {
++			t.Fatal(err)
++		}
++		if purge {
++			if _, err := store.Purge(ctx, []string{id}); err != nil {
++				t.Fatal(err)
++			}
++		}
++		w := request(r, "PUT", "/api/v1/tasks/"+id, `{"title":"Recreated"}`, token)
++		item, err := store.Get(ctx, id)
++		if err != nil || w.Code != 200 || item.Title.String != "Recreated" {
++			t.Fatalf("unexpected characterization: %d %v", w.Code, err)
++		}
++		t.Logf("purged=%t REST PUT=%d visible to shared task store=%q", purge, w.Code, item.Title.String)
++	}
++}
++
++func TestSurveyAdmissionCost(t *testing.T) {
++	r, _, _ := fixture(t)
++	ctx := context.Background()
++	for _, idle := range []int{0, 1} {
++		r.db.SetMaxIdleConns(idle)
++		for run := 0; run < 5; run++ {
++			before := r.db.Stats().MaxIdleClosed
++			start := time.Now()
++			for i := 0; i < 100; i++ {
++				_, done, err := r.admit(ctx, Read)
++				if err != nil {
++					t.Fatal(err)
++				}
++				done()
++			}
++			t.Logf("idle=%d run=%d admissions=100 duration=%s closed=%d", idle, run, time.Since(start), r.db.Stats().MaxIdleClosed-before)
++		}
++	}
++}
++
++func TestSurveyRESTKeepsClientTimestamp(t *testing.T) {
++	r, db, _ := fixture(t)
++	ctx := context.Background()
++	token, err := CreateToken(ctx, db, "survey")
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, title := range []string{"first", "changed"} {
++		body := fmt.Sprintf(`{"id":"timestamp","title":%q,"updated_at":1000,"last_modified":1000}`, title)
++		if w := request(r, "POST", "/api/v1/tasks", body, token); w.Code != 201 {
++			t.Fatal(w.Code)
++		}
++	}
++	item, err := taskdb.NewStore(db).Get(ctx, "timestamp")
++	if err != nil {
++		t.Fatal(err)
++	}
++	if item.UpdatedAt != 1000 || item.Title.String != "changed" {
++		t.Fatal("unexpected characterization")
++	}
++	t.Log("REST changed task title while updated_at stayed at client-supplied 1000")
++}
+diff --git a/internal/alexandria/caldav/survey_test.go b/internal/alexandria/caldav/survey_test.go
+--- /dev/null
++++ b/internal/alexandria/caldav/survey_test.go
+@@ -0,0 +1,37 @@
++package caldav
++
++import (
++	"context"
++	"database/sql"
++	gocaldav "github.com/emersion/go-webdav/caldav"
++	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore"
++	"testing"
++)
++
++func TestSurveyTaskFilterDrift(t *testing.T) {
++	ctx := context.Background()
++	store := newMockTaskStore()
++	for _, title := range []string{"Alpha", "Beta"} {
++		if err := store.Create(ctx, &taskstore.Task{TaskID: title, Title: sql.NullString{String: title, Valid: true}}); err != nil {
++			t.Fatal(err)
++		}
++	}
++	b := NewBackend(store, "/caldav", "Tasks", "preserve", nil)
++	q := &gocaldav.CalendarQuery{CompFilter: gocaldav.CompFilter{Name: "VCALENDAR", Comps: []gocaldav.CompFilter{{Name: "VTODO", Props: []gocaldav.PropFilter{{Name: "SUMMARY", TextMatch: &gocaldav.TextMatch{Text: "Alpha"}}}}}}}
++	got, err := b.QueryCalendarObjects(ctx, "", q)
++	if err != nil {
++		t.Fatal(err)
++	}
++	all, err := b.ListCalendarObjects(ctx, "", nil)
++	if err != nil {
++		t.Fatal(err)
++	}
++	expected, err := gocaldav.Filter(q, all)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(got) != 2 || len(expected) != 1 {
++		t.Fatalf("unexpected characterization: actual=%d expected=%d", len(got), len(expected))
++	}
++	t.Logf("SUMMARY=Alpha actual=%d reference matcher=%d", len(got), len(expected))
++}
+diff --git a/internal/boox/survey_test.go b/internal/boox/survey_test.go
+--- /dev/null
++++ b/internal/boox/survey_test.go
+@@ -0,0 +1,163 @@
++package boox
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
++	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
++	"strings"
++	"testing"
++	"time"
++)
++
++func TestSurveyAutomaticMinutesStarvation(t *testing.T) {
++	s := testService(t)
++	ctx := context.Background()
++	for i := 1; i <= 21; i++ {
++		id := fmt.Sprintf("survey-%02d", i)
++		body := fmt.Sprintf(`{"uniqueId":%q,"type":1,"status":1,"pageNameList":[]}`, id)
++		age := fmt.Sprintf("%d seconds", 3600-i)
++		if _, err := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body,updated_at) VALUES($1,'1-a','notebook','1',$2,$3,now()-$4::interval)`, id, s.uid(), body, age); err != nil {
++			t.Fatal(err)
++		}
++		if _, err := s.DB.ExecContext(ctx, `WITH v AS (INSERT INTO boox_blob_version(native_key,sha256,md5,bytes,created_at) VALUES($1,repeat('a',64),repeat('b',32),1,now()-$2::interval) RETURNING id,native_key) INSERT INTO boox_blob_live(native_key,version_id) SELECT native_key,id FROM v`, s.uid()+"/note/"+id+"/resource/data/rec.mp3", age); err != nil {
++			t.Fatal(err)
++		}
++		if i <= 20 {
++			raw := `[{"key":"resource/data/rec.mp3","sha256":"` + strings.Repeat("a", 64) + `"}]`
++			if _, err := s.DB.ExecContext(ctx, `INSERT INTO alexandria_note_minutes(source,notebook_id,request_id,state,recordings) VALUES('boox',$1,gen_random_uuid(),'ready',$2)`, id, raw); err != nil {
++				t.Fatal(err)
++			}
++		}
++	}
++	cfg := MinutesConfig{Enabled: true, Identity: "synthetic"}
++	since := time.Now().Add(-2 * time.Hour)
++	for i := 0; i < 3; i++ {
++		found, err := s.autoSummarize(ctx, since, cfg)
++		if err != nil || found {
++			t.Fatalf("unexpected characterization: %v %v", found, err)
++		}
++	}
++	var count int
++	if err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM alexandria_note_minutes WHERE notebook_id='survey-21'`).Scan(&count); err != nil {
++		t.Fatal(err)
++	}
++	if count != 0 {
++		t.Fatal(count)
++	}
++	t.Log("21st eligible notebook not queued across 3 passes behind 20 already summarized notebooks")
++	if _, err := s.DB.ExecContext(ctx, `INSERT INTO alexandria_recognition_skip(source,notebook_id) VALUES('boox','survey-01')`); err != nil {
++		t.Fatal(err)
++	}
++	found, err := s.autoSummarize(ctx, since, cfg)
++	if err != nil || !found {
++		t.Fatalf("positive control: %v %v", found, err)
++	}
++	t.Log("21st notebook queued as soon as one earlier candidate is excluded")
++}
++
++func TestSurveyPrefixQuery(t *testing.T) {
++	db := testenv.Database(t).DB
++	ctx := context.Background()
++	for _, size := range []int{1000, 10000, 100000} {
++		if _, err := db.ExecContext(ctx, `TRUNCATE boox_blob_live,boox_blob_version CASCADE`); err != nil {
++			t.Fatal(err)
++		}
++		if _, err := db.ExecContext(ctx, `WITH v AS (INSERT INTO boox_blob_version(native_key,sha256,md5,bytes) SELECT 'u/note/'||lpad(((i-1)/20)::text,8,'0')||'/shape/'||i,repeat('a',64),repeat('b',32),1 FROM generate_series(1,$1::int) i RETURNING id,native_key) INSERT INTO boox_blob_live(native_key,version_id) SELECT native_key,id FROM v`, size); err != nil {
++			t.Fatal(err)
++		}
++		if _, err := db.ExecContext(ctx, `ANALYZE boox_blob_live; ANALYZE boox_blob_version`); err != nil {
++			t.Fatal(err)
++		}
++		prefix := fmt.Sprintf("u/note/%08d/", size/20-1)
++		for _, mode := range []string{"force_custom_plan", "force_generic_plan"} {
++			tx, err := db.BeginTx(ctx, nil)
++			if err != nil {
++				t.Fatal(err)
++			}
++			if _, err = tx.ExecContext(ctx, "SET LOCAL plan_cache_mode="+mode); err != nil {
++				t.Fatal(err)
++			}
++			for _, kind := range []string{"starts_with", "range"} {
++				predicate := `starts_with(l.native_key,$1)`
++				args := []any{prefix}
++				if kind == "range" {
++					predicate = `l.native_key >= $1 COLLATE "C" AND l.native_key < $2 COLLATE "C"`
++					args = append(args, strings.TrimSuffix(prefix, "/")+"0")
++				}
++				query := `SELECT v.native_key,v.sha256,v.bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE ` + predicate + ` AND NOT v.deleted ORDER BY l.native_key LIMIT 20001`
++				stmt, err := tx.PrepareContext(ctx, query)
++				if err != nil {
++					t.Fatal(err)
++				}
++				start := time.Now()
++				for i := 0; i < 30; i++ {
++					rows, e := stmt.QueryContext(ctx, args...)
++					if e != nil {
++						t.Fatal(e)
++					}
++					count := 0
++					for rows.Next() {
++						var k, sha string
++						var n int64
++						if e = rows.Scan(&k, &sha, &n); e != nil {
++							t.Fatal(e)
++						}
++						count++
++					}
++					e = rows.Err()
++					rows.Close()
++					if e != nil || count != 20 {
++						t.Fatalf("rows=%d err=%v", count, e)
++					}
++				}
++				t.Logf("rows=%d mode=%s predicate=%s repeats=30 total=%s", size, mode, kind, time.Since(start))
++				stmt.Close()
++				if size == 100000 {
++					types := "text"
++					values := fmt.Sprintf("'%s'", prefix)
++					if kind == "range" {
++						types += ",text"
++						values += fmt.Sprintf(",'%s'", strings.TrimSuffix(prefix, "/")+"0")
++					}
++					if _, err := tx.ExecContext(ctx, "PREPARE survey_plan("+types+") AS "+query); err != nil {
++						t.Fatal(err)
++					}
++					var raw []byte
++					if err := tx.QueryRowContext(ctx, "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) EXECUTE survey_plan("+values+")").Scan(&raw); err != nil {
++						t.Fatal(err)
++					}
++					if _, err := tx.ExecContext(ctx, "DEALLOCATE survey_plan"); err != nil {
++						t.Fatal(err)
++					}
++					var plan []any
++					json.Unmarshal(raw, &plan)
++					compact, _ := json.Marshal(plan)
++					t.Logf("plan mode=%s predicate=%s %s", mode, kind, compact)
++				}
++			}
++			tx.Rollback()
++		}
++	}
++}
++
++func TestSurveyPageCountSort(t *testing.T) {
++	s := testService(t)
++	ctx := context.Background()
++	for _, v := range []struct{ id, body string }{{"a-one", `["p1"]`}, {"z-two", `["p1","p2"]`}} {
++		raw := fmt.Sprintf(`{"uniqueId":%q,"type":1,"status":1,"pageNameList":%s}`, v.id, v.body)
++		if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'1-a','notebook','1',$2,$3)`, v.id, s.uid(), raw); e != nil {
++			t.Fatal(e)
++		}
++	}
++	var first string
++	order := (listview.State{Sort: "pages", Order: "desc"}).NativeOrder()
++	if e := s.DB.QueryRowContext(ctx, "SELECT document_id FROM boox_projection ORDER BY "+order+" LIMIT 1").Scan(&first); e != nil {
++		t.Fatal(e)
++	}
++	if first != "a-one" {
++		t.Fatal("unexpected characterization", first)
++	}
++	t.Log("descending pages puts one-page a-one before two-page z-two for supported direct-array metadata")
++}
+diff --git a/internal/jobs/survey_test.go b/internal/jobs/survey_test.go
+--- /dev/null
++++ b/internal/jobs/survey_test.go
+@@ -0,0 +1,43 @@
++package jobs
++
++import (
++	"context"
++	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
++	"testing"
++	"time"
++)
++
++func TestSurveySameOwnerLease(t *testing.T) {
++	db := testenv.Database(t).DB
++	s := NewStore(db)
++	ctx := context.Background()
++	id, _, err := s.Enqueue(ctx, "synthetic", "survey-same-owner", nil, 5)
++	if err != nil {
++		t.Fatal(err)
++	}
++	first, err := s.ClaimID(ctx, id, "same-host", time.Minute)
++	if err != nil || first == nil {
++		t.Fatal(err)
++	}
++	if _, err = db.ExecContext(ctx, `UPDATE alexandria_jobs SET lease_until=now()-interval '1 second' WHERE id=$1`, id); err != nil {
++		t.Fatal(err)
++	}
++	if n, err := s.RequeueExpired(ctx); err != nil || n != 1 {
++		t.Fatal(n, err)
++	}
++	second, err := s.ClaimID(ctx, id, "same-host", time.Minute)
++	if err != nil || second == nil {
++		t.Fatal(err)
++	}
++	if err = s.Complete(ctx, first.ID, "same-host"); err != nil {
++		t.Fatal(err)
++	}
++	var state string
++	if err = db.QueryRowContext(ctx, `SELECT status FROM alexandria_jobs WHERE id=$1`, id).Scan(&state); err != nil {
++		t.Fatal(err)
++	}
++	if state != "done" {
++		t.Fatal(state)
++	}
++	t.Logf("claim attempts %d -> %d: stale first completion accepted, current state=%s", first.Attempts, second.Attempts, state)
++}
+diff --git a/internal/alexandria/web/survey_test.go b/internal/alexandria/web/survey_test.go
+--- /dev/null
++++ b/internal/alexandria/web/survey_test.go
+@@ -0,0 +1,55 @@
++package web
++
++import (
++	"html/template"
++	"net/http/httptest"
++	"testing"
++)
++
++// DB-free rendering of the same small page through existing and pre-parsed paths.
++func BenchmarkSurveyRendering(b *testing.B) {
++	d := Deps{}
++	r := httptest.NewRequest("GET", "/sources", nil)
++	base := template.Must(layout.Clone())
++	template.Must(base.ParseFS(assets, "templates/sources.html"))
++	baseline := httptest.NewRecorder()
++	d.render(baseline, r, "sources", "Add Source", "sources", nil)
++	check := httptest.NewRecorder()
++	clone, err := base.Clone()
++	if err != nil {
++		b.Fatal(err)
++	}
++	d.renderTemplate(check, r, clone, nil, "Add Source", "sources", nil)
++	if baseline.Code != 200 || baseline.Body.String() != check.Body.String() {
++		b.Fatal("render differs")
++	}
++	for _, cached := range []bool{false, true} {
++		name := "parse-each-request"
++		if cached {
++			name = "clone-preparsed"
++		}
++		b.Run(name, func(b *testing.B) {
++			b.ReportAllocs()
++			for i := 0; i < b.N; i++ {
++				w := httptest.NewRecorder()
++				if cached {
++					t, e := base.Clone()
++					d.renderTemplate(w, r, t, e, "Add Source", "sources", nil)
++				} else {
++					d.render(w, r, "sources", "Add Source", "sources", nil)
++				}
++				if w.Code != 200 {
++					b.Fatal(w.Code)
++				}
++			}
++		})
++	}
++}
++func BenchmarkSurveyHandlerAssembly(b *testing.B) {
++	b.ReportAllocs()
++	for i := 0; i < b.N; i++ {
++		if Handler(Deps{}) == nil {
++			b.Fatal("nil")
++		}
++	}
++}

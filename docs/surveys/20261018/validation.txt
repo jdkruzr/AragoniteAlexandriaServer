@@ -1,0 +1,172 @@
+Alexandria Server quality survey validation, 2026-10-18
+Baseline: b0f6607593da7751041fccaaaa342454b94d26cd
+Branch: audit/code-quality-20261018
+
+Environment: Linux amd64, AMD Ryzen AI 9 HX 370, Go 1.26.3,
+Podman 5.7.0, podman-compose 1.6.0, Terraform 1.16.0.
+PostgreSQL 17.11 (pgvector:pg17), SeaweedFS 3.85.
+
+Scope: baseline integration tests in an exported clean tree; synthetic data only.
+No production service, deployment or real model inference was used.
+The five survey_test.go files characterize the audited baseline in scratch.
+Their separate execution is recorded in reproductions.log; experiments.patch
+retains the source without adding these defect assertions to the normal suite.
+
+Dedicated fixture creation (synthetic password, disposable containers only):
+podman run -d --name alexandria-survey-pg-20261018 \
+  -e POSTGRES_PASSWORD=survey-fixture-only -p 127.0.0.1:56432:5432 \
+  docker.io/pgvector/pgvector:pg17
+podman run -d --name alexandria-survey-s3-20261018 \
+  -p 127.0.0.1:59333:8333 docker.io/chrislusf/seaweedfs:3.85 \
+  server -s3 -dir=/data -ip=localhost -ip.bind=0.0.0.0 \
+  -volume.max=16 -volume.minFreeSpace=0 -master.volumePreallocate=false
+
+Use unused names/ports when repeating. Wait for pg_isready and S3 readiness.
+A root HTTP 200 does not prove object writes work. An initial fresh S3 run with
+CI's volume.max=1 exhausted capacity and stalled; it was stopped. Only the owned
+S3 fixture was recreated with max=16 before the successful complete gate below.
+The dedicated PG base retained the current migration ledger from that attempt;
+per-test isolated databases were created fresh by fixtures. This was not a test
+against an existing user's database or a cached Go test result.
+
+Gate environment:
+export ALEXANDRIA_TEST_DATABASE_URL='postgres://postgres:survey-fixture-only@127.0.0.1:56432/postgres?sslmode=disable'
+export ALEXANDRIA_TEST_S3_ENDPOINT=http://127.0.0.1:59333
+export ALEXANDRIA_REQUIRE_INTEGRATION=1
+
+Baseline gate (unpatched export):
+go vet ./...                                              PASS, exit 0
+go build -o /tmp/alexandria-survey-evidence/alexandria-server ./cmd/alexandria-server
+                                                         PASS, exit 0
+go test -race -count=1 -coverprofile=/tmp/alexandria-survey-evidence/coverage.out ./...
+                                                         PASS, exit 0, 47 packages
+go tool cover -func=/tmp/alexandria-survey-evidence/coverage.out
+                                                         total statements: 57.1%
+Coverage uses normal package-local instrumentation, not -coverpkg=./....
+
+Minimum supported Go toolchain, separate commands:
+GOTOOLCHAIN=go1.25.0 go build -o /tmp/alexandria-survey-evidence/alexandria-server-go125 ./cmd/alexandria-server
+                                                         PASS, exit 0
+GOTOOLCHAIN=go1.25.0 go vet ./...                           PASS, exit 0
+Full race suite was run with 1.26.3, not repeated with 1.25.0.
+
+Packaging checks:
+python3 -m unittest discover -s deploy/compose/tests -v    PASS, 7 tests
+All tracked shell files, interpreter syntax check (-n)   PASS
+All tracked Python files, ast.parse                      PASS
+gofmt -l on tracked Go files                             PASS, no output
+
+Compose rendering used only synthetic placeholder environment values.
+Equivalent reproducible invocation (export these values before both commands):
+ALEXANDRIA_RUNTIME_PASSWORD=survey-only-runtime
+ALEXANDRIA_OBJECT_ACCESS_KEY=survey-only
+ALEXANDRIA_OBJECT_SECRET_KEY=survey-only-secret
+podman-compose -f deploy/compose/compose.yml config       PASS
+podman-compose -f deploy/compose/compose.yml --profile embeddings config
+                                                         PASS
+Docker Compose was unavailable; no stack was started from these definitions.
+
+Terraform validation in exported scratch (not the working checkout):
+terraform -chdir=deploy/terraform/aws fmt -check           PASS
+terraform -chdir=deploy/terraform/aws init -backend=false PASS
+terraform -chdir=deploy/terraform/aws validate            PASS
+Provider downloads occurred, but no backend or cloud deployment was accessed.
+Helm lint: NOT RUN (Helm unavailable).
+
+Additional experiment command (patched scratch):
+go test -count=1 -run '^TestSurvey' -v ./library ./internal/alexandria/caldav ./internal/boox ./internal/jobs
+                                                         PASS; reproductions.log
+These characterize existing defects, so PASS does not mean the defects are fixed.
+go test -run '^$' -bench '^BenchmarkSurvey' -benchmem -count=5 ./internal/alexandria/web
+                                                         PASS; render-bench.log
+python3 docs/surveys/20261018/backup-selection.py          PASS; output below
+
+Backup configuration reproduction:
+derived-from-data-dir: common=/tmp/survey-data/backups; backup-script=./backups
+quoted-backup-dir: common=/tmp/survey backups; backup-script='/tmp/survey backups'
+simple-explicit-control: common=/tmp/survey-backups; backup-script=/tmp/survey-backups
+
+Packaging unittest output:
+test_complete_backup (test_cold_backup.ColdBackupTest.test_complete_backup) ... ok
+test_copy_failure_restarts_without_publishing (test_cold_backup.ColdBackupTest.test_copy_failure_restarts_without_publishing) ... ok
+test_forced_stop_restarts_without_publishing (test_cold_backup.ColdBackupTest.test_forced_stop_restarts_without_publishing) ... ok
+test_manifest_archive_allowlist_and_quoted_boox (test_cold_backup.ColdBackupTest.test_manifest_archive_allowlist_and_quoted_boox) ... ok
+test_download_failure_is_reported (test_ollama.OllamaSetupTest.test_download_failure_is_reported) ... ok
+test_profile_selection (test_ollama.OllamaSetupTest.test_profile_selection) ... ok
+test_setup_only_starts_provider (test_ollama.OllamaSetupTest.test_setup_only_starts_provider) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.227s
+
+OK
+
+Terraform validation output:
+Success! The configuration is valid.
+
+
+Baseline uncached race suite output:
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.932s	coverage: 26.3% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	2.846s	coverage: 14.3% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-audit		coverage: 0.0% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-lab		coverage: 0.0% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-preview		coverage: 0.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.037s	coverage: 12.1% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.023s	coverage: [no statements]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	10.298s	coverage: 64.8% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	12.940s	coverage: 83.4% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	1.469s	coverage: 73.5% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.073s	coverage: 50.2% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.023s	coverage: 39.5% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events		coverage: 0.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	11.259s	coverage: 67.5% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host		coverage: 0.0% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n		coverage: 0.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	8.131s	coverage: 44.4% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	111.727s	coverage: 53.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.088s	coverage: 67.9% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.027s	coverage: 87.9% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	227.454s	coverage: 68.9% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth		coverage: 0.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	49.912s	coverage: 53.8% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg		coverage: 0.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	10.980s	coverage: 69.5% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	12.705s	coverage: 76.2% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	13.231s	coverage: 70.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	13.782s	coverage: 73.1% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	32.619s	coverage: 84.3% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	5.924s	coverage: 85.5% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	14.592s	coverage: 75.4% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.036s	coverage: 45.6% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech		coverage: 0.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.044s	coverage: 78.9% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	16.103s	coverage: 73.4% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost		coverage: 0.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.022s	coverage: 87.9% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.036s	coverage: 62.6% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	3.999s	coverage: 11.1% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.014s	coverage: 86.3% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.016s	coverage: 22.4% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.015s	coverage: 2.9% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.030s	coverage: 64.3% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	62.858s	coverage: 66.6% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	10.592s	coverage: 73.7% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto		coverage: 0.0% of statements
+	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility		coverage: 0.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.021s	coverage: 74.1% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	4.001s	coverage: 70.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.023s	coverage: 90.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	1.430s	coverage: 16.2% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.022s	coverage: 71.2% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.276s	coverage: 75.8% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	10.694s	coverage: 77.2% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.017s	coverage: 90.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.262s	coverage: 54.0% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	2.363s	coverage: 70.6% of statements
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	226.226s	coverage: 54.7% of statements
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/migrations	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	5.668s	coverage: 71.7% of statements
+
+Cleanup: removed only alexandria-survey-pg-20261018 and
+alexandria-survey-s3-20261018, including their anonymous volumes.
+Existing alexandria-test-pg and alexandria-test-s3 were left running.
+Retained logs have trailing whitespace trimmed; measurement values are unchanged.

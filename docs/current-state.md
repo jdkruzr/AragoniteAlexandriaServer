@@ -1,5 +1,16 @@
 # Alexandria Server handoff
 
+2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,
+based on `b0f6607`. The [survey](code-quality-survey-20261018.md) ranks ten
+findings, records smaller DRY opportunities and sequences fixes with regression
+criteria. Reproductions confirm REST task resurrection, automatic-minutes
+starvation, CalDAV filter drift, backup path disagreement, stale job completion
+and native page-sort drift. The [evidence bundle](surveys/20261018/validation.txt)
+records a fresh required PostgreSQL/S3 race gate (47 packages), builds/vet and
+packaging checks, plus isolated reproductions and local performance measurements.
+Helm lint was unavailable. This branch adds survey artifacts only; runtime fixes
+and deployment remain future work.
+
 2026-10-18: **Commit attribution cleaned up at the owner's request.** Removed
 21 AI co-author trailers and pushed the rewritten `main`; every historical
 commit retains its exact file tree, and Hosting's `45eb491` pin is unchanged.

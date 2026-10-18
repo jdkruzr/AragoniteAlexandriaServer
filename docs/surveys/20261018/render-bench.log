@@ -1,0 +1,21 @@
+goos: linux
+goarch: amd64
+pkg: github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web
+cpu: AMD Ryzen AI 9 HX 370 w/ Radeon 890M
+BenchmarkSurveyRendering/parse-each-request-24         	    4144	    281481 ns/op	  119102 B/op	    1931 allocs/op
+BenchmarkSurveyRendering/parse-each-request-24         	    4690	    269227 ns/op	  119100 B/op	    1931 allocs/op
+BenchmarkSurveyRendering/parse-each-request-24         	    4333	    272001 ns/op	  119100 B/op	    1931 allocs/op
+BenchmarkSurveyRendering/parse-each-request-24         	    4116	    290761 ns/op	  119101 B/op	    1931 allocs/op
+BenchmarkSurveyRendering/parse-each-request-24         	    4242	    279329 ns/op	  119100 B/op	    1931 allocs/op
+BenchmarkSurveyRendering/clone-preparsed-24            	    4630	    259899 ns/op	  114524 B/op	    1901 allocs/op
+BenchmarkSurveyRendering/clone-preparsed-24            	    4575	    254339 ns/op	  114527 B/op	    1901 allocs/op
+BenchmarkSurveyRendering/clone-preparsed-24            	    4478	    239732 ns/op	  114526 B/op	    1901 allocs/op
+BenchmarkSurveyRendering/clone-preparsed-24            	    4684	    248671 ns/op	  114526 B/op	    1901 allocs/op
+BenchmarkSurveyRendering/clone-preparsed-24            	    4528	    245677 ns/op	  114527 B/op	    1901 allocs/op
+BenchmarkSurveyHandlerAssembly-24                      	    7125	    145145 ns/op	   54140 B/op	     742 allocs/op
+BenchmarkSurveyHandlerAssembly-24                      	    8311	    138177 ns/op	   54139 B/op	     742 allocs/op
+BenchmarkSurveyHandlerAssembly-24                      	    8264	    144419 ns/op	   54139 B/op	     742 allocs/op
+BenchmarkSurveyHandlerAssembly-24                      	    7933	    142319 ns/op	   54139 B/op	     742 allocs/op
+BenchmarkSurveyHandlerAssembly-24                      	    8598	    144636 ns/op	   54139 B/op	     742 allocs/op
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	17.884s
