@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-10-18T09:40:32.247802+00:00",
+  "readyz": 200,
+  "restarts": 0,
+  "state": "running",
+  "log_levels": {
+    "INFO": 5
+  },
+  "warning_error_codes": {},
+  "synthetic_cleanup": {
+    "synthetic_rows": 2,
+    "content_remaining": 0,
+    "reserved": 2
+  }
+}

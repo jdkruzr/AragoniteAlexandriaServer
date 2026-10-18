@@ -1,0 +1,6 @@
+All runtime and deployment inputs match the reviewed baseline.
+Staged and verified paths: 63
+curl: (7) Failed to connect to <instance-address> port 8080 after 0 ms: Couldn't connect to server
+Live smoke checks passed: 34
+Schema, live task count and provider revision preserved; native worker advanced.
+image=sha256:338aec30aaa5c2ce11f133f17121ec089690521fbcb9b24d783599720c5f1219 restarts=0 state=running

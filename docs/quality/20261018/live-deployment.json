@@ -1,0 +1,180 @@
+{
+  "version": "quality-c5ef63223d31",
+  "runtime_commit": "552b9b2",
+  "image": "sha256:338aec30aaa5c2ce11f133f17121ec089690521fbcb9b24d783599720c5f1219",
+  "previous_image": "sha256:5b98b25068d6105f899728e1aa124531af14d5ba65e72caf9c00b66d64295862",
+  "restarts": 0,
+  "started_at": "2026-10-18T09:38:58.096095052Z",
+  "smoke": {
+    "checks": [
+      {
+        "check": "/readyz",
+        "status": 200
+      },
+      {
+        "check": "/livez",
+        "status": 200
+      },
+      {
+        "check": "anonymous /jobs/library",
+        "status": 401
+      },
+      {
+        "check": "anonymous /api/v1/tasks",
+        "status": 401
+      },
+      {
+        "check": "anonymous /metrics",
+        "status": 401
+      },
+      {
+        "check": "anonymous /settings/recognition",
+        "status": 401
+      },
+      {
+        "check": "owner /",
+        "status": 200
+      },
+      {
+        "check": "owner /library",
+        "status": 200
+      },
+      {
+        "check": "owner /sources",
+        "status": 200
+      },
+      {
+        "check": "owner /jobs/library",
+        "status": 200
+      },
+      {
+        "check": "owner /settings/recognition",
+        "status": 200
+      },
+      {
+        "check": "owner /settings/search",
+        "status": 200
+      },
+      {
+        "check": "owner /boox",
+        "status": 200
+      },
+      {
+        "check": "owner /metrics",
+        "status": 200
+      },
+      {
+        "check": "Spanish UI",
+        "status": 200
+      },
+      {
+        "check": "keyword search",
+        "status": 200
+      },
+      {
+        "check": "CalDAV discovery",
+        "status": 207
+      },
+      {
+        "check": "MCP initialize",
+        "status": 200
+      },
+      {
+        "check": "create synthetic task",
+        "status": 201
+      },
+      {
+        "check": "create synthetic task",
+        "status": 201
+      },
+      {
+        "check": "CalDAV nested filter",
+        "status": 207
+      },
+      {
+        "check": "malformed CalDAV",
+        "status": 400
+      },
+      {
+        "check": "bounded CalDAV",
+        "status": 413
+      },
+      {
+        "check": "reject deleted write",
+        "status": 400
+      },
+      {
+        "check": "delete synthetic task",
+        "status": 204
+      },
+      {
+        "check": "reject resurrection",
+        "status": 409
+      },
+      {
+        "check": "cleanup delete",
+        "status": 404
+      },
+      {
+        "check": "cleanup purge",
+        "status": 303
+      },
+      {
+        "check": "cleanup absent",
+        "status": 404
+      },
+      {
+        "check": "cleanup delete",
+        "status": 204
+      },
+      {
+        "check": "cleanup purge",
+        "status": 303
+      },
+      {
+        "check": "cleanup absent",
+        "status": 404
+      },
+      {
+        "check": "reject purged resurrection",
+        "status": 409
+      },
+      {
+        "check": "reject purged resurrection",
+        "status": 409
+      }
+    ],
+    "passed": 34,
+    "synthetic_content_cleaned": true
+  },
+  "before": {
+    "migration_count": 32,
+    "migration_fingerprint": "b18c0569e4646c1391c5cfdd4051fd5e",
+    "live_tasks": 1,
+    "projections": 4013,
+    "live_blobs": 41367,
+    "cursor_tx": "236314",
+    "provider_revision": 12,
+    "minutes_states": {
+      "ready": 1
+    },
+    "job_states": null
+  },
+  "after": {
+    "migration_count": 32,
+    "migration_fingerprint": "b18c0569e4646c1391c5cfdd4051fd5e",
+    "live_tasks": 1,
+    "projections": 4013,
+    "live_blobs": 41367,
+    "cursor_tx": "236325",
+    "provider_revision": 12,
+    "minutes_states": {
+      "ready": 1
+    },
+    "job_states": null
+  },
+  "rollback_evidence": "deploy/compose/private/quality-c5ef63223d31",
+  "metadata_dump_bytes": 43061592,
+  "metadata_dump_sha256": "e3973d9f8317562d72da94a55a8b2baf78925c40ba787a6ddb4cae5081031356",
+  "metadata_dump_catalog_verified": true
+}

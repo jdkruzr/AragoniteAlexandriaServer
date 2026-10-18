@@ -1,0 +1,7 @@
+SDK 2026/10/18 04:27:11 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:27:11 WARN Response has no supported checksum. Not validating response payload.
+--- FAIL: TestNoteActionsMakeItemsOnce (1.52s)
+    note_actions_test.go:85: queued actions = 0
+FAIL
+FAIL	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	1.549s
+FAIL

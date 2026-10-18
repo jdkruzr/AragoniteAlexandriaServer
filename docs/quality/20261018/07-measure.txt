@@ -1,0 +1,14 @@
+=== RUN   TestSurveyAdmissionCost
+    admission_measure_test.go:18: idle=0 run=0 admissions=100 duration=691.135521ms closed=100
+    admission_measure_test.go:18: idle=0 run=1 admissions=100 duration=676.09235ms closed=100
+    admission_measure_test.go:18: idle=0 run=2 admissions=100 duration=698.056772ms closed=100
+    admission_measure_test.go:18: idle=0 run=3 admissions=100 duration=635.961145ms closed=100
+    admission_measure_test.go:18: idle=0 run=4 admissions=100 duration=575.652135ms closed=100
+    admission_measure_test.go:18: idle=1 run=0 admissions=100 duration=55.682535ms closed=0
+    admission_measure_test.go:18: idle=1 run=1 admissions=100 duration=46.700573ms closed=0
+    admission_measure_test.go:18: idle=1 run=2 admissions=100 duration=50.337126ms closed=0
+    admission_measure_test.go:18: idle=1 run=3 admissions=100 duration=43.632297ms closed=0
+    admission_measure_test.go:18: idle=1 run=4 admissions=100 duration=49.318999ms closed=0
+--- PASS: TestSurveyAdmissionCost (4.00s)
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	4.030s

@@ -1,6 +1,9 @@
 # Quality implementation — 2026-10-18
 
-Branch: `refactor/server-quality`, starting at survey commit `a3ac626`.
+Completed on `refactor/server-quality`, starting at survey commit `a3ac626`.
+Runtime commit: `552b9b2`. Test deployment: `quality-c5ef63223d31`.
+All 12 implementation batches and the requested deployment phase are complete.
+Commits remain local; the branch has not been merged or pushed.
 The [survey](code-quality-survey-20261018.md) remains the original evidence.
 
 ## Agreed batches
@@ -50,6 +53,49 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 - Batch 11 complete: neutral summary DTOs, safe injected diagnostics, shared bounded fixtures, object write/read/delete readiness and Helm helpers. Full gate `11` passes; the final `12` gate also covers standalone JSON-logger wiring. Hosting compiles against the replacement runtime in a temporary checkout; Helm lint and template equivalence pass. The timestamp-sensitive note-action fixture is repaired.
 
 - Batch 12 complete: immutable parsed template bases are cloned for localization, and surface construction waits until routing selects it. Concurrent localized output remains byte-identical. Final Go 1.25 build, vet and uncached required race gate pass (49 packages, `12`); Compose rendering, Terraform validation and packaging tests pass.
+
+- Phase 13 complete: deployed the verified image to the existing self-hosted instance. All 34 live smoke checks pass; the native observer continues polling. Readiness remains 200 with zero restarts and no warnings/errors since startup. Synthetic task content was purged; schema and saved provider revision are unchanged.
+
+## Retained evidence and deployment
+
+The [validation record](quality/20261018/validation.txt) links the work to the
+runtime commit and records every full gate, the repaired fixture failure,
+packaging checks, Hosting compilation and measurements. Raw gate and benchmark
+output sits beside it; [live smoke evidence](quality/20261018/live-deployment.json)
+and the [follow-up check](quality/20261018/live-final.json) are recorded separately.
+
+The container image is
+`sha256:338aec30aaa5c2ce11f133f17121ec089690521fbcb9b24d783599720c5f1219`.
+All 296 runtime inputs matched the expected deployed baseline before the update;
+all 63 staged paths were checksum-verified. No migration files changed. The
+32-entry migration ledger, provider revision, live task count, native projection
+count and live blob count were unchanged across the smoke test.
+
+The instance retains recovery evidence at
+`deploy/compose/private/quality-c5ef63223d31/`: previous image, source/config
+archives, container configuration and a catalog-checked PostgreSQL metadata dump
+(43,061,592 bytes). From the deployed repository, an app rollback is available via
+`sudo bash deploy/compose/private/quality-c5ef63223d31/rollback.sh`. It checks source
+drift and restores the prior source/image without restoring the database. The
+metadata dump is not a coordinated native BOOX backup; that separate backup plan
+remains unchanged.
+
+The smoke test covered authentication, rendered pages, keyword search, MCP,
+CalDAV discovery/filtering/XML limits and task timestamps/deletion/purge. Its two
+marked tasks have no content left; their tombstones and permanent ID reservations
+remain as required by sync semantics. Native observer progress was checked. Lease
+fencing, provider failures and automatic-minutes contention were exercised with
+synthetic integration fixtures; the live generic-job queue was empty.
+
+Five local samples reduced the median cost of 100 admissions from 676 ms to
+49 ms, with reconnects falling from 100 to zero. Template rendering improved
+from 305 to 275 microseconds and 1,937 to 1,908 allocations. Five live samples
+reduced the Jobs page median from 351 to 172 ms; Sources changed from 178 to
+171 ms. These measurements characterize these fixtures and this smoke-test
+window, rather than general throughput guarantees.
+
+Both dedicated fixture pairs and their anonymous volumes were removed. Existing
+test containers, live databases and durable volumes were preserved.
 
 ## Validation adjustment
 

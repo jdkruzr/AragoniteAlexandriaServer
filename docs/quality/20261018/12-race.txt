@@ -1,0 +1,63 @@
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.326s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	2.139s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-audit	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-lab	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-preview	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	9.472s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	13.657s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	10.633s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.028s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.020s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	10.661s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	7.120s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	115.381s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.070s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	225.915s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	55.768s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	11.573s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	12.568s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	13.452s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	15.138s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	19.268s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	6.841s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	14.323s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.048s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/status	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.038s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	18.494s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.024s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.031s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	4.876s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.046s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	64.337s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	8.638s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	3.214s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.015s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	2.331s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.149s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	8.809s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.074s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	2.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	179.268s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/migrations	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	3.765s

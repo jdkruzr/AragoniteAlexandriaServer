@@ -1,31 +1,22 @@
 # Alexandria Server handoff
 
-2026-10-18: **Quality implementation underway** on `refactor/server-quality`.
-Batch 1 consolidates REST task persistence with the shared task lifecycle,
-serializes mutations and blocks resurrection; server change stamps advance on
-live writes. Focused regressions, build, vet and the fresh Go 1.25 PostgreSQL/S3
-race gate pass (47 packages). The [implementation log](quality-implementation-20261018.md)
-tracks the remaining batches and the user-requested final test deployment.
-Batch 2 also passes its full gate: automatic minutes traverses completed
-notebooks and concurrent schedulers preserve the active request.
-Batch 3 also passes: CalDAV applies complete filters and bounds XML bodies.
-Batch 4 passes ten packaging tests: shared backup paths and Docker/Podman
-engine selection preserve cold-backup failure/restart guards.
-Batch 5 passes its full gate: generic-job completion/failure is fenced by claim
-attempt, including same-host reclaim.
-Batch 6 passes: native prefix bounds and page-count normalization are shared.
-Batch 7 passes: bounded idle pooling, uncertain-lock disposal and request-local
-owner authentication reuse.
-Batch 8 passes its focused and cumulative full checks: search enrichment is
-batched without changing selected-result order.
-Batch 9 passes: provider settings and processing-clock changes commit atomically.
-Batch 10 passes: shared provider HTTP transport and publication prerequisites
-retain their operation-specific behavior and failure checks.
-Batch 11 passes: safe diagnostics, neutral DTOs, shared fixtures and Helm
-helpers; the Hosting compatibility compile passes.
-All 12 implementation batches now pass, including the final 49-package fresh
-race gate and packaging checks. Test deployment is the remaining phase.
-No implementation changes have been deployed yet.
+2026-10-18: **Quality implementation and test deployment complete** on
+`refactor/server-quality` (runtime commit `552b9b2`; commits remain local).
+All 12 batches from the [implementation log](quality-implementation-20261018.md)
+are complete: shared task lifecycle, scheduler traversal, bounded CalDAV XML,
+backup configuration, job claim fencing, native query bounds/page counts,
+admission/auth reuse, batched search enrichment, atomic provider settings,
+transport/publication helpers, safe diagnostics/shared fixtures and cached
+request-local template rendering. A timing-sensitive test fixture was repaired.
+
+The final fresh required Go 1.25 PostgreSQL/S3 race gate passes all 49 tested
+packages; build, vet, packaging checks and the Hosting compatibility compile pass.
+[Validation evidence](quality/20261018/validation.txt) is retained in the repo.
+The existing instance now runs `quality-c5ef63223d31`: 34 live smoke checks pass,
+readiness 200, zero restarts and no startup-window warnings/errors. Native
+observation continues, schema/provider settings are unchanged, and synthetic
+task content is purged. The prior image/source/config and a metadata snapshot
+are retained for rollback; see the implementation log for scope and procedure.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,
 based on `b0f6607`. The [survey](code-quality-survey-20261018.md) ranks ten

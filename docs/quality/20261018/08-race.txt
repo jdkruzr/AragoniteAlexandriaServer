@@ -1,0 +1,199 @@
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.278s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	2.218s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-audit	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-lab	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-preview	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	9.227s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	13.488s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	10.765s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.028s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.013s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	10.842s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	7.141s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	111.160s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.051s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.012s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	219.650s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	48.010s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	9.874s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	12.116s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	13.166s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	14.381s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	18.216s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	7.974s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	15.040s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.031s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.044s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	18.078s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	5.060s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.023s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.015s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.045s
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:31 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:32 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:32 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:36 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:36 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:36 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:40 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:41 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:42 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:42 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:42 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:42 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:42 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:42 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:42 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:42 WARN Response has no supported checksum. Not validating response payload.
+--- FAIL: TestNoteActionsMakeItemsOnce (0.37s)
+    note_actions_test.go:84: queued actions = 0
+SDK 2026/10/18 04:22:43 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:43 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:43 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:44 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:44 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:44 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:44 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:44 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:44 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:45 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:45 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:45 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:45 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:45 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:45 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:45 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:45 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:46 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:46 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:46 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:46 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:46 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:52 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:59 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:59 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:22:59 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:01 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:06 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:07 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:07 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:07 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:07 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:07 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:08 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:09 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:09 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:19 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:19 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:19 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:19 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:19 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:19 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:19 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:19 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:20 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:21 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:22 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:24 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:24 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:27 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:27 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:29 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/18 04:23:29 WARN Response has no supported checksum. Not validating response payload.
+FAIL
+FAIL	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	59.425s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	8.706s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	3.196s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	1.948s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.139s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	8.260s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.085s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	1.969s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	173.360s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/migrations	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	4.054s
+FAIL

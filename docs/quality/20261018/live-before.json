@@ -1,0 +1,78 @@
+{
+  "checks": [
+    {
+      "check": "/readyz",
+      "status": 200
+    },
+    {
+      "check": "/livez",
+      "status": 200
+    },
+    {
+      "check": "anonymous /jobs/library",
+      "status": 401
+    },
+    {
+      "check": "anonymous /api/v1/tasks",
+      "status": 401
+    },
+    {
+      "check": "anonymous /metrics",
+      "status": 401
+    },
+    {
+      "check": "anonymous /settings/recognition",
+      "status": 401
+    },
+    {
+      "check": "owner /",
+      "status": 200
+    },
+    {
+      "check": "owner /library",
+      "status": 200
+    },
+    {
+      "check": "owner /sources",
+      "status": 200
+    },
+    {
+      "check": "owner /jobs/library",
+      "status": 200
+    },
+    {
+      "check": "owner /settings/recognition",
+      "status": 200
+    },
+    {
+      "check": "owner /settings/search",
+      "status": 200
+    },
+    {
+      "check": "owner /boox",
+      "status": 200
+    },
+    {
+      "check": "owner /metrics",
+      "status": 200
+    },
+    {
+      "check": "Spanish UI",
+      "status": 200
+    },
+    {
+      "check": "keyword search",
+      "status": 200
+    },
+    {
+      "check": "CalDAV discovery",
+      "status": 207
+    },
+    {
+      "check": "MCP initialize",
+      "status": 200
+    }
+  ],
+  "passed": 18,
+  "synthetic_content_cleaned": false
+}

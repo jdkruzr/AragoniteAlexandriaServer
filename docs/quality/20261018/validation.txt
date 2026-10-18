@@ -1,0 +1,53 @@
+Quality implementation validation: 2026-10-18
+Branch: refactor/server-quality
+Runtime commit: 552b9b2
+Toolchain: Go 1.25.0
+Gates: go vet ./...; go build ./cmd/alexandria-server; go test -race -count=1 ./...
+ALEXANDRIA_REQUIRE_INTEGRATION=1; dedicated disposable PostgreSQL pgvector:pg17 and SeaweedFS 3.85.
+Batches 11 and 12 used a separate fixture pair; no live database used for integration tests.
+
+01: PASS; tested packages=47; race log SHA256=0a58040c960fb79bd1de095f3a0612932f4d4e497a71b59d2b6f3d93aa39e106
+02-final: PASS; tested packages=47; race log SHA256=99b09a39fb75894b702de509b2707f137ac6232b3d05152049c23d5e3356b5ce
+03: PASS; tested packages=47; race log SHA256=bcf2471048bcdf709a303baac314d37cf55800c85f4650da9623cf24d1584ef7
+05: PASS; tested packages=47; race log SHA256=67d379c2376883e777b0fe764057b155c71f5496596942d14b86a4ddaa4dac10
+06: PASS; tested packages=47; race log SHA256=c92ad85db4d46814e82c3a6efb32a07e9e51bee1667abd0c8044a1e7be73dc72
+07: PASS; tested packages=47; race log SHA256=a1b63bc4d5de7c9233ddb86f9aae77f9a3048cfb6957a446a0da9d332ea70522
+08: FAIL: pre-existing note-action fixture timing race, repaired; see reproduction and repeat evidence; tested packages=46; race log SHA256=0349a63ffc9404f14bff2e1700c6d9668f0348f93e3edb3747967992cb5c96a6
+09: PASS; tested packages=47; race log SHA256=bf1e2a89ed35e3920e0af574f6088b93b3f0a14097ac18eb736f55d0e75c44f4
+10a: PASS; tested packages=48; race log SHA256=5d5f7442fcbcb71b3f4a08430eb25860a78d1c610faf8bfbbb61dfe2c9542983
+11: PASS; tested packages=49; race log SHA256=ac0d4f4d29ea8966b4b17a13a01362c6954d02210a14cb12edfe82ac49b6b319
+12: PASS; tested packages=49; race log SHA256=05a15a4374932c32cb2ee9f9c866e2a07d8a3d7ff6a25450b8cb7f120fe22b03
+
+Batch 8 is covered by passing cumulative gates 09, 10a, 11 and 12.
+Batch 10b focused publication failure tests passed; cumulative gates 11 and 12 pass.
+The redundant queued 10b standalone run was cancelled before it began.
+An earlier 02 snapshot was superseded after adding the concurrent-scheduler regression; 02-final is the completed gate.
+The note-action fixture repair passed 20 consecutive race-enabled repetitions and the subsequent full gates.
+
+Packaging: 10 Python tests; shell syntax; base and embeddings Compose rendered using podman-compose;
+Helm 3.17.3 lint passed (optional icon recommendation), parsed gateway/worker YAML equal to audit baseline;
+Terraform fmt, init -backend=false and validate passed in isolated snapshot.
+Hosting: compile-only check in a temporary checkout with a local module replacement; no pin or deployment changes.
+Image build: existing host Docker Compose builder; source fingerprint c5ef63223d31b432e156a984638436d972d85ee48d7d693ada9bf85e6003a12a.
+All 296 image source inputs match commit 552b9b2; no migration files changed.
+
+Local performance (5 samples; fixture host, not a production throughput claim):
+100 admissions: median 676.09 ms at idle=0, 49.32 ms at idle=1; reconnects 100 -> 0.
+Sources page render: median 305136 -> 275290 ns/op; 1937 -> 1908 allocations/op.
+Search enrichment: test asserts 0 queries for zero results, 1 for client-only results at 1/25/100, at most 2 for mixed sources.
+Localized cached output: 24 parallel English/Spanish/BOOX variants match legacy render byte for byte.
+
+Deployment: quality-c5ef63223d31, runtime commit 552b9b2.
+Image: sha256:338aec30aaa5c2ce11f133f17121ec089690521fbcb9b24d783599720c5f1219
+All 296 runtime baseline paths checked for drift; all 63 staged changes checksum-verified.
+34 live HTTP smoke checks passed, including owner/anonymous access, MCP, keyword search,
+CalDAV discovery/filtering/body bounds, server task timestamps and deleted/purged ID rejection.
+Two synthetic task bodies purged; only content-free tombstones and ID reservations remain.
+32 migration checksums unchanged; provider revision, live task count, native projections/blobs unchanged.
+Native observer transaction advanced. No queued generic jobs existed during this smoke test.
+Final check 2026-10-18 09:40:32 UTC: readiness 200, running, zero restarts, no warnings/errors since startup.
+Rollback image/source/config retained on the instance; PostgreSQL metadata dump catalog verified.
+This metadata-only snapshot is not a coordinated native BOOX backup.
+Five live samples: Jobs page median 350.79 -> 172.16 ms; Sources median 177.66 -> 171.44 ms.
+Owned disposable fixture containers and anonymous volumes removed; pre-existing test containers retained.
+No branch push or merge performed.

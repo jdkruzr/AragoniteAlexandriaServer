@@ -1,0 +1,16 @@
+goos: linux
+goarch: amd64
+pkg: github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web
+cpu: AMD Ryzen AI 9 HX 370 w/ Radeon 890M
+BenchmarkPageRendering/parse-each-request-24         	    3634	    305136 ns/op	  119432 B/op	    1937 allocs/op
+BenchmarkPageRendering/parse-each-request-24         	    4243	    309005 ns/op	  119429 B/op	    1937 allocs/op
+BenchmarkPageRendering/parse-each-request-24         	    3546	    301718 ns/op	  119429 B/op	    1937 allocs/op
+BenchmarkPageRendering/parse-each-request-24         	    4544	    294785 ns/op	  119426 B/op	    1937 allocs/op
+BenchmarkPageRendering/parse-each-request-24         	    3792	    313276 ns/op	  119430 B/op	    1937 allocs/op
+BenchmarkPageRendering/cached-base-24                	    3722	    286475 ns/op	  114881 B/op	    1908 allocs/op
+BenchmarkPageRendering/cached-base-24                	    3702	    277519 ns/op	  114880 B/op	    1908 allocs/op
+BenchmarkPageRendering/cached-base-24                	    3967	    271726 ns/op	  114879 B/op	    1908 allocs/op
+BenchmarkPageRendering/cached-base-24                	    4364	    275290 ns/op	  114883 B/op	    1908 allocs/op
+BenchmarkPageRendering/cached-base-24                	    4485	    270428 ns/op	  114882 B/op	    1908 allocs/op
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	12.013s

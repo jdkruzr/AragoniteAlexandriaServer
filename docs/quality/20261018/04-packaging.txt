@@ -1,0 +1,15 @@
+test_complete_backup (test_cold_backup.ColdBackupTest.test_complete_backup) ... ok
+test_complete_podman_backup (test_cold_backup.ColdBackupTest.test_complete_podman_backup) ... ok
+test_copy_failure_restarts_without_publishing (test_cold_backup.ColdBackupTest.test_copy_failure_restarts_without_publishing) ... ok
+test_forced_stop_restarts_without_publishing (test_cold_backup.ColdBackupTest.test_forced_stop_restarts_without_publishing) ... ok
+test_manifest_archive_allowlist_and_quoted_boox (test_cold_backup.ColdBackupTest.test_manifest_archive_allowlist_and_quoted_boox) ... ok
+test_backup_restore_paths (test_configuration.ConfigurationTest.test_backup_restore_paths) ... ok
+test_override_engine_selection (test_configuration.ConfigurationTest.test_override_engine_selection) ... ok
+test_download_failure_is_reported (test_ollama.OllamaSetupTest.test_download_failure_is_reported) ... ok
+test_profile_selection (test_ollama.OllamaSetupTest.test_profile_selection) ... ok
+test_setup_only_starts_provider (test_ollama.OllamaSetupTest.test_setup_only_starts_provider) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.262s
+
+OK
