@@ -1,10 +1,10 @@
 # Alexandria Server handoff
 
-2026-10-17 (late night): **User guides** in [docs/guide](guide/README.md) (13 guides, checked against the code; the README and the old engineering notes point to them). The guide's Couchbase `cluster-init`/`bucket-create` commands were run against a throwaway `community-7.6.2` container. UI copy fixes deployed as `5075d19-copy1` (app-only, base `a2b10a66c633`: 9/9 staged, readiness 200, anonymous 401, no restarts; the only drift was README.md and install.sh, which app-only deploys don't sync). Findings left open:
-- A BOOX install on named volumes has no supported backup: `backup.sh` refuses BOOX, and `backup-cold.sh` needs `ALEXANDRIA_DATA_DIR`.
-- `/metrics` is unauthenticated on the main port; the guide's proxy examples return 404 for it.
-- Automatic processing is opt-in in code, though the owner's stated default is on once endpoints are configured (note actions do default on).
-- `.env.example` and the installer's `.env` don't mention `ALEXANDRIA_BOOX_ENABLED`.
+2026-10-17 (late night): **User guides** in [docs/guide](guide/README.md) (13 guides, checked against the code; the README and the old engineering notes point to them). The guide's Couchbase `cluster-init`/`bucket-create` commands were run against a throwaway `community-7.6.2` container. UI copy fixes deployed as `5075d19-copy1` (app-only, base `a2b10a66c633`: 9/9 staged, readiness 200, anonymous 401, no restarts; the only drift was README.md and install.sh, which app-only deploys don't sync). Findings, 2026-10-18 (`1b80fcd-auto1`, app-only, base `5075d19`: 14/14 staged, readiness 200, anonymous 401, no restarts):
+- **Fixed:** `/metrics` needs the owner's login (Basic or API token). Live: anonymous 401.
+- **Fixed:** automatic processing is on by default wherever its models are set up, stored as opt-outs. Its start time is the `automatic_since` setting, set the first time there's something to run. Live, the owner chose to have it on: the clock started at 2026-10-18 08:13:33Z, and nothing was swept (0 pages queued, 0 minutes running).
+- **Fixed:** `.env.example` and the installer's `.env` list the BOOX and host-directory settings.
+- **Open:** a BOOX install on named volumes has no supported backup. `backup.sh` refuses BOOX, and `backup-cold.sh` needs `ALEXANDRIA_DATA_DIR`.
 
 2026-10-17 (late night): **History rewritten** to remove a real person's name, library-derived terms and the owner's host details ([history-rewrite-20261017.md](history-rewrite-20261017.md)). Most commits have new hashes (Hosting's `45eb491` pin is unchanged); that page maps old to new. The README was rewritten for users, with screenshots from a made-up demo library (`scripts/docs-screenshots.sh`).
 
