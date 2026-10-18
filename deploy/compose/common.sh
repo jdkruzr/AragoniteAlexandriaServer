@@ -14,6 +14,38 @@ if [ -n "${ALEXANDRIA_DATA_DIR:-}" ]; then
         mountpoint -q "$ALEXANDRIA_REQUIRED_MOUNT" || { echo "Required data mount is missing: $ALEXANDRIA_REQUIRED_MOUNT" >&2; exit 1; }
     fi
 fi
+# Resolve paths once; scripts and Compose consume the same exported value.
+export ALEXANDRIA_BACKUP_DIR=${ALEXANDRIA_BACKUP_DIR:-./backups}
+
+select_compose() {
+    [ -z "${_alexandria_compose_command:-}" ] || return 0
+    if [ -n "${COMPOSE:-}" ]; then
+        _alexandria_compose_command=$COMPOSE
+    elif docker compose version >/dev/null 2>&1; then
+        _alexandria_compose_command='docker compose'
+    elif podman compose version >/dev/null 2>&1; then
+        _alexandria_compose_command='podman compose'
+    else
+        _alexandria_compose_command=docker-compose
+    fi
+    _alexandria_container_engine=${CONTAINER_ENGINE:-}
+    if [ -z "$_alexandria_container_engine" ]; then
+        # COMPOSE is a trusted, whitespace-separated command, as before.
+        set -- $_alexandria_compose_command
+        case "${1##*/}" in
+            docker|docker-compose) _alexandria_container_engine=docker ;;
+            podman|podman-compose) _alexandria_container_engine=podman ;;
+        esac
+    fi
+}
+engine() {
+    select_compose
+    case "$_alexandria_container_engine" in
+        docker|podman) "$_alexandria_container_engine" "$@" ;;
+        *) echo 'Set CONTAINER_ENGINE=docker or podman for a custom COMPOSE wrapper.' >&2; return 1 ;;
+    esac
+}
+
 compose() {
     if [ "${ALEXANDRIA_OLLAMA_ENABLED:-false}" = true ]; then
         set -- --profile embeddings "$@"
@@ -30,9 +62,6 @@ compose() {
     else
         set -- -f compose.yml "$@"
     fi
-    if [ -n "${COMPOSE:-}" ]; then $COMPOSE "$@"
-    elif docker compose version >/dev/null 2>&1; then docker compose "$@"
-    elif podman compose version >/dev/null 2>&1; then podman compose "$@"
-    else docker-compose "$@"
-    fi
+    select_compose
+    $_alexandria_compose_command "$@"
 }

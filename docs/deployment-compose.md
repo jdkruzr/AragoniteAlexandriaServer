@@ -226,3 +226,12 @@ device, and the other tablets offer to adopt it.
 Alexandria Server starts with an empty library. Enroll each tablet as above.
 The first tablet uploads its library, and others merge with it. Keep
 UltraBridge running until every tablet syncs here, then retire it.
+
+### Backup configuration and custom Compose commands
+
+Backup and restore use the same resolved `ALEXANDRIA_BACKUP_DIR` as Compose,
+including quoted `.env` paths and the default derived from `ALEXANDRIA_DATA_DIR`.
+The cold-backup commands use the selected Docker or Podman engine. When `COMPOSE`
+is a custom wrapper rather than a recognizable Docker/Podman command, set
+`CONTAINER_ENGINE=docker` or `CONTAINER_ENGINE=podman` for engine operations.
+This does not add named-volume cold backups; their existing restriction remains.

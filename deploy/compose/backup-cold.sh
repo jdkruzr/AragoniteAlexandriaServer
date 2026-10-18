@@ -25,8 +25,8 @@ mkdir "$partial"
 # Keep the exact locally built application image; a mutable tag is not a backup.
 app_container=$(compose ps -q alexandria)
 [ -n "$app_container" ] || { echo "Application container missing; refusing incomplete backup." >&2; exit 1; }
-app_image=$(docker inspect --format '{{.Image}}' "$app_container")
-docker image save "$app_image" -o "$partial/application-image.tar"
+app_image=$(engine inspect --format '{{.Image}}' "$app_container")
+engine image save "$app_image" -o "$partial/application-image.tar"
 printf '%s\n' "$app_image" > "$partial/application-image-id"
 # Restart on all exits, including failed copies. No volume deletion.
 trap 'compose up -d >/dev/null' EXIT
@@ -40,7 +40,7 @@ fi
 # that as a clean cold package; the restart trap still restores service.
 if [ -n "$running_containers" ]; then
     # Container IDs are Docker-generated whitespace-separated identifiers.
-    docker inspect --format '{{.Name}} {{.State.ExitCode}} {{.State.OOMKilled}}' $running_containers > "$partial/stop-status.txt"
+    engine inspect --format '{{.Name}} {{.State.ExitCode}} {{.State.OOMKilled}}' $running_containers > "$partial/stop-status.txt"
     if awk '$2 == 137 || $3 == "true" { bad=1 } END { exit !bad }' "$partial/stop-status.txt"; then
         echo 'Forced/OOM container stop; refusing cold backup. Inspect stop-status.txt and retry with a longer shutdown timeout.' >&2
         exit 1
@@ -60,7 +60,8 @@ if [ "${ALEXANDRIA_BOOX_ENABLED:-false}" = true ]; then
 fi
 # Inspect container metadata: old one-shot containers can reference an image
 # removed after a rebuild, which makes `compose images` fail despite valid data.
-compose ps -a -q | xargs -r docker inspect --format '{{.Name}} {{.Config.Image}} {{.Image}}' > "$partial/images.txt"
+all_containers=$(compose ps -a -q)
+if [ -n "$all_containers" ]; then engine inspect --format '{{.Name}} {{.Config.Image}} {{.Image}}' $all_containers > "$partial/images.txt"; else : > "$partial/images.txt"; fi
 (cd "$partial" && find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
 mv "$partial" "$final"
 echo "Cold backup written to $final. Contains credentials; keep private."

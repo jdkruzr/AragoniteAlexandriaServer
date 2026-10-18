@@ -31,6 +31,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 3 complete: task/event query filtering shares the matcher; REPORT, PROPFIND and PROPPATCH use an 8 MiB XML limit (413 oversized; 400 malformed). Existing discovery/sync/attachment tests and the full Go 1.25 race gate pass (`03`).
 
+- Batch 4 complete: backup/restore consume one resolved path and engine. Ten synthetic packaging tests pass, including Docker and Podman cold-backup round trips and failure guards; shell syntax passes (`04-packaging.log`).
+
 ## REST task compatibility
 
 POST and PUT remain live upserts (201 and 200 respectively). Creation and live

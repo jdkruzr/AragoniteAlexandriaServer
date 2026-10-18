@@ -44,7 +44,7 @@ class ColdBackupTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     restore.validate(bundle)
 
-    def run_backup(self, fail=False, forced_stop=False):
+    def run_backup(self, fail=False, forced_stop=False, engine="docker"):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             for name in ('backup-cold.sh', 'common.sh', 'compose.yml', 'data-dir.yml', 'boox.yml', 'boox-data-dir.yml'):
@@ -86,10 +86,13 @@ esac
 ''',
                 'tar': '#!/bin/sh\n' + ('exit 1\n' if fail else 'exec /usr/bin/tar "$@"\n'),
             }
+            if engine == 'podman':
+                commands['podman'] = commands['docker']
+                commands['docker'] = '#!/bin/sh\nexit 99\n'
             for name, body in commands.items():
                 (root / 'bin' / name).write_text(body)
                 (root / 'bin' / name).chmod(0o755)
-            env = dict(os.environ, PATH=str(root / 'bin') + ':' + os.environ['PATH'], TEST_ROOT=str(root), TEST_EXIT_CODE='137' if forced_stop else '0')
+            env = dict(os.environ, PATH=str(root / 'bin') + ':' + os.environ['PATH'], TEST_ROOT=str(root), TEST_EXIT_CODE='137' if forced_stop else '0', COMPOSE=engine + ' compose')
             result = subprocess.run(['sh', str(root / 'backup-cold.sh')], env=env, capture_output=True, text=True)
             calls = (root / 'calls').read_text()
             self.assertIn(' up -d', calls)
@@ -126,6 +129,7 @@ esac
             with self.assertRaises(ValueError): restore.validate(bundle)
 
     def test_complete_backup(self): self.run_backup()
+    def test_complete_podman_backup(self): self.run_backup(engine="podman")
     def test_copy_failure_restarts_without_publishing(self): self.run_backup(True)
     def test_forced_stop_restarts_without_publishing(self): self.run_backup(forced_stop=True)
 
