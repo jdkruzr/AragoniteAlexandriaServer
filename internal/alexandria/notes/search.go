@@ -208,11 +208,7 @@ func (s Searcher) SearchScoped(ctx context.Context, query string, limit int, hyb
 	for i, h := range out {
 		h.Score = h.score
 		if h.Source == "client" {
-			if err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM fn_page p, fn_page self
-			WHERE self.id=$1 AND p.notebook_id=self.notebook_id AND p.deleted_at IS NULL
-			AND (p.sort_order, p.id) <= (self.sort_order, self.id)`, h.PageID).Scan(&h.PageNumber); err != nil {
-				return nil, err
-			}
+
 			h.URL = "/files/forestnote?notebook=" + url.QueryEscape(h.NotebookID) + "&page=" + url.QueryEscape(h.PageID) + "#page-" + url.PathEscape(h.PageID)
 		} else if h.Kind == "Reading" {
 			h.URL = "/boox/reading?record=" + url.QueryEscape(h.NotebookID)
@@ -220,29 +216,82 @@ func (s Searcher) SearchScoped(ctx context.Context, query string, limit int, hyb
 			h.URL = "/boox/minutes?id=" + url.QueryEscape(h.NotebookID)
 		} else {
 			h.URL = "/boox/notebook?id=" + url.QueryEscape(h.NotebookID) + "&page=" + strconv.Itoa(h.PageNumber) + "&page_id=" + url.QueryEscape(h.PageID)
-			if err := s.pageTags(ctx, &h.Result); err != nil {
-				return nil, err
-			}
 		}
 		results[i] = h.Result
+	}
+	if err := s.enrich(ctx, results); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
 
-func (s Searcher) pageTags(ctx context.Context, r *Result) error {
-	rows, err := s.DB.QueryContext(ctx, `SELECT DISTINCT content FROM boox_tag WHERE notebook_id=$1 AND page_id=$2 ORDER BY content`, r.NotebookID, r.PageID)
-	if err != nil {
-		return err
+// enrich performs at most one query per source, restricted to selected results.
+func (s Searcher) enrich(ctx context.Context, results []Result) error {
+	type pageKey struct{ notebook, page string }
+	var clientIDs, notebooks, pageIDs []string
+	for _, r := range results {
+		if r.Source == "client" {
+			clientIDs = append(clientIDs, r.PageID)
+		} else if r.Kind != "Reading" && r.Kind != "Minutes" {
+			notebooks = append(notebooks, r.NotebookID)
+			pageIDs = append(pageIDs, r.PageID)
+		}
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var t string
-		if err := rows.Scan(&t); err != nil {
+	ordinals := map[string]int{}
+	if len(clientIDs) > 0 {
+		rows, err := s.DB.QueryContext(ctx, `SELECT self.id,count(p.id) FROM fn_page self LEFT JOIN fn_page p
+   ON p.notebook_id=self.notebook_id AND p.deleted_at IS NULL AND (p.sort_order,p.id)<=(self.sort_order,self.id)
+   WHERE self.id=ANY($1) GROUP BY self.id`, clientIDs)
+		if err != nil {
 			return err
 		}
-		r.Tags = append(r.Tags, t)
+		for rows.Next() {
+			var id string
+			var n int
+			if err = rows.Scan(&id, &n); err != nil {
+				rows.Close()
+				return err
+			}
+			ordinals[id] = n
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
 	}
-	return rows.Err()
+	tags := map[pageKey][]string{}
+	if len(notebooks) > 0 {
+		rows, err := s.DB.QueryContext(ctx, `SELECT DISTINCT t.notebook_id,t.page_id,t.content FROM boox_tag t
+   JOIN unnest($1::text[],$2::text[]) AS wanted(notebook_id,page_id) ON t.notebook_id=wanted.notebook_id AND t.page_id=wanted.page_id
+   ORDER BY t.notebook_id,t.page_id,t.content`, notebooks, pageIDs)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var key pageKey
+			var tag string
+			if err = rows.Scan(&key.notebook, &key.page, &tag); err != nil {
+				rows.Close()
+				return err
+			}
+			tags[key] = append(tags[key], tag)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
+	}
+	for i := range results {
+		r := &results[i]
+		if r.Source == "client" {
+			r.PageNumber = ordinals[r.PageID]
+		} else if r.Kind != "Reading" && r.Kind != "Minutes" {
+			r.Tags = tags[pageKey{r.NotebookID, r.PageID}]
+		}
+	}
+	return nil
 }
 
 func excerpt(s string, max int) string {

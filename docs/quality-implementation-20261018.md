@@ -39,6 +39,19 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 7 complete: pooled admission discards uncertain-lock sessions; owner authentication is reused only for default callbacks. Cancellation/reuse tests and full Go 1.25 race gate pass (`07`). Local median for 100 admissions: 676 ms with zero idle sessions, 49 ms with one; reconnects fall from 100 to zero.
 
+- Batch 8 complete: selected search results use at most two enrichment queries, preserving order, tags and live page ordinals. Focused tests pass; the cumulative batch-9 full gate passes after the batch-8 fixture failure described below (`09`).
+
+## Validation adjustment
+
+The first batch-8 full gate exposed a pre-existing timing dependency in
+`TestNoteActionsMakeItemsOnce`: it dated ink before implicitly starting the
+action clock. Crossing a wall-clock second correctly made the ink ineligible.
+A forced 1.1-second delay reproduces `queued actions = 0`. The fixture now uses
+fixed ink/start timestamps; 20 consecutive race-enabled runs pass. Pending
+snapshots 10a–12 include this test-only repair before their gates start. Runtime
+sources and the staged deployment image are unaffected. The original failed
+gate remains recorded; subsequent cumulative gates validate the search change.
+
 ## REST task compatibility
 
 POST and PUT remain live upserts (201 and 200 respectively). Creation and live
