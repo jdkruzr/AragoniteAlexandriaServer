@@ -22,6 +22,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech"
 )
 
@@ -455,7 +456,10 @@ func Validate(c Config) error {
 	}
 	return nil
 }
-func (s Store) Candidate(ctx context.Context, revision int64, c Config, key, action string) (Snapshot, error) {
+
+// editableSnapshot checks deployment locks and the caller's revision. Save
+// repeats the revision check under a row lock when committing the edit.
+func (s Store) editableSnapshot(ctx context.Context, revision int64) (Snapshot, error) {
 	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
 		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")
 	}
@@ -465,6 +469,14 @@ func (s Store) Candidate(ctx context.Context, revision int64, c Config, key, act
 	}
 	if v.Revision != revision {
 		return v, ErrStale
+	}
+	return v, nil
+}
+
+func (s Store) Candidate(ctx context.Context, revision int64, c Config, key, action string) (Snapshot, error) {
+	v, e := s.editableSnapshot(ctx, revision)
+	if e != nil {
+		return v, e
 	}
 	// The recognition and search forms don't carry the minutes providers.
 	c.Transcription, c.Summary, c.Actions = v.Config.Transcription, v.Config.Summary, v.Config.Actions
@@ -490,15 +502,9 @@ type KeyChange struct{ Key, Action string }
 // saved settings. The start time is kept separately (the web handler resets it
 // when processing is turned back on), so the legacy one is dropped here.
 func (s Store) AutomaticCandidate(ctx context.Context, revision int64, recognize, summarize bool) (Snapshot, error) {
-	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
-		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")
-	}
-	v, e := s.Load(ctx)
+	v, e := s.editableSnapshot(ctx, revision)
 	if e != nil {
 		return v, e
-	}
-	if v.Revision != revision {
-		return v, ErrStale
 	}
 	v.Config.Automatic = AutomaticConfig{RecognizeOff: !recognize, SummarizeOff: !summarize}
 	return v, nil
@@ -506,15 +512,9 @@ func (s Store) AutomaticCandidate(ctx context.Context, revision int64, recognize
 
 // ActionsCandidate applies the note actions form to the saved settings.
 func (s Store) ActionsCandidate(ctx context.Context, revision int64, a ActionsConfig, defaults [2]string) (Snapshot, error) {
-	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
-		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")
-	}
-	v, e := s.Load(ctx)
+	v, e := s.editableSnapshot(ctx, revision)
 	if e != nil {
 		return v, e
-	}
-	if v.Revision != revision {
-		return v, ErrStale
 	}
 	for _, x := range []*string{&a.Red, &a.Blue} {
 		if *x != "task" && *x != "event" && *x != "off" {
@@ -542,15 +542,9 @@ func (s Store) ActionsCandidate(ctx context.Context, revision int64, a ActionsCo
 }
 
 func (s Store) MinutesCandidate(ctx context.Context, revision int64, t TranscriptionConfig, m SummaryConfig, tk, mk KeyChange) (Snapshot, error) {
-	if s.Bootstrap.Locked || len(s.Bootstrap.Key) != 32 {
-		return Snapshot{}, errors.New("Provider settings are locked by the deployment.")
-	}
-	v, e := s.Load(ctx)
+	v, e := s.editableSnapshot(ctx, revision)
 	if e != nil {
 		return v, e
-	}
-	if v.Revision != revision {
-		return v, ErrStale
 	}
 	t.URL = strings.TrimRight(strings.TrimSpace(t.URL), "/")
 	t.Model, t.Language = strings.TrimSpace(t.Model), strings.ToLower(strings.TrimSpace(t.Language))
@@ -627,6 +621,18 @@ func (s Store) Save(ctx context.Context, v Snapshot) error {
 		return e
 	}
 	defer tx.Rollback()
+	var previousRaw []byte
+	if e = tx.QueryRowContext(ctx, `SELECT config FROM alexandria_provider_settings WHERE singleton AND revision=$1 FOR UPDATE`, v.Revision).Scan(&previousRaw); e != nil {
+		if errors.Is(e, sql.ErrNoRows) {
+			return ErrStale
+		}
+		return e
+	}
+	var previous Config
+	if e = json.Unmarshal(previousRaw, &previous); e != nil {
+		return e
+	}
+
 	r, e := tx.ExecContext(ctx, `UPDATE alexandria_provider_settings SET config=$1,credential=$2,transcription_credential=$4,summary_credential=$5,revision=revision+1,updated_at=now() WHERE singleton AND revision=$3`, raw, b, v.Revision, tb, sb)
 	if e != nil {
 		return e
@@ -634,6 +640,20 @@ func (s Store) Save(ctx context.Context, v Snapshot) error {
 	n, _ := r.RowsAffected()
 	if n != 1 {
 		return ErrStale
+	}
+	// Clock changes are part of the settings mutation, never a second write
+	// from an HTTP adapter after the configuration has already committed.
+	var reset []string
+	if previous.Automatic.Chosen() != v.Config.Automatic.Chosen() {
+		reset = append(reset, settings.AutomaticSince)
+	}
+	if previous.Actions.Off && !v.Config.Actions.Off {
+		reset = append(reset, settings.NoteActionsSince)
+	}
+	if len(reset) > 0 {
+		if _, e = tx.ExecContext(ctx, `DELETE FROM alexandria_settings WHERE key=ANY($1)`, reset); e != nil {
+			return e
+		}
 	}
 	if _, e = tx.ExecContext(ctx, `INSERT INTO alexandria_provider_audit(revision,action) VALUES($1,'provider settings saved')`, v.Revision+1); e != nil {
 		return e

@@ -18,6 +18,7 @@ Batch 7 passes: bounded idle pooling, uncertain-lock disposal and request-local
 owner authentication reuse.
 Batch 8 passes its focused and cumulative full checks: search enrichment is
 batched without changing selected-result order.
+Batch 9 passes: provider settings and processing-clock changes commit atomically.
 No implementation changes have been deployed yet.
 
 2026-10-18: **Repository quality survey complete** on `audit/code-quality-20261018`,

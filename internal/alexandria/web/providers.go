@@ -5,7 +5,6 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -14,18 +13,8 @@ import (
 
 func (d Deps) providerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /settings/semantic", func(w http.ResponseWriter, r *http.Request) {
-		if d.Providers == nil {
-			http.Error(w, "Provider settings are unavailable.", 503)
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 4096)
-		if r.ParseForm() != nil {
-			http.Error(w, "Invalid settings form.", 400)
-			return
-		}
-		rev, err := strconv.ParseInt(r.PostForm.Get("revision"), 10, 64)
+		rev, err := d.providerForm(w, r, 4096, true, "Provider settings are unavailable.")
 		if err != nil {
-			http.Error(w, "Reload the Settings page.", 409)
 			return
 		}
 		snap, err := d.Providers.Load(r.Context())
@@ -76,18 +65,8 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		back(w, r, "/settings/search", notice)
 	})
 	mux.HandleFunc("POST /settings/automatic", func(w http.ResponseWriter, r *http.Request) {
-		if d.Providers == nil {
-			http.Error(w, "Provider settings are unavailable in this deployment.", 503)
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 4096)
-		if r.ParseForm() != nil {
-			http.Error(w, "Invalid settings form.", 400)
-			return
-		}
-		rev, e := strconv.ParseInt(r.Form.Get("revision"), 10, 64)
+		rev, e := d.providerForm(w, r, 4096, false, "Provider settings are unavailable in this deployment.")
 		if e != nil {
-			http.Error(w, "Reload the Settings page.", 409)
 			return
 		}
 		saved, e := d.Providers.Load(r.Context())
@@ -105,12 +84,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		// Turning it off, or back on from off, restarts the clock, so notebooks
 		// changed while it was off aren't swept up.
 		was, now := saved.Config.Automatic.Chosen(), candidate.Config.Automatic.Chosen()
-		if was != now {
-			if _, e := d.DB.ExecContext(r.Context(), `DELETE FROM alexandria_settings WHERE key=$1`, settings.AutomaticSince); e != nil {
-				d.fail(w, e)
-				return
-			}
-		}
+
 		notice := "Automatic processing is off."
 		switch {
 		case now && !was:
@@ -121,18 +95,8 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		back(w, r, "/settings/recognition", notice)
 	})
 	mux.HandleFunc("POST /settings/actions", func(w http.ResponseWriter, r *http.Request) {
-		if d.Providers == nil {
-			http.Error(w, "Provider settings are unavailable in this deployment.", 503)
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 256<<10)
-		if r.ParseForm() != nil {
-			http.Error(w, "Invalid settings form.", 400)
-			return
-		}
-		rev, e := strconv.ParseInt(r.Form.Get("revision"), 10, 64)
+		rev, e := d.providerForm(w, r, 256<<10, false, "Provider settings are unavailable in this deployment.")
 		if e != nil {
-			http.Error(w, "Reload the Settings page.", 409)
 			return
 		}
 		f := r.Form.Get
@@ -149,14 +113,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			back(w, r, "/settings/recognition#note-actions", e.Error())
 			return
 		}
-		// Turning them back on starts the clock again, so ink written while
-		// they were off isn't swept up.
-		if saved.Config.Actions.Off && !a.Off {
-			if _, e := d.DB.ExecContext(r.Context(), `DELETE FROM alexandria_settings WHERE key=$1`, settings.NoteActionsSince); e != nil {
-				d.fail(w, e)
-				return
-			}
-		}
+
 		notice := "Note actions are off."
 		switch {
 		case !a.Off && saved.Config.Actions.Off:
@@ -167,18 +124,8 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		back(w, r, "/settings/recognition#note-actions", notice)
 	})
 	mux.HandleFunc("POST /settings/minutes", func(w http.ResponseWriter, r *http.Request) {
-		if d.Providers == nil {
-			http.Error(w, "Provider settings are unavailable in this deployment.", 503)
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 256<<10)
-		if r.ParseForm() != nil {
-			http.Error(w, "Invalid settings form.", 400)
-			return
-		}
-		rev, e := strconv.ParseInt(r.Form.Get("revision"), 10, 64)
+		rev, e := d.providerForm(w, r, 256<<10, false, "Provider settings are unavailable in this deployment.")
 		if e != nil {
-			http.Error(w, "Reload the Settings page.", 409)
 			return
 		}
 		f := r.Form.Get
@@ -216,18 +163,8 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		d.settingsPage(w, r, "recognition", &view)
 	})
 	mux.HandleFunc("POST /settings/providers", func(w http.ResponseWriter, r *http.Request) {
-		if d.Providers == nil {
-			http.Error(w, "Provider settings are unavailable in this deployment.", 503)
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 32768)
-		if r.ParseForm() != nil {
-			http.Error(w, "Invalid settings form.", 400)
-			return
-		}
-		rev, e := strconv.ParseInt(r.Form.Get("revision"), 10, 64)
+		rev, e := d.providerForm(w, r, 32768, false, "Provider settings are unavailable in this deployment.")
 		if e != nil {
-			http.Error(w, "Reload the Settings page.", 409)
 			return
 		}
 		action := r.Form.Get("action")
@@ -301,4 +238,29 @@ func noteLanguage(v string) string {
 		return v
 	}
 	return ""
+}
+
+// providerForm preserves each form's bound and legacy revision source while
+// centralizing parse failures. Credentials are never included in error text.
+func (d Deps) providerForm(w http.ResponseWriter, r *http.Request, limit int64, postOnly bool, unavailable string) (int64, error) {
+	fail := func(message string, status int) (int64, error) {
+		http.Error(w, message, status)
+		return 0, errors.New(message)
+	}
+	if d.Providers == nil {
+		return fail(unavailable, 503)
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	if r.ParseForm() != nil {
+		return fail("Invalid settings form.", 400)
+	}
+	form := r.Form
+	if postOnly {
+		form = r.PostForm
+	}
+	revision, err := strconv.ParseInt(form.Get("revision"), 10, 64)
+	if err != nil {
+		return fail("Reload the Settings page.", 409)
+	}
+	return revision, nil
 }

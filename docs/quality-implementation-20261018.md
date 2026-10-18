@@ -41,6 +41,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 8 complete: selected search results use at most two enrichment queries, preserving order, tags and live page ordinals. Focused tests pass; the cumulative batch-9 full gate passes after the batch-8 fixture failure described below (`09`).
 
+- Batch 9 complete: candidate/form checks share helpers; automatic and note-action start-clock resets commit with configuration and audit changes. Injected failure/CAS tests and the full Go 1.25 race gate pass (`09`).
+
 ## Validation adjustment
 
 The first batch-8 full gate exposed a pre-existing timing dependency in
