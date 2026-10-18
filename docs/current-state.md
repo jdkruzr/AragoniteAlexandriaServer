@@ -1,5 +1,16 @@
 # Alexandria Server handoff
 
+2026-10-18: **PowerSync 0.3 setup wording prepared**, on
+`feature/powersync-setup-copy`. Setup, enrollment help and audio recovery copy
+match the guided Android flow and its Troubleshooting screen; English/Spanish
+catalogs are updated and older-client checkbox instructions remain. Uncached
+catalog coverage, BOOX view rendering and anonymous template-hub tests pass.
+These Server changes are **not deployed**. PowerSync 0.3 is installed on Palma
+and Lumi; upgrade preservation and UI checks pass, with bounded native notebook
+and reading smoke checks against the existing deployed Server. Details and
+remaining physical qualification are in the sibling PowerSync repository's
+`docs/streamlined-setup-20261018.md`.
+
 2026-10-18: **Quality implementation and test deployment complete** on
 `refactor/server-quality` (runtime commit `552b9b2`; commits remain local).
 All 12 batches from the [implementation log](quality-implementation-20261018.md)

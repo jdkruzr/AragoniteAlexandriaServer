@@ -10,5 +10,5 @@
 {{if .Data}}<p>{{t "Enrollment code:"}}</p><code class="secret">{{.Data}}</code>{{end}}
 <form class="actions" method="post" action="/boox/enroll"><button>{{if .Data}}{{t "Create another code"}}{{else}}{{t "Create enrollment code"}}{{end}}</button></form>
 </section>
-<p class="small muted">{{t "Every tablet must use the same BOOX account. In PowerSync, turn on notebook and reading sync to send content here. Your existing BOOX library is kept, and returning to Onyx doesn't need this server."}}</p>
+<p class="small muted">{{t "Every tablet must use the same BOOX account. In PowerSync 0.3 or later, choose Connect to Alexandria and follow the permission and confirmation steps. Notebook and reading sync are enabled after connection; individually excluded content stays excluded. Earlier versions require enabling both sync checkboxes. Your existing BOOX library is kept, and returning to the previous server does not need this server."}}</p>
 {{end}}
