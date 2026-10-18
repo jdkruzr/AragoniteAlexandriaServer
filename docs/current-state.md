@@ -4,7 +4,7 @@
 - **Fixed:** `/metrics` needs the owner's login (Basic or API token). Live: anonymous 401.
 - **Fixed:** automatic processing is on by default wherever its models are set up, stored as opt-outs. Its start time is the `automatic_since` setting, set the first time there's something to run. Live, the owner chose to have it on: the clock started at 2026-10-18 08:13:33Z, and nothing was swept (0 pages queued, 0 minutes running).
 - **Fixed:** `.env.example` and the installer's `.env` list the BOOX and host-directory settings.
-- **Open:** a BOOX install on named volumes has no supported backup. `backup.sh` refuses BOOX, and `backup-cold.sh` needs `ALEXANDRIA_DATA_DIR`.
+- **Open:** a BOOX install on named volumes has no supported backup. `backup.sh` refuses BOOX, and `backup-cold.sh` needs `ALEXANDRIA_DATA_DIR`. Plan, awaiting go-ahead: [boox-volume-backup-plan-20261018.md](boox-volume-backup-plan-20261018.md).
 
 2026-10-17 (late night): **History rewritten** to remove a real person's name, library-derived terms and the owner's host details ([history-rewrite-20261017.md](history-rewrite-20261017.md)). Most commits have new hashes (Hosting's `45eb491` pin is unchanged); that page maps old to new. The README was rewritten for users, with screenshots from a made-up demo library (`scripts/docs-screenshots.sh`).
 
