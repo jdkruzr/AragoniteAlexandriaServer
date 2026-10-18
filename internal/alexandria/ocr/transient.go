@@ -2,7 +2,7 @@ package ocr
 
 import (
 	"errors"
-	"net/http"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp"
 )
 
 // TransientError marks a failure where the request never got a verdict from
@@ -39,7 +39,5 @@ func IsTransient(err error) bool {
 // 5xx is a server-side fault, 429 is explicit backpressure, and 408 is the
 // server reporting its own timeout — all say "try again", unlike other 4xx.
 func transientHTTPStatus(code int) bool {
-	return code >= 500 ||
-		code == http.StatusTooManyRequests ||
-		code == http.StatusRequestTimeout
+	return providerhttp.Retryable(code)
 }

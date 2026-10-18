@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp"
 	"net/http"
 	"strings"
 	"time"
@@ -30,7 +30,7 @@ type Ollama struct {
 }
 
 func NewOllama(baseURL, model string) *Ollama {
-	return &Ollama{baseURL: strings.TrimRight(baseURL, "/"), model: model, client: &http.Client{Timeout: embedTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+	return &Ollama{baseURL: strings.TrimRight(baseURL, "/"), model: model, client: providerhttp.Client(embedTimeout)}
 }
 
 // Model is stored with each vector; vectors from different models never mix.
@@ -61,13 +61,10 @@ func (e *Ollama) Embed(ctx context.Context, text string) ([]float32, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		// Ollama's error body (e.g. "the input length exceeds the context
-		// length") makes failures diagnosable.
-		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
-		return nil, fmt.Errorf("ollama returned %d: %s", resp.StatusCode, strings.TrimSpace(string(msg)))
+		return nil, providerhttp.ResponseError(resp)
 	}
 	var result embedResponse
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&result); err != nil {
+	if err := providerhttp.ReadJSON(resp.Body, 16<<20, &result); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 	if len(result.Embeddings) == 0 || len(result.Embeddings[0]) == 0 {

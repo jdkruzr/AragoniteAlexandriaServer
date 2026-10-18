@@ -7,12 +7,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp"
 	"image/jpeg"
-	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -69,7 +67,7 @@ func NewOCRClient(apiURL, apiKey, model, format string, options ...Option) *OCRC
 		apiKey: apiKey,
 		model:  model,
 		format: format,
-		client: &http.Client{Timeout: 5 * time.Minute, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
+		client: providerhttp.Client(5 * time.Minute),
 	}
 	for _, option := range options {
 		option(c)
@@ -158,55 +156,7 @@ func (c *OCRClient) recognizeAnthropic(ctx context.Context, jpegData []byte, pro
 		}},
 	}
 
-	body, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", fmt.Errorf("ocrclient marshal: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", c.apiURL+"/v1/messages", bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("ocrclient request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", c.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-	if c.anthropicWorkspace != "" {
-		req.Header.Set("anthropic-workspace-id", c.anthropicWorkspace)
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		// Dial failures, connection resets, and client-side timeouts: the
-		// model never saw the request, so this is always worth a retry.
-		return "", Transient(fmt.Errorf("ocrclient post: %w", err))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		err := providerHTTPError(resp)
-		if transientHTTPStatus(resp.StatusCode) {
-			return "", Transient(err)
-		}
-		return "", err
-	}
-
-	var vResp anthropicResponse
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&vResp); err != nil {
-		return "", fmt.Errorf("ocrclient decode: %w", err)
-	}
-	if len(vResp.Content) == 0 {
-		return "", fmt.Errorf("ocrclient: empty response")
-	}
-	var text strings.Builder
-	for _, block := range vResp.Content {
-		if block.Type == "text" {
-			text.WriteString(block.Text)
-		}
-	}
-	if text.Len() == 0 {
-		return "", fmt.Errorf("ocrclient: response contains no text")
-	}
-	return text.String(), nil
+	return c.postText(ctx, c.apiURL+"/v1/messages", reqBody, "ocrclient")
 }
 
 // ── OpenAI Chat Completions API ───────────────────────────────────────────────
@@ -260,67 +210,5 @@ func (c *OCRClient) recognizeOpenAI(ctx context.Context, jpegData []byte, prompt
 		reqBody.ChatTemplateKwargs = map[string]any{"enable_thinking": false}
 	}
 
-	body, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", fmt.Errorf("ocrclient marshal: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", c.apiURL+"/v1/chat/completions", bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("ocrclient request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		// Dial failures, connection resets, and client-side timeouts: the
-		// model never saw the request, so this is always worth a retry.
-		return "", Transient(fmt.Errorf("ocrclient post: %w", err))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		err := providerHTTPError(resp)
-		if transientHTTPStatus(resp.StatusCode) {
-			return "", Transient(err)
-		}
-		return "", err
-	}
-
-	var vResp openAIResponse
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&vResp); err != nil {
-		return "", fmt.Errorf("ocrclient decode: %w", err)
-	}
-	if len(vResp.Choices) == 0 {
-		return "", fmt.Errorf("ocrclient: empty response")
-	}
-	return vResp.Choices[0].Message.Content, nil
-}
-
-// HTTPError exposes status without retaining or returning sensitive provider bodies.
-type HTTPError struct {
-	Status            int
-	WorkspaceRequired bool
-}
-
-// Classify a known diagnostic without retaining arbitrary upstream text.
-func providerHTTPError(resp *http.Response) *HTTPError {
-	err := &HTTPError{Status: resp.StatusCode}
-	if resp.StatusCode == http.StatusBadRequest {
-		var body struct {
-			Error struct {
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&body) == nil {
-			message := strings.ToLower(body.Error.Message)
-			err.WorkspaceRequired = strings.Contains(message, "anthropic-workspace-id")
-		}
-	}
-	return err
-}
-
-func (e *HTTPError) Error() string {
-	return fmt.Sprintf("recognition endpoint returned HTTP %d", e.Status)
+	return c.postText(ctx, c.apiURL+"/v1/chat/completions", reqBody, "ocrclient")
 }

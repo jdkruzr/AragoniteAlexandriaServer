@@ -6,15 +6,14 @@ package speech
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp"
 )
 
 // MaxUpload is the largest recording sent in one request. OpenAI itself
@@ -43,7 +42,7 @@ type Result struct {
 // New builds a client. Callers bound each request with a context deadline
 // sized to the recording.
 func New(url, key, model, language string) *Client {
-	return &Client{URL: url, Key: key, Model: model, Language: language, HTTP: &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+	return &Client{URL: url, Key: key, Model: model, Language: language, HTTP: providerhttp.Client(0)}
 }
 
 // Transcribe uploads one recording. name only supplies the file extension the
@@ -87,9 +86,8 @@ func (c *Client) Transcribe(ctx context.Context, name string, audio []byte) (Res
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
-		err := &ocr.HTTPError{Status: resp.StatusCode}
-		if resp.StatusCode >= 500 || resp.StatusCode == 429 || resp.StatusCode == 408 {
+		err := providerhttp.ResponseError(resp)
+		if providerhttp.Retryable(resp.StatusCode) {
 			return Result{}, ocr.Transient(err)
 		}
 		return Result{}, err
@@ -100,7 +98,7 @@ func (c *Client) Transcribe(ctx context.Context, name string, audio []byte) (Res
 		Duration float64   `json:"duration"`
 		Segments []Segment `json:"segments"`
 	}
-	if err = json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&out); err != nil {
+	if err = providerhttp.ReadJSON(resp.Body, 16<<20, &out); err != nil {
 		return Result{}, fmt.Errorf("transcription: unreadable response")
 	}
 	r := Result{Text: strings.TrimSpace(out.Text), Language: out.Language, Duration: time.Duration(out.Duration * float64(time.Second))}

@@ -43,6 +43,8 @@ Each runtime batch receives focused regressions, formatting, vet, build and an u
 
 - Batch 9 complete: candidate/form checks share helpers; automatic and note-action start-clock resets commit with configuration and audit changes. Injected failure/CAS tests and the full Go 1.25 race gate pass (`09`).
 
+- Batch 10a complete: provider clients share redirect refusal, bounded JSON and safe HTTP errors while retaining payloads/timeouts/retry semantics. Focused regressions and the full Go 1.25 race gate pass (`10a`).
+
 ## Validation adjustment
 
 The first batch-8 full gate exposed a pre-existing timing dependency in
