@@ -1,11 +1,23 @@
 # Alexandria Server handoff
 
-2026-10-18: **PowerSync 0.3 setup wording prepared**, on
+2026-10-18: **PowerSync 0.3 setup wording deployed**, on
 `feature/powersync-setup-copy`. Setup, enrollment help and audio recovery copy
 match the guided Android flow and its Troubleshooting screen; English/Spanish
 catalogs are updated and older-client checkbox instructions remain. Uncached
 catalog coverage, BOOX view rendering and anonymous template-hub tests pass.
-These Server changes are **not deployed**. PowerSync 0.3 is installed on Palma
+Deployed as `55ac1ce-powersync1`: all 296 runtime inputs matched the baseline,
+five staged files verified, fresh affected PostgreSQL/S3 race tests passed, and
+10 public-site checks passed (including English/Spanish enrollment copy).
+Zero restarts or startup warnings/errors; schema and provider revision unchanged.
+See [deployment evidence](powersync/20261018/deployment.json) and
+[integration results](powersync/20261018/integration.txt). Prior image, source,
+configuration and a catalog-checked metadata dump remain on the instance under
+`deploy/compose/private/55ac1ce-powersync1/`; its `rollback.sh` restores the prior
+app without restoring the database. This is an app-only update.
+Look under **BOOX → Devices → Connect a device** (`/boox/enroll`): the explanation
+below the code form and the heading's help button describe the new flow.
+Published audio-repair results also point to PowerSync's Troubleshooting screen.
+PowerSync 0.3 is installed on Palma
 and Lumi; upgrade preservation and UI checks pass, with bounded native notebook
 and reading smoke checks against the existing deployed Server. Details and
 remaining physical qualification are in the sibling PowerSync repository's

@@ -1,0 +1,91 @@
+{
+  "version": "55ac1ce-powersync1",
+  "runtimeCommit": "55ac1ce",
+  "image": "sha256:40e181a6dfa65c1ff43542f28c9fe42d06903ae68483b2c4ac1d3744fbc3709c",
+  "previousImage": "sha256:338aec30aaa5c2ce11f133f17121ec089690521fbcb9b24d783599720c5f1219",
+  "restarts": 0,
+  "startupWarningsOrErrors": 0,
+  "state": "running",
+  "runtimeInputsVerified": 296,
+  "stagedFilesVerified": 5,
+  "smoke": {
+    "checks": [
+      {
+        "path": "/readyz",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false
+      },
+      {
+        "path": "/livez",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false
+      },
+      {
+        "path": "/boox/enroll",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false
+      },
+      {
+        "path": "/boox/devices",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false
+      },
+      {
+        "path": "/metrics",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false
+      },
+      {
+        "path": "/boox/enroll",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true
+      },
+      {
+        "path": "/boox/enroll",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true
+      },
+      {
+        "path": "/boox/devices",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true
+      },
+      {
+        "path": "/library",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true
+      }
+    ],
+    "passed": 10,
+    "baseURL": "https://alexandria.federation.engineering",
+    "version": "55ac1ce-powersync1"
+  },
+  "rollbackEvidence": "deploy/compose/private/55ac1ce-powersync1",
+  "metadataDumpCatalogVerified": true,
+  "metadataDumpBytes": 43071570
+}

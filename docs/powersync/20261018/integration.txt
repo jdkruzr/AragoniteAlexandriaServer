@@ -1,0 +1,3 @@
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	2.456s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	43.081s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n	[no test files]
