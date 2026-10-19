@@ -1,0 +1,360 @@
+{
+  "version": "search-sorting-f5f0998f3571",
+  "image": "sha256:c50ed35c89c24a5e3114f72ca816ee391c5c18594ef4129be11dcf93a58766c0",
+  "previousImage": "sha256:913b3810e24d0b1f7185959a883e9c9920215e625daf058f14f3a8d9b2517466",
+  "restarts": 0,
+  "state": "running",
+  "startedAt": "2026-10-19T22:02:06.633310673Z",
+  "startupLogLevels": {
+    "INFO": 3
+  },
+  "runtimeInputsVerified": 320,
+  "stagedPathsVerified": 9,
+  "recoveryDirectory": "/opt/aragonite-alexandria-server/deploy/compose/private/search-sorting-f5f0998f3571",
+  "metadataDumpBytes": 51014928,
+  "metadataCatalogVerified": true,
+  "before": {
+    "migration_count": 36,
+    "prior_migration_fingerprint": "320c8eeb9e8804f27b0db4a84c509689",
+    "management_migration_checksum": "e052703d7c26cfbc57b9db9a8540a578ce0501a35e920ee5e97f5723490a0888",
+    "provider_revision": 13,
+    "job_count": 5416,
+    "jobs_fingerprint": "5d4dae51372a054ee6244b2f9ae93e39",
+    "native_projection_fingerprint": "afa34f377aa3385730672d211309c24c",
+    "native_blobs_fingerprint": "4a6ebb4dd65131a24b350e18a3c71f3b"
+  },
+  "after": {
+    "migration_count": 36,
+    "prior_migration_fingerprint": "320c8eeb9e8804f27b0db4a84c509689",
+    "management_migration_checksum": "e052703d7c26cfbc57b9db9a8540a578ce0501a35e920ee5e97f5723490a0888",
+    "provider_revision": 13,
+    "job_count": 5416,
+    "jobs_fingerprint": "5d4dae51372a054ee6244b2f9ae93e39",
+    "native_projection_fingerprint": "afa34f377aa3385730672d211309c24c",
+    "native_blobs_fingerprint": "4a6ebb4dd65131a24b350e18a3c71f3b"
+  },
+  "smoke": {
+    "checks": [
+      {
+        "path": "/readyz",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/livez",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/settings",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/metrics",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/settings",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/recognition",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/size",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/settings",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/recognition",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/size",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/static/settings.js",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/static/app.css",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      }
+    ],
+    "passed": 39,
+    "baseURL": "https://alexandria.federation.engineering",
+    "version": "search-sorting-f5f0998f3571",
+    "realNotebookMutations": false,
+    "settingsWrites": false,
+    "searchMode": "keyword; no query embedding requests"
+  },
+  "rollbackExercised": false,
+  "writeQualification": "Isolated synthetic PostgreSQL browser fixtures; no live settings, provider, or notebook changes submitted. No schema migration."
+}

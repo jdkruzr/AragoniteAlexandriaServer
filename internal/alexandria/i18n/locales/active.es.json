@@ -1477,5 +1477,14 @@
   "Manage the Alexandria Client devices connected to this library.": "Gestiona los dispositivos de Alexandria Client conectados a esta biblioteca.",
   "Open the shared recognition and search settings for Client notebooks.": "Abre los ajustes compartidos de reconocimiento y búsqueda para los cuadernos de Client.",
   "Run previously requested pages again with the saved recognition settings.": "Vuelve a procesar las páginas solicitadas anteriormente con los ajustes de reconocimiento guardados.",
-  "Turn colored handwriting into tasks and events, and customize the instructions.": "Convierte la escritura de colores en tareas y eventos y personaliza las instrucciones."
+  "Turn colored handwriting into tasks and events, and customize the instructions.": "Convierte la escritura de colores en tareas y eventos y personaliza las instrucciones.",
+  "Sort results": "Ordenar resultados",
+  "Best match": "Mejor coincidencia",
+  "Title: A–Z": "Título: A–Z",
+  "Title: Z–A": "Título: Z–A",
+  "Created: newest first": "Creación: más recientes primero",
+  "Created: oldest first": "Creación: más antiguos primero",
+  "Creation dates come from the notebook or BOOX reading record. Missing dates sort last; Client book annotations do not provide a creation date.": "Las fechas de creación proceden del cuaderno o del registro de lectura de BOOX. Las fechas ausentes se ordenan al final; las anotaciones de libros de Client no proporcionan una fecha de creación.",
+  "Includes all word matches and up to 100 closest matches by meaning.": "Incluye todas las coincidencias de palabras y hasta las 100 coincidencias semánticas más cercanas.",
+  "Creation date unavailable": "Fecha de creación no disponible"
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire"
@@ -273,50 +272,6 @@ func (d Deps) bookRoutes(mux *http.ServeMux) {
 				return
 			}
 		}
-	})
-}
-
-// --- Search ---
-
-func (d Deps) searchRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /search", func(w http.ResponseWriter, r *http.Request) {
-		q := strings.TrimSpace(r.URL.Query().Get("q"))
-		mode := r.URL.Query().Get("mode")
-		scope := r.URL.Query().Get("source")
-		if len(q) > 256 || (scope != "" && scope != "client" && scope != "boox") || (scope == "boox" && !d.Status.NativeBOOX) {
-			http.Error(w, "Invalid search query or source.", 400)
-			return
-		}
-		data := map[string]any{"Query": q, "Mode": mode, "Source": scope, "Semantic": d.Status.Embedding != "", "BOOX": d.Status.NativeBOOX}
-		if q != "" && d.Status.NativeBOOX && scope != "client" {
-			matches, err := d.searchBOOX(r.Context(), q)
-			if err != nil {
-				d.fail(w, err)
-				return
-			}
-			data["Native"] = matches
-		}
-		if q != "" {
-			searchScope := scope
-			if !d.Status.NativeBOOX {
-				searchScope = "client"
-			}
-			pages, err := d.Search.SearchScoped(r.Context(), q, 50, mode != "keyword", searchScope)
-			if err != nil {
-				d.fail(w, err)
-				return
-			}
-			data["Results"] = pages
-			if scope != "boox" && len(q) <= 256 && len(strings.Fields(q)) <= 16 {
-				annotations, err := readersearch.New(d.DB).Search(r.Context(), q, "", 50)
-				if err != nil {
-					d.fail(w, err)
-					return
-				}
-				data["Annotations"] = annotations
-			}
-		}
-		d.render(w, r, "search", "Search", "search", data)
 	})
 }
 

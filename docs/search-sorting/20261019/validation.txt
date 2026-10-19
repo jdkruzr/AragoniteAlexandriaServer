@@ -1,0 +1,228 @@
+2026-10-19 Search sorting validation
+Go toolchain: 1.25.0
+Required fresh disposable PostgreSQL/pgvector and S3 fixtures, race/count=1.
+All commands exited 0. 51 full-suite packages pass; 10 packaging checks pass.
+Versioned CGO_ENABLED=0 build passes. Hosting compatibility uses isolated archive with Server replacement.
+Browser fixture stopped; disposable databases dropped. No live data writes or external inference used for qualification.
+
+=== targeted ===
+=== RUN   TestNaturalNamesAndUntrustedNavigation
+--- PASS: TestNaturalNamesAndUntrustedNavigation (0.26s)
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/searchorder	1.272s
+=== RUN   TestHybridSearchFusesLexicalAndVectorHits
+--- PASS: TestHybridSearchFusesLexicalAndVectorHits (14.89s)
+=== RUN   TestSearchEnrichmentBatchesSelectedPages
+--- PASS: TestSearchEnrichmentBatchesSelectedPages (0.33s)
+=== RUN   TestSearchSortsBeforePaginationAndKeepsUnknownDatesLast
+    search_sort_test.go:44: title_asc: 205 results over five pages in 81.083507ms
+    search_sort_test.go:44: title_desc: 205 results over five pages in 81.753114ms
+    search_sort_test.go:44: created_asc: 205 results over five pages in 84.144119ms
+    search_sort_test.go:44: created_desc: 205 results over five pages in 78.471527ms
+    search_sort_test.go:44: relevance: 205 results over five pages in 70.628023ms
+--- PASS: TestSearchSortsBeforePaginationAndKeepsUnknownDatesLast (0.68s)
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	17.118s
+=== RUN   TestSearchNativeDatesAndPageNavigation
+--- PASS: TestSearchNativeDatesAndPageNavigation (0.44s)
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	1.550s
+=== RUN   TestSearchBoundsAndRecoveryBootstrap
+--- PASS: TestSearchBoundsAndRecoveryBootstrap (0.52s)
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	1.539s
+=== RUN   TestReadingSearchLifecycle
+=== RUN   TestReadingSearchLifecycle/1
+=== RUN   TestReadingSearchLifecycle/2
+=== RUN   TestReadingSearchLifecycle/4
+--- PASS: TestReadingSearchLifecycle (0.89s)
+    --- PASS: TestReadingSearchLifecycle/1 (0.20s)
+    --- PASS: TestReadingSearchLifecycle/2 (0.19s)
+    --- PASS: TestReadingSearchLifecycle/4 (0.16s)
+=== RUN   TestNotebookSearchStatusConventions
+=== RUN   TestNotebookSearchStatusConventions/active
+=== RUN   TestNotebookSearchStatusConventions/active-string
+=== RUN   TestNotebookSearchStatusConventions/missing
+=== RUN   TestNotebookSearchStatusConventions/removed
+=== RUN   TestNotebookSearchStatusConventions/removed-string
+=== RUN   TestNotebookSearchStatusConventions/unknown
+=== RUN   TestNotebookSearchStatusConventions/malformed
+=== RUN   TestNotebookSearchStatusConventions/boolean
+--- PASS: TestNotebookSearchStatusConventions (0.31s)
+    --- PASS: TestNotebookSearchStatusConventions/active (0.01s)
+    --- PASS: TestNotebookSearchStatusConventions/active-string (0.01s)
+    --- PASS: TestNotebookSearchStatusConventions/missing (0.01s)
+    --- PASS: TestNotebookSearchStatusConventions/removed (0.01s)
+    --- PASS: TestNotebookSearchStatusConventions/removed-string (0.01s)
+    --- PASS: TestNotebookSearchStatusConventions/unknown (0.01s)
+    --- PASS: TestNotebookSearchStatusConventions/malformed (0.01s)
+    --- PASS: TestNotebookSearchStatusConventions/boolean (0.00s)
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/notebook_soft_deletion/during-recognition=false
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/notebook_soft_deletion/during-recognition=true
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/notebook_tombstone/during-recognition=false
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:48 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/notebook_tombstone/during-recognition=true
+SDK 2026/10/19 16:54:49 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:49 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:49 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:49 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/page_removal/during-recognition=false
+SDK 2026/10/19 16:54:49 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:49 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:49 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:49 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/page_removal/during-recognition=true
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/resource_deletion/during-recognition=false
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/resource_deletion/during-recognition=true
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:50 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/resource_replacement/during-recognition=false
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+=== RUN   TestNotebookSearchInvalidationAndLateRecognition/resource_replacement/during-recognition=true
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+SDK 2026/10/19 16:54:51 WARN Response has no supported checksum. Not validating response payload.
+--- PASS: TestNotebookSearchInvalidationAndLateRecognition (3.75s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/notebook_soft_deletion/during-recognition=false (0.42s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/notebook_soft_deletion/during-recognition=true (0.34s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/notebook_tombstone/during-recognition=false (0.40s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/notebook_tombstone/during-recognition=true (0.43s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/page_removal/during-recognition=false (0.35s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/page_removal/during-recognition=true (0.38s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/resource_deletion/during-recognition=false (0.35s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/resource_deletion/during-recognition=true (0.36s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/resource_replacement/during-recognition=false (0.33s)
+    --- PASS: TestNotebookSearchInvalidationAndLateRecognition/resource_replacement/during-recognition=true (0.38s)
+=== RUN   TestBOOXSemanticLifecycleAndSharedQuery
+--- PASS: TestBOOXSemanticLifecycleAndSharedQuery (0.36s)
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	6.416s
+
+=== hybrid ===
+=== RUN   TestAnnotationOrderingPagesAndStaleFiltering
+--- PASS: TestAnnotationOrderingPagesAndStaleFiltering (0.23s)
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	1.243s
+=== RUN   TestBOOXSemanticLifecycleAndSharedQuery
+--- PASS: TestBOOXSemanticLifecycleAndSharedQuery (0.39s)
+PASS
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	1.489s
+
+=== full-gate ===
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.377s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	2.620s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-audit	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-lab	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-preview	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.023s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	10.188s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	13.993s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	10.860s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.035s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	1.365s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	11.426s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	8.025s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	118.992s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.051s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	230.117s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	51.782s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	12.556s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	13.734s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	14.904s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	23.137s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	43.846s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	6.634s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	17.140s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.039s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/status	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.054s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	21.208s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.027s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	10.749s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.015s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.042s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	80.328s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	8.501s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	3.624s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.015s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	2.448s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.143s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/searchorder	1.760s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	9.116s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.088s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	1.584s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	184.438s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/migrations	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	5.597s
+
+=== vet ===
+
+=== hosting ===
+ok  	github.com/jdkruzr/AragoniteAlexandriaHosting/cmd/alexandria-hosting	0.025s [no tests to run]
+?   	github.com/jdkruzr/AragoniteAlexandriaHosting/cmd/alexandria-sandbox-bootstrap	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaHosting/internal/hosting	0.021s [no tests to run]
+?   	github.com/jdkruzr/AragoniteAlexandriaHosting/migrations	[no test files]
+
+=== packaging ===
+test_complete_backup (test_cold_backup.ColdBackupTest.test_complete_backup) ... ok
+test_complete_podman_backup (test_cold_backup.ColdBackupTest.test_complete_podman_backup) ... ok
+test_copy_failure_restarts_without_publishing (test_cold_backup.ColdBackupTest.test_copy_failure_restarts_without_publishing) ... ok
+test_forced_stop_restarts_without_publishing (test_cold_backup.ColdBackupTest.test_forced_stop_restarts_without_publishing) ... ok
+test_manifest_archive_allowlist_and_quoted_boox (test_cold_backup.ColdBackupTest.test_manifest_archive_allowlist_and_quoted_boox) ... ok
+test_backup_restore_paths (test_configuration.ConfigurationTest.test_backup_restore_paths) ... ok
+test_override_engine_selection (test_configuration.ConfigurationTest.test_override_engine_selection) ... ok
+test_download_failure_is_reported (test_ollama.OllamaSetupTest.test_download_failure_is_reported) ... ok
+test_profile_selection (test_ollama.OllamaSetupTest.test_profile_selection) ... ok
+test_setup_only_starts_provider (test_ollama.OllamaSetupTest.test_setup_only_starts_provider) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.568s
+
+OK

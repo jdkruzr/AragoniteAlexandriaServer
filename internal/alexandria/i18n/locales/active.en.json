@@ -1427,5 +1427,14 @@
   "Manage the Alexandria Client devices connected to this library.": "Manage the Alexandria Client devices connected to this library.",
   "Open the shared recognition and search settings for Client notebooks.": "Open the shared recognition and search settings for Client notebooks.",
   "Run previously requested pages again with the saved recognition settings.": "Run previously requested pages again with the saved recognition settings.",
-  "Turn colored handwriting into tasks and events, and customize the instructions.": "Turn colored handwriting into tasks and events, and customize the instructions."
+  "Turn colored handwriting into tasks and events, and customize the instructions.": "Turn colored handwriting into tasks and events, and customize the instructions.",
+  "Sort results": "Sort results",
+  "Best match": "Best match",
+  "Title: A–Z": "Title: A–Z",
+  "Title: Z–A": "Title: Z–A",
+  "Created: newest first": "Created: newest first",
+  "Created: oldest first": "Created: oldest first",
+  "Creation dates come from the notebook or BOOX reading record. Missing dates sort last; Client book annotations do not provide a creation date.": "Creation dates come from the notebook or BOOX reading record. Missing dates sort last; Client book annotations do not provide a creation date.",
+  "Includes all word matches and up to 100 closest matches by meaning.": "Includes all word matches and up to 100 closest matches by meaning.",
+  "Creation date unavailable": "Creation date unavailable"
 }

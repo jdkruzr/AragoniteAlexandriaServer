@@ -1,18 +1,30 @@
 {{define "content"}}{{$d := .Data}}
 <h1>{{t "Search"}}</h1>
 <form class="search" method="get" action="/search" role="search">
-  <input type="search" name="q" value="{{$d.Query}}" placeholder="{{t "Search across your library"}}" maxlength="256" aria-label="{{t "Search query"}}" autofocus>
+  <input type="search" name="q" value="{{$d.Query}}" placeholder="{{t "Search across your library"}}" maxlength="256" aria-label="{{t "Search query"}}">
   {{if $d.Semantic}}<select name="mode" aria-label="{{t "Match"}}"><option value="">{{t "Words and meaning"}}</option><option value="keyword" {{if eq $d.Mode "keyword"}}selected{{end}}>{{t "Exact words only"}}</option></select>{{end}}
   <select name="source" aria-label="{{t "Source"}}"><option value="">{{t "All sources"}}</option><option value="client" {{if eq $d.Source "client"}}selected{{end}}>Alexandria Client</option>{{if $d.BOOX}}<option value="boox" {{if eq $d.Source "boox"}}selected{{end}}>BOOX</option>{{end}}</select>
+  <select name="sort" aria-label="{{t "Sort results"}}">
+    <option value="relevance" {{if eq $d.Sort "relevance"}}selected{{end}}>{{t "Best match"}}</option>
+    <option value="title_asc" {{if eq $d.Sort "title_asc"}}selected{{end}}>{{t "Title: A–Z"}}</option>
+    <option value="title_desc" {{if eq $d.Sort "title_desc"}}selected{{end}}>{{t "Title: Z–A"}}</option>
+    <option value="created_desc" {{if eq $d.Sort "created_desc"}}selected{{end}}>{{t "Created: newest first"}}</option>
+    <option value="created_asc" {{if eq $d.Sort "created_asc"}}selected{{end}}>{{t "Created: oldest first"}}</option>
+  </select>
   <button>{{t "Search"}}</button>
 </form>
 <p class="small muted">{{t "What's searched?"}} {{template "help" "search.coverage"}}{{if $d.Semantic}} {{t "· Matching"}} {{template "help" "search.modes"}}{{end}}</p>
+{{if $d.DateSort}}<p class="small muted">{{t "Creation dates come from the notebook or BOOX reading record. Missing dates sort last; Client book annotations do not provide a creation date."}}</p>{{end}}
+{{if and $d.Semantic (ne $d.Mode "keyword")}}<p class="small muted">{{t "Includes all word matches and up to 100 closest matches by meaning."}}</p>{{end}}
 {{if $d.Query}}
-<h2>{{t "Pages and Reading"}}{{if $d.Results}} <span class="badge">{{len $d.Results}}</span>{{end}}</h2>
+<section id="pages-results" aria-labelledby="pages-heading">
+<h2 id="pages-heading">{{t "Pages and Reading"}}{{with $d.PagesPage}} <span class="badge">{{.Total}}</span>{{end}}</h2>
 {{range $d.Results}}
-<article class="result"><span class="badge source">{{if eq .Source "boox"}}BOOX{{else}}Alexandria Client{{end}} · {{t .Kind}}</span><p><a href="{{.URL}}">{{if .PageNumber}}{{t "{{.Name}}, page {{.Number}}" "Name" .NotebookName "Number" .PageNumber}}{{else}}{{.NotebookName}}{{end}}</a></p><p>{{.Snippet}}</p>{{if .Tags}}<p class="tags compact" aria-label="{{t "BOOX tags"}}">{{range .Tags}}<a class="tag" href="/boox/tags?tag={{.}}">{{.}}</a>{{end}}</p>{{end}}</article>
+<article class="result"><span class="badge source">{{if eq .Source "boox"}}BOOX{{else}}Alexandria Client{{end}} · {{t .Kind}}</span><p><a href="{{.URL}}">{{if .PageNumber}}{{t "{{.Name}}, page {{.Number}}" "Name" .NotebookName "Number" .PageNumber}}{{else}}{{.NotebookName}}{{end}}</a></p>{{if $d.DateSort}}<p class="small muted">{{t "Created"}}: {{.CreatedDate}}</p>{{end}}<p>{{.Snippet}}</p>{{if .Tags}}<p class="tags compact" aria-label="{{t "BOOX tags"}}">{{range .Tags}}<a class="tag" href="/boox/tags?tag={{.}}">{{.}}</a>{{end}}</p>{{end}}</article>
 {{else}}<p class="empty">{{t "No page text or BOOX reading records match. Pages that haven't been through handwriting recognition can only be found by title."}}</p>{{end}}
-{{if $d.Native}}<h2>{{t "BOOX Notebook Titles"}} <span class="badge">{{len $d.Native}}</span></h2>{{range $d.Native}}<article class="result"><span class="badge source">BOOX · {{t .Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p></article>{{end}}{{end}}
-{{if $d.Annotations}}<h2>{{t "Alexandria Client Book Annotations"}} <span class="badge">{{len $d.Annotations}}</span></h2>{{range $d.Annotations}}<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}{{t "Untitled book"}}{{end}}</a><p>{{.Snippet}}</p></article>{{end}}{{end}}
+{{with $d.PagesPage}}{{template "pagination" .}}{{end}}
+</section>
+{{if $d.Native}}<section id="titles-results" aria-labelledby="titles-heading"><h2 id="titles-heading">{{t "BOOX Notebook Titles"}} <span class="badge">{{if $d.TitlesPage}}{{$d.TitlesPage.Total}}{{else}}{{len $d.Native}}{{end}}</span></h2>{{range $d.Native}}<article class="result"><span class="badge source">BOOX · {{t .Kind}}</span><p><a href="{{.URL}}">{{.Title}}</a></p>{{if $d.DateSort}}<p class="small muted">{{t "Created"}}: {{.CreatedDate}}</p>{{end}}</article>{{end}}{{with $d.TitlesPage}}{{template "pagination" .}}{{end}}</section>{{end}}
+{{if $d.Annotations}}<section id="annotations-results" aria-labelledby="annotations-heading"><h2 id="annotations-heading">{{t "Alexandria Client Book Annotations"}} <span class="badge">{{if $d.AnnotationsPage}}{{$d.AnnotationsPage.Total}}{{else}}{{len $d.Annotations}}{{end}}</span></h2>{{range $d.Annotations}}<article class="result"><a href="/files/forestnote/books?book={{.BookID}}">{{if .Title}}{{.Title}}{{else}}{{t "Untitled book"}}{{end}}</a>{{if $d.DateSort}}<p class="small muted">{{t "Creation date unavailable"}}</p>{{end}}<p>{{.Snippet}}</p></article>{{end}}{{with $d.AnnotationsPage}}{{template "pagination" .}}{{end}}</section>{{end}}
 {{end}}
 {{end}}

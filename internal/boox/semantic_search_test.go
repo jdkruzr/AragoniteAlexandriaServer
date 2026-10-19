@@ -16,6 +16,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/searchorder"
 )
 
 func TestBOOXSemanticLifecycleAndSharedQuery(t *testing.T) {
@@ -138,6 +139,16 @@ func TestBOOXSemanticLifecycleAndSharedQuery(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "Synthetic client notebook") || !strings.Contains(w.Body.String(), "Synthetic semantic notebook") || calls.Load() != before+1 {
 		t.Fatal("global web search", w.Code, calls.Load()-before)
 	}
+	// Sorting and an out-of-range page still embed the query only once; all
+	// result sources share the same candidates and current-source validation.
+	for _, order := range []searchorder.Order{"title_asc", "title_desc", "created_asc", "created_desc"} {
+		before = calls.Load()
+		sorted, total, err := search.SearchPage(ctx, "verdant ecosystems", 50, 500, true, "", order)
+		if err != nil || len(sorted) != total || total == 0 || calls.Load() != before+1 {
+			t.Fatal("sorted hybrid", order, total, err, calls.Load()-before)
+		}
+	}
+
 	w = httptest.NewRecorder()
 	search.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/search?q=Botanical&source=boox&mode=keyword", nil))
 	var resultBody struct{ Results []notes.Result }

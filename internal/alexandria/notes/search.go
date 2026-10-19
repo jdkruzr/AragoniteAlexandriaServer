@@ -2,19 +2,17 @@ package notes
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/searchorder"
 )
 
 // Fusion follows UltraBridge's rag.Retriever: weighted reciprocal-rank fusion
@@ -29,6 +27,7 @@ const (
 )
 
 type Result struct {
+	CreatedAt    int64   `json:"-"` // Parent notebook, or native reading record; never index time.
 	Source       string  `json:"source"`
 	Kind         string  `json:"kind"`
 	URL          string  `json:"url"`
@@ -55,175 +54,150 @@ func (s Searcher) Search(ctx context.Context, query string, limit int, hybrid bo
 	return s.SearchScoped(ctx, query, limit, hybrid, "client")
 }
 
-// SearchScoped embeds a query once for all selected sources. Empty scope is global.
+// SearchScoped retains the API's relevance order and response bounds.
 func (s Searcher) SearchScoped(ctx context.Context, query string, limit int, hybrid bool, scope string) ([]Result, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 25
+	}
+	results, _, err := s.SearchPage(ctx, query, limit, 0, hybrid, scope, searchorder.Relevance)
+	return results, err
+}
+
+// SearchPage applies ordering to the full matching set before pagination. A
+// Out-of-range offsets return the first page. A query is embedded once. Semantic candidates retain their source text hashes;
+// the final query rechecks visibility and text after that potentially slow call.
+func (s Searcher) SearchPage(ctx context.Context, query string, limit, offset int, hybrid bool, scope string, order searchorder.Order) ([]Result, int, error) {
 	if scope == "forestnote" {
 		scope = "client"
 	}
 	if scope != "" && scope != "client" && scope != "boox" {
-		return nil, fmt.Errorf("invalid search source")
+		return nil, 0, fmt.Errorf("invalid search source")
+	}
+	if limit < 1 || limit > 100 || offset < 0 || offset > 1000000 {
+		return nil, 0, fmt.Errorf("invalid search bounds")
 	}
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return []Result{}, nil
+		return []Result{}, 0, nil
 	}
-	if limit <= 0 || limit > 100 {
-		limit = 25
+	type candidate struct {
+		Key   string `json:"key"`
+		Hash  string `json:"hash"`
+		Rank  int    `json:"rank"`
+		Runes int    `json:"runes"`
 	}
-	type hit struct {
-		Result
-		text  string
-		score float64
-	}
-	hits := map[string]*hit{}
-	// The phrase, or every term (UltraBridge's FTS5 query shape).
-	rows, err := s.DB.QueryContext(ctx, `WITH q AS (SELECT phraseto_tsquery('simple', $1) || plainto_tsquery('simple', $1) AS query)
-		SELECT c.note_key, c.notebook_id, c.title, c.page_id, c.page_number, c.source, c.kind, c.body_text,
-			ts_headline('simple', c.body_text, q.query, 'StartSel="",StopSel="",MaxWords=25,MinWords=8,ShortWord=1')
-		FROM alexandria_search_live c CROSS JOIN q
-		WHERE ($3='' OR c.source=$3) AND (c.search_document @@ q.query
- OR c.source='boox' AND c.kind='Reading' AND strpos(lower(c.body_text),lower($1))>0)
-		ORDER BY ts_rank_cd(c.search_document, q.query) DESC, c.note_key LIMIT $2`, query, candidates, scope)
-	if err != nil {
-		return nil, err
-	}
-	rank := 0
-	for rows.Next() {
-		h := &hit{}
-		if err := rows.Scan(&h.NoteKey, &h.NotebookID, &h.NotebookName, &h.PageID, &h.PageNumber, &h.Source, &h.Kind, &h.text, &h.Snippet); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		rank++
-		h.score = lexicalWeight / (rrfK + float64(rank))
-		h.Lexical = true
-		hits[h.NoteKey] = h
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	lexical := len(hits)
+	semantic := []candidate{}
 	if hybrid && s.Embedder != nil {
 		vector, err := s.Embedder.Embed(ctx, query)
 		if err == nil {
-			table, filter, identity := "alexandria_embeddings", "e.model = $2", s.Embedder.Model()
+			table, filter, identity := "alexandria_embeddings", "e.model=$2", s.Embedder.Model()
 			if s.Generation != "" {
 				table = "alexandria_embedding_vectors"
 				filter = "e.generation=$2 AND e.body_hash=md5(c.body_text)"
 				identity = s.Generation
 			}
-			rows, err := s.DB.QueryContext(ctx, `SELECT c.note_key, c.notebook_id, c.title, c.page_id, c.page_number, c.source, c.kind, c.body_text, min(CASE WHEN e.dimensions=$3 THEN e.embedding <=> $1::vector END) AS distance
-				FROM `+table+` e JOIN alexandria_search_live c ON c.note_key = e.note_key AND c.page = e.page
-				WHERE `+filter+` AND e.dimensions = $3 AND ($5='' OR c.source=$5)
-				GROUP BY c.note_key, c.notebook_id, c.title, c.page_id, c.page_number, c.source, c.kind, c.body_text ORDER BY distance, c.note_key LIMIT $4`,
-				vectorLiteral(vector), identity, len(vector), candidates, scope)
+			rows, err := s.DB.QueryContext(ctx, `SELECT c.note_key,md5(c.body_text),c.body_text,min(e.embedding <=> $1::vector) AS distance
+    FROM `+table+` e JOIN alexandria_search_live c ON c.note_key=e.note_key AND c.page=e.page
+    WHERE `+filter+` AND e.dimensions=$3 AND ($5='' OR c.source=$5)
+    GROUP BY c.note_key,c.body_text ORDER BY distance,c.note_key LIMIT $4`, vectorLiteral(vector), identity, len(vector), candidates, scope)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
-			rank := 0
 			for rows.Next() {
-				h := &hit{}
+				var c candidate
 				var distance float64
-				if err := rows.Scan(&h.NoteKey, &h.NotebookID, &h.NotebookName, &h.PageID, &h.PageNumber, &h.Source, &h.Kind, &h.text, &distance); err != nil {
+				var text string
+				if err = rows.Scan(&c.Key, &c.Hash, &text, &distance); err != nil {
 					rows.Close()
-					return nil, err
+					return nil, 0, err
 				}
-				rank++
-				if old, ok := hits[h.NoteKey]; ok {
-					old.score += vectorWeight / (rrfK + float64(rank))
-					continue
-				}
-				if lexical > 0 && utf8.RuneCountInString(strings.TrimSpace(h.text)) < vectorOnlyMinRunes {
-					continue
-				}
-				h.score = vectorWeight / (rrfK + float64(rank))
-				h.Snippet = excerpt(h.text, 200)
-				hits[h.NoteKey] = h
+				c.Rank = len(semantic) + 1
+				c.Runes = utf8.RuneCountInString(strings.TrimSpace(text))
+				semantic = append(semantic, c)
 			}
+			err = rows.Err()
 			rows.Close()
-			if err := rows.Err(); err != nil {
-				return nil, err
+			if err != nil {
+				return nil, 0, err
 			}
 		}
-		// An unreachable embedder degrades to keyword search, never an error.
+		// An unreachable embedder degrades to keyword search, as before.
 	}
-	// A query embedding can take seconds. Recheck lexical and vector candidates
-	// afterward so a deletion/edit during inference cannot return stale text.
-	type candidate struct {
-		Key  string `json:"key"`
-		Hash string `json:"hash"`
+	raw, _ := json.Marshal(semantic)
+	created := `CASE WHEN c.source='client' THEN CASE WHEN n.created_at>0 THEN n.created_at END ELSE ` + searchorder.NativeCreatedSQL("p") + ` END`
+	// All lexical matches are ranked, not just the old first 100. Consequently
+	// changing the display order can reach every word match, including later pages.
+	tie := "c.note_key ASC"
+	if searchorder.Parse(string(order)) != searchorder.Relevance {
+		tie = "CASE WHEN c.source='client' THEN cp.sort_order ELSE c.page_number END ASC NULLS LAST,c.note_key ASC"
 	}
-	check := make([]candidate, 0, len(hits))
-	for key, h := range hits {
-		sum := md5.Sum([]byte(h.text))
-		check = append(check, candidate{key, hex.EncodeToString(sum[:])})
-	}
-	raw, _ := json.Marshal(check)
-	current, err := s.DB.QueryContext(ctx, `SELECT c.note_key,c.notebook_id,c.title,c.page_id,c.page_number,c.source,c.kind FROM alexandria_search_live c JOIN jsonb_to_recordset($1::jsonb) AS wanted(key text,hash text) ON c.note_key=wanted.key AND md5(c.body_text)=wanted.hash`, raw)
-	if err != nil {
-		return nil, err
-	}
-	live := map[string]bool{}
-	for current.Next() {
-		var key string
-		var meta Result
-		if err = current.Scan(&key, &meta.NotebookID, &meta.NotebookName, &meta.PageID, &meta.PageNumber, &meta.Source, &meta.Kind); err != nil {
-			current.Close()
-			return nil, err
+	sql := `WITH q AS (SELECT phraseto_tsquery('simple',$1) || plainto_tsquery('simple',$1) AS query),
+ lexical AS MATERIALIZED (
+  SELECT c.note_key,row_number() OVER(ORDER BY ts_rank_cd(c.search_document,q.query) DESC,c.note_key) AS rank
+  FROM alexandria_search_live c CROSS JOIN q WHERE ($2='' OR c.source=$2) AND
+  (c.search_document @@ q.query OR c.source='boox' AND c.kind='Reading' AND strpos(lower(c.body_text),lower($1))>0)
+ ), semantic AS (SELECT * FROM jsonb_to_recordset($3::jsonb) AS wanted(key text,hash text,rank integer,runes integer))
+ SELECT c.note_key,c.notebook_id,c.title,c.page_id,c.page_number,c.source,c.kind,
+  c.body_text,ts_headline('simple',c.body_text,q.query,'StartSel="",StopSel="",MaxWords=25,MinWords=8,ShortWord=1'),
+  l.note_key IS NOT NULL,coalesce($6::float8/($8::float8+l.rank),0)+coalesce($7::float8/($8::float8+s.rank),0) AS score,
+  coalesce((` + created + `),0),count(*) OVER()
+ FROM alexandria_search_live c CROSS JOIN q
+ LEFT JOIN lexical l ON l.note_key=c.note_key
+ LEFT JOIN semantic s ON s.key=c.note_key AND s.hash=md5(c.body_text)
+ LEFT JOIN fn_notebook n ON c.source='client' AND n.id=c.notebook_id
+ LEFT JOIN fn_page cp ON c.source='client' AND cp.id=c.page_id
+ LEFT JOIN boox_projection p ON c.source='boox' AND p.document_id=c.notebook_id
+ WHERE ($2='' OR c.source=$2) AND (l.note_key IS NOT NULL OR s.key IS NOT NULL AND
+  (NOT EXISTS(SELECT 1 FROM lexical) OR s.runes >= $9))
+ ORDER BY ` + order.SQL("c.title", created, "score DESC", tie) + `
+ LIMIT $4 OFFSET $5`
+	var err error
+	results := []Result{}
+	total := 0
+	for {
+		rows, queryErr := s.DB.QueryContext(ctx, sql, query, scope, raw, limit, offset, lexicalWeight, vectorWeight, rrfK, vectorOnlyMinRunes)
+		if queryErr != nil {
+			return nil, 0, queryErr
 		}
-		h := hits[key]
-		h.NotebookID = meta.NotebookID
-		h.NotebookName = meta.NotebookName
-		h.PageID = meta.PageID
-		h.PageNumber = meta.PageNumber
-		h.Source = meta.Source
-		h.Kind = meta.Kind
-		live[key] = true
-	}
-	err = current.Err()
-	current.Close()
-	if err != nil {
-		return nil, err
-	}
-	for key := range hits {
-		if !live[key] {
-			delete(hits, key)
+		for rows.Next() {
+			var r Result
+			var text string
+			if err = rows.Scan(&r.NoteKey, &r.NotebookID, &r.NotebookName, &r.PageID, &r.PageNumber, &r.Source, &r.Kind, &text, &r.Snippet, &r.Lexical, &r.Score, &r.CreatedAt, &total); err != nil {
+				rows.Close()
+				return nil, 0, err
+			}
+			if !r.Lexical {
+				r.Snippet = excerpt(text, 200)
+			}
+			if r.Source == "client" {
+				r.URL = "/files/forestnote?notebook=" + url.QueryEscape(r.NotebookID) + "&page=" + url.QueryEscape(r.PageID) + "#page-" + url.PathEscape(r.PageID)
+			} else if r.Kind == "Reading" {
+				r.URL = "/boox/reading?record=" + url.QueryEscape(r.NotebookID)
+			} else if r.Kind == "Minutes" {
+				r.URL = "/boox/minutes?id=" + url.QueryEscape(r.NotebookID)
+			} else {
+				r.URL = "/boox/notebook?id=" + url.QueryEscape(r.NotebookID) + "&page=" + strconv.Itoa(r.PageNumber) + "&page_id=" + url.QueryEscape(r.PageID)
+			}
+			results = append(results, r)
 		}
-	}
-	out := make([]*hit, 0, len(hits))
-	for _, h := range hits {
-		out = append(out, h)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].score != out[j].score {
-			return out[i].score > out[j].score
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return nil, 0, err
 		}
-		return out[i].NoteKey < out[j].NoteKey
-	})
-	if len(out) > limit {
-		out = out[:limit]
-	}
-	results := make([]Result, len(out))
-	for i, h := range out {
-		h.Score = h.score
-		if h.Source == "client" {
-
-			h.URL = "/files/forestnote?notebook=" + url.QueryEscape(h.NotebookID) + "&page=" + url.QueryEscape(h.PageID) + "#page-" + url.PathEscape(h.PageID)
-		} else if h.Kind == "Reading" {
-			h.URL = "/boox/reading?record=" + url.QueryEscape(h.NotebookID)
-		} else if h.Kind == "Minutes" {
-			h.URL = "/boox/minutes?id=" + url.QueryEscape(h.NotebookID)
-		} else {
-			h.URL = "/boox/notebook?id=" + url.QueryEscape(h.NotebookID) + "&page=" + strconv.Itoa(h.PageNumber) + "&page_id=" + url.QueryEscape(h.PageID)
+		if len(results) == 0 && offset > 0 {
+			offset = 0
+			continue
 		}
-		results[i] = h.Result
+		break
 	}
-	if err := s.enrich(ctx, results); err != nil {
-		return nil, err
+	if err = s.enrich(ctx, results); err != nil {
+		return nil, 0, err
 	}
-	return results, nil
+	return results, total, nil
 }
+
+func (r Result) CreatedDate() string { return searchorder.Date(r.CreatedAt) }
 
 // enrich performs at most one query per source, restricted to selected results.
 func (s Searcher) enrich(ctx context.Context, results []Result) error {

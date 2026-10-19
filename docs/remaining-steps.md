@@ -183,8 +183,9 @@ for proven legacy behavior, not proof of the PostgreSQL port.
 
 Requested for a later round; do not expand the current notebook-management release:
 
-- [ ] Search result sorting: alphanumeric ascending/descending and creation-date
+- [x] Search result sorting: alphanumeric ascending/descending and creation-date
   ascending/descending, at minimum.
+  Deployed 2026-10-19 with independent group pagination; [implementation and evidence](search-sorting/20261019/implementation.md).
 - [x] Recognition admission: default maximum of 100 pages per notebook, configurable
   in Settings. The job manager must offer a persistent per-notebook override to
   "always let it through." This concerns admission, not truncating recognition.

@@ -1,5 +1,38 @@
 # Alexandria Server handoff
 
+2026-10-19: **Search sorting implemented and deployed**, build
+`search-sorting-f5f0998f3571` on `feature/search-sorting` from `9b9b1ee`.
+Search offers Best match (default), natural title ascending/descending, and creation
+date oldest/newest first. Each existing result group has independent 50-result
+pagination. Sorting applies before pagination to all word matches; hybrid search
+also includes up to 100 nearest semantic matches. Query, source, mode, order, and
+other groups' pages survive navigation. Changing query/order resets pages.
+
+Missing creation dates sort last; Client book annotations explicitly report that
+their creation date is unavailable. Notebook hits use parent creation time, and
+BOOX reading hits use the native record's creation time. English/Spanish controls,
+keyboard navigation, and forms work without JavaScript. No migration, public
+runtime API change, or PowerSync update is required.
+
+Fresh required Go 1.25 PostgreSQL/object-store race gate: **51 packages pass**;
+build/vet, Hosting compile compatibility, and ten packaging checks pass.
+**47 synthetic browser check groups** cover every order, four viewports, both
+languages, independent paging, query changes, browser Back, keyboard focus, and
+dark mode. **39 live checks** pass. All **320 runtime inputs** and **nine staged
+paths** match the candidate; zero app restarts or startup warnings/errors. Schema,
+provider revision, job identities, and native projection/blob fingerprints remain
+unchanged. Live Search qualification used keyword-only no-match queries; no live
+notebook/settings writes or inference requests were submitted.
+
+[Implementation and recovery](search-sorting/20261019/implementation.md),
+[validation](search-sorting/20261019/validation.txt),
+[browser checks](search-sorting/20261019/browser.json),
+[live evidence](search-sorting/20261019/deployment.json).
+Previous image, source/config archives and a catalog-checked metadata dump remain
+under `deploy/compose/private/search-sorting-f5f0998f3571/` on the instance.
+Rollback retained, not exercised in this release. Recognition limits, Settings
+tiles, and Search sorting are now complete. No branch pushed or merged.
+
 2026-10-19: **Collapsed Settings category tiles implemented and deployed**, build
 `settings-tiles-8c85de313a61` on `feature/settings-tiles` from `a57d9d8`.
 All six Settings destinations now start with descriptive, collapsed categories:
