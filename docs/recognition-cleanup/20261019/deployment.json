@@ -1,0 +1,205 @@
+{
+  "version": "recognition-cleanup-94bb54d68a03",
+  "image": "sha256:3ebdae820c991451213d92e6616b719aeda35d338d24f19dd0065809fc13f4ac",
+  "restarts": 0,
+  "state": "running",
+  "startedAt": "2026-10-19T03:11:53.94635967Z",
+  "startupWarningsErrors": 0,
+  "clearedJobs": 0,
+  "runtimeInputsVerified": 306,
+  "stagedPathsVerified": 10,
+  "recoveryDirectory": "/opt/aragonite-alexandria-server/deploy/compose/private/recognition-cleanup-94bb54d68a03",
+  "compatibleRollbackImage": "sha256:1cf80dbe05c62a11817beaa9bfc861aac4dc1050369d8c9e3eb86806a2fa693d",
+  "metadataDumpBytes": 48101490,
+  "metadataCatalogVerified": true,
+  "before": {
+    "migration_count": 32,
+    "prior_migration_fingerprint": "b18c0569e4646c1391c5cfdd4051fd5e",
+    "cleanup_migration_checksum": null,
+    "provider_revision": 13,
+    "cursor_tx": "250937",
+    "job_count": 5271,
+    "blocked_removed": 52
+  },
+  "after": {
+    "migration_count": 33,
+    "prior_migration_fingerprint": "b18c0569e4646c1391c5cfdd4051fd5e",
+    "cleanup_migration_checksum": "f7ae4250bd23b541e2e548609e398b33f0693955e92a66464ca811af5be5fd11",
+    "provider_revision": 13,
+    "cursor_tx": "250944",
+    "job_count": 5271,
+    "blocked_removed": 52
+  },
+  "smoke": {
+    "checks": [
+      {
+        "path": "/readyz",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/livez",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/cleanup",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/metrics",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/cleanup",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "POST"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/cleanup",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/cleanup",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      }
+    ],
+    "passed": 20,
+    "baseURL": "https://alexandria.federation.engineering",
+    "version": "recognition-cleanup-94bb54d68a03",
+    "previewEligibleJobs": 52,
+    "cleanupSubmitted": false,
+    "writeQualification": "isolated synthetic databases only"
+  },
+  "migrationProcedure": "Application stopped to release its shared schema lock; migration 0033 applied through the management service; application restarted.",
+  "writeQualification": "Synthetic isolated fixtures only. No live cleanup submission."
+}

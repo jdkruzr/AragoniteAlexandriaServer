@@ -54,6 +54,7 @@
 <tr><th scope="row">{{t "Paused"}}</th><td>{{num $r.Paused}}</td></tr>
 <tr><th scope="row">{{t "Failed"}}</th><td>{{if $r.Failed}}<a href="/jobs?run={{$r.ID}}&amp;state=failed">{{num $r.Failed}}</a>{{else}}0{{end}}</td></tr>
 <tr><th scope="row">{{t "Blocked"}}</th><td>{{if $r.Blocked}}<a href="/jobs?run={{$r.ID}}&amp;state=blocked">{{num $r.Blocked}}</a>{{else}}0{{end}}</td></tr>
+{{if index $r.Counts "cleared"}}<tr><th scope="row">{{t "Cleared from list"}}</th><td><a href="/jobs?run={{$r.ID}}&amp;history=1">{{num (index $r.Counts "cleared")}}</a></td></tr>{{end}}
 <tr><th scope="row">{{t "Cancelled"}}</th><td>{{num $r.Cancelled}}</td></tr>
 <tr><th scope="row">{{t "Skipped by You"}}</th><td>{{num $r.SkippedForGood}}</td></tr>
 <tr><th scope="row">{{t "Left in Earlier Jobs"}}</th><td>{{num $r.Skipped}}</td></tr>

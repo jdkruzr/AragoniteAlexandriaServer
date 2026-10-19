@@ -1,5 +1,39 @@
 # Alexandria Server handoff
 
+2026-10-18 (2026-10-19 UTC): **Recognition list cleanup implemented and deployed**
+on `feature/recognition-list-cleanup`, based on calendar commit `c11443c`.
+Recognition Jobs → **Clean up list…** previews obsolete BOOX jobs blocked with
+`Page was removed.` and confirmed deleted/removed source metadata. Submission
+revalidates the exact preview and hides up to 200 jobs from normal lists and
+blocked counts, retaining history, native content and source queues. Restored
+pages can create new work; genuine failures remain retryable. Completed run
+progress stays complete, with a history link for cleared outcomes.
+
+Migration **0033** adds the nullable list-cleanup marker; earlier migrations
+are unchanged. English/Spanish, no-JS forms, stale/replayed submissions,
+restoration, 200-job bounds and library progress are covered. Fresh required
+Go 1.25 PostgreSQL/object-store race gate: **50 packages pass**, followed by
+fresh affected recognition/web race tests for the final progress correction.
+Build/vet, Hosting compatibility, 10 packaging checks and 16 synthetic viewport
+states pass. [Implementation and rollback notes](recognition-cleanup/20261019/implementation.md),
+[validation](recognition-cleanup/20261019/validation.txt),
+[browser checks](recognition-cleanup/20261019/browser.json).
+
+Live build **`recognition-cleanup-94bb54d68a03`** passes **20 checks**, with zero
+restarts or startup warnings/errors. All 306 runtime paths matched the baseline;
+10 staged paths were verified. The app was stopped to release its schema lock
+before migration completed, then restarted. Existing schema checksums and provider
+revision are preserved. The live preview identifies **52 obsolete jobs**;
+**none were cleared**. Write qualification used isolated synthetic fixtures.
+[Deployment evidence](recognition-cleanup/20261019/deployment.json).
+
+Recovery artifacts are retained under
+`deploy/compose/private/recognition-cleanup-94bb54d68a03/` on the instance.
+Use its `rollback.sh`: it selects a schema-compatible build of the prior calendar
+app and retains migration 0033. The unmodified previous binary rejects the newer
+schema. The metadata dump is a safety copy, not a coordinated native BOOX backup.
+No branch was pushed or merged.
+
 2026-10-18: **Calendar views and CalDAV connection links implemented and deployed**
 on `feature/calendar-views`, based on PowerSync Server branch `5237c46`.
 Tasks, Calendar and Settings share a connection disclosure with discovery and

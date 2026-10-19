@@ -1,0 +1,114 @@
+[
+  {
+    "device": "desktop",
+    "lang": "en",
+    "empty": false,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "empty": true,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "empty": false,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "empty": true,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "empty": false,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "empty": true,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "empty": false,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "empty": true,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "empty": false,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "empty": true,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "empty": false,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "empty": true,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "empty": false,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "empty": true,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "empty": false,
+    "noJavaScript": true,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "empty": true,
+    "noJavaScript": true,
+    "overflow": false
+  }
+]

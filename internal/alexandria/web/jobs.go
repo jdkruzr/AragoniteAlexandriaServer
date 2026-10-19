@@ -63,6 +63,31 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 		}
 		d.render(w, r, "jobs", "Jobs", "jobs", map[string]any{"NativeBOOX": d.Status.NativeBOOX, "Runs": runs, "ProgressTotal": total, "ProgressDone": done, "View": v, "Filter": f, "Previous": previous, "Next": next, "Refresh": r.URL.RequestURI(), "Start": min(offset+1, v.Total), "End": min(offset+50, v.Total), "Work": work})
 	})
+	mux.HandleFunc("GET /jobs/cleanup", func(w http.ResponseWriter, r *http.Request) {
+		preview, err := store.PreviewCleanup(r.Context())
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		d.render(w, r, "jobs-cleanup", "Clean up recognition jobs", "jobs", preview)
+	})
+	mux.HandleFunc("POST /jobs/cleanup", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		if r.ParseForm() != nil {
+			http.Error(w, "Invalid form", 400)
+			return
+		}
+		count, err := store.CleanObsolete(r.Context(), r.PostForm.Get("token"))
+		if errors.Is(err, recognition.ErrSelectionChanged) {
+			back(w, r, "/jobs/cleanup", "The jobs changed. Review the cleanup list again; nothing was cleared.")
+			return
+		}
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		back(w, r, "/jobs", "Cleared {{.Count}} obsolete jobs from the list. They remain available in history.", count)
+	})
 	mux.HandleFunc("POST /jobs/control", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 4096)
 		if r.ParseForm() != nil {

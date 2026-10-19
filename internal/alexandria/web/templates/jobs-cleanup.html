@@ -1,0 +1,15 @@
+{{define "content"}}{{$d := .Data}}
+<h1>{{t "Clean up recognition jobs"}}</h1>
+<p>{{t "Hide blocked BOOX jobs whose notebook was deleted or whose page was removed. Notebook content and recognition history are kept."}}</p>
+<p class="small muted">{{t "This checks all BOOX jobs, regardless of list filters. Up to 200 obsolete jobs are shown at a time."}}</p>
+{{if $d.Items}}
+<p>{{t "{{.Count}} obsolete jobs can be cleared from the list." (len $d.Items)}}</p>
+<form method="post" action="/jobs/cleanup">
+<input type="hidden" name="token" value="{{$d.Token}}">
+<div class="actions"><button>{{t "Clear these jobs from the list"}}</button><a class="button secondary" href="/jobs">{{t "Cancel"}}</a></div>
+</form>
+<div class="table-scroll"><table class="keep-cols"><thead><tr><th>{{t "Notebook"}}</th><th>{{t "Page"}}</th><th>{{t "Reason"}}</th></tr></thead><tbody>
+{{range $d.Items}}<tr><td>{{.Title}}</td><td>{{.Number}}</td><td>{{if eq .Reason "Notebook deleted"}}{{t "Notebook deleted"}}{{else}}{{t "Page removed"}}{{end}}</td></tr>{{end}}
+</tbody></table></div>
+{{else}}<p class="empty">{{t "No obsolete blocked jobs to clear."}}</p><a class="button secondary" href="/jobs">{{t "Back to jobs"}}</a>{{end}}
+{{end}}

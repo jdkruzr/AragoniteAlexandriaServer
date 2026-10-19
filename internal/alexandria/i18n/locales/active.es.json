@@ -900,7 +900,6 @@
   "Shared by every device on this BOOX account; the server can't tell which device wrote a page.": "Compartido por todos los dispositivos de esta cuenta de BOOX; el servidor no puede saber qué dispositivo escribió una página.",
   "Show": "Mostrar",
   "Show Alexandria in": "Mostrar Alexandria en",
-  "Show earlier attempts at the same page": "Mostrar intentos anteriores de la misma página",
   "Showing the first 200. Run another review after these finish to handle the remaining matches.": "Se muestran los primeros 200. Cuando terminen, haz otra revisión para tratar las coincidencias restantes.",
   "Showing the first 50 matches. Narrow the title search to find another notebook.": "Se muestran las primeras 50 coincidencias. Afina la búsqueda por título para encontrar otro cuaderno.",
   "Sign in from the Client app's Settings → Sync using this server's address and your account. <em>Waiting</em> counts changes the device has not pulled yet. <em>Clear sync position</em> is safe for a device still in use; it picks up where it left off.": "Inicia sesión desde Ajustes → Sincronización de la app Client con la dirección de este servidor y tu cuenta. <em>Pendientes</em> cuenta los cambios que el dispositivo aún no ha descargado. <em>Borrar posición de sincronización</em> es seguro para un dispositivo que sigue en uso; continúa donde lo dejó.",
@@ -1359,5 +1358,26 @@
   "Wednesday": "Miércoles",
   "Week": "Semana",
   "Week starts on": "La semana empieza el",
-  "You can also select and copy these addresses yourself.": "También puedes seleccionar y copiar estas direcciones manualmente."
+  "You can also select and copy these addresses yourself.": "También puedes seleccionar y copiar estas direcciones manualmente.",
+  "Back to jobs": "Volver a los trabajos",
+  "Clean up list…": "Limpiar la lista…",
+  "Clean up recognition jobs": "Limpiar trabajos de reconocimiento",
+  "Clear these jobs from the list": "Quitar estos trabajos de la lista",
+  "Cleared from list": "Quitado de la lista",
+  "Cleared {{.Count}} obsolete jobs from the list. They remain available in history.": {
+    "one": "Se ha quitado {{.Count}} trabajo obsoleto de la lista. Sigue disponible en el historial.",
+    "other": "Se han quitado {{.Count}} trabajos obsoletos de la lista. Siguen disponibles en el historial."
+  },
+  "Hide blocked BOOX jobs whose notebook was deleted or whose page was removed. Notebook content and recognition history are kept.": "Oculta los trabajos BOOX bloqueados cuyo cuaderno o página se haya eliminado. Se conservan el contenido de los cuadernos y el historial de reconocimiento.",
+  "No obsolete blocked jobs to clear.": "No hay trabajos bloqueados obsoletos que limpiar.",
+  "Notebook deleted": "Cuaderno eliminado",
+  "Page removed": "Página eliminada",
+  "Reason": "Motivo",
+  "Show earlier attempts and cleared jobs": "Mostrar intentos anteriores y trabajos quitados de la lista",
+  "The jobs changed. Review the cleanup list again; nothing was cleared.": "Los trabajos han cambiado. Revisa la lista de limpieza de nuevo; no se ha quitado nada.",
+  "This checks all BOOX jobs, regardless of list filters. Up to 200 obsolete jobs are shown at a time.": "Se revisan todos los trabajos BOOX, sin aplicar los filtros de la lista. Se muestran hasta 200 trabajos obsoletos a la vez.",
+  "{{.Count}} obsolete jobs can be cleared from the list.": {
+    "one": "Se puede quitar {{.Count}} trabajo obsoleto de la lista.",
+    "other": "Se pueden quitar {{.Count}} trabajos obsoletos de la lista."
+  }
 }

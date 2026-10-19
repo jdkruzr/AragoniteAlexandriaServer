@@ -192,6 +192,21 @@ A skipped page stays out of recognition: library runs, retry buttons,
   skip covered become *cancelled*, so recognize them when you want them.
   Pages you skipped one by one stay skipped.
 
+### Cleaning up obsolete jobs
+
+**Clean up list…** previews blocked BOOX jobs marked **Page was removed.**
+when the server can confirm the notebook is deleted or the page is no longer
+in a valid page list. Choose **Clear these jobs from the list** to hide them
+from the normal list and its counts. The preview checks all BOOX jobs,
+regardless of your filters, in groups of up to 200.
+
+This keeps notebook content, source queues and recognition history. Select
+**Show earlier attempts and cleared jobs** to see cleared entries again.
+Genuine recognition failures and uncertain source metadata stay on the list.
+The server rechecks the reviewed jobs when you submit; if they changed,
+nothing is cleared and you get a fresh preview. A restored page can still
+create fresh recognition work.
+
 ### Note Actions and Audio Note Minutes
 
 Below the jobs table, two more sections appear when there's something to

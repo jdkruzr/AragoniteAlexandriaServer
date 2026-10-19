@@ -881,7 +881,6 @@
   "Shared by every device on this BOOX account; the server can't tell which device wrote a page.": "Shared by every device on this BOOX account; the server can't tell which device wrote a page.",
   "Show": "Show",
   "Show Alexandria in": "Show Alexandria in",
-  "Show earlier attempts at the same page": "Show earlier attempts at the same page",
   "Showing the first 200. Run another review after these finish to handle the remaining matches.": "Showing the first 200. Run another review after these finish to handle the remaining matches.",
   "Showing the first 50 matches. Narrow the title search to find another notebook.": "Showing the first 50 matches. Narrow the title search to find another notebook.",
   "Sign in from the Client app's Settings → Sync using this server's address and your account. <em>Waiting</em> counts changes the device has not pulled yet. <em>Clear sync position</em> is safe for a device still in use; it picks up where it left off.": "Sign in from the Client app's Settings → Sync using this server's address and your account. <em>Waiting</em> counts changes the device has not pulled yet. <em>Clear sync position</em> is safe for a device still in use; it picks up where it left off.",
@@ -1309,5 +1308,26 @@
   "Wednesday": "Wednesday",
   "Week": "Week",
   "Week starts on": "Week starts on",
-  "You can also select and copy these addresses yourself.": "You can also select and copy these addresses yourself."
+  "You can also select and copy these addresses yourself.": "You can also select and copy these addresses yourself.",
+  "Back to jobs": "Back to jobs",
+  "Clean up list…": "Clean up list…",
+  "Clean up recognition jobs": "Clean up recognition jobs",
+  "Clear these jobs from the list": "Clear these jobs from the list",
+  "Cleared from list": "Cleared from list",
+  "Cleared {{.Count}} obsolete jobs from the list. They remain available in history.": {
+    "one": "Cleared {{.Count}} obsolete job from the list. It remains available in history.",
+    "other": "Cleared {{.Count}} obsolete jobs from the list. They remain available in history."
+  },
+  "Hide blocked BOOX jobs whose notebook was deleted or whose page was removed. Notebook content and recognition history are kept.": "Hide blocked BOOX jobs whose notebook was deleted or whose page was removed. Notebook content and recognition history are kept.",
+  "No obsolete blocked jobs to clear.": "No obsolete blocked jobs to clear.",
+  "Notebook deleted": "Notebook deleted",
+  "Page removed": "Page removed",
+  "Reason": "Reason",
+  "Show earlier attempts and cleared jobs": "Show earlier attempts and cleared jobs",
+  "The jobs changed. Review the cleanup list again; nothing was cleared.": "The jobs changed. Review the cleanup list again; nothing was cleared.",
+  "This checks all BOOX jobs, regardless of list filters. Up to 200 obsolete jobs are shown at a time.": "This checks all BOOX jobs, regardless of list filters. Up to 200 obsolete jobs are shown at a time.",
+  "{{.Count}} obsolete jobs can be cleared from the list.": {
+    "one": "{{.Count}} obsolete job can be cleared from the list.",
+    "other": "{{.Count}} obsolete jobs can be cleared from the list."
+  }
 }

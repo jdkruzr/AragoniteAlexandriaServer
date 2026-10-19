@@ -40,6 +40,7 @@ type Job struct {
 	Number, Attempts, ImageWidth, ImageHeight, ImageBytes          int
 	Created, Updated, Next                                         time.Time
 	Started, Finished                                              *time.Time
+	Cleaned                                                        bool
 }
 
 func (j Job) URL() string {
@@ -86,6 +87,9 @@ func (f Filter) where() (string, error) {
 		return "", errors.New("Invalid page")
 	}
 	where := ` FROM alexandria_recognition_job j WHERE ($1='' OR source=$1) AND ($2='' OR batch_id::text=$2) AND ($3='' OR batch_id IN (SELECT id FROM alexandria_recognition_batch WHERE run_id::text=$3))`
+	if !f.History {
+		where += " AND cleaned_at IS NULL"
+	}
 	if f.Batch == "" && f.Run == "" && !f.History {
 		where += " AND superseded_by IS NULL"
 	}
@@ -126,7 +130,7 @@ func (s Store) List(ctx context.Context, f Filter) (View, error) {
 			return v, e
 		}
 	}
-	rows, e = s.DB.QueryContext(ctx, `SELECT id::text,coalesce(batch_id::text,''),source,notebook_id,page_id,page_number,state,attempts,detail,model,created_at,updated_at,next_at,started_at,finished_at,image_width,image_height,image_bytes,
+	rows, e = s.DB.QueryContext(ctx, `SELECT id::text,coalesce(batch_id::text,''),source,notebook_id,page_id,page_number,state,attempts,detail,model,created_at,updated_at,next_at,started_at,finished_at,image_width,image_height,image_bytes,cleaned_at IS NOT NULL,
  coalesce(CASE WHEN source='boox' THEN (SELECT body->>'title' FROM boox_projection p WHERE p.document_id=j.notebook_id AND domain='notebook' LIMIT 1) ELSE (SELECT name FROM fn_notebook n WHERE n.id=j.notebook_id) END,(SELECT title FROM alexandria_recognition_batch b WHERE b.id=j.batch_id),notebook_id)`+where+` AND ($4='' OR state=$4) ORDER BY created_at DESC,id DESC LIMIT 50 OFFSET $5`, f.Source, f.Batch, f.Run, f.State, f.Offset)
 	if e != nil {
 		return v, e
@@ -134,7 +138,7 @@ func (s Store) List(ctx context.Context, f Filter) (View, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var j Job
-		e = rows.Scan(&j.ID, &j.Batch, &j.Source, &j.Notebook, &j.Page, &j.Number, &j.State, &j.Attempts, &j.Detail, &j.Model, &j.Created, &j.Updated, &j.Next, &j.Started, &j.Finished, &j.ImageWidth, &j.ImageHeight, &j.ImageBytes, &j.Title)
+		e = rows.Scan(&j.ID, &j.Batch, &j.Source, &j.Notebook, &j.Page, &j.Number, &j.State, &j.Attempts, &j.Detail, &j.Model, &j.Created, &j.Updated, &j.Next, &j.Started, &j.Finished, &j.ImageWidth, &j.ImageHeight, &j.ImageBytes, &j.Cleaned, &j.Title)
 		if e != nil {
 			return v, e
 		}
