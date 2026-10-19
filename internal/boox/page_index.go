@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	ocrapi "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 )
 
@@ -31,13 +32,24 @@ func (s Service) QueuePage(ctx context.Context, id string, num int) error {
 	if e != nil {
 		return e
 	}
+	tx, e := s.DB.BeginTx(ctx, nil)
+	if e != nil {
+		return e
+	}
+	defer tx.Rollback()
+	if e = recognition.LockBOOXNotebookTx(ctx, tx, id); e != nil {
+		return e
+	}
 	ids := booxpage.PageIDs(n.Meta.PageNameList)
 	if n.Meta.Status != 1 || num < 1 || num > len(ids) {
 		return errors.New("page unavailable")
 	}
-	_, e = s.DB.ExecContext(ctx, `INSERT INTO boox_page_index(notebook_id,page_id,page_number) VALUES($1,$2,$3)
+	_, e = tx.ExecContext(ctx, `INSERT INTO boox_page_index(notebook_id,page_id,page_number) VALUES($1,$2,$3)
  ON CONFLICT(notebook_id,page_id) DO UPDATE SET state='queued',request_version=boox_page_index.request_version+1,lease_token='',lease_until=NULL,next_at=now(),attempts=0,detail='',updated_at=now() WHERE boox_page_index.state NOT IN ('processing','paused','skipped')`, id, ids[num-1], num)
-	return e
+	if e != nil {
+		return e
+	}
+	return tx.Commit()
 }
 func (s Service) queuePageHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -110,6 +122,15 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 		if v == page {
 			num = i + 1
 			break
+		}
+	}
+	if n.Meta.Status == 0 {
+		var deleted bool
+		if e := s.DB.QueryRowContext(ctx, `SELECT boox_recognition_notebook_deleted($1)`, id).Scan(&deleted); e != nil {
+			return deferFailure("Could not read page snapshot; retrying.")
+		}
+		if deleted {
+			return true, finish("cancelled", "", "Notebook was deleted; recognition cancelled.", n.Version, oldHash, oldOCR, "")
 		}
 	}
 	if n.Meta.Status != 1 || num == 0 {

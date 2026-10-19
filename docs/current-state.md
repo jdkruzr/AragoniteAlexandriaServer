@@ -1,5 +1,31 @@
 # Alexandria Server handoff
 
+2026-10-19: **Deleted BOOX notebooks no longer requeue recognition**, deployed
+as `recognition-delete-73fb37c99de4` from `fix/recognition-deleted-sources`
+(base `39289c4`). Migration **0034** retires current work on authoritative native
+notebook deletion without creating new attempts; lease fencing prevents stale
+results from publishing. Late files and metadata cannot restart deleted work.
+Stale queue requests are fenced against concurrent deletion; restoration can
+create a fresh attempt while preserving manual pause/skip/cancel choices.
+
+The live migration retired **54 current blocked jobs**, preserving all job IDs,
+native projection/blob fingerprints, prior migration checksums, provider revision,
+and existing cleanup markers. Confirmed deleted notebooks now have zero queued
+or blocked jobs. Final required fresh PostgreSQL/object-store race gate passes
+**50 packages**; Go 1.25 build/vet, Hosting compatibility and 10 packaging checks
+pass. **22 live checks** pass, including English/Spanish cancellation history;
+zero restarts or startup warnings/errors. All 307 runtime inputs and nine staged
+paths were verified. [Implementation](recognition-deletion/20261019/implementation.md),
+[validation](recognition-deletion/20261019/validation.txt),
+[deployment evidence](recognition-deletion/20261019/deployment.json).
+
+Recovery is retained at `deploy/compose/private/recognition-delete-73fb37c99de4/`
+on the instance. Its schema-compatible rollback was exercised successfully:
+the first smoke check assumed cancelled jobs were visible in the normal list,
+but all 54 had already been cleared. The corrected check includes history.
+Migration 0034 remains on rollback; no native data or schema is reversed. This
+is a Server-only fix; no PowerSync update is needed. No branch was pushed or merged.
+
 2026-10-18 (2026-10-19 UTC): **Recognition list cleanup implemented and deployed**
 on `feature/recognition-list-cleanup`, based on calendar commit `c11443c`.
 Recognition Jobs → **Clean up list…** previews obsolete BOOX jobs blocked with

@@ -211,6 +211,10 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 			chunk := n
 			chunk.Pages = n.Pages[cursor:end]
 			_, queued, err = queueTx(ctx, tx, source, chunk, 1, len(chunk.Pages), force, batch, true)
+			if errors.Is(err, ErrNotebookDeleted) {
+				next, detail = "excluded", "Deleted on the device."
+				queued, err = 0, nil
+			}
 			if errors.Is(err, ErrAlreadyActive) || errors.Is(err, ErrNotebookSkipped) {
 				err = nil
 				queued = 0
@@ -221,7 +225,7 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 			skipped = previousSkipped + len(chunk.Pages) - queued
 			queued += previousQueued
 			cursor = end
-			if cursor == len(n.Pages) {
+			if cursor == len(n.Pages) && next != "excluded" {
 				next = "queued"
 			}
 			if queued > 0 {
@@ -229,7 +233,7 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 					return false, err
 				}
 			}
-			if skipped > 0 {
+			if skipped > 0 && next != "excluded" {
 				detail = "Active or paused pages keep their existing jobs and are not counted as completed in this run."
 			}
 		}

@@ -299,7 +299,13 @@ func TestNotebookSearchInvalidationAndLateRecognition(t *testing.T) {
 					t.Fatal(err)
 				}
 				o := &testOCR{}
-				run(o, "")
+				if tc.name == "notebook soft deletion" {
+					if found, err := s.ProcessPageIndex(ctx, o, ""); err != nil || found {
+						t.Fatalf("deleted notebook was claimed: %v %v", found, err)
+					}
+				} else {
+					run(o, "")
+				}
 				if o.calls != 0 {
 					t.Fatal("deleted/incomplete content sent to OCR")
 				}

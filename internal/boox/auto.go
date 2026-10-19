@@ -144,6 +144,9 @@ func (s Service) autoRecognize(ctx context.Context, since time.Time) (bool, erro
 	}
 	defer tx.Rollback()
 	if _, e = recognition.QueuePagesTx(ctx, tx, "boox", book, nums, uuid.NewString()); e != nil {
+		if errors.Is(e, recognition.ErrNotebookDeleted) {
+			return false, nil
+		}
 		return false, e
 	}
 	return true, tx.Commit()

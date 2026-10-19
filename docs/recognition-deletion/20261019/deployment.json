@@ -1,0 +1,249 @@
+{
+  "version": "recognition-delete-73fb37c99de4",
+  "image": "sha256:2e457e0b637bb209de67b25e417d23911a7473d6bbf90646bec25d3ae154e37f",
+  "restarts": 0,
+  "state": "running",
+  "startedAt": "2026-10-19T18:25:53.680737914Z",
+  "startupLogLevels": {
+    "INFO": 2
+  },
+  "runtimeInputsVerified": 307,
+  "stagedPathsVerified": 9,
+  "recoveryDirectory": "/opt/aragonite-alexandria-server/deploy/compose/private/recognition-delete-73fb37c99de4",
+  "compatibleRollbackImage": "sha256:f36b022cea0d5927144d1b5ff3021bb2203b92ec911161839f427dbe61020d66",
+  "metadataDumpBytes": 50846903,
+  "metadataCatalogVerified": true,
+  "before": {
+    "migration_count": 33,
+    "prior_migration_fingerprint": "ed3d1f054d271e886e6e8b4a7cf37877",
+    "deletion_migration_checksum": null,
+    "provider_revision": 13,
+    "cursor_tx": "263819",
+    "job_count": 5409,
+    "deleted_current_jobs": 54,
+    "deleted_current_blocked": 54,
+    "deleted_current_active": 0,
+    "deleted_cancelled": 0,
+    "jobs_fingerprint": "4c34e199dda5a6f3573b79f2ca4dbb22",
+    "native_projection_fingerprint": "f816140c5f94496b01aa4ba415504540",
+    "native_blobs_fingerprint": "49d5ec5035eca8d556e72a3aaaae619f"
+  },
+  "migrated": {
+    "migration_count": 34,
+    "prior_migration_fingerprint": "ed3d1f054d271e886e6e8b4a7cf37877",
+    "deletion_migration_checksum": "1e59648b46917fd2aec25167ad2f9bce90043f35c2cfcafebbf326d2533d0534",
+    "provider_revision": 13,
+    "cursor_tx": "263819",
+    "job_count": 5409,
+    "deleted_current_jobs": 54,
+    "deleted_current_blocked": 0,
+    "deleted_current_active": 0,
+    "deleted_cancelled": 54,
+    "jobs_fingerprint": "4c34e199dda5a6f3573b79f2ca4dbb22",
+    "native_projection_fingerprint": "f816140c5f94496b01aa4ba415504540",
+    "native_blobs_fingerprint": "49d5ec5035eca8d556e72a3aaaae619f"
+  },
+  "after": {
+    "migration_count": 34,
+    "prior_migration_fingerprint": "ed3d1f054d271e886e6e8b4a7cf37877",
+    "deletion_migration_checksum": "1e59648b46917fd2aec25167ad2f9bce90043f35c2cfcafebbf326d2533d0534",
+    "provider_revision": 13,
+    "cursor_tx": "263837",
+    "job_count": 5409,
+    "deleted_current_jobs": 54,
+    "deleted_current_blocked": 0,
+    "deleted_current_active": 0,
+    "deleted_cancelled": 54,
+    "jobs_fingerprint": "4c34e199dda5a6f3573b79f2ca4dbb22",
+    "native_projection_fingerprint": "f816140c5f94496b01aa4ba415504540",
+    "native_blobs_fingerprint": "49d5ec5035eca8d556e72a3aaaae619f"
+  },
+  "smoke": {
+    "checks": [
+      {
+        "path": "/readyz",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/livez",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/cleanup",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/metrics",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/cleanup",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "POST"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/cleanup",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/cleanup",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      }
+    ],
+    "passed": 22,
+    "baseURL": "https://alexandria.federation.engineering",
+    "version": "recognition-delete-73fb37c99de4",
+    "cleanupSubmitted": false,
+    "writeQualification": "isolated synthetic databases only"
+  },
+  "rollbackExercised": true,
+  "rollbackReason": "Initial smoke check expected already-cleared cancellations in the normal list. Corrected read-only check uses history; prior app restored successfully before final deployment.",
+  "writeQualification": "Isolated synthetic fixtures; no live notebook edits or recognition requeues. Migration retires obsolete derived work."
+}

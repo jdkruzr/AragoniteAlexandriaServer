@@ -206,6 +206,11 @@ func queueTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, from, t
 	if _, e := uuid.Parse(request); e != nil {
 		return "", 0, errors.New("Invalid request token")
 	}
+	if source == "boox" {
+		if err := LockBOOXNotebookTx(ctx, tx, n.ID); err != nil {
+			return "", 0, err
+		}
+	}
 	var skipped bool
 	if e := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM alexandria_recognition_skip WHERE source=$1 AND notebook_id=$2)`, source, n.ID).Scan(&skipped); e != nil {
 		return "", 0, e

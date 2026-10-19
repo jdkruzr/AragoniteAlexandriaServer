@@ -59,6 +59,7 @@ var countedDetails = []struct {
 
 // storedDetails are fixed sentences that end up in job and page details.
 var storedDetails = []string{
+	i18n.M("Notebook was deleted; recognition cancelled."),
 	i18n.M("Server-recognized text; original native content is unchanged."),
 	i18n.M("No handwriting on this page; nothing was sent for recognition."),
 	i18n.M("Typed text from this text notebook; nothing was sent for recognition."),

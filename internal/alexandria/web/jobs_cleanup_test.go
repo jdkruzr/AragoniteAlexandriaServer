@@ -17,10 +17,12 @@ func TestRecognitionCleanupRoutes(t *testing.T) {
 	db := testenv.Database(t).DB
 	d := Deps{DB: db, PublicURL: "https://cleanup.example.test"}
 	s := recognition.Store{DB: db}
-	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES('cleanup-demo','1-a','notebook','1','{"uniqueId":"cleanup-demo","type":1,"status":0,"title":"Synthetic removed notebook"}')`); err != nil {
+
+	if _, _, err := s.Queue(ctx, "boox", recognition.Notebook{ID: "cleanup-demo", Pages: []recognition.Page{{ID: "p", Number: 1}}}, 1, 1, false, uuid.NewString()); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.Queue(ctx, "boox", recognition.Notebook{ID: "cleanup-demo", Pages: []recognition.Page{{ID: "p", Number: 1}}}, 1, 1, false, uuid.NewString()); err != nil {
+	// Model legacy blocked work; new enqueue requests reject deleted sources.
+	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES('cleanup-demo','1-a','notebook','1','{"uniqueId":"cleanup-demo","type":1,"status":0,"title":"Synthetic removed notebook"}')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(ctx, `UPDATE boox_page_index SET state='blocked',detail='Page was removed.' WHERE notebook_id='cleanup-demo'`); err != nil {

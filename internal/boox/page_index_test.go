@@ -151,7 +151,7 @@ func TestPageRecognitionCacheInvalidationAndSearch(t *testing.T) {
 		t.Fatal(e)
 	}
 	read()
-	if state != "queued" || body != "" {
+	if state != "cancelled" || body != "" {
 		t.Fatal("deleted text retained in index")
 	}
 }

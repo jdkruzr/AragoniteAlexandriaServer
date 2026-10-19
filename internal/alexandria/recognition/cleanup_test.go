@@ -21,13 +21,15 @@ func TestCleanupRechecksSourceAndRetainsHistory(t *testing.T) {
 	}
 	add := func(id, status, state, detail string, pages any, metadata bool) {
 		t.Helper()
-		if metadata {
-			body, _ := json.Marshal(map[string]any{"uniqueId": id, "title": id, "type": 1, "status": status, "pageNameList": pages})
-			exec(`INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES($1,'1-a','notebook','1',$2)`, id, body)
-		}
+
 		_, _, err := s.Queue(ctx, "boox", Notebook{ID: id, Title: id, Pages: []Page{{ID: "page", Number: 1}}}, 1, 1, false, uuid.NewString())
 		if err != nil {
 			t.Fatal(err)
+		}
+		// Recreate legacy blocked jobs; current enqueueing refuses deleted sources.
+		if metadata {
+			body, _ := json.Marshal(map[string]any{"uniqueId": id, "title": id, "type": 1, "status": status, "pageNameList": pages})
+			exec(`INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES($1,'1-a','notebook','1',$2)`, id, body)
 		}
 		exec(`UPDATE boox_page_index SET state=$2,detail=$3 WHERE notebook_id=$1`, id, state, detail)
 	}
@@ -118,11 +120,12 @@ func TestCleanupTokenTracksIdentityNotJustCount(t *testing.T) {
 	db := testenv.Database(t).DB
 	s := Store{DB: db}
 	for _, id := range []string{"a", "b"} {
-		body, _ := json.Marshal(map[string]any{"uniqueId": id, "type": 1, "status": 0})
-		if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES($1,'1-a','notebook','1',$2)`, id, body); err != nil {
+
+		if _, _, err := s.Queue(ctx, "boox", Notebook{ID: id, Pages: []Page{{ID: "p", Number: 1}}}, 1, 1, false, uuid.NewString()); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := s.Queue(ctx, "boox", Notebook{ID: id, Pages: []Page{{ID: "p", Number: 1}}}, 1, 1, false, uuid.NewString()); err != nil {
+		body, _ := json.Marshal(map[string]any{"uniqueId": id, "type": 1, "status": 0})
+		if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES($1,'1-a','notebook','1',$2)`, id, body); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -145,14 +148,15 @@ func TestCleanupIsBoundedAndCanContinue(t *testing.T) {
 	ctx := context.Background()
 	db := testenv.Database(t).DB
 	s := Store{DB: db}
-	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES('many','1-a','notebook','1','{"uniqueId":"many","type":1,"status":0}')`); err != nil {
-		t.Fatal(err)
-	}
+
 	pages := make([]Page, 201)
 	for i := range pages {
 		pages[i] = Page{ID: uuid.NewString(), Number: i + 1}
 	}
 	if _, _, err := s.Queue(ctx, "boox", Notebook{ID: "many", Pages: pages}, 1, len(pages), false, uuid.NewString()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES('many','1-a','notebook','1','{"uniqueId":"many","type":1,"status":0}')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(ctx, `UPDATE boox_page_index SET state='blocked',detail='Page was removed.' WHERE notebook_id='many'`); err != nil {

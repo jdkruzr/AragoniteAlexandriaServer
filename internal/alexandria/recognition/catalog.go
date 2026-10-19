@@ -2,7 +2,9 @@ package recognition
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 )
 
@@ -55,4 +57,24 @@ func (s Store) Choices(ctx context.Context, boox bool, query string) ([]Choice, 
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+// LockBOOXNotebookTx serializes enqueueing with native deletion. Lock the
+// projection before queue rows, matching source invalidation. An absent record
+// alone is not proof of deletion; it may still be arriving through sync.
+func LockBOOXNotebookTx(ctx context.Context, tx *sql.Tx, id string) error {
+	var deleted bool
+	err := tx.QueryRowContext(ctx, `SELECT coalesce(domain='notebook' AND body->>'type'='1'
+ AND body->>'uniqueId'=document_id AND NOT body ? 'commitType' AND body->>'status'='0',false)
+ FROM boox_projection WHERE document_id=$1 FOR SHARE`, id).Scan(&deleted)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if deleted {
+		return ErrNotebookDeleted
+	}
+	return nil
 }
