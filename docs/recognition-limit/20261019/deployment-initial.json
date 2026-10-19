@@ -1,0 +1,264 @@
+{
+  "version": "recognition-limit-4a11b6126d1b",
+  "image": "sha256:a4ce5633454d2771d84c10489dfdf2c7e6da49ef09b0207524d92e5975f05b63",
+  "restarts": 0,
+  "state": "running",
+  "startedAt": "2026-10-19T21:14:16.648237121Z",
+  "startupLogLevels": {
+    "INFO": 2
+  },
+  "runtimeInputsVerified": 316,
+  "stagedPathsVerified": 17,
+  "recoveryDirectory": "/opt/aragonite-alexandria-server/deploy/compose/private/recognition-limit-4a11b6126d1b",
+  "compatibleRollbackImage": "sha256:37fd1853031cd5b59c170ad5fbf6848725f51242319bd7870a01be28bfa884ce",
+  "metadataDumpBytes": 51006540,
+  "metadataCatalogVerified": true,
+  "before": {
+    "migration_count": 35,
+    "prior_migration_fingerprint": "320c8eeb9e8804f27b0db4a84c509689",
+    "management_migration_checksum": null,
+    "provider_revision": 13,
+    "job_count": 5416,
+    "jobs_fingerprint": "5d4dae51372a054ee6244b2f9ae93e39",
+    "native_projection_fingerprint": "afa34f377aa3385730672d211309c24c",
+    "native_blobs_fingerprint": "4a6ebb4dd65131a24b350e18a3c71f3b"
+  },
+  "migrated": {
+    "migration_count": 36,
+    "prior_migration_fingerprint": "320c8eeb9e8804f27b0db4a84c509689",
+    "management_migration_checksum": "e052703d7c26cfbc57b9db9a8540a578ce0501a35e920ee5e97f5723490a0888",
+    "provider_revision": 13,
+    "job_count": 5416,
+    "jobs_fingerprint": "5d4dae51372a054ee6244b2f9ae93e39",
+    "native_projection_fingerprint": "afa34f377aa3385730672d211309c24c",
+    "native_blobs_fingerprint": "4a6ebb4dd65131a24b350e18a3c71f3b"
+  },
+  "after": {
+    "migration_count": 36,
+    "prior_migration_fingerprint": "320c8eeb9e8804f27b0db4a84c509689",
+    "management_migration_checksum": "e052703d7c26cfbc57b9db9a8540a578ce0501a35e920ee5e97f5723490a0888",
+    "provider_revision": 13,
+    "job_count": 5416,
+    "jobs_fingerprint": "5d4dae51372a054ee6244b2f9ae93e39",
+    "native_projection_fingerprint": "afa34f377aa3385730672d211309c24c",
+    "native_blobs_fingerprint": "4a6ebb4dd65131a24b350e18a3c71f3b"
+  },
+  "smoke": {
+    "checks": [
+      {
+        "path": "/readyz",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/livez",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/boox",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/boox/manage",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/metrics",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/boox/manage",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "POST"
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/boox/manage",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/size",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/recognition",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/boox/manage",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/size",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/recognition",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      }
+    ],
+    "passed": 26,
+    "baseURL": "https://alexandria.federation.engineering",
+    "version": "recognition-limit-4a11b6126d1b",
+    "realNotebookMutations": false
+  },
+  "rollbackExercised": false,
+  "writeQualification": "Isolated synthetic PostgreSQL/object-store and browser fixtures; no live overrides or recognition requests submitted. Read-only live preflight found zero active notebooks over 100 pages in both sources."
+}

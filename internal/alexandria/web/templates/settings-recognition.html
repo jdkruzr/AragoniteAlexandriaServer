@@ -1,8 +1,10 @@
 {{define "content"}}{{$d := .Data}}
 <h1>{{t "AI Tools and Recognition"}}</h1>
+<section class="card" id="page-limit"><h2>{{t "Recognition page limit"}}</h2><p>{{t "The limit applies to the whole notebook, including single-page requests. Existing recognized text is kept. Overrides never undo skips or restore deleted notebooks."}}</p><form class="stack" method="post" action="/settings/recognition-limit"><input type="hidden" name="expected" value="{{$d.RecognitionPageLimit}}"><label>{{t "Maximum notebook pages"}} <input type="number" name="limit" min="1" max="20000" value="{{$d.RecognitionPageLimit}}" required></label><p>{{t "Default: 100 pages. Larger notebooks can be allowed individually in the job manager."}} <a href="/jobs/size">{{t "Notebook size limits"}}</a></p><button>{{t "Save page limit"}}</button></form><p class="hint">{{t "Lowering the limit stops pending work for oversized notebooks. Requests already sent may still be billed. Raising it does not queue work."}}</p></section>
 {{if $d.Providers}}{{$p := $d.Providers}}
 <p class="lede">{{t "Choose the AI models Alexandria uses: a vision model for handwriting, plus models for audio note minutes, search by meaning and note actions. Nothing is sent until you queue work, or automatically once you turn on automatic processing below."}} {{template "help" "recognition.where"}}</p>
 <p class="actions">{{th "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs\">View recognition jobs</a>"}}</p>
+
 <section class="card">
 <h2>{{t "Provider"}} {{template "help" "recognition.provider"}}</h2>
 {{if $p.Locked}}<p class="coverage">{{t "Provider settings are locked by the deployment."}}</p>{{else if not $p.CanSave}}<p class="coverage">{{t "The deployment needs a settings encryption key before provider credentials can be saved."}}</p>{{end}}

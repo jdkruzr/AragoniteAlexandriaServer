@@ -1383,5 +1383,30 @@
   "{{.Count}} unshared stored bodies eligible for removal · {{.Bytes}} bytes": {
     "one": "{{.Count}} unshared stored body eligible for removal · {{.Bytes}} bytes",
     "other": "{{.Count}} unshared stored bodies eligible for removal · {{.Bytes}} bytes"
-  }
+  },
+  "Notebook exceeds the recognition page limit. Review its size override in Jobs.": "Notebook exceeds the recognition page limit. Review its size override in Jobs.",
+  "Enter a page limit from 1 to 20,000.": "Enter a page limit from 1 to 20,000.",
+  "The page limit changed. Review it and save again.": "The page limit changed. Review it and save again.",
+  "Recognition page limit saved. No new work was queued.": "Recognition page limit saved. No new work was queued.",
+  "Notebook size limits": "Notebook size limits",
+  "Notebook is no longer available.": "Notebook is no longer available.",
+  "Notebook size policy saved. Skips still apply; no new work was queued.": "Notebook size policy saved. Skips still apply; no new work was queued.",
+  "Notebooks over {{.Count}} pages need an override before recognition.": {
+    "one": "Notebooks over {{.Count}} page need an override before recognition.",
+    "other": "Notebooks over {{.Count}} pages need an override before recognition."
+  },
+  "Change the page limit": "Change the page limit",
+  "The limit applies to the whole notebook, including single-page requests. Existing recognized text is kept. Overrides never undo skips or restore deleted notebooks.": "The limit applies to the whole notebook, including single-page requests. Existing recognized text is kept. Overrides never undo skips or restore deleted notebooks.",
+  "Always allowed through the size limit": "Always allowed through the size limit",
+  "Over the recognition page limit": "Over the recognition page limit",
+  "No matching oversized notebooks or overrides.": "No matching oversized notebooks or overrides.",
+  "Notebook size policy": "Notebook size policy",
+  "Use the normal page limit": "Use the normal page limit",
+  "Always let this notebook through": "Always let this notebook through",
+  "Saving this policy does not queue work. It applies to future requests and automatic processing.": "Saving this policy does not queue work. It applies to future requests and automatic processing.",
+  "Recognition page limit": "Recognition page limit",
+  "Maximum notebook pages": "Maximum notebook pages",
+  "Default: 100 pages. Larger notebooks can be allowed individually in the job manager.": "Default: 100 pages. Larger notebooks can be allowed individually in the job manager.",
+  "Save page limit": "Save page limit",
+  "Lowering the limit stops pending work for oversized notebooks. Requests already sent may still be billed. Raising it does not queue work.": "Lowering the limit stops pending work for oversized notebooks. Requests already sent may still be billed. Raising it does not queue work."
 }

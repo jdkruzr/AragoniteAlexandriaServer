@@ -1,0 +1,231 @@
+[
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/jobs",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/jobs/size",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/jobs/new?source=boox&notebook=large",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/settings/recognition",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/jobs",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/jobs/size",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/jobs/new?source=boox&notebook=large",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/settings/recognition",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/jobs",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/jobs/size",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/jobs/new?source=boox&notebook=large",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/settings/recognition",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/jobs",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/jobs/size",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/jobs/new?source=boox&notebook=large",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/settings/recognition",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/jobs",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/jobs/size",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/jobs/new?source=boox&notebook=large",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/settings/recognition",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/jobs",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/jobs/size",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/jobs/new?source=boox&notebook=large",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/settings/recognition",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/jobs",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/jobs/size",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/jobs/new?source=boox&notebook=large",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/settings/recognition",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/jobs",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/jobs/size",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/jobs/new?source=boox&notebook=large",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/settings/recognition",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "noJavaScript": "persistent override, removal, setting increase and decrease",
+    "keyboard": "visible focus",
+    "dark": "rendered"
+  }
+]

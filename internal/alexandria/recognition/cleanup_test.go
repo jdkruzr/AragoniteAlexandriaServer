@@ -148,6 +148,10 @@ func TestCleanupIsBoundedAndCanContinue(t *testing.T) {
 	ctx := context.Background()
 	db := testenv.Database(t).DB
 	s := Store{DB: db}
+	// This test exercises large-batch behavior with an explicitly raised cap.
+	if err := s.SetPageLimit(ctx, 1000, 100); err != nil {
+		t.Fatal(err)
+	}
 
 	pages := make([]Page, 201)
 	for i := range pages {

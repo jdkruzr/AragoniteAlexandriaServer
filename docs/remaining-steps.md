@@ -185,9 +185,10 @@ Requested for a later round; do not expand the current notebook-management relea
 
 - [ ] Search result sorting: alphanumeric ascending/descending and creation-date
   ascending/descending, at minimum.
-- [ ] Recognition admission: default maximum of 100 pages per notebook, configurable
+- [x] Recognition admission: default maximum of 100 pages per notebook, configurable
   in Settings. The job manager must offer a persistent per-notebook override to
   "always let it through." This concerns admission, not truncating recognition.
+  Deployed 2026-10-19; [implementation and evidence](recognition-limit/20261019/implementation.md).
 - [ ] All Settings pages: categories initially appear as collapsed, simple tiles
   describing what their settings do. Expand a category to edit it. Pay particular
   attention to the crowded AI/Recognition page.

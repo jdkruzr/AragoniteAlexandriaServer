@@ -587,6 +587,12 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 		}
 		data["OAuthLabel"] = oauth.TokenLabel
 	case "search", "recognition":
+		var pageLimit int
+		if err := d.DB.QueryRowContext(ctx, `SELECT alexandria_recognition_page_limit()`).Scan(&pageLimit); err != nil {
+			d.fail(w, err)
+			return
+		}
+		data["RecognitionPageLimit"] = pageLimit
 		var providerView *providers.View
 		if d.Providers != nil {
 			if override != nil {

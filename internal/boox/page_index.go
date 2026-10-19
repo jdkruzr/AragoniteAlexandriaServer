@@ -37,10 +37,16 @@ func (s Service) QueuePage(ctx context.Context, id string, num int) error {
 		return e
 	}
 	defer tx.Rollback()
+	if e = recognition.LockSizePolicy(ctx, tx); e != nil {
+		return e
+	}
 	if e = recognition.LockBOOXNotebookTx(ctx, tx, id); e != nil {
 		return e
 	}
 	ids := booxpage.PageIDs(n.Meta.PageNameList)
+	if e = recognition.CheckSize(ctx, tx, "boox", id, len(ids)); e != nil {
+		return e
+	}
 	if n.Meta.Status != 1 || num < 1 || num > len(ids) {
 		return errors.New("page unavailable")
 	}
@@ -68,6 +74,10 @@ func (s Service) queuePageHTTP(w http.ResponseWriter, r *http.Request) {
 	id := r.Form.Get("id")
 	num, _ := strconv.Atoi(r.Form.Get("page"))
 	if e := s.QueuePage(r.Context(), id, num); e != nil {
+		if errors.Is(e, recognition.ErrNotebookTooLarge) {
+			http.Redirect(w, r, "/jobs/new?source=boox&notebook="+url.QueryEscape(id), 303)
+			return
+		}
 		http.Error(w, "Page unavailable", 422)
 		return
 	}
@@ -83,7 +93,7 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 	var num, attempts int
 	token := uuid.NewString()
 	e := s.DB.QueryRowContext(ctx, `UPDATE boox_page_index p SET state='processing',lease_token=$1,lease_until=now()+interval '5 minutes'
- WHERE (notebook_id,page_id)=(SELECT notebook_id,page_id FROM boox_page_index WHERE state IN ('queued','processing') AND next_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY next_at DESC LIMIT 1 FOR UPDATE SKIP LOCKED)
+ WHERE (notebook_id,page_id)=(SELECT notebook_id,page_id FROM boox_page_index WHERE state IN ('queued','processing') AND NOT alexandria_recognition_size_limited('boox',notebook_id) AND next_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY next_at DESC LIMIT 1 FOR UPDATE SKIP LOCKED)
  RETURNING notebook_id,page_id,page_number,request_version,attempts,ocr_hash,ocr_text`, token).Scan(&id, &page, &num, &version, &attempts, &oldHash, &oldOCR)
 	if errors.Is(e, sql.ErrNoRows) {
 		return false, nil

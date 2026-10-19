@@ -13,6 +13,7 @@ import (
 
 func (d Deps) jobRoutes(mux *http.ServeMux) {
 	d.libraryJobRoutes(mux)
+	d.recognitionSizeRoutes(mux)
 	store := recognition.Store{DB: d.DB}
 	mux.HandleFunc("GET /jobs", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
@@ -179,6 +180,12 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 				return
 			}
 			data["Skipped"] = skipped
+			policy, e := store.SizePolicy(r.Context(), source, id, len(n.Pages))
+			if e != nil {
+				d.fail(w, e)
+				return
+			}
+			data["SizePolicy"] = policy
 			// Optional prefill, e.g. "recognize this page" from a viewer.
 			from, _ := strconv.Atoi(r.URL.Query().Get("from"))
 			to, _ := strconv.Atoi(r.URL.Query().Get("to"))

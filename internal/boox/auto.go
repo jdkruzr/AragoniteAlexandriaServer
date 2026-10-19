@@ -92,7 +92,7 @@ func (s Service) automaticSince(ctx context.Context, seed time.Time) (time.Time,
 }
 
 func (s Service) autoRecognize(ctx context.Context, since time.Time) (bool, error) {
-	rows, e := s.DB.QueryContext(ctx, quietNotebooks+` AND EXISTS(SELECT 1 FROM jsonb_array_elements_text(boox_search_page_ids(body->'pageNameList')) ids(id)
+	rows, e := s.DB.QueryContext(ctx, quietNotebooks+` AND NOT alexandria_recognition_size_limited('boox',document_id) AND EXISTS(SELECT 1 FROM jsonb_array_elements_text(boox_search_page_ids(body->'pageNameList')) ids(id)
  WHERE NOT EXISTS(SELECT 1 FROM boox_page_index i WHERE i.notebook_id=document_id AND i.page_id=ids.id)) ORDER BY last_change LIMIT 1`, s.uid(), since, interval(autoRecognizeQuiet))
 	if e != nil {
 		return false, e

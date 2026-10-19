@@ -184,6 +184,12 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 			next = "excluded"
 			detail = "Skipped in recognition."
 		}
+		if sizeErr := CheckSize(ctx, tx, source, nid, len(n.Pages)); sizeErr != nil {
+			if !errors.Is(sizeErr, ErrNotebookTooLarge) {
+				return false, sizeErr
+			}
+			next, detail = "excluded", sizeErr.Error()
+		}
 		if len(n.Pages) == 0 {
 			next = "unavailable"
 			detail = "No pages are available for recognition."
@@ -209,8 +215,13 @@ func (s Store) StepRun(ctx context.Context, catalog Catalog, enabled bool) (bool
 			// Same reviewed identities/order; workers verify source visibility again.
 			end := min(cursor+100, len(n.Pages))
 			chunk := n
+			chunk.TotalPages = len(n.Pages)
 			chunk.Pages = n.Pages[cursor:end]
 			_, queued, err = queueTx(ctx, tx, source, chunk, 1, len(chunk.Pages), force, batch, true)
+			if errors.Is(err, ErrNotebookTooLarge) {
+				next, detail = "excluded", ErrNotebookTooLarge.Error()
+				queued, err = 0, nil
+			}
 			if errors.Is(err, ErrNotebookDeleted) {
 				next, detail = "excluded", "Deleted on the device."
 				queued, err = 0, nil

@@ -13,6 +13,10 @@ func TestClientLibraryRunInventoryChunksAndSourceIsolation(t *testing.T) {
 	ctx := context.Background()
 	db := testenv.Database(t).DB
 	s := Store{DB: db}
+	// This test exercises large-batch behavior with an explicitly raised cap.
+	if err := s.SetPageLimit(ctx, 1000, 100); err != nil {
+		t.Fatal(err)
+	}
 	if _, e := db.ExecContext(ctx, `INSERT INTO fn_notebook(id,name,deleted_at,lww_wall_ts,lww_op_seq,lww_site_id) VALUES('note','Client notebook',NULL,1,1,'test'),('gone','Deleted',1,1,1,'test'); INSERT INTO fn_page(id,notebook_id,sort_order,lww_wall_ts,lww_op_seq,lww_site_id) SELECT 'p'||i,'note',i,1,1,'test' FROM generate_series(1,205) i; INSERT INTO fn_page(id,notebook_id,deleted_at,lww_wall_ts,lww_op_seq,lww_site_id) VALUES('deleted-page','note',1,1,1,'test'); DELETE FROM alexandria_page_dirty; DELETE FROM alexandria_recognition_job;`); e != nil {
 		t.Fatal(e)
 	}

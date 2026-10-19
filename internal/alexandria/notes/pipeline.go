@@ -75,7 +75,7 @@ func (p Pipeline) claim(ctx context.Context, db pg.DB) (page string, dirtied tim
 	}
 	err = db.QueryRowContext(ctx, `UPDATE alexandria_page_dirty d SET state='processing',lease_token=gen_random_uuid(),lease_until = now() + $1::interval
 		WHERE d.page_id = (SELECT page_id FROM alexandria_page_dirty
-			WHERE state IN ('queued','processing') AND next_at <= now() AND dirtied_at <= clock_timestamp() - $2::interval
+			WHERE state IN ('queued','processing') AND NOT alexandria_recognition_size_limited('client',(SELECT notebook_id FROM fn_page WHERE id=page_id)) AND next_at <= now() AND dirtied_at <= clock_timestamp() - $2::interval
 			AND (lease_until IS NULL OR lease_until < now())
 			ORDER BY dirtied_at LIMIT 1 FOR UPDATE SKIP LOCKED)
 		RETURNING d.page_id, d.dirtied_at, d.attempts, d.lease_token::text`, interval(lease), interval(p.Debounce)).Scan(&page, &dirtied, &attempts, &token)

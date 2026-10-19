@@ -1,5 +1,40 @@
 # Alexandria Server handoff
 
+2026-10-19: **Recognition notebook page limit implemented and deployed**, build
+`recognition-limit-62fd5cf44594` on `feature/recognition-page-limit` from `66b2cd4`.
+Default **100 pages per notebook**, configurable from 1–20,000 in Settings → AI
+Tools and Recognition. Recognition Jobs → Notebook size limits lists oversized
+notebooks and persistent per-notebook overrides. **Always let this notebook
+through** bypasses size only; skips and deleted-notebook protections remain.
+The complete notebook size governs single-page requests and library chunks.
+Rejected new notebooks create no per-page jobs. Lowering the cap/revoking an
+override stops pending work; saving settings never itself queues recognition.
+
+Migration **0036** adds the override table and admission/worker guards. Source
+growth and concurrent policy changes are covered; cached text is retained until
+source changes, and pending results are fenced when the policy excludes them.
+Permanent notebook removal also removes the override. A final retry/resume fix
+ensures refused controls report zero queued jobs. No PowerSync update is needed.
+
+Final fresh required Go 1.25 PostgreSQL/object-store race gate: **50 packages pass**;
+build/vet, Hosting compatibility and 10 packaging checks pass. **33 synthetic
+browser checks** cover English/Spanish, four viewports, no-JS setting/override
+changes, keyboard focus and dark mode. **29 live checks** pass with zero restarts
+or startup warnings/errors. All **316 runtime inputs** were verified; initial
+migration staged 17 paths, then the retry-count correction staged one path.
+Native content, earlier migration checksums, provider configuration and job IDs
+were preserved. Read-only preflight found zero active notebooks over 100 pages in
+either source; no real notebook override or recognition request was submitted.
+
+[Implementation and rollback](recognition-limit/20261019/implementation.md),
+[validation](recognition-limit/20261019/validation.txt),
+[browser checks](recognition-limit/20261019/browser.json),
+[initial schema deployment](recognition-limit/20261019/deployment-initial.json),
+[final deployment](recognition-limit/20261019/deployment.json).
+Rollback artifacts are under `deploy/compose/private/recognition-limit-62fd5cf44594/`
+on the instance, retaining schema and deletion safeguards. No branch pushed or
+merged. Settings tiles and Search sorting remain queued for later.
+
 2026-10-19 follow-up: **Go 6 II native management checks completed after reconnection.**
 A fresh disposable notebook arrived and opened in native Notes; rename, move,
 trash, restore, and reopening were verified on-device with the same notebook ID.

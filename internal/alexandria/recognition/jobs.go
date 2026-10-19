@@ -21,8 +21,9 @@ type Page struct {
 	Number int
 }
 type Notebook struct {
-	ID, Title string
-	Pages     []Page
+	ID, Title  string
+	Pages      []Page
+	TotalPages int // Full catalog size when a library run passes a chunk.
 }
 
 func (n Notebook) Version() string {
@@ -191,7 +192,7 @@ func QueuePagesTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, nu
 			return 0, errors.New("Invalid page selection")
 		}
 		_, count, e := queueTx(ctx, tx, source, n, num, num, false, request, true)
-		if errors.Is(e, ErrNotebookSkipped) {
+		if errors.Is(e, ErrNotebookSkipped) || errors.Is(e, ErrNotebookTooLarge) {
 			return total, nil
 		}
 		if e != nil && !errors.Is(e, ErrAlreadyActive) {
@@ -206,6 +207,9 @@ func queueTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, from, t
 	if _, e := uuid.Parse(request); e != nil {
 		return "", 0, errors.New("Invalid request token")
 	}
+	if e := LockSizePolicy(ctx, tx); e != nil {
+		return "", 0, e
+	}
 	if source == "boox" {
 		if err := LockBOOXNotebookTx(ctx, tx, n.ID); err != nil {
 			return "", 0, err
@@ -217,6 +221,9 @@ func queueTx(ctx context.Context, tx *sql.Tx, source string, n Notebook, from, t
 	}
 	if skipped {
 		return "", 0, ErrNotebookSkipped
+	}
+	if e := CheckSize(ctx, tx, source, n.ID, max(len(n.Pages), n.TotalPages)); e != nil {
+		return "", 0, e
 	}
 	batch := request
 	inserted, e := tx.ExecContext(ctx, `INSERT INTO alexandria_recognition_batch(id,source,notebook_id,title) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING`, batch, source, n.ID, n.Title)
@@ -384,6 +391,9 @@ func (s Store) ActOnMatching(ctx context.Context, f Filter, expect int, action s
 }
 
 func applyControl(ctx context.Context, tx *sql.Tx, targets []controlTarget, action, allowed string) (int64, error) {
+	if e := LockSizePolicy(ctx, tx); e != nil {
+		return 0, e
+	}
 	var e error
 	state := "queued"
 	detail := "Owner requested " + action + "."
@@ -411,7 +421,7 @@ func applyControl(ctx context.Context, tx *sql.Tx, targets []controlTarget, acti
 			return 0, e
 		}
 		var newID string
-		e = tx.QueryRowContext(ctx, `UPDATE `+table+` SET state=$2,detail=$3,lease_until=NULL,next_at=now(),attempts=CASE WHEN $2='queued' THEN 0 ELSE attempts END`+extra+` WHERE job_id=$1 AND state IN (`+allowed+`) RETURNING job_id::text`, t.id, state, detail).Scan(&newID)
+		e = tx.QueryRowContext(ctx, `UPDATE `+table+` SET state=$2,detail=$3,lease_until=NULL,next_at=now(),attempts=CASE WHEN $2='queued' THEN 0 ELSE attempts END`+extra+` WHERE job_id=$1 AND state IN (`+allowed+`) AND ($2<>'queued' OR NOT alexandria_recognition_size_limited($4,(SELECT notebook_id FROM alexandria_recognition_job WHERE id=$1))) RETURNING job_id::text`, t.id, state, detail, t.source).Scan(&newID)
 		if errors.Is(e, sql.ErrNoRows) {
 			continue
 		}

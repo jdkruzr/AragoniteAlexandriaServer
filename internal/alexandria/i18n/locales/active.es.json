@@ -1433,5 +1433,30 @@
   "{{.Count}} unshared stored bodies eligible for removal · {{.Bytes}} bytes": {
     "one": "{{.Count}} archivo almacenado no compartido que se puede eliminar · {{.Bytes}} bytes",
     "other": "{{.Count}} archivos almacenados no compartidos que se pueden eliminar · {{.Bytes}} bytes"
-  }
+  },
+  "Notebook exceeds the recognition page limit. Review its size override in Jobs.": "El cuaderno supera el límite de páginas para reconocimiento. Revisa su excepción de tamaño en Trabajos.",
+  "Enter a page limit from 1 to 20,000.": "Introduce un límite de entre 1 y 20.000 páginas.",
+  "The page limit changed. Review it and save again.": "El límite de páginas cambió. Revísalo y vuelve a guardar.",
+  "Recognition page limit saved. No new work was queued.": "Límite de páginas para reconocimiento guardado. No se añadieron trabajos a la cola.",
+  "Notebook size limits": "Límites de tamaño de cuadernos",
+  "Notebook is no longer available.": "El cuaderno ya no está disponible.",
+  "Notebook size policy saved. Skips still apply; no new work was queued.": "Política de tamaño guardada. Las exclusiones siguen vigentes; no se añadieron trabajos a la cola.",
+  "Notebooks over {{.Count}} pages need an override before recognition.": {
+    "one": "Los cuadernos de más de {{.Count}} página necesitan una excepción antes del reconocimiento.",
+    "other": "Los cuadernos de más de {{.Count}} páginas necesitan una excepción antes del reconocimiento."
+  },
+  "Change the page limit": "Cambiar el límite de páginas",
+  "The limit applies to the whole notebook, including single-page requests. Existing recognized text is kept. Overrides never undo skips or restore deleted notebooks.": "El límite se aplica al cuaderno completo, incluso al solicitar una sola página. Se conserva el texto ya reconocido. Las excepciones no anulan exclusiones ni restauran cuadernos eliminados.",
+  "Always allowed through the size limit": "Siempre permitido por encima del límite de tamaño",
+  "Over the recognition page limit": "Supera el límite de páginas para reconocimiento",
+  "No matching oversized notebooks or overrides.": "No hay cuadernos grandes ni excepciones que coincidan.",
+  "Notebook size policy": "Política de tamaño del cuaderno",
+  "Use the normal page limit": "Usar el límite de páginas normal",
+  "Always let this notebook through": "Permitir siempre este cuaderno",
+  "Saving this policy does not queue work. It applies to future requests and automatic processing.": "Guardar esta política no añade trabajos a la cola. Se aplica a futuras solicitudes y al procesamiento automático.",
+  "Recognition page limit": "Límite de páginas para reconocimiento",
+  "Maximum notebook pages": "Máximo de páginas por cuaderno",
+  "Default: 100 pages. Larger notebooks can be allowed individually in the job manager.": "Predeterminado: 100 páginas. Los cuadernos más grandes pueden permitirse individualmente en el gestor de trabajos.",
+  "Save page limit": "Guardar límite de páginas",
+  "Lowering the limit stops pending work for oversized notebooks. Requests already sent may still be billed. Raising it does not queue work.": "Reducir el límite detiene el trabajo pendiente de cuadernos demasiado grandes. Las solicitudes ya enviadas podrían facturarse. Aumentarlo no añade trabajos a la cola."
 }

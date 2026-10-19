@@ -1,0 +1,79 @@
+Recognition page limit validation — 2026-10-19
+
+GOTOOLCHAIN=go1.25.0; go test -race -count=1 ./...
+ALEXANDRIA_REQUIRE_INTEGRATION=1; fresh disposable PostgreSQL/S3 fixtures.
+50 packages passed; no failures or race reports.
+
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.325s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	2.872s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-audit	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-lab	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-preview	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.023s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	10.297s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	14.033s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	9.908s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.044s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.025s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	1.426s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	12.486s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	8.082s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	116.870s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.075s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	228.452s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	50.101s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp	1.035s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	12.678s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	13.137s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	14.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	23.052s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	43.071s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	6.761s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	17.199s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.039s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/status	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.036s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	20.866s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.027s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	9.148s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.013s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.046s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	80.125s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	8.791s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	3.697s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.013s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	2.701s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.120s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	9.468s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.082s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	2.004s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	186.125s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/migrations	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	5.561s
+
+Build/vet: passed.
+Hosting compile: passed all four packages with isolated source and local Server replacement.
+Compose packaging: 10 tests passed.
+Browser: 33 synthetic checks; desktop, phone, Palma, Lumi; English/Spanish; JavaScript disabled; persistent override/revoke; cap increase/decrease; keyboard focus and dark mode.
+
+Targeted coverage: 100/101 boundary, whole-notebook checks for partial requests and library chunks, source-isolated persistence, skip/deletion precedence, no repeated per-page job creation on rejection, Client growth, pending retirement, stale Settings submissions, concurrent admission versus cap changes, late provider-result fencing, existing cached text retention and source invalidation, purge cleanup of overrides, owner-Origin controls.
+No real provider calls were made by qualification.
+
+Final retry/resume correction: fresh full 50-package race gate repeated successfully; recognition/web targeted tests also pass. Rejected retry and resume report zero queued jobs.

@@ -239,6 +239,9 @@ func TestNotebookPermanentRemovalAndLateArrivals(t *testing.T) {
 	g.docs["commit"] = map[string]any{"_id": "commit", "_rev": "1-a", "uniqueId": "commit", "user": s.uid(), "dbId": s.uid() + "-NOTE_TREE", "commitType": 1, "documentUniqueId": "gone"}
 	g.docs["tag"] = map[string]any{"_id": "tag", "_rev": "1-a", "uniqueId": "tag", "user": s.uid(), "dbId": s.uid() + "-NOTE_TREE", "modeType": 1, "content": "private tag", "documentId": "gone"}
 	managementObserve(t, s)
+	if _, e := s.DB.ExecContext(ctx, `INSERT INTO alexandria_recognition_allow_large(source,notebook_id) VALUES('boox','gone')`); e != nil {
+		t.Fatal(e)
+	}
 	shared := []byte("shared synthetic attachment")
 	unique := []byte("exclusive synthetic attachment")
 	for key, body := range map[string][]byte{s.uid() + "/note/gone/resource/a": shared, s.uid() + "/note/keep/resource/a": shared, s.uid() + "/note/gone/resource/b": unique, s.uid() + "/note/gone.png": []byte("synthetic thumbnail")} {
@@ -265,7 +268,7 @@ func TestNotebookPermanentRemovalAndLateArrivals(t *testing.T) {
 		t.Fatal("purge incomplete")
 	}
 	var refs int
-	if e := s.DB.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM boox_projection WHERE document_id IN ('gone','tag','commit'))+(SELECT count(*) FROM boox_revision WHERE document_id IN ('gone','tag','commit'))+(SELECT count(*) FROM boox_blob_version WHERE starts_with(native_key,$1) OR native_key=rtrim($1,'/')||'.png')+(SELECT count(*) FROM alexandria_recognition_job WHERE notebook_id='gone')+(SELECT count(*) FROM alexandria_note_action_item WHERE notebook_id='gone')`, s.uid()+"/note/gone/").Scan(&refs); e != nil || refs != 0 {
+	if e := s.DB.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM boox_projection WHERE document_id IN ('gone','tag','commit'))+(SELECT count(*) FROM boox_revision WHERE document_id IN ('gone','tag','commit'))+(SELECT count(*) FROM boox_blob_version WHERE starts_with(native_key,$1) OR native_key=rtrim($1,'/')||'.png')+(SELECT count(*) FROM alexandria_recognition_job WHERE notebook_id='gone')+(SELECT count(*) FROM alexandria_note_action_item WHERE notebook_id='gone')+(SELECT count(*) FROM alexandria_recognition_allow_large WHERE notebook_id='gone')`, s.uid()+"/note/gone/").Scan(&refs); e != nil || refs != 0 {
 		t.Fatal(refs, e)
 	}
 	if _, e := s.Objects.Stat(ctx, "boox/bodies/"+hash(unique)); e == nil {

@@ -252,7 +252,7 @@ func (s Service) purgeServerRows(ctx context.Context, tx *sql.Tx, op, doc string
 	if e != nil {
 		return e
 	}
-	for _, table := range []string{"boox_page_index", "alexandria_note_action", "alexandria_note_action_item", "alexandria_note_minutes", "alexandria_transcription", "alexandria_recognition_job", "alexandria_recognition_skip"} {
+	for _, table := range []string{"boox_page_index", "alexandria_note_action", "alexandria_note_action_item", "alexandria_note_minutes", "alexandria_transcription", "alexandria_recognition_job", "alexandria_recognition_skip", "alexandria_recognition_allow_large"} {
 		predicate := "notebook_id=$1"
 		if table != "boox_page_index" {
 			predicate += " AND source='boox'"
