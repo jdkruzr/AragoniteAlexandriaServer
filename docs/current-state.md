@@ -1,5 +1,15 @@
 # Alexandria Server handoff
 
+2026-10-19 follow-up: **Go 6 II native management checks completed after reconnection.**
+A fresh disposable notebook arrived and opened in native Notes; rename, move,
+trash, restore, and reopening were verified on-device with the same notebook ID.
+Rich-text bytes were unchanged after move/restore. A native editor revision
+correctly blocked one stale rename; fresh review succeeded. Final server purge
+completed with no remaining content or recognition work. BOOX retains removed
+local metadata/cache, so physical device erasure remains outside this feature.
+[Device follow-up evidence](notebook-management/20261019/device-reconnected.md).
+No runtime or PowerSync update was needed.
+
 2026-10-19: **Native notebook management is live**, build
 `notebook-management-38b967f52ece`, on `feature/notebook-management` from
 `75975da`. Library and notebook details offer revision-checked rename, move to

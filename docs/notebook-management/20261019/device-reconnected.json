@@ -1,0 +1,193 @@
+{
+  "doc": "7d26a00e-fb5e-4a6f-8434-6b55b57c158e",
+  "createOperation": "113d0f2b-2d7c-4cb8-9e01-7b551b04827a",
+  "actions": [
+    {
+      "action": "rename",
+      "batch": "23ca085e-4f06-44d7-ba93-5c114fe564ae",
+      "submitted": 1792443285.3737717,
+      "finalStateAfterPurge": {
+        "state": "cancelled",
+        "error": "notebook_removed"
+      },
+      "observedBeforePurge": {
+        "state": "blocked",
+        "error": "stale_preview"
+      }
+    },
+    {
+      "action": "move",
+      "batch": "1c5b3929-6498-417b-9bc8-ce77989c9353",
+      "submitted": 1792443298.8770475,
+      "finalStateAfterPurge": {
+        "state": "cancelled",
+        "error": "notebook_removed"
+      },
+      "observedBeforePurge": {
+        "state": "published",
+        "error": null
+      }
+    },
+    {
+      "action": "rename",
+      "batch": "ae77f7bf-d06b-4d64-bb21-96f1eb1890fc",
+      "submitted": 1792443312.105664,
+      "finalStateAfterPurge": {
+        "state": "cancelled",
+        "error": "notebook_removed"
+      },
+      "observedBeforePurge": {
+        "state": "published",
+        "error": null
+      }
+    },
+    {
+      "action": "trash",
+      "batch": "aad66626-7124-4c88-a404-b22eab512717",
+      "submitted": 1792443322.5006971,
+      "finalStateAfterPurge": {
+        "state": "cancelled",
+        "error": "notebook_removed"
+      },
+      "observedBeforePurge": {
+        "state": "published",
+        "error": null
+      }
+    },
+    {
+      "action": "restore",
+      "batch": "2f3d55db-4634-477e-8b40-de3d821d0001",
+      "submitted": 1792443337.243514,
+      "finalStateAfterPurge": {
+        "state": "cancelled",
+        "error": "notebook_removed"
+      },
+      "observedBeforePurge": {
+        "state": "published",
+        "error": null
+      }
+    },
+    {
+      "action": "trash",
+      "batch": "f9313de2-e10a-4c14-9cae-9ea32f64193b",
+      "submitted": 1792443367.198979,
+      "finalStateAfterPurge": {
+        "state": "cancelled",
+        "error": "notebook_removed"
+      },
+      "observedBeforePurge": {
+        "state": "published",
+        "error": null
+      }
+    },
+    {
+      "action": "purge",
+      "batch": "3c32016b-21d3-4869-a0b0-dae47c47574a",
+      "submitted": 1792443380.9851859,
+      "finalStateAfterPurge": {
+        "state": "complete",
+        "error": null
+      },
+      "observedBeforePurge": {
+        "state": "complete",
+        "error": null
+      }
+    }
+  ],
+  "content": "Disposable synthetic notebook. Rename and folder moves must preserve this line.",
+  "snapshots": [
+    {
+      "title": "PowerSync management reconnected qualification 20261019",
+      "parent": null,
+      "status": "1",
+      "assets": 8,
+      "asset_fingerprint": "b903f4434b34da84897c5a05ff0e52a5"
+    },
+    {
+      "title": "PowerSync management reconnected qualification RENAMED 20261019",
+      "parent": "existing folder",
+      "status": "1",
+      "assets": 9,
+      "asset_fingerprint": "c64927e6a667e4aabd1676efb9380852"
+    }
+  ],
+  "cleanup": {
+    "projections": 0,
+    "revisions": 0,
+    "assets": 0,
+    "recognition": 0,
+    "queue": 0,
+    "marker": 1,
+    "pending_objects": 0,
+    "pending_native": 0
+  },
+  "device": {
+    "model": "BOOX Go 6 II",
+    "serial": "6d02351a",
+    "states": [
+      {
+        "uniqueId": "7d26a00e-fb5e-4a6f-8434-6b55b57c158e",
+        "parentUniqueId": "existing folder",
+        "type": "1",
+        "status": "1",
+        "title": "PowerSync management reconnected qualification 20261019"
+      },
+      {
+        "uniqueId": "7d26a00e-fb5e-4a6f-8434-6b55b57c158e",
+        "parentUniqueId": "existing folder",
+        "type": "1",
+        "status": "1",
+        "title": "PowerSync management reconnected qualification RENAMED 20261019"
+      },
+      {
+        "uniqueId": "7d26a00e-fb5e-4a6f-8434-6b55b57c158e",
+        "parentUniqueId": "existing folder",
+        "type": "1",
+        "status": "0",
+        "title": "PowerSync management reconnected qualification RENAMED 20261019"
+      },
+      {
+        "uniqueId": "7d26a00e-fb5e-4a6f-8434-6b55b57c158e",
+        "parentUniqueId": "existing folder",
+        "type": "1",
+        "status": "1",
+        "title": "PowerSync management reconnected qualification RENAMED 20261019"
+      },
+      {
+        "uniqueId": "7d26a00e-fb5e-4a6f-8434-6b55b57c158e",
+        "parentUniqueId": "existing folder",
+        "type": "1",
+        "status": "0",
+        "title": "PowerSync management reconnected qualification RENAMED 20261019"
+      },
+      {
+        "uniqueId": "7d26a00e-fb5e-4a6f-8434-6b55b57c158e",
+        "parentUniqueId": "existing folder",
+        "type": "1",
+        "status": "0",
+        "title": "PowerSync management reconnected qualification RENAMED 20261019"
+      },
+      {
+        "uniqueId": "7d26a00e-fb5e-4a6f-8434-6b55b57c158e",
+        "parentUniqueId": "existing folder",
+        "type": "1",
+        "status": "0",
+        "title": "PowerSync management reconnected qualification RENAMED 20261019"
+      }
+    ],
+    "nativeOpenVerified": true,
+    "nativeReopenAfterRestoreVerified": true,
+    "contentSHA256": "aab3b5952bba5c4a94a218802f0c6d2ce2141b0f20bc78fcc4766b6931e52c94",
+    "contentBytesIdenticalAfterMoveAndRestore": true,
+    "cachedFilesRetainedAfterRemoval": 11,
+    "localMetadataRetained": true,
+    "deviceLocalErasureClaimed": false
+  },
+  "previousFixture": {
+    "id": "aba65d5a-f5c8-4380-a809-8770bed9e6e1",
+    "renameAndMoveReceived": true,
+    "nativeStatus": 2,
+    "serverCleanupStillZero": true
+  },
+  "scope": "Synthetic notebooks only. No application update or enrollment changes. Normal native opens create metadata revisions; first stale rename correctly blocked, fresh review succeeded. Purge retires earlier operation rows as notebook_removed; observedBeforePurge records the live outcomes before that cleanup."
+}
