@@ -68,7 +68,7 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 		}
 		return html
 	}
-	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", "Embedding Model", `href="/settings/recognition#embedding"`, "BOOX notebook pages")
+	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", "Embedding Model", `href="/settings/recognition?section=embedding#embedding"`, "BOOX notebook pages")
 	// The embedding endpoint itself is set on the Recognition tab.
 	if rec := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(rec, `id="embedding"`) || !strings.Contains(rec, `name="embed_url"`) {
 		t.Fatal("embedding settings missing from Recognition")

@@ -2,8 +2,12 @@
 <h1>{{t "Search by Meaning"}} {{template "help" "semantic.overview"}}</h1>
 {{if $d.Providers}}{{$p := $d.Providers}}
 <p class="lede">{{t "Find related ideas even when the wording differs. Keyword search always works, whether this is on or off."}}</p>
-<section id="semantic-search" class="semantic-panel" aria-labelledby="semantic-heading">
-<h2 id="semantic-heading">{{t "Status"}} {{template "help" "semantic.status"}}</h2>
+<div class="settings-tiles">
+<details class="settings-tile" id="semantic-search" {{if eq .SettingsSection "semantic-search"}}open{{end}}>
+<summary><h2>{{t "Status"}}</h2><span class="settings-description">{{t "Check index coverage, turn search by meaning on or off, and rebuild the index."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "semantic-search"}}{{template "settings-notice" .}}{{end}}
+<p class="settings-help">{{template "help" "semantic.status"}}</p>
 <div id="semantic-live" data-live-region data-live-key="{{$p.IndexState}}{{$p.ActiveModel}}">
 <dl class="semantic-status">
 <div><dt>{{t "Provider"}}</dt><dd><span class="badge {{if $p.Availability.Ready}}indexed{{else}}partial{{end}}">{{t $p.Availability.Label}}</span></dd></div>
@@ -33,7 +37,7 @@
 {{end}}
 {{if $p.Failed}}<button name="action" value="retry" class="secondary" {{if or (not $p.CanSave) (not $p.SavedEmbedding.Enabled)}}disabled{{end}}>{{t "Retry failed index work"}}</button>{{end}}
 <button name="action" value="test" class="quiet" {{if not $p.SavedEmbedding.URL}}disabled{{end}}>{{t "Test connection"}}</button>
-<a href="/settings/search">{{t "Refresh"}}</a>
+<a href="/settings/search?section=semantic-search#semantic-search">{{t "Refresh"}}</a>
 {{template "help" "semantic.off"}}
 </form>
 <h3>{{t "Coverage by Source"}} {{template "help" "semantic.coverage"}}</h3>
@@ -41,11 +45,19 @@
 {{range $p.Coverage}}<tr><th scope="row">{{t .Label}}</th><td>{{.Texts}}</td><td>{{.Embedded}}</td><td>{{.Pending}}</td><td>{{.Failed}}</td></tr>{{end}}
 </tbody></table></div>
 {{if $p.BOOXWithoutText}}<p class="small muted">{{t "{{.Count}} BOOX pages have no recognized text yet, so they can't be searched by meaning." $p.BOOXWithoutText}} <a href="/jobs/library?source=boox">{{t "Recognize them separately if you want them included."}}</a></p>{{end}}
-</section>
 
-<section class="card">
-<h2>{{t "Embedding Model"}} {{template "help" "semantic.provider"}}</h2>
-<p>{{th "The embedding endpoint and model are set with the other AI models in <a href=\"/settings/recognition#embedding\">Settings → AI Tools and Recognition</a>."}}</p>
-</section>
+</div>
+</details>
+
+<details class="settings-tile" id="embedding-model" {{if eq .SettingsSection "embedding-model"}}open{{end}}>
+<summary><h2>{{t "Embedding Model"}}</h2><span class="settings-description">{{t "Find the model settings used for search by meaning."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "embedding-model"}}{{template "settings-notice" .}}{{end}}
+<p class="settings-help">{{template "help" "semantic.provider"}}</p>
+<p>{{th "The embedding endpoint and model are set with the other AI models in <a href=\"/settings/recognition?section=embedding#embedding\">Settings → AI Tools and Recognition</a>."}}</p>
+
+</div>
+</details>
+</div>
 {{else}}<p>{{t "Search by meaning is configured by this deployment."}}</p>{{end}}
 {{end}}

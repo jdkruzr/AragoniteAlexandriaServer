@@ -1,0 +1,36 @@
+Settings category tiles — 2026-10-19
+Toolchain: Go 1.25.0; isolated synthetic PostgreSQL and S3-compatible fixtures.
+
+PASS: fresh ALEXANDRIA_REQUIRE_INTEGRATION=1 go test -race -count=1 ./...
+      50 packages with tests, no failed packages or race reports.
+      Local log: /tmp/settings-tiles-full-gate.log
+PASS: affected web, BOOX and public library packages, fresh required fixtures.
+      Local log: /tmp/settings-tiles-targeted.log
+PASS: go vet ./...
+PASS: CGO_ENABLED=0 go build -trimpath, versioned app binary.
+PASS: Hosting compatibility compile in an isolated archive with local Server replacement.
+      Four packages; /tmp/settings-tiles-hosting.log
+PASS: 10 Compose packaging tests.
+PASS: git diff --check.
+
+PASS: 61 synthetic browser check groups; evidence is in browser.json. Layout checks cover every category across
+six Settings routes, English and Spanish, desktop/phone/Palma/Lumi viewports,
+without JavaScript. Real fixture forms cover saving, validation responses,
+category navigation, translated notices, API-token lifecycle, keyboard focus,
+legacy fragments, nested disclosures, and dark mode. The initial driver needed
+more specific selectors because provider forms intentionally contain hidden
+copies of settings belonging to another form. No application fix was required.
+The final handler/navigation checks use a freshly compiled fixture.
+
+Browser viewport checks are not physical device tests. No external provider
+inference, live notebook mutation, or live settings write is part of qualification.
+The temporary fixture databases are removed by test cleanup; temporary browser
+screenshots contain synthetic content only. No new schema migration.
+
+PASS: 49 live checks on settings-tiles-8c85de313a61; zero app restarts and no
+      startup warnings/errors. Runtime source: 318 verified inputs, 21 staged paths.
+PASS: automatic app rollback exercised after the initial smoke driver incorrectly
+      expected anonymous static-asset access; corrected authenticated checks pass.
+PASS: metadata fingerprints (schema, provider revision, job IDs, native projection
+      and live blob identities) unchanged across the final deployment.
+      See deployment.json. Both browser fixture databases were cleaned up.

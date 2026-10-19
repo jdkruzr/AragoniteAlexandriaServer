@@ -22,18 +22,18 @@ func (d Deps) recognitionSizeRoutes(mux *http.ServeMux) {
 		expected, _ := strconv.Atoi(r.PostForm.Get("expected"))
 		err := store.SetPageLimit(r.Context(), limit, expected)
 		if limit < 1 || limit > 20000 {
-			back(w, r, "/settings/recognition#page-limit", "Enter a page limit from 1 to 20,000.")
+			back(w, r, "/settings/recognition?section=page-limit#page-limit", "Enter a page limit from 1 to 20,000.")
 			return
 		}
 		if errors.Is(err, recognition.ErrSelectionChanged) {
-			back(w, r, "/settings/recognition#page-limit", "The page limit changed. Review it and save again.")
+			back(w, r, "/settings/recognition?section=page-limit#page-limit", "The page limit changed. Review it and save again.")
 			return
 		}
 		if err != nil {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/settings/recognition#page-limit", "Recognition page limit saved. No new work was queued.")
+		back(w, r, "/settings/recognition?section=page-limit#page-limit", "Recognition page limit saved. No new work was queued.")
 	})
 	mux.HandleFunc("GET /jobs/size", func(w http.ResponseWriter, r *http.Request) {
 		q := strings.TrimSpace(r.URL.Query().Get("q"))

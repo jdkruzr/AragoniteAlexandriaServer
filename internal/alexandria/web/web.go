@@ -178,15 +178,16 @@ type Deps struct {
 }
 
 type page struct {
-	Lang         string // HTML lang attribute
-	SourceTab    string
-	ClientSource bool
-	NativeBOOX   bool
-	Title        string
-	Section      string // nav highlight
-	Base         string // public origin, for copyable URLs
-	Data         any
-	Notice       string
+	SettingsSection string
+	Lang            string // HTML lang attribute
+	SourceTab       string
+	ClientSource    bool
+	NativeBOOX      bool
+	Title           string
+	Section         string // nav highlight
+	Base            string // public origin, for copyable URLs
+	Data            any
+	Notice          string
 	// Live is the update interval in seconds for a page with ongoing work.
 	// live.js refreshes its data-live-region elements in place; without
 	// JavaScript a <noscript> meta refresh reloads the whole page.
@@ -223,7 +224,7 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc)}).Funcs(formatFuncs(loc))
 		w.Header().Set("Content-Language", loc.Lang())
 		w.Header().Add("Vary", "Accept-Language")
-		err = t.ExecuteTemplate(&buf, "layout.html", page{Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
+		err = t.ExecuteTemplate(&buf, "layout.html", page{SettingsSection: settingsSection(r), Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
 			Notice: notice(loc, r)})
 	}
 	if err != nil {
@@ -396,6 +397,10 @@ func sourceTab(path, section string) string {
 	switch section {
 	case "settings":
 		switch path {
+		case "/settings/providers", "/settings/minutes":
+			return "recognition"
+		case "/settings/tokens/create":
+			return "integrations"
 		case "/settings/search", "/settings/recognition", "/settings/integrations":
 			return strings.TrimPrefix(path, "/settings/")
 		}

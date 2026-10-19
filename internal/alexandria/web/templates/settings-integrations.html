@@ -1,7 +1,11 @@
 {{define "content"}}{{$d := .Data}}
 <h1>{{t "Tasks & Integrations"}}</h1>
-<section class="card">
-<h2>{{t "Tasks Over CalDAV"}} {{template "help" "tasks.caldav"}}</h2>
+<div class="settings-tiles">
+<details class="settings-tile" id="caldav" {{if eq .SettingsSection "caldav"}}open{{end}}>
+<summary><h2>{{t "Tasks Over CalDAV"}}</h2><span class="settings-description">{{t "Connect calendar apps and choose list names, time zone, and due dates."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "caldav"}}{{template "settings-notice" .}}{{end}}
+<p class="settings-help">{{template "help" "tasks.caldav"}}</p>
 {{template "connection" (connection .Base "both")}}
 <form method="post" action="/settings/caldav" class="stack">
 <label>{{t "Task list name"}} <input name="collection" value="{{$d.Collection}}" maxlength="200"></label>
@@ -21,9 +25,14 @@
 </select></label>
 <div><button>{{t "Save"}}</button></div>
 </form>
-</section>
-<section class="card">
-<h2>{{t "API and MCP Access"}} {{template "help" "api.mcp"}}</h2>
+
+</div>
+</details>
+<details class="settings-tile" id="api" {{if eq .SettingsSection "api"}}open{{end}}>
+<summary><h2>{{t "API and MCP Access"}}</h2><span class="settings-description">{{t "Connect external tools and create or revoke access tokens."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "api"}}{{template "settings-notice" .}}{{end}}
+<p class="settings-help">{{template "help" "api.mcp"}}</p>
 <p>{{t "MCP address:"}} <code>{{.Base}}/mcp</code></p>
 <p class="small muted">{{t "Claude on the web connects with this address and asks you to approve access. Other clients use a token."}}</p>
 <form method="post" action="/settings/tokens/create" class="inline">
@@ -39,6 +48,9 @@
 {{end}}</tbody>
 </table></div>
 {{else}}<p class="empty">{{t "No tokens yet."}}</p>{{end}}
-</section>
+
+</div>
+</details>
 <script src="/static/timezone.js?v={{version}}" defer></script>
+</div>
 {{end}}

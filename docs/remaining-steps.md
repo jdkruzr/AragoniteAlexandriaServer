@@ -189,9 +189,10 @@ Requested for a later round; do not expand the current notebook-management relea
   in Settings. The job manager must offer a persistent per-notebook override to
   "always let it through." This concerns admission, not truncating recognition.
   Deployed 2026-10-19; [implementation and evidence](recognition-limit/20261019/implementation.md).
-- [ ] All Settings pages: categories initially appear as collapsed, simple tiles
+- [x] All Settings pages: categories initially appear as collapsed, simple tiles
   describing what their settings do. Expand a category to edit it. Pay particular
   attention to the crowded AI/Recognition page.
+  Deployed 2026-10-19; [implementation and evidence](settings-tiles/20261019/implementation.md).
 
 ## Scope guards
 

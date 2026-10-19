@@ -13,6 +13,7 @@
 {{if .Live}}<meta name="alexandria-live" content="{{.Live}}">
 <noscript><meta http-equiv="refresh" content="{{.Live}}"></noscript>
 <script src="/static/live.js?v={{version}}" defer></script>{{end}}
+{{if or (eq .Section "settings") (eq .Section "client-settings") (and (eq .Section "boox") (eq .SourceTab "settings"))}}<script src="/static/settings.js?v={{version}}" defer></script>{{end}}
 </head>
 <body data-section="{{.Section}}">
 <a class="skip-link" href="#main">{{t "Skip to content"}}</a>
@@ -27,7 +28,7 @@
 {{if .ClientSource}}<nav class="source-tabs" aria-label="Alexandria Client"><span class="source-label">Alexandria Client</span><a href="/files/forestnote" {{if eq .Section "notebooks"}}aria-current="page"{{end}}>{{t "Notebooks"}}</a><a href="/files/forestnote/books" {{if eq .Section "books"}}aria-current="page"{{end}}>{{t "Books"}}</a><a href="/files/forestnote/devices" {{if eq .Section "devices"}}aria-current="page"{{end}}>{{t "Devices"}}</a><a href="/sources/client" {{if eq .Section "client-settings"}}aria-current="page"{{end}}>{{t "Settings"}}</a></nav>{{end}}
 {{if eq .Section "boox"}}<nav class="source-tabs" aria-label="BOOX"><span class="source-label">BOOX</span><a href="/boox" {{if eq .SourceTab "notebooks"}}aria-current="page"{{end}}>{{t "Notebooks"}}</a><a href="/boox/reading" {{if eq .SourceTab "reading"}}aria-current="page"{{end}}>{{t "Reading"}}</a><a href="/boox/tags" {{if eq .SourceTab "tags"}}aria-current="page"{{end}}>{{t "Tags"}}</a><a href="/boox/devices" {{if eq .SourceTab "devices"}}aria-current="page"{{end}}>{{t "Devices"}}</a><a href="/boox/settings" {{if eq .SourceTab "settings"}}aria-current="page"{{end}}>{{t "Settings"}}</a></nav>{{end}}
 {{if eq .Section "settings"}}<nav class="source-tabs" aria-label="{{t "Settings"}}"><a href="/settings" {{if eq .SourceTab "account"}}aria-current="page"{{end}}>{{t "Account"}}</a><a href="/settings/search" {{if eq .SourceTab "search"}}aria-current="page"{{end}}>{{t "Search"}}</a><a href="/settings/recognition" {{if eq .SourceTab "recognition"}}aria-current="page"{{end}}>{{t "AI Tools and Recognition"}}</a><a href="/settings/integrations" {{if eq .SourceTab "integrations"}}aria-current="page"{{end}}>{{t "Tasks & Integrations"}}</a></nav>{{end}}
-{{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+{{if and .Notice (not .SettingsSection)}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
 {{template "content" .}}
 </main></div>
 <footer class="site-footer"><span>Alexandria Server <code data-version>{{version}}</code></span><a href="/help">{{t "Help"}}</a><a href="/help#diagnostics">{{t "Operator notes"}}</a></footer>
@@ -36,3 +37,5 @@
 
 {{define "help"}}{{tip .}}{{end}}
 {{define "pagination"}}<nav class="pagination" aria-label="{{t "Results pages"}}"><span>{{if .Total}}{{t "{{.Start}}–{{.End}} of {{.Total}}" "Start" .Start "End" .End "Total" .Total}}{{else}}{{t "0 results"}}{{end}} · {{t "Page {{.Page}} of {{.Pages}}" "Page" .Page "Pages" .Pages}}</span>{{if .Previous}}<a class="button secondary" href="{{.Previous}}">{{t "Previous"}}</a>{{end}}{{if .Next}}<a class="button secondary" href="{{.Next}}">{{t "Next"}}</a>{{end}}</nav>{{end}}
+
+{{define "settings-notice"}}{{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}{{end}}

@@ -406,7 +406,7 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 			c.MaxAge = -1 // browser default
 		}
 		http.SetCookie(w, c)
-		back(w, r, "/settings", i18n.M("Language saved."))
+		back(w, r, "/settings?section=language#language", i18n.M("Language saved."))
 	})
 	for _, tab := range []string{"account", "search", "recognition", "integrations"} {
 		path := "/settings/" + tab
@@ -443,14 +443,14 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 		// Blank is the server's zone; a saved zone outside the list is kept as is.
 		zone := r.FormValue("time_zone")
 		if saved, _ := settings.Get(r.Context(), d.DB, settings.TimeZone, ""); zone != "" && zone != saved && !settings.KnownZone(zone) {
-			back(w, r, "/settings/integrations", "Choose a time zone from the list.")
+			back(w, r, "/settings/integrations?section=caldav#caldav", "Choose a time zone from the list.")
 			return
 		}
 		if err := settings.Set(r.Context(), d.DB, settings.TimeZone, zone, false); err != nil {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/settings/integrations", "CalDAV settings saved.")
+		back(w, r, "/settings/integrations?section=caldav#caldav", "CalDAV settings saved.")
 	})
 	mux.HandleFunc("POST /settings/tokens/create", func(w http.ResponseWriter, r *http.Request) {
 		label := strings.TrimSpace(r.FormValue("label"))
@@ -471,7 +471,7 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/settings/integrations", "Token revoked.")
+		back(w, r, "/settings/integrations?section=api#api", "Token revoked.")
 	})
 }
 

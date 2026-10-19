@@ -1,5 +1,35 @@
 # Alexandria Server handoff
 
+2026-10-19: **Collapsed Settings category tiles implemented and deployed**, build
+`settings-tiles-8c85de313a61` on `feature/settings-tiles` from `a57d9d8`.
+All six Settings destinations now start with descriptive, collapsed categories:
+Account, Search, AI Tools and Recognition, Tasks & Integrations, Client, and BOOX.
+Opening a category reveals its existing controls at full width. Native disclosures
+work without JavaScript; explicit links and form results reopen the correct tile,
+with save/error notices inside it. Old fragment links and hidden-field validation
+have a small script enhancement. New descriptions are in English and Spanish.
+
+No migration, public runtime API change, or PowerSync update. Fresh required
+Go 1.25 PostgreSQL/object-store race gate: **50 packages pass**; build/vet, Hosting
+compatibility and 10 packaging checks pass. **61 synthetic browser check groups**
+cover all categories, four viewports, both languages, no-JS forms, keyboard access,
+provider validation, token lifecycle, old bookmarks, and dark mode. **49 live checks**
+pass, with zero app restarts or startup warnings/errors. All **318 runtime inputs**
+and **21 staged paths** were verified. Schema, provider revision, job identities,
+and native projection/blob fingerprints are unchanged. No live settings or
+notebook writes were submitted by qualification.
+
+The first activation rolled back automatically because the smoke driver wrongly
+expected anonymous static-asset access; the instance correctly required sign-in.
+The same tested app passed after correcting that expectation. Rollback is exercised;
+previous image, source/config archives and catalog-checked metadata dumps remain
+under `deploy/compose/private/settings-tiles-8c85de313a61/` and its `-attempt-1`
+sibling. [Implementation and rollback](settings-tiles/20261019/implementation.md),
+[validation](settings-tiles/20261019/validation.txt),
+[browser checks](settings-tiles/20261019/browser.json),
+[live evidence](settings-tiles/20261019/deployment.json).
+Search sorting remains queued. No branch pushed or merged.
+
 2026-10-19: **Recognition notebook page limit implemented and deployed**, build
 `recognition-limit-62fd5cf44594` on `feature/recognition-page-limit` from `66b2cd4`.
 Default **100 pages per notebook**, configurable from 1–20,000 in Settings → AI

@@ -1,8 +1,12 @@
 {{define "content"}}{{$d := .Data}}
 <h1>{{t "Account"}}</h1>
+<div class="settings-tiles">
 {{if $d.LocalPasswords}}
-<section class="card">
-<h2>{{t "Change Password"}} {{template "help" "account.password"}}</h2>
+<details class="settings-tile" id="password" {{if eq .SettingsSection "password"}}open{{end}}>
+<summary><h2>{{t "Change Password"}}</h2><span class="settings-description">{{t "Change your account password without disconnecting devices."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "password"}}{{template "settings-notice" .}}{{end}}
+<p class="settings-help">{{template "help" "account.password"}}</p>
 <form method="post" action="/settings/password" class="stack">
 <label>{{t "Current password"}} <input type="password" name="current_password" autocomplete="current-password" required></label>
 <label>{{t "New password"}} <input type="password" name="new_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
@@ -10,19 +14,30 @@
 <p class="hint">{{t "At least 12 characters. Devices and API tokens keep working."}}</p>
 <div><button>{{t "Change password"}}</button></div>
 </form>
-</section>
+
+</div>
+</details>
 {{else}}<p class="muted">{{t "Your sign-in is managed by the service hosting this library."}}</p>{{end}}
-<section class="card">
-<h2>{{t "Language"}}</h2>
+<details class="settings-tile" id="language" {{if eq .SettingsSection "language"}}open{{end}}>
+<summary><h2>{{t "Language"}}</h2><span class="settings-description">{{t "Choose the language used in this browser."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "language"}}{{template "settings-notice" .}}{{end}}
 <form method="post" action="/settings/language" class="stack">
-<label>{{t "Show Alexandria in"}} <select name="language" id="language"><option value="">{{t "Your browser's language"}}</option>{{range $d.Languages}}<option value="{{.Tag}}" lang="{{.Tag}}" {{if eq $d.Language .Tag}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label>{{t "Show Alexandria in"}} <select name="language" id="display-language"><option value="">{{t "Your browser's language"}}</option>{{range $d.Languages}}<option value="{{.Tag}}" lang="{{.Tag}}" {{if eq $d.Language .Tag}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
 <p class="hint">{{t "Saved in this browser. Text that Alexandria writes onto your tablets is set separately."}}</p>
 <div><button>{{t "Save language"}}</button></div>
 </form>
-</section>
-<section class="card">
-<h2>{{t "About This Server"}}</h2>
+
+</div>
+</details>
+<details class="settings-tile" id="about" {{if eq .SettingsSection "about"}}open{{end}}>
+<summary><h2>{{t "About This Server"}}</h2><span class="settings-description">{{t "Find this server’s address, version, and other settings."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "about"}}{{template "settings-notice" .}}{{end}}
 <p class="stats"><span><span class="stat-label">{{t "Address"}}</span><br><code>{{.Base}}</code></span><span><span class="stat-label">{{t "Version"}}</span><br><code>{{version}}</code></span></p>
 <p class="small muted">{{th "Other settings: <a href=\"/settings/search\">search by meaning</a>, <a href=\"/settings/recognition\">AI tools and recognition</a>, and <a href=\"/settings/integrations\">tasks, CalDAV and API access</a>."}}</p>
-</section>
+
+</div>
+</details>
+</div>
 {{end}}

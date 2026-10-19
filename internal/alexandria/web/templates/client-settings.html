@@ -1,7 +1,17 @@
 {{define "content"}}
 <h1>{{t "Alexandria Client Settings"}}</h1>
-<div class="cards">
-<section class="card"><h2>{{t "Devices"}}</h2><p>{{t "Client devices are listed separately from BOOX devices."}}</p><div class="card-foot">{{th "<a href=\"/files/forestnote/devices\">Manage Client devices</a>"}}</div></section>
-<section class="card"><h2>{{t "Recognition and Search"}}</h2><p>{{t "This source uses the library-wide settings. Recognized text can sync back to Client devices."}}</p><div class="card-foot">{{th "<a href=\"/settings/recognition\">Recognition</a><a href=\"/settings/search\">Search by meaning</a>"}}</div></section>
+<div class="settings-tiles">
+<details class="settings-tile" id="devices" {{if eq .SettingsSection "devices"}}open{{end}}>
+<summary><h2>{{t "Devices"}}</h2><span class="settings-description">{{t "Manage the Alexandria Client devices connected to this library."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "devices"}}{{template "settings-notice" .}}{{end}}<p>{{t "Client devices are listed separately from BOOX devices."}}</p><div class="card-foot">{{th "<a href=\"/files/forestnote/devices\">Manage Client devices</a>"}}</div>
+</div>
+</details>
+<details class="settings-tile" id="recognition-search" {{if eq .SettingsSection "recognition-search"}}open{{end}}>
+<summary><h2>{{t "Recognition and Search"}}</h2><span class="settings-description">{{t "Open the shared recognition and search settings for Client notebooks."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "recognition-search"}}{{template "settings-notice" .}}{{end}}<p>{{t "This source uses the library-wide settings. Recognized text can sync back to Client devices."}}</p><div class="card-foot">{{th "<a href=\"/settings/recognition\">Recognition</a><a href=\"/settings/search\">Search by meaning</a>"}}</div>
+</div>
+</details>
 </div>
 {{end}}

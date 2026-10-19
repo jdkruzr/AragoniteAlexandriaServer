@@ -1,6 +1,23 @@
 {{define "content"}}<h1>{{t "BOOX Settings"}}</h1>
-<div class="cards">
-<section class="card"><h2>{{t "Connection"}} {{template "help" "boox.enroll"}}</h2><p>{{t "Devices connect with PowerSync using"}} <code>{{.Base}}</code>.</p><p class="small muted">{{t "To return a tablet to Onyx, use Restore in PowerSync. Revoking a device here only removes its access."}}</p><div class="card-foot">{{th "<a class=\"button\" href=\"/boox/enroll\">Connect a device</a><a href=\"/boox/devices\">Manage devices</a>"}}</div></section>
-<section class="card"><h2>{{t "Library Maintenance"}}</h2><p>{{t "Delete notebooks BOOX left with default names, review deleted notebooks, or recognize handwriting across the whole library."}}</p><div class="card-foot">{{th "<a href=\"/boox/cleanup\">Clean up numbered notebooks…</a><a href=\"/boox?show=deleted\">Deleted notebooks</a><a href=\"/jobs/library?source=boox\">Recognize this library…</a>"}}</div></section>
-<section class="card"><h2>{{t "Diagnostics"}} {{template "help" "boox.diagnostics"}}</h2><p>{{t "Raw records the server has observed, with native IDs, revisions and retained history."}}</p><div class="card-foot">{{th "<a href=\"/boox/activity\">Open diagnostics</a><a href=\"/boox/text-notes/new\">Create a test text note</a><a href=\"/help#boox\">How BOOX sync works</a>"}}</div></section>
+<div class="settings-tiles">
+<details class="settings-tile" id="connection" {{if eq .SettingsSection "connection"}}open{{end}}>
+<summary><h2>{{t "Connection"}}</h2><span class="settings-description">{{t "Connect BOOX devices through PowerSync and manage their access."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "connection"}}{{template "settings-notice" .}}{{end}}
+<p class="settings-help">{{template "help" "boox.enroll"}}</p><p>{{t "Devices connect with PowerSync using"}} <code>{{.Base}}</code>.</p><p class="small muted">{{t "To return a tablet to Onyx, use Restore in PowerSync. Revoking a device here only removes its access."}}</p><div class="card-foot">{{th "<a class=\"button\" href=\"/boox/enroll\">Connect a device</a><a href=\"/boox/devices\">Manage devices</a>"}}</div>
+</div>
+</details>
+<details class="settings-tile" id="maintenance" {{if eq .SettingsSection "maintenance"}}open{{end}}>
+<summary><h2>{{t "Library Maintenance"}}</h2><span class="settings-description">{{t "Clean up default notebook names, review deleted notebooks, and start recognition."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "maintenance"}}{{template "settings-notice" .}}{{end}}<p>{{t "Delete notebooks BOOX left with default names, review deleted notebooks, or recognize handwriting across the whole library."}}</p><div class="card-foot">{{th "<a href=\"/boox/cleanup\">Clean up numbered notebooks…</a><a href=\"/boox?show=deleted\">Deleted notebooks</a><a href=\"/jobs/library?source=boox\">Recognize this library…</a>"}}</div>
+</div>
+</details>
+<details class="settings-tile" id="diagnostics" {{if eq .SettingsSection "diagnostics"}}open{{end}}>
+<summary><h2>{{t "Diagnostics"}}</h2><span class="settings-description">{{t "Inspect sync records and history, or create a test note."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "diagnostics"}}{{template "settings-notice" .}}{{end}}
+<p class="settings-help">{{template "help" "boox.diagnostics"}}</p><p>{{t "Raw records the server has observed, with native IDs, revisions and retained history."}}</p><div class="card-foot">{{th "<a href=\"/boox/activity\">Open diagnostics</a><a href=\"/boox/text-notes/new\">Create a test text note</a><a href=\"/help#boox\">How BOOX sync works</a>"}}</div>
+</div>
+</details>
 </div>{{end}}

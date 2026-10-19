@@ -75,7 +75,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if embedForm.Get("ocr_model") != "synthetic-vision" || embedForm.Get("anthropic_workspace") != "wrkspc_test123" || embedForm.Get("page") != "embedding" {
 		t.Fatal("search tab does not carry recognition settings", embedForm)
 	}
-	if got := b.do("POST", "/settings/providers", embedForm.Encode(), sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/settings/recognition?notice=") || !strings.HasSuffix(got.Header().Get("Location"), "#embedding") {
+	if got := b.do("POST", "/settings/providers", embedForm.Encode(), sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/settings/recognition?section=embedding&notice=") || !strings.HasSuffix(got.Header().Get("Location"), "#embedding") {
 		t.Fatal("embedding card save", got.Code, got.Header().Get("Location"))
 	}
 	p, _, snap, e = r.pageConfiguration(ctx, db)

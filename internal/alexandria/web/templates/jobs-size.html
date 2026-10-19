@@ -1,5 +1,5 @@
 {{define "content"}}{{$d:=.Data}}<p class="crumbs"><a href="/jobs">{{t "Recognition Jobs"}}</a></p><h1>{{t "Notebook size limits"}}</h1>
-<p>{{t "Notebooks over {{.Count}} pages need an override before recognition." $d.Limit}} <a href="/settings/recognition#page-limit">{{t "Change the page limit"}}</a></p>
+<p>{{t "Notebooks over {{.Count}} pages need an override before recognition." $d.Limit}} <a href="/settings/recognition?section=page-limit#page-limit">{{t "Change the page limit"}}</a></p>
 <p>{{t "The limit applies to the whole notebook, including single-page requests. Existing recognized text is kept. Overrides never undo skips or restore deleted notebooks."}}</p>
 <form class="search" method="get"><input type="search" name="q" value="{{$d.Query}}" aria-label="{{t "Notebook title"}}"><button>{{t "Search"}}</button></form>
 <ul>{{range $d.Rows}}<li><a href="/jobs/new?source={{.Source}}&amp;notebook={{.ID}}">{{.Title}}</a> · {{.Source}} · {{t "{{.Count}} pages" .Pages}} · {{if .AlwaysAllow}}{{t "Always allowed through the size limit"}}{{else}}{{t "Over the recognition page limit"}}{{end}}</li>{{else}}<li>{{t "No matching oversized notebooks or overrides."}}</li>{{end}}</ul>

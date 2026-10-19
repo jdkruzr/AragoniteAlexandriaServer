@@ -1,7 +1,7 @@
 {{define "content"}}{{$d:=.Data}}
 <p class="crumbs"><a href="/boox">{{t "Notebooks"}}</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">{{t "Audio Note Minutes"}}</a> /</p>
 <h1>{{t "Summarize This Note"}} {{template "help" "boox.minutes"}}</h1>
-{{if not $d.Enabled}}<div class="callout"><p>{{th "Set up transcription and a summary model in <a href=\"/settings/recognition#minutes\">Settings → AI Tools and Recognition</a> first."}}</p></div>{{else}}
+{{if not $d.Enabled}}<div class="callout"><p>{{th "Set up transcription and a summary model in <a href=\"/settings/recognition?section=minutes#minutes\">Settings → AI Tools and Recognition</a> first."}}</p></div>{{else}}
 <form method="post" action="/boox/minutes/new"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="request" value="{{$d.Request}}">
 <section class="card"><h2>{{t "Recordings"}}</h2>
 {{if $d.Recordings}}<div class="table-scroll"><table><thead><tr><th>{{t "Recording"}}</th><th>{{t "Recorded"}}</th><th>{{t "Length"}}</th><th>{{t "Size"}}</th></tr></thead><tbody>
@@ -16,6 +16,6 @@
 <section class="card"><h2>{{t "Send"}}</h2>
 <p>Transcription: <strong>{{$d.Transcriber}}</strong> {{t "· Summary:"}} <strong>{{$d.Summarizer}}</strong></p>
 <label class="confirm"><input type="checkbox" name="confirm" required> {{t "Send the recordings and this notebook's text to these providers"}}</label>
-{{if $d.AutoSend}}<p class="small muted">{{t "When they're ready, the minutes are also sent to your BOOX as “{{.Title}}”." "Title" (printf "%s_Minutes" $d.Title)}} <a href="/settings/recognition#minutes">{{t "Change this in Settings → AI Tools and Recognition."}}</a></p>{{end}}
+{{if $d.AutoSend}}<p class="small muted">{{t "When they're ready, the minutes are also sent to your BOOX as “{{.Title}}”." "Title" (printf "%s_Minutes" $d.Title)}} <a href="/settings/recognition?section=minutes#minutes">{{t "Change this in Settings → AI Tools and Recognition."}}</a></p>{{end}}
 <p><button>{{t "Summarize"}}</button></p>
 </section></form>{{end}}{{end}}
