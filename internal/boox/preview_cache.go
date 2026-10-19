@@ -35,9 +35,10 @@ type previewResult struct {
 // library, notebook, revision, every live asset digest, page, and renderer version.
 var previews = struct {
 	sync.Mutex
-	Items map[string]previewResult
-	Bytes int
-}{Items: map[string]previewResult{}}
+	Items  map[string]previewResult
+	Bytes  int
+	Purged map[string]bool
+}{Items: map[string]previewResult{}, Purged: map[string]bool{}}
 
 func (s Service) previewKey(id, version string, num int) string {
 	return s.LibraryID + ":" + id + ":" + version + ":" + strconv.Itoa(num)
@@ -45,6 +46,9 @@ func (s Service) previewKey(id, version string, num int) string {
 func cachedPreview(key string) (previewResult, bool) {
 	previews.Lock()
 	defer previews.Unlock()
+	if previews.Purged[previewNotebook(key)] {
+		return previewResult{}, false
+	}
 	v, ok := previews.Items[key]
 	if ok {
 		v.Access = time.Now()
@@ -58,6 +62,9 @@ func storePreview(key string, v previewResult) {
 	}
 	previews.Lock()
 	defer previews.Unlock()
+	if previews.Purged[previewNotebook(key)] {
+		return
+	}
 	if old, ok := previews.Items[key]; ok {
 		previews.Bytes -= previewSize(old)
 	}
@@ -184,4 +191,12 @@ func (s Service) typedPreview(ctx context.Context, n notebookSnapshot, num int) 
 		storePreview(key, typed)
 	}
 	return typed, true, nil
+}
+
+func previewNotebook(key string) string {
+	parts := strings.SplitN(key, ":", 3)
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[0] + ":" + parts[1]
 }

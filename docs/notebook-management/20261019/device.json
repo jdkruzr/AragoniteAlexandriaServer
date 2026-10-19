@@ -1,0 +1,83 @@
+{
+  "doc": "aba65d5a-f5c8-4380-a809-8770bed9e6e1",
+  "createOperation": "0cee3191-261a-476a-8b69-e87234ddee65",
+  "actions": [
+    {
+      "action": "rename",
+      "batch": "af763ab2-428a-4fd8-bc21-b6dce2946126",
+      "submitted": 1792438145.8808682
+    },
+    {
+      "action": "move",
+      "batch": "a6516365-93b2-43e9-bb00-99b9168a3d74",
+      "submitted": 1792438163.2686567
+    },
+    {
+      "action": "trash",
+      "batch": "c1a3ac5c-42b8-412d-9c35-c3677183d87d",
+      "submitted": 1792438175.7014158
+    },
+    {
+      "action": "restore",
+      "batch": "a7b7e556-ff52-4cec-8fb1-c87d60ef889e",
+      "submitted": 1792438186.5672302
+    },
+    {
+      "action": "trash",
+      "batch": "4a91c946-c5b7-48de-8967-9016c91fb088",
+      "submitted": 1792438196.63709
+    },
+    {
+      "action": "purge",
+      "batch": "ec44bfa6-417c-4b5f-8703-bbcf1fb95e65",
+      "submitted": 1792438204.1760778
+    }
+  ],
+  "content": "Disposable synthetic notebook. Rename and folder moves must preserve this line.",
+  "snapshots": [
+    {
+      "title": "PowerSync management qualification RENAMED 20261019",
+      "parent": "existing native folder (same identity throughout)",
+      "status": "1",
+      "assets": 8,
+      "asset_fingerprint": "594edf6f8dd90aa9ae740aae3e2b6aea"
+    },
+    {
+      "title": "PowerSync management qualification RENAMED 20261019",
+      "parent": "existing native folder (same identity throughout)",
+      "status": "0",
+      "assets": 8,
+      "asset_fingerprint": "594edf6f8dd90aa9ae740aae3e2b6aea"
+    },
+    {
+      "title": "PowerSync management qualification RENAMED 20261019",
+      "parent": "existing native folder (same identity throughout)",
+      "status": "1",
+      "assets": 8,
+      "asset_fingerprint": "594edf6f8dd90aa9ae740aae3e2b6aea"
+    }
+  ],
+  "cleanup": {
+    "projections": 0,
+    "revisions": 0,
+    "assets": 0,
+    "recognition": 0,
+    "queue": 0,
+    "marker": 1,
+    "pending_objects": 0,
+    "pending_native": 0
+  },
+  "device": {
+    "model": "BOOX Go 6 II",
+    "serial": "6d02351a",
+    "initialSyntheticNotebookReceived": true,
+    "initialStatus": 1,
+    "baselineNativeRows": 1107,
+    "laterLifecycleVerified": false,
+    "reason": "ADB device disconnected after initial receipt and server rename; unavailable for native open, move, trash, restore, and final local cleanup verification.",
+    "deviceLocalCleanup": "unverified; server permanent removal does not promise device-local physical deletion"
+  },
+  "serverLifecycle": "rename, move, trash, restore, trash, permanent removal all published/completed through live no-JS forms",
+  "recognition": "fixture explicitly skipped before publication; zero remaining recognition jobs or queue rows",
+  "cleanupPolicy": "Fixture content removed. Minimal purge identity and operation outcomes retained intentionally to prevent resurrection. No user notebooks mutated."
+}

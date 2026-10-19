@@ -168,6 +168,9 @@ func (s Service) previewAudioRepair(ctx context.Context, in audioRepairInput) (m
 		return nil, err
 	}
 	defer tx.Rollback()
+	if err = notebookWriteLock(ctx, tx); err != nil {
+		return nil, err
+	}
 	var bodyRaw []byte
 	var revision, generation string
 	err = tx.QueryRowContext(ctx, `SELECT body,revision FROM boox_projection WHERE document_id=$1 FOR SHARE`, in.DocumentID).Scan(&bodyRaw, &revision)

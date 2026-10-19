@@ -1,0 +1,233 @@
+{
+  "version": "notebook-management-38b967f52ece",
+  "image": "sha256:8ed6676eabc6522dec9584adae5f2a39f90da8df574b5ff2ad78233a3447e219",
+  "restarts": 0,
+  "state": "running",
+  "startedAt": "2026-10-19T19:28:36.556986496Z",
+  "startupLogLevels": {
+    "INFO": 2
+  },
+  "runtimeInputsVerified": 312,
+  "stagedPathsVerified": 21,
+  "recoveryDirectory": "/opt/aragonite-alexandria-server/deploy/compose/private/notebook-management-38b967f52ece",
+  "compatibleRollbackImage": "sha256:1b87a32153c9d92a72a45b52dce8b96e0b5227ee4ecfbe4e933e438c60055fce",
+  "metadataDumpBytes": 50828971,
+  "metadataCatalogVerified": true,
+  "before": {
+    "migration_count": 34,
+    "prior_migration_fingerprint": "8bc165463b0d9daaa708f81ce3edb0b5",
+    "management_migration_checksum": null,
+    "provider_revision": 13,
+    "job_count": 5408,
+    "jobs_fingerprint": "422a5b281d09a2adf46d632ba8f970f7",
+    "native_projection_fingerprint": "ba6eb1fe773afe2a38259795877a5fda",
+    "native_blobs_fingerprint": "49d5ec5035eca8d556e72a3aaaae619f"
+  },
+  "migrated": {
+    "migration_count": 35,
+    "prior_migration_fingerprint": "8bc165463b0d9daaa708f81ce3edb0b5",
+    "management_migration_checksum": "538178932dce98e1ecc0062542d1c133ca9d7c756649d6b4a015ca81b617e102",
+    "provider_revision": 13,
+    "job_count": 5408,
+    "jobs_fingerprint": "422a5b281d09a2adf46d632ba8f970f7",
+    "native_projection_fingerprint": "ba6eb1fe773afe2a38259795877a5fda",
+    "native_blobs_fingerprint": "49d5ec5035eca8d556e72a3aaaae619f"
+  },
+  "after": {
+    "migration_count": 35,
+    "prior_migration_fingerprint": "8bc165463b0d9daaa708f81ce3edb0b5",
+    "management_migration_checksum": "538178932dce98e1ecc0062542d1c133ca9d7c756649d6b4a015ca81b617e102",
+    "provider_revision": 13,
+    "job_count": 5408,
+    "jobs_fingerprint": "422a5b281d09a2adf46d632ba8f970f7",
+    "native_projection_fingerprint": "ba6eb1fe773afe2a38259795877a5fda",
+    "native_blobs_fingerprint": "49d5ec5035eca8d556e72a3aaaae619f"
+  },
+  "smoke": {
+    "checks": [
+      {
+        "path": "/readyz",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/livez",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/boox",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/boox/manage",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/metrics",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/boox/manage",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "POST"
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/boox/manage",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/boox/manage",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/boox",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      }
+    ],
+    "passed": 22,
+    "baseURL": "https://alexandria.federation.engineering",
+    "version": "notebook-management-38b967f52ece",
+    "realNotebookMutations": false
+  },
+  "rollbackExercised": true,
+  "rollbackReason": "Initial Library smoke check failed because deployment omitted explicit runtime grants for new tables. Compatible rollback exercised; grant-runtime applied and activation script corrected before final smoke checks.",
+  "writeQualification": "Isolated integration/browser fixtures plus one disposable live notebook on Go 6 II. No user notebook operations queued; recognition skipped for disposable live fixture."
+}

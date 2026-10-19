@@ -1,0 +1,399 @@
+[
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/boox",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/boox?show=deleted",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/boox/manage?id=first",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/boox/manage?id=first&action=rename",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/boox/manage?id=first&action=move",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/boox/manage?id=ghost&action=restore",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "en",
+    "route": "/boox/manage?id=ghost&action=purge",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/boox",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/boox?show=deleted",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/boox/manage?id=first",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/boox/manage?id=first&action=rename",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/boox/manage?id=first&action=move",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/boox/manage?id=ghost&action=restore",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "desktop",
+    "lang": "es",
+    "route": "/boox/manage?id=ghost&action=purge",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/boox",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/boox?show=deleted",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/boox/manage?id=first",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/boox/manage?id=first&action=rename",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/boox/manage?id=first&action=move",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/boox/manage?id=ghost&action=restore",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "en",
+    "route": "/boox/manage?id=ghost&action=purge",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/boox",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/boox?show=deleted",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/boox/manage?id=first",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/boox/manage?id=first&action=rename",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/boox/manage?id=first&action=move",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/boox/manage?id=ghost&action=restore",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "phone",
+    "lang": "es",
+    "route": "/boox/manage?id=ghost&action=purge",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/boox",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/boox?show=deleted",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/boox/manage?id=first",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/boox/manage?id=first&action=rename",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/boox/manage?id=first&action=move",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/boox/manage?id=ghost&action=restore",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "en",
+    "route": "/boox/manage?id=ghost&action=purge",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/boox",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/boox?show=deleted",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/boox/manage?id=first",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/boox/manage?id=first&action=rename",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/boox/manage?id=first&action=move",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/boox/manage?id=ghost&action=restore",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "palma",
+    "lang": "es",
+    "route": "/boox/manage?id=ghost&action=purge",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/boox",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/boox?show=deleted",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/boox/manage?id=first",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/boox/manage?id=first&action=rename",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/boox/manage?id=first&action=move",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/boox/manage?id=ghost&action=restore",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "en",
+    "route": "/boox/manage?id=ghost&action=purge",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/boox",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/boox?show=deleted",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/boox/manage?id=first",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/boox/manage?id=first&action=rename",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/boox/manage?id=first&action=move",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/boox/manage?id=ghost&action=restore",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "device": "lumi",
+    "lang": "es",
+    "route": "/boox/manage?id=ghost&action=purge",
+    "javaScript": false,
+    "overflow": false
+  },
+  {
+    "noJavaScript": "rename, trash, restore, permanent removal and return navigation passed",
+    "keyboard": "visible focus",
+    "dark": "rendered"
+  }
+]

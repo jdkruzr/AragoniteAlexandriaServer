@@ -24,6 +24,9 @@ func (s Service) Observe(ctx context.Context) (int, error) {
 		return 0, e
 	}
 	defer tx.Rollback()
+	if e = notebookWriteLock(ctx, tx); e != nil {
+		return 0, e
+	}
 	var cursor []byte
 	if e = tx.QueryRowContext(ctx, `SELECT cursor FROM boox_cursor WHERE id=1 FOR UPDATE`).Scan(&cursor); e != nil {
 		return 0, e
@@ -66,6 +69,13 @@ func (s Service) Observe(ctx context.Context) (int, error) {
 					return n, errors.New("gateway source ownership mismatch")
 				}
 			}
+			suppressed, pe := s.suppressPurgedDocument(ctx, tx, change.ID, body)
+			if pe != nil {
+				return n, pe
+			}
+			if suppressed {
+				continue
+			}
 			raw, e := json.Marshal(body)
 			if e != nil {
 				return n, e
@@ -91,6 +101,13 @@ func (s Service) Observe(ctx context.Context) (int, error) {
 				continue
 			}
 			return n, e
+		}
+		suppressed, pe := s.suppressPurgedDocument(ctx, tx, change.ID, winner)
+		if pe != nil {
+			return n, pe
+		}
+		if suppressed {
+			continue
 		}
 		scope, _ := winner["dbId"].(string)
 		domain := "opaque"
@@ -127,7 +144,8 @@ func noteMetadata(b map[string]any, uid string) bool {
 
 // Publication retries one deterministic operation at a time. Each external
 // document carries a stable operation marker, so a lost ACK is recoverable.
-func (s Service) PublishOne(ctx context.Context) (bool, error) {
+func (s Service) PublishOne(ctx context.Context) (bool, error) { return s.publishOne(ctx, "") }
+func (s Service) publishOne(ctx context.Context, selected string) (bool, error) {
 	if e := s.ResolveIdentity(ctx); e != nil {
 		return false, e
 	}
@@ -136,9 +154,13 @@ func (s Service) PublishOne(ctx context.Context) (bool, error) {
 		return false, e
 	}
 	defer tx.Rollback()
+	if e = notebookWriteLock(ctx, tx); e != nil {
+		return false, e
+	}
 	var id, kind, doc, expected, state string
+	var started bool
 	var raw []byte
-	e = tx.QueryRowContext(ctx, `SELECT id::text,kind,document_id,expected_revision,state,payload FROM boox_operation WHERE state IN ('queued','assets_published','record_published','commit_published') ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1`).Scan(&id, &kind, &doc, &expected, &state, &raw)
+	e = tx.QueryRowContext(ctx, `SELECT id::text,kind,document_id,expected_revision,state,payload,started_at IS NOT NULL FROM boox_operation WHERE ($1='' OR id::text=$1) AND state IN ('queued','assets_published','record_published','commit_published','purging_native','purging_server','purging_objects') AND next_attempt_at<=now() ORDER BY next_attempt_at,created_at FOR UPDATE SKIP LOCKED LIMIT 1`, selected).Scan(&id, &kind, &doc, &expected, &state, &raw, &started)
 	if e != nil {
 		if errors.Is(e, sql.ErrNoRows) {
 			return false, nil
@@ -159,6 +181,41 @@ func (s Service) PublishOne(ctx context.Context) (bool, error) {
 			e = tx.Commit()
 		}
 		return true, e
+	}
+	// Commit the start marker before any external write. Even a lost Gateway
+	// acknowledgement must not make a partially published operation cancellable.
+	if !started {
+		if _, e = tx.ExecContext(ctx, `UPDATE boox_operation SET started_at=now() WHERE id=$1`, id); e != nil {
+			return true, e
+		}
+		if e = tx.Commit(); e != nil {
+			return true, e
+		}
+		_, e = s.publishOne(ctx, id)
+		return true, e
+	}
+	if kind == "purge_note" {
+		e = s.purgeStep(ctx, tx, id, doc, expected, state, payload)
+		if e != nil {
+			_ = tx.Rollback()
+			_, retryErr := s.DB.ExecContext(ctx, `UPDATE boox_operation SET error_code='cleanup_retry_needed',next_attempt_at=now()+interval '30 seconds',updated_at=now() WHERE id=$1`, id)
+			if retryErr != nil {
+				return true, retryErr
+			}
+			return true, e
+		}
+		return true, tx.Commit()
+	}
+	purged, e := notebookPurged(ctx, tx, doc)
+	if e != nil {
+		return true, e
+	}
+	if purged {
+		_, e = tx.ExecContext(ctx, `UPDATE boox_operation SET state='cancelled',error_code='notebook_removed' WHERE id=$1`, id)
+		if e != nil {
+			return true, e
+		}
+		return true, tx.Commit()
 	}
 	var live map[string]any
 	if (kind == "upload_book" || kind == "create_text_note") && state == "queued" {
@@ -233,10 +290,29 @@ func (s Service) PublishOne(ctx context.Context) (bool, error) {
 				}
 				return true, e
 			}
+			if parent, ok := payload["parent"].(string); ok && parent != "" {
+				var folder map[string]any
+				fe := s.Config.gateway(ctx, "GET", "/"+url.PathEscape(parent), nil, &folder)
+				if u, ok := fe.(UpstreamError); fe != nil && (!ok || u.Status != 404) {
+					return true, fe
+				}
+				if fe != nil || !folderMetadata(folder, s.uid()) || folder["_rev"] != payload["parentRevision"] {
+					_, e = tx.ExecContext(ctx, `UPDATE boox_operation SET state='blocked',error_code='destination_changed' WHERE id=$1`, id)
+					if e != nil {
+						return true, e
+					}
+					return true, tx.Commit()
+				}
+			}
 			if kind == "rename_note" {
 				live["title"] = payload["title"]
+			} else if kind == "move_note" {
+				live["parentUniqueId"] = payload["parent"]
 			} else if kind == "set_note_status" {
 				live["status"] = payload["status"]
+				if parent, ok := payload["parent"]; ok {
+					live["parentUniqueId"] = parent
+				}
 			} else if kind == "restore_reader_fields" {
 				changes, ok := payload["changes"].(map[string]any)
 				if !ok {

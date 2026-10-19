@@ -1,5 +1,40 @@
 # Alexandria Server handoff
 
+2026-10-19: **Native notebook management is live**, build
+`notebook-management-38b967f52ece`, on `feature/notebook-management` from
+`75975da`. Library and notebook details offer revision-checked rename, move to
+existing folders/root, trash, restore, and permanent removal, individually or
+in batches of up to 200. English/Spanish forms work without JavaScript and
+preserve Library navigation. Permanent removal proceeds through durable native,
+server, and unshared-object cleanup stages; late native metadata/uploads cannot
+resurrect the notebook or restart recognition. Migration **0035** does not
+remove existing notebooks. No PowerSync update is required.
+
+Fresh required Go 1.25 PostgreSQL/object-store race gate: **50 packages pass**.
+Build/vet, Hosting compatibility, 10 packaging checks, and **57 synthetic browser
+checks** pass. Live deployment passes **22 checks**, with zero restarts or startup
+warnings/errors. All **312 runtime inputs** and **21 staged paths** were verified.
+The first activation exposed an omitted runtime-grant refresh in the deployment
+script; compatible rollback was exercised, then `grant-runtime` and successful
+reactivation completed. Recovery artifacts retain deletion safeguards.
+
+A disposable live notebook completed rename/move/trash/restore/permanent removal;
+all eight asset versions survived trash/restore unchanged. Final projections,
+revision archives, asset references, recognition jobs/queue, and pending cleanup
+work are zero; a minimal anti-resurrection identity remains. The Go 6 II received
+the fixture, then disconnected from ADB. Later device lifecycle, native editor
+opening, and device-local cleanup remain **unverified**; no physical device
+cleanup claim is made. No user notebook operations were submitted.
+
+[Implementation and rollback](notebook-management/20261019/implementation.md),
+[validation](notebook-management/20261019/validation.txt),
+[browser checks](notebook-management/20261019/browser.json),
+[live deployment](notebook-management/20261019/deployment.json),
+[synthetic lifecycle and device limits](notebook-management/20261019/device.json).
+Search sorting, configurable recognition page limits/overrides, and collapsed
+Settings tiles are queued in `remaining-steps.md` for a later round. No branch
+was pushed or merged.
+
 2026-10-19: **Deleted BOOX notebooks no longer requeue recognition**, deployed
 as `recognition-delete-73fb37c99de4` from `fix/recognition-deleted-sources`
 (base `39289c4`). Migration **0034** retires current work on authoritative native

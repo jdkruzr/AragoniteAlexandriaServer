@@ -22,12 +22,13 @@ import (
 	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
 
-const notebookPredicate = `domain='notebook' AND body->>'uniqueId'=document_id AND NOT body ? 'commitType' AND body->>'type' IN ('0','1')`
+const notebookPredicate = `domain='notebook' AND body->>'uniqueId'=document_id AND NOT body ? 'commitType' AND body->>'type' IN ('0','1') AND NOT EXISTS(SELECT 1 FROM boox_notebook_purged gone WHERE gone.notebook_id=document_id)`
 
 type notebookEntry struct {
 	CreatedAt, ModifiedAt       int64
 	ID, Title, Parent, Revision string
 	Kind                        string
+	Choice                      string
 	Folder                      bool
 	PagesTruncated              bool
 	Pages                       int
@@ -39,6 +40,7 @@ type libraryPage struct {
 	Crumbs                        []notebookEntry
 	Folder, Query, Next, Previous string
 	Category                      string
+	Return                        string
 	Deleted                       bool
 }
 
@@ -53,6 +55,7 @@ func browserOffset(r *http.Request) int {
 }
 func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 	d := libraryPage{Folder: r.URL.Query().Get("folder"), Query: strings.TrimSpace(r.URL.Query().Get("q")), Deleted: r.URL.Query().Get("show") == "deleted"}
+	d.Return = notebookReturn(r.URL.RequestURI())
 	status := "1"
 	if d.Deleted {
 		status = "0"
@@ -103,6 +106,8 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		}
 		v.Parent = m.ParentUniqueID
 		v.Folder = m.Type == 0
+		choice, _ := json.Marshal(notebookChoice{ID: v.ID, Revision: v.Revision})
+		v.Choice = string(choice)
 		association := m.AssociationType
 		if m.Association != nil {
 			association = m.Association.AssociationType
@@ -267,6 +272,7 @@ type notebookView struct {
 	ID, Title, Parent, Page, Version, Image, Previous, Next, Zoom string
 	Number, Count                                                 int
 	Deleted                                                       bool
+	Return                                                        string
 	Warnings                                                      []string
 	// PageRecordings are the recordings whose chips are on this page.
 	PageRecordings []minutes.Source
@@ -308,6 +314,7 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := notebookView{RecognitionEnabled: s.RecognitionEnabled, ID: n.Meta.UniqueID, Title: n.Meta.Title, Parent: n.Meta.ParentUniqueID, Number: num, Count: len(ids), Version: n.Version, Deleted: n.Meta.Status != 1}
+	d.Return = notebookReturn(r.URL.RequestURI())
 	if r.URL.Query().Get("zoom") == "actual" {
 		d.Zoom = "actual"
 	}

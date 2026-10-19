@@ -347,6 +347,15 @@ func (s Service) QueueTextNote(ctx context.Context, n TextNote) (string, error) 
 	if e != nil {
 		return "", e
 	}
+	if n.MinutesOf != "" {
+		gone, e := notebookPurged(ctx, tx, n.MinutesOf)
+		if e != nil {
+			return "", e
+		}
+		if gone {
+			return "", errNotebookSelection
+		}
+	}
 	idem := "text-note:" + hash([]byte(generation+":"+s.uid()+":"+n.Request))
 	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, idem); e != nil {
 		return "", e
@@ -368,7 +377,7 @@ func (s Service) QueueTextNote(ctx context.Context, n TextNote) (string, error) 
 	id := uuid.NewString()
 	record["alexandriaOperationId"] = id
 	for i, a := range assets {
-		if e = bindPublicationAsset(ctx, tx, a.Key, staged[i]); e != nil {
+		if e = s.bindPublicationAsset(ctx, tx, a.Key, staged[i]); e != nil {
 			return "", e
 		}
 	}

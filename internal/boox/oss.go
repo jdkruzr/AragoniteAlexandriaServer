@@ -121,16 +121,31 @@ func (s Service) oss(w http.ResponseWriter, r *http.Request) {
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
-		if _, e = s.Objects.Put(r.Context(), "boox/bodies/"+digest, contentType, bytes.NewReader(raw), int64(len(raw))); e != nil {
-			ossError(w, 503, "ServiceUnavailable")
-			return
-		}
 		tx, e := s.DB.BeginTx(r.Context(), nil)
 		if e != nil {
 			ossError(w, 503, "ServiceUnavailable")
 			return
 		}
 		defer tx.Rollback()
+		if e = notebookWriteLock(r.Context(), tx); e != nil {
+			ossError(w, 503, "ServiceUnavailable")
+			return
+		}
+		if nid := nativeNotebookKey(key); nid != "" {
+			gone, pe := notebookPurged(r.Context(), tx, nid)
+			if pe != nil {
+				ossError(w, 503, "ServiceUnavailable")
+				return
+			}
+			if gone {
+				ossError(w, 410, "NotebookRemoved")
+				return
+			}
+		}
+		if _, e = s.Objects.Put(r.Context(), "boox/bodies/"+digest, contentType, bytes.NewReader(raw), int64(len(raw))); e != nil {
+			ossError(w, 503, "ServiceUnavailable")
+			return
+		}
 		if e = s.fence(r.Context(), tx, d); e == nil {
 			var v int64
 			e = tx.QueryRowContext(r.Context(), `INSERT INTO boox_blob_version(native_key,sha256,md5,bytes,content_type,device_id) VALUES($1,$2,$3,$4,$5,$6) RETURNING id`, key, digest, hex.EncodeToString(m[:]), len(raw), contentType, d.ID).Scan(&v)
@@ -188,6 +203,21 @@ func (s Service) oss(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer tx.Rollback()
+		if e = notebookWriteLock(r.Context(), tx); e != nil {
+			ossError(w, 503, "ServiceUnavailable")
+			return
+		}
+		if nid := nativeNotebookKey(key); nid != "" {
+			gone, pe := notebookPurged(r.Context(), tx, nid)
+			if pe != nil {
+				ossError(w, 503, "ServiceUnavailable")
+				return
+			}
+			if gone {
+				w.WriteHeader(204)
+				return
+			}
+		}
 		if e = s.fence(r.Context(), tx, d); e == nil {
 			_, e = tx.ExecContext(r.Context(), `INSERT INTO boox_blob_version(native_key,device_id,deleted) VALUES($1,$2,true)`, key, d.ID)
 		}

@@ -302,6 +302,24 @@ func (s Service) itemLink(id, page string) string {
 // The ledger row is claimed first, under the lease, so a passage is acted on
 // once even if two runs overlap.
 func (s Service) makeItems(ctx context.Context, id, page, color, action, token, notebook string, num int, zone *time.Location, items []noteactions.Item) (made, skipped, dropped int, err error) {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	defer func() {
+		if err == nil {
+			err = tx.Commit()
+		}
+		_ = tx.Rollback()
+	}()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock_shared(hashtextextended('boox-notebook:'||$1,0))`, id); err != nil {
+		return 0, 0, 0, err
+	}
+	if gone, e := notebookPurged(ctx, tx, id); e != nil {
+		return 0, 0, 0, e
+	} else if gone {
+		return 0, len(items), 0, nil
+	}
 	link := s.itemLink(id, page)
 	from := fmt.Sprintf("From %s, page %d.", strings.TrimSpace(notebook), num)
 	if strings.TrimSpace(notebook) == "" {
@@ -334,7 +352,7 @@ func (s Service) makeItems(ctx context.Context, id, page, color, action, token, 
 		if fp == "" {
 			fp = noteactions.Fingerprint(it.Title)
 		}
-		res, qerr := s.DB.ExecContext(ctx, `INSERT INTO alexandria_note_action_item(source,notebook_id,page_id,color,fingerprint,kind,item_id,source_text)
+		res, qerr := tx.ExecContext(ctx, `INSERT INTO alexandria_note_action_item(source,notebook_id,page_id,color,fingerprint,kind,item_id,source_text)
  SELECT 'boox',$1,$2,$3,$4,$5,$6,$7 WHERE EXISTS(SELECT 1 FROM alexandria_note_action WHERE source='boox' AND notebook_id=$1 AND page_id=$2 AND color=$3 AND lease_token=$8)
  ON CONFLICT DO NOTHING`, id, page, color, fp, action, itemID, it.Source, token)
 		if qerr != nil {
@@ -346,12 +364,12 @@ func (s Service) makeItems(ctx context.Context, id, page, color, action, token, 
 		}
 		var cerr error
 		if action == "event" {
-			cerr = events.NewStore(s.DB).Create(ctx, &e)
+			cerr = events.Create(ctx, tx, &e)
 		} else {
-			cerr = taskdb.NewStore(s.DB).Create(ctx, &t)
+			cerr = taskdb.NewStore(tx).Create(ctx, &t)
 		}
 		if cerr != nil {
-			_, _ = s.DB.ExecContext(ctx, `DELETE FROM alexandria_note_action_item WHERE source='boox' AND notebook_id=$1 AND page_id=$2 AND color=$3 AND fingerprint=$4`, id, page, color, fp)
+			_, _ = tx.ExecContext(ctx, `DELETE FROM alexandria_note_action_item WHERE source='boox' AND notebook_id=$1 AND page_id=$2 AND color=$3 AND fingerprint=$4`, id, page, color, fp)
 			return made, skipped, dropped, cerr
 		}
 		made++

@@ -1,0 +1,78 @@
+2026-10-19 notebook management validation
+
+Toolchain: GOTOOLCHAIN=go1.25.0
+Fresh required PostgreSQL / S3 integration: go test -race -count=1 ./...
+Disposable synthetic databases and object fixtures; ALEXANDRIA_REQUIRE_INTEGRATION=1.
+Passing packages: 50
+No race reports or failures.
+
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.336s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	2.507s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-audit	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-lab	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-preview	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	9.951s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	14.951s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	9.730s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.031s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.013s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	1.398s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	11.248s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	7.963s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	116.638s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.052s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	227.809s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	51.341s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	11.920s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	13.457s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	13.973s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	20.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	42.037s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	6.695s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	15.326s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.040s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/status	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.042s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	20.845s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.013s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.026s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	7.442s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.040s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	75.404s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	8.184s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.024s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	3.490s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	2.530s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.118s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	9.227s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.015s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.076s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	1.717s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	185.488s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/migrations	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	5.334s
+
+go vet ./...: pass
+go build ./...: pass
+Hosting isolated source archive with local Server module replacement: all four packages compile.
+Compose packaging unit tests: 10 pass.
+Synthetic Chromium checks: 57 pass; desktop, phone, Palma, Lumi; English/Spanish; JavaScript disabled; keyboard focus and dark mode.
+Lifecycle: rename, move, trash, restore, permanent removal; stale revision/destination/assets; request replay; queued cancellation; started operation fencing; root fallback; shared blobs, thumbnail cleanup, late arrivals; failed native/object retries; concurrent upload versus GC; single DB connection; preview-cache invalidation.

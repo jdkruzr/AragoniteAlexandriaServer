@@ -5,12 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
 	"regexp"
-	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,59 +75,15 @@ func (s Service) cleanupCandidates(ctx context.Context) (cleanupPage, error) {
 // A form is one durable intent. All selected revisions are checked and inserted
 // atomically; publication checks the authoritative Gateway revisions again.
 func (s Service) queueCleanup(ctx context.Context, token string, choices []cleanupChoice) error {
-	if _, e := uuid.Parse(token); e != nil {
-		return errCleanupSelection
-	}
-	if len(choices) == 0 || len(choices) > cleanupLimit {
-		return errCleanupSelection
-	}
-	sort.Slice(choices, func(i, j int) bool { return choices[i].ID < choices[j].ID })
-	for i, c := range choices {
-		if c.ID == "" || c.Revision == "" || (i > 0 && choices[i-1].ID == c.ID) {
-			return errCleanupSelection
-		}
-	}
-	tx, e := s.DB.BeginTx(ctx, nil)
-	if e != nil {
-		return e
-	}
-	defer tx.Rollback()
-	// Serialize double clicks and concurrent replays, including before first insert.
-	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "boox-cleanup:"+token); e != nil {
-		return e
-	}
-	var exists bool
-	if e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM boox_operation WHERE payload->>'cleanupBatch'=$1)`, token).Scan(&exists); e != nil {
-		return e
-	}
-	if exists {
-		return tx.Commit()
-	}
-	var generation string
-	if e = tx.QueryRowContext(ctx, `SELECT generation FROM sync_library_generation WHERE id=1 FOR SHARE`).Scan(&generation); e != nil {
-		return e
-	}
+	selected := make([]notebookChoice, 0, len(choices))
 	for _, c := range choices {
-		var raw []byte
-		var revision string
-		e = tx.QueryRowContext(ctx, `SELECT body,revision FROM boox_projection WHERE document_id=$2 AND `+cleanupPredicate+` FOR SHARE`, s.uid(), c.ID).Scan(&raw, &revision)
-		if errors.Is(e, sql.ErrNoRows) {
-			return errCleanupSelection
-		}
-		if e != nil {
-			return e
-		}
-		var body map[string]any
-		if nativeJSON(raw, &body) != nil || revision != c.Revision || !noteMetadata(body, s.uid()) || !cleanupName.MatchString(fmt.Sprint(body["title"])) {
-			return errCleanupSelection
-		}
-		payload, _ := json.Marshal(map[string]any{"cleanupBatch": token, "cleanupTitle": body["title"], "status": 0, "generation": generation, "updatedAt": time.Now().UnixMilli()})
-		id := uuid.NewSHA1(uuid.NameSpaceOID, []byte("boox-cleanup:"+token+":"+c.ID)).String()
-		if _, e = tx.ExecContext(ctx, `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,payload,state) VALUES($1,$2,'set_note_status',$3,$4,$5,'queued')`, id, "cleanup:"+id, c.ID, c.Revision, payload); e != nil {
-			return e
-		}
+		selected = append(selected, notebookChoice{ID: c.ID, Revision: c.Revision})
 	}
-	return tx.Commit()
+	e := s.queueNotebookManagement(ctx, notebookIntent{Token: token, Action: "trash", Return: "/boox", Choices: selected, Numbered: true})
+	if errors.Is(e, errNotebookSelection) {
+		return errCleanupSelection
+	}
+	return e
 }
 
 func (s Service) cleanupStatus(ctx context.Context, id string) (cleanupPage, error) {
@@ -181,7 +135,7 @@ func (s Service) cleanupHTTP(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Invalid cleanup batch", 400)
 				return
 			}
-			_, e := s.DB.ExecContext(r.Context(), `UPDATE boox_operation SET state='cancelled',updated_at=now() WHERE payload->>'cleanupBatch'=$1 AND state='queued'`, token)
+			_, e := s.DB.ExecContext(r.Context(), `UPDATE boox_operation SET state='cancelled',updated_at=now() WHERE payload->>'cleanupBatch'=$1 AND state='queued' AND started_at IS NULL`, token)
 			if e != nil {
 				s.failure(w, "cleanupHTTP", e)
 				return

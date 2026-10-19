@@ -179,6 +179,19 @@ for proven legacy behavior, not proof of the PostgreSQL port.
 - [ ] Release and cut over only with an agreed plan. Make the first external-write
   boundary explicit: do not promise lossless reverse migration without testing one.
 
+## Queued after notebook management — 2026-10-19
+
+Requested for a later round; do not expand the current notebook-management release:
+
+- [ ] Search result sorting: alphanumeric ascending/descending and creation-date
+  ascending/descending, at minimum.
+- [ ] Recognition admission: default maximum of 100 pages per notebook, configurable
+  in Settings. The job manager must offer a persistent per-notebook override to
+  "always let it through." This concerns admission, not truncating recognition.
+- [ ] All Settings pages: categories initially appear as collapsed, simple tiles
+  describing what their settings do. Expand a category to edit it. Pay particular
+  attention to the crowded AI/Recognition page.
+
 ## Scope guards
 
 VM and personal-cloud use remain subscription-free. Commercial customer management
