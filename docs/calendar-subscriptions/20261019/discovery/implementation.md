@@ -1,5 +1,9 @@
 # Calendar link discovery — 2026-10-19
 
+Deployed as `calendar-links-aa211deb976b`, source `19bd790`, schema 37 unchanged.
+[Live evidence](deployment.json) records 33 passing read-only checks and retained
+rollback artifacts.
+
 The subscription adder accepts Google Calendar share/embed links and webpages
 containing one advertised calendar, as well as direct HTTPS ICS feeds. Google
 `cid` values can be plain calendar IDs or standard/URL-safe Base64, with or
@@ -35,11 +39,27 @@ discovery errors, and removes each synthetic subscription. The disposable test
 databases are dropped by fixture cleanup. Public TCDP webpage and ASMBLY Google
 share-link probes are read-only; they create no subscriptions.
 
-Targeted fresh required PostgreSQL/object-store race checks passed for subscriptions,
-web and testenv, including translation coverage. Build/vet, Hosting compile
-compatibility, and all ten Compose packaging tests passed. The broad suite is
-being qualified against a fresh SeaweedFS 3.85 fixture with CI's 16-volume limit;
-the reused one-volume fixture exhausted allocation capacity. Initial startup
-connection failures on the replacement fixture passed on retry after object
-write/read/delete readiness was verified. Final results and deployment evidence
-are recorded separately after qualification.
+[Qualification](validation.txt) completed all 52 tested packages with fresh required
+PostgreSQL/object-store race coverage. The first broad attempt exhausted the
+reused one-volume S3 fixture. A replacement CI-configured fixture was started,
+but its full run began before readiness: eight packages failed to connect and
+then passed fresh retries after object write/read/delete readiness succeeded.
+The other 44 packages passed in that full run. No application change was needed
+for these fixture issues. Build/vet, Hosting compatibility, ten Compose packaging
+tests, and 58 browser checks passed. Temporary databases and the new S3 container
+and volume were removed; the earlier shared fixture was left untouched.
+
+The app-only deployment verified 329 runtime inputs, staged nine paths, preserved
+all 37 migration checksums and Compose configuration hashes, and passed 33 live
+checks covering authentication, readiness, Tasks, Calendar views/orders, Settings,
+and both languages. No real subscriptions were created, edited or removed by
+qualification. There were zero restarts/application errors; 75 existing-style S3
+missing-checksum warnings were counted at the checkpoint. This update does not
+change object-store checksum settings.
+
+The previous schema-37 image, changed source files, config archive, manifests and
+`rollback.sh` are retained under
+`deploy/compose/private/calendar-links-aa211deb976b/` on the host. Rollback was
+not exercised live. No migration or database restore is required for app rollback.
+Feature commit `19bd790` is pushed; [CI](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39370771422)
+is independent of local qualification. No release/tag was created.

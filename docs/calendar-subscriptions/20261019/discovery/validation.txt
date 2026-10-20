@@ -1,0 +1,89 @@
+Calendar link discovery qualification — 2026-10-19
+Source: 19bd790ac34972bb7dcb8c3caa280904c61845cc
+Go 1.25.0; required PostgreSQL/pgvector + SeaweedFS 3.85 fixtures.
+
+The first broad run was interrupted after the reused one-volume S3 fixture
+exhausted allocation capacity. Three interrupted synthetic databases were removed.
+A fresh disposable S3 fixture used CI volume.max=16 on localhost:59334.
+The replacement full run started before S3 readiness and eight packages failed
+with connection errors. Object write/read/delete readiness then passed; all eight
+packages passed fresh required race retries. The other 44 packages passed in the
+full run. This is complete 52-package coverage with documented retries, not a
+claim that the first or replacement full command exited successfully.
+
+Full-run passing packages:
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	3.066s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.015s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.042s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	1.454s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	11.304s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	7.602s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	118.738s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.061s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.041s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	232.210s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	50.438s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp	1.035s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	12.152s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	12.753s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	13.614s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	24.225s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	44.171s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	5.242s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.036s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions	4.963s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	22.520s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.025s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	11.076s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	8.746s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.011s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	3.675s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	2.957s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.123s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/searchorder	1.962s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	9.674s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.011s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.072s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	6.577s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	189.851s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	6.681s
+
+Fresh required retries after readiness:
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.645s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	5.525s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	7.856s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	7.547s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	6.081s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.025s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.026s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	51.430s
+
+Final targeted race checks (including discovery and translation tests):
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions	3.064s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	5.857s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	7.280s
+
+Hosting compatibility:
+ok  	github.com/jdkruzr/AragoniteAlexandriaHosting/cmd/alexandria-hosting	0.050s [no tests to run]
+?   	github.com/jdkruzr/AragoniteAlexandriaHosting/cmd/alexandria-sandbox-bootstrap	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaHosting/internal/hosting	0.033s [no tests to run]
+?   	github.com/jdkruzr/AragoniteAlexandriaHosting/migrations	[no test files]
+
+Build/vet: passed. Compose packaging: 10 tests passed.
+Browser: 58 checks passed; no-JavaScript direct ICS, Google share and webpage adds
+plus missing/multiple-feed errors, four viewports, both languages.
+Public probes: TCDP webpage and ASMBLY share URL resolved and parsed successfully.
+No live subscriptions were created, edited or removed during qualification.
+
+Cleanup: the new disposable S3 container and its volume were removed. Gate-created
+databases were dropped; three databases from interrupted runs were explicitly
+removed. The original shared one-volume S3 fixture was preserved.

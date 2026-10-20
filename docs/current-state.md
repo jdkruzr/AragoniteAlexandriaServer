@@ -5,33 +5,39 @@ Updated 2026-10-19. Work continues on `main`. The Server port resumed on
 
 ## Source and publication
 
-Calendar share-link and webpage discovery is implemented; deployment qualification
-is in progress. [Details](calendar-subscriptions/20261019/discovery/implementation.md).
-
-Public calendar subscriptions are deployed and feature commit `8327887` is pushed
-on `main`. [Feature CI](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39361064128)
-passed both Go and packaging jobs. The previous Poppler CI prerequisite fix remains
-in place. No version tag or GitHub Release was created.
+Calendar link discovery is deployed; feature commit `19bd790` is pushed on `main`.
+[Feature CI](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39370771422)
+was still running at the deployment checkpoint; packaging had passed. No version
+tag or GitHub Release was created. The public-subscriptions foundation (`8327887`)
+and deployment-documentation (`77f2165`) CI runs passed.
 
 ## Deployed checkpoint
 
-Latest recorded deployment: **`subscriptions-8327887`**, runtime source
-`8327887`, schema **37**, image
-`sha256:b92712c2f845ea429cda2c1bcc60682964c069bed84fc3372a035e8bf56fd2da`.
-[Live evidence](calendar-subscriptions/20261019/deployment.json): 33 checks across
-both languages and all Calendar views, zero restarts, and all 328 runtime inputs
-verified. Migration 37 preserved the earlier migration checksums, local event
-fingerprint, native projections/blobs, provider revision and job identities.
-Compose configuration hashes were unchanged. The S3 SDK logged missing-response-
-checksum warnings (360 at the recorded check); there were no application errors
-or other warnings. No checksum/storage configuration was changed.
+Latest recorded deployment: **`calendar-links-aa211deb976b`**, runtime source
+`19bd790`, schema **37**, image
+`sha256:5abb9a381234ac285d7eac371ccf6f3a9be3e16dbd4b2567f0b073017ef4c76b`.
+[Live evidence](calendar-subscriptions/20261019/discovery/deployment.json): 33
+read-only checks passed across both languages and all Calendar views; zero
+restarts/application errors. All 329 runtime inputs, 37 migration checksums and
+Compose config hashes were verified. Nine paths changed, with no migration.
+The S3 SDK still logs missing-response-checksum warnings (75 at this checkpoint);
+no checksum/storage configuration was changed.
 
-[Validation](calendar-subscriptions/20261019/validation.txt): fresh required Go 1.25
-PostgreSQL/object-store race tests (52 packages), build/vet, Hosting compile
-compatibility and ten packaging checks. The browser run covered 58 checks across
-four viewports, both languages and section orders, all views, and a no-JavaScript
-subscription workflow. The TCDP public feed also passed a read-only interoperability
-probe. No real subscription was added during deployment qualification.
+The subscription adder now resolves Google Calendar share/embed links and
+webpages with one calendar, then verifies the feed before saving. Existing failed
+subscriptions retain their original URLs; remove/re-add them through the new
+adder to resolve supported Google links. [Implementation](calendar-subscriptions/20261019/discovery/implementation.md).
+
+[Validation](calendar-subscriptions/20261019/discovery/validation.txt): fresh
+required race coverage for all 52 tested packages, with documented fixture
+startup retries; build/vet, Hosting compatibility, ten packaging checks and
+58 browser checks. The no-JavaScript workflow covers all three supported URL
+types and missing/multiple-feed errors. TCDP webpage and ASMBLY share-link probes
+passed without creating real subscriptions.
+
+The [original subscriptions deployment](calendar-subscriptions/20261019/deployment.json)
+introduced migration 37 and preserved earlier schema checksums, local events,
+native records, provider revision and job identities.
 
 ## Completed recent work
 
@@ -45,11 +51,13 @@ probe. No real subscription was added during deployment qualification.
 | Default 100-page recognition cap and persistent notebook overrides | [Implementation](recognition-limit/20261019/implementation.md) |
 | Collapsed Settings categories | [Implementation](settings-tiles/20261019/implementation.md) |
 | Natural title/date Search sorting and group pagination | [Implementation](search-sorting/20261019/implementation.md) |
+| Calendar share-link and webpage discovery | [Implementation and deployment](calendar-subscriptions/20261019/discovery/implementation.md) |
 | Public ICS calendar subscriptions | [Implementation and deployment](calendar-subscriptions/20261019/implementation.md) |
 
 ## Next work and recovery
 
-**Deployed:** [public calendar subscriptions](calendar-subscriptions/20261019/implementation.md).
+**Deployed:** [public calendar subscriptions](calendar-subscriptions/20261019/implementation.md)
+and [calendar link discovery](calendar-subscriptions/20261019/discovery/implementation.md).
 Google OAuth and CalDAV republication remain deferred. Hosting still needs to
 schedule the new additive worker method when adopting this feature; the standalone
 Server already schedules it. The S3 checksum warning noise is recorded for follow-up.
@@ -60,7 +68,11 @@ an evidence refresh. The clearest remaining Server gap is BOOX cold backup/resto
 for named-volume installs; its proposal remains unimplemented and is not started
 by this documentation/publication task.
 
-The host-directory deployment retains the previous image, a schema-37-compatible
+The current app rollback uses the previous schema-37 image and source/config
+archives under `deploy/compose/private/calendar-links-aa211deb976b/`; its
+`rollback.sh` preserves subscription data. It was not exercised live.
+
+The earlier subscriptions deployment also retains its previous image, a schema-37-compatible
 rollback image, source/config archives and catalog-checked metadata dump under
 `deploy/compose/private/subscriptions-8327887/`. Its `rollback.sh` selects the
 compatible image once migration 37 exists and retains subscription data. The
