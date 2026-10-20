@@ -14,6 +14,12 @@ Check [GitHub Actions](https://github.com/jdkruzr/AragoniteAlexandriaServer/acti
 for the CI result of the published head; local validation is recorded separately.
 No release tag or new deployment is part of this housekeeping round.
 
+The first publication CI run passed packaging but failed imported-PDF recognition:
+the runner lacked Poppler, which is already installed in the application image
+and local verification environment. CI now installs `poppler-utils` and verifies
+`pdftoppm` before testing; the integration test names that prerequisite explicitly.
+This correction changes CI/test setup only, not the deployed runtime.
+
 ## Deployed checkpoint
 
 Latest recorded deployment: **`search-sorting-f5f0998f3571`**, runtime source

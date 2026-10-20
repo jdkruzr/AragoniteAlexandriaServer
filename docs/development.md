@@ -4,6 +4,8 @@
 
 - Go 1.25
 - Docker with Compose v2 for integration work
+- Poppler (`pdftoppm`, packaged as `poppler-utils` on Debian/Ubuntu) for PDF
+  rendering and imported-PDF recognition tests; the application image includes it.
 - Optional: Helm 3 and Terraform 1.7+
 
 ## Checks

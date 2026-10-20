@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"net/http/httptest"
 	"net/url"
+	"os/exec"
 	"slices"
 	"strings"
 	"testing"
@@ -581,6 +582,9 @@ func onePagePDF() []byte {
 }
 
 func TestImportedPDFPageWithoutInkIsRecognized(t *testing.T) {
+	if _, err := exec.LookPath("pdftoppm"); err != nil {
+		t.Fatal("PDF recognition integration tests require pdftoppm; install poppler-utils")
+	}
 	// Seen live: a "PDF scribble" notebook whose letter is the imported PDF
 	// itself. With no ink on the page it was skipped as blank.
 	s := indexFixture(t)
