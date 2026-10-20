@@ -1,6 +1,8 @@
 # Plan: Back Up BOOX Installs on Named Volumes (2026-10-18)
 
-Status: proposed, waiting for the owner's go-ahead.
+Status: proposed, waiting for the owner's go-ahead. Reconciled 2026-10-19: named-volume
+backup/restore remains open; shared engine and backup-path resolution were completed
+in the [quality work](quality-implementation-20261018.md).
 
 ## The Gap
 
@@ -10,8 +12,8 @@ A BOOX install on Docker's default named volumes has no supported backup:
   `pg_dump` plus an object mirror can't capture Couchbase at the same moment.
 - `backup-cold.sh` requires `ALEXANDRIA_DATA_DIR` (host directories). It tars
   `ALEXANDRIA_POSTGRES_DIR`, `ALEXANDRIA_OBJECT_DIR` and
-  `ALEXANDRIA_COUCHBASE_DIR` directly, calls `docker` directly, and requires
-  root.
+  `ALEXANDRIA_COUCHBASE_DIR` directly and requires root. Engine selection now uses
+  the shared `engine()` helper; named-volume copying is still missing.
 
 The owner's own server uses host directories, so it isn't affected. A new
 install that follows [the BOOX guide](guide/boox.md) with the defaults is.
@@ -36,11 +38,11 @@ on every exit. Only where it reads from is hard-wired.
      and `SHA256SUMS` exactly as today. Record the source in a new
      `storage.txt` (`volumes` or `directories`), and bump `backup-format` to
      `2` only if the restore side needs to tell them apart.
-2. **Use Compose's engine, not `docker`.** Factor the engine choice out of
-   `compose()` in `common.sh` into an `engine()` helper (docker or podman,
-   honoring `COMPOSE`). Use it for `inspect`, `image save` and the helper
-   containers.
-   - Rootless Podman then works with volumes.
+2. **Shared engine selection — completed in the quality work.** `common.sh`
+   provides `engine()` for Docker/Podman, honoring `COMPOSE`. Backup already uses
+   it for `inspect` and `image save`; use it for new helper containers too.
+   - Named-volume support and its real rootless Podman round trip remain
+     to be implemented.
    - Root stays required for the host-directory path only, where file
      ownership must be preserved. Document that split.
 3. **Restore into volumes.** `restore-cold.py` today only verifies and

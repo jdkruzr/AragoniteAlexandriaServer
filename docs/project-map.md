@@ -1,6 +1,6 @@
 # Alexandria project ownership and session map
 
-Canonical cross-project map, created 2026-09-27 UTC. Keep detailed state in each
+Canonical cross-project map, created 2026-09-27 UTC; reconciled 2026-10-19. Keep detailed state in each
 repository's `docs/current-state.md`; this file owns only the boundaries and shared
 decisions. Relative sibling links assume the existing adjacent checkouts. If a
 checkout is elsewhere, locate it rather than creating a duplicate repository.
@@ -8,8 +8,9 @@ checkout is elsewhere, locate it rather than creating a duplicate repository.
 | Repository / local directory | Owns | Does not own |
 |---|---|---|
 | [AragoniteAlexandria](../../AragoniteAlexandria/docs/current-state.md) | Android reader/writer, UI, local library, recognition, device lifecycle | Hosting billing or cloud provisioning |
-| [AragoniteAlexandriaServer](current-state.md) | Portable library runtime, PostgreSQL/blob storage, jobs, migrations, standalone deployment; future cloud sync/search/MCP ports | Customer signup/subscriptions |
-| [AragoniteAlexandriaHosting](../../AragoniteAlexandriaHosting/docs/current-state.md) | Invitations, accounts, billing, tenant routing/provisioning, shared cloud scheduling | Copies of Server domain logic or Android UI |
+| [AragoniteAlexandriaServer](current-state.md) | Portable library runtime, PostgreSQL/blob storage, jobs, migrations, standalone deployment, Alexandria/BOOX sync, search and MCP | Customer signup/subscriptions |
+| [AragonitePowerSync](../../AragonitePowerSync) | BOOX Android companion, enrollment and native device integration | Server runtime or Hosting tenancy |
+| [AragoniteAlexandriaHosting](../../AragoniteAlexandriaHosting/docs/remaining-steps.md) | Invitations, accounts, billing, tenant routing/provisioning, shared cloud scheduling | Copies of Server domain logic or Android UI |
 | [rhizome](../../rhizome/docs/current-state.md) | Generic Kotlin/Go sync, HLC/LWW, registry, atomic receipt and asset transfer contracts | Reader semantics, billing, per-library multi-user collaboration |
 
 ## Dependency direction
@@ -53,8 +54,9 @@ own project; do not casually vendor or rewrite its code inside the client.
   contract, shared queues/styling and domain implementations behind adapters.
 - No live Stripe charges are authorized. Hosting sandbox success is not launch
   approval or Android sync qualification.
-- **Paused by the user at this split: Alexandria/Rhizome cloud porting/deployment.**
-  Context cleanup is authorized; it does not resume the deployment plan.
+- **Resumed 2026-10-06:** Alexandria/Rhizome Server porting for self-hosted Compose.
+  The Server runtime is now deployed; see its current handoff and remaining work.
+  This does not resume every historical Hosting/cloud or external-cutover plan.
 
 ## Starting and handing off work
 

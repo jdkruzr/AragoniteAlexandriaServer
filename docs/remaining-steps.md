@@ -1,203 +1,95 @@
-# Alexandria Server — remaining steps
+# Alexandria Server — remaining work
 
-Updated 2026-09-27 UTC. Read with [current state](current-state.md) and
-[ADR 0004](adr/0004-runtime-and-hosting-boundary.md). The task/job/runtime foundation
-exists; this list is not a claim that UltraBridge parity is already implemented.
-Cloud sync porting/deployment is paused until the user resumes it.
+Reconciled 2026-10-19 against current source and dated implementation/deployment
+evidence. The Alexandria/Rhizome port resumed on 2026-10-06. This is a work list,
+not permission to deploy infrastructure or begin every item. See [current state](current-state.md)
+and [ownership](project-map.md). The [previous checklist](roadmap-history-through-20261019.md)
+is retained as history; its unchecked boxes are not automatically current defects.
 
-## S1. Standalone setup and operational foundation
+## Recent follow-ups — complete
 
-- [ ] Finish the browser-first first-run setup and deployment wrappers for both
-  local VM and personal-cloud installs, without a Hosting/Stripe dependency.
-  Handle initialization/retry, administrator setup, runtime credentials, TLS
-  prerequisites and clear failure/recovery instructions.
-- [ ] Qualify a fresh VM deployment on the laptop; no rented VM is needed for
-  this test. Verify persistence after restart and that setup does not silently
-  create replacement volumes or rotate existing credentials.
-- [ ] Qualify personal-cloud deployment independently of commercial Hosting.
-  Validated manifests and the reused Hosting dev host are not this acceptance.
-- [ ] Exercise interrupted/failed/retried upgrades with real PostgreSQL and
-  object storage. Verify runtime DDL denial and old-binary schema rejection;
-  record a recovery path rather than assuming arbitrary binary rollback works.
-- [ ] Reconcile `.52`'s Server checkout before using it again: it has older HEAD
-  plus local changes. Preserve them; do not reset or blindly overwrite it.
+- [x] Search title alphanumeric ascending/descending and creation-date
+  ascending/descending, with Best match retained and independent group pagination.
+  [Implementation and evidence](search-sorting/20261019/implementation.md).
+- [x] Default maximum of 100 notebook pages admitted for recognition, configurable
+  in Settings, with persistent per-notebook “always let it through” overrides.
+  [Implementation and evidence](recognition-limit/20261019/implementation.md).
+- [x] All Settings destinations begin with collapsed descriptive category tiles.
+  [Implementation and evidence](settings-tiles/20261019/implementation.md).
+- [x] Native notebook management and Go 6 II lifecycle verification.
+  [Implementation](notebook-management/20261019/implementation.md),
+  [device evidence](notebook-management/20261019/device-reconnected.md).
+- [x] Prevent deleted-notebook recognition churn and provide obsolete-job cleanup.
+  [Deletion guards](recognition-deletion/20261019/implementation.md),
+  [cleanup](recognition-cleanup/20261019/implementation.md).
+- [x] CalDAV connection links, Calendar views and imported recurring events.
+  [Validation](calendar/20261018/validation.txt).
+- [x] Consolidate the 25 local Server commits through `f93b190` onto `main` and
+  reconcile this roadmap. Publication CI is tracked in
+  [GitHub Actions](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions).
 
-See [deployment/identity](deployment-identity-upgrade.md) and
-[development](development.md). Laptop AWS credential/state migration is owned by
-[Hosting H0](../../AragoniteAlexandriaHosting/docs/remaining-steps.md), not a second
-independent state transfer here. This checklist does not authorize infrastructure changes.
+## Confirmed implementation gaps
 
-## S2. Alexandria/Rhizome port — RESUMED 2026-10-06
+- [ ] **BOOX named-volume cold backup and restore.** `backup-cold.sh` still requires
+  host-directory storage; `restore-cold.py` extracts to a new offline directory,
+  not named volumes. Extend both, then qualify a disposable PostgreSQL/object-store/
+  Couchbase round trip plus corrupted-archive/nonempty-target refusals. Preserve the
+  host-directory path. [Proposal](boox-volume-backup-plan-20261018.md).
+  The shared engine/config resolution is already implemented; do not redo it.
+  The owner's host-directory install is not blocked by the named-volume gap.
+- [ ] **Shared-library end-to-end harness support.** `alexandria-lab` explicitly
+  rejects the legacy `reader-inspect`, `reader-inventory`, `reader-backup` and
+  `reader-restore` modes. Implement an appropriate PostgreSQL/object-store
+  inspection/backup adapter if the shared client runner is to target Server.
+  Existing HTTP interop and authoritative restore-sync tests do not close this
+  harness gap. [Current interop instructions](development.md#alexandria-client-interop).
+- [ ] **Browser-first initial setup.** The working installer is shell-based;
+  browser-first provisioning remains an optional product slice. Define the desired
+  flow before implementing it, preserving runtime/management credentials and
+  subscription-free standalone installs. [Existing install guide](guide/install.md).
 
-Resumed by the user for a self-hosted Compose deployment (PostgreSQL+pgvector, S3/SeaweedFS),
-porting UltraBridge's qualified shared-library adapter slice by slice on branch
-`alexandria-sync-port` (fast-forwarded into `main` and deleted on 2026-10-17; work
-continues on `main`). Phases: P0 foundation, P1 identity/generation/capabilities, P2 relay,
-P3 assets on S3, P4 reader materialization, P5 restore, P6 OCR/search, P7 reader search/MCP,
-P8 CalDAV, P9 web UI, P10 Compose completion and qualification. Rhizome is required at the
-Alexandria client's pinned revision (`1a5461a`, server rewind support) as a Go pseudo-version, not a fork or a new tag.
+## Qualification to reconcile before scheduling
 
-- [ ] Inventory the actual legacy adapter and its dirty PDF/correction changes;
-  record a source checkpoint and explicit feature/route parity matrix. Identify
-  each required release surface versus an intentional deferral before porting.
-- [x] Port enrollment/identity and row sync through Server's library-scoped
-  runtime with PostgreSQL transaction/admission semantics. Preserve pull-first
-  merge, provenance, ACK/cursor atomicity and compatibility refusal.
-  (2026-10-06, P1-P2: `internal/alexandria/{identity,generation,relay}`.)
-- [x] Adapt bounded immutable assets to S3-compatible storage, reusing Rhizome's
-  contract; validate resumable transfer, references and original-byte hashes.
-  (2026-10-06, P3: `internal/alexandria/assetstore`, served by Rhizome's handler.)
-- [ ] Port deterministic reader materialization, correction/recognition search
-  and restart-safe jobs. Reuse Kotlin/Go parity vectors, not a second interpretation.
-  (2026-10-06, P4: materialization, journal and snapshots done in
-  `internal/alexandria/reader`. 2026-10-07, P7: annotation search in
-  `internal/alexandria/readersearch`, served at `/reader/search`.)
-- [x] Port whole-library snapshot publication/adoption and generation fences;
-  stop stale workers/writers before replacement and preserve retry receipts.
-  (2026-10-06, P5: `internal/alexandria/restore`. The generation row lock
-  replaces UltraBridge's worker barrier; see the package doc.)
+These are older acceptance items, not claims that current features are absent.
+Read the linked evidence and the owning repository before repeating tests.
 
-### 2026-10-06 results (core sync, P1-P5)
+- [ ] Fresh-machine Docker Compose and independent personal-cloud install matrix:
+  initialization, restart persistence, retries, retained credentials/volumes and TLS.
+  Rootless Podman install/upgrade/backup/restore passed in October; repeated updates
+  on the existing Docker instance do not prove a fresh-machine installation.
+  [Install notes](deployment-compose.md), [historical evidence](roadmap-history-through-20261019.md).
+- [ ] Isolated coordinated backup/recovery and interrupted-upgrade rehearsal,
+  including PostgreSQL, objects and Couchbase where BOOX is enabled. Verify restore
+  consistency, credential/image recovery and schema compatibility; distinguish
+  existing synthetic script tests and app rollbacks from a whole-stack recovery.
+  [Storage](deployment-storage.md), [identity/upgrades](deployment-identity-upgrade.md).
+- [ ] Refresh the Alexandria Client device matrix: real ink and server-recognized
+  text, interrupted/resumed asset uploads, and authoritative restore adoption.
+  The October 7 Ocean/phone tests already covered enrollment, books/annotations,
+  notebook create/delete and server-rewind recovery. Reconcile later evidence in
+  the Client/Rhizome repositories before declaring those tests missing or rerunning.
+- [ ] Close the legacy parity inventory, explicitly naming required remaining
+  behavior versus intentional deferrals. Enrollment, relay, S3 assets, reader
+  materialization/search, restore, OCR, MCP, CalDAV and web UI already exist.
+  BOOX is implemented; the old “BOOX not ported” statement is superseded.
+  Supernote/reMarkable, legacy chat and relay compaction remain separate scope
+  decisions, not implied tasks. [Porting rules](development.md#porting-from-ultrabridge).
+- [ ] Reconcile the intended whole-library user-facing download/upload replacement
+  flow and any remaining legacy import/cutover. Existing snapshot publication,
+  device adoption and backup scripts are not proof of that complete UI or lossless
+  migration. Work only on protected copies under an agreed migration scope.
+  [Migration constraints](ultrabridge-migration.md).
 
-- `go test -race ./...` passes against PostgreSQL 17 and SeaweedFS with
-  `ALEXANDRIA_REQUIRE_INTEGRATION=1`, including the Kotlin contract, projection
-  and storage vectors (`FORESTREAD_CONTRACT_VECTORS`/`_PROJECTION_VECTORS`).
-- `cmd/alexandria-lab` implements UltraBridge assetlab's CLI contract over the
-  real runtime. Against it, the Alexandria client's Kotlin suites pass 8/8:
-  `ReaderHttpInteropTest` (PDF sticky + assets + restart, additive replay,
-  round trip + server projection agreement, local commit failure retry) and all
-  of `RestorePublicationTest` (publish with crash after commit, lost replies,
-  offline peer adoption, PDF bytes). Not applicable by design: legacy
-  writer-only sync (`reader=false`) and the test that opens the server's SQLite
-  file. 2026-10-07: with annotation search ported, 9/9 pass, adding
-  `recognitionSearchRoundTripsAndInvalidatesAfterInkChanges`. The shared-library e2e runner
-  needs `--reader-inspect/-backup/-inventory/-restore`, which read a SQLite file
-  and are not implemented in the lab yet (P10).
-### 2026-10-07 results (P6-P8: pages, search, MCP, tasks)
+## Cross-repository and deferred work
 
-- P6: notebook pages are rendered, recognized (opt-in `ALEXANDRIA_OCR_*`),
-  authored back to devices as `page_text_from_server`, indexed and embedded
-  (opt-in `ALEXANDRIA_EMBED_*`) from a durable queue written in the sync
-  transaction. Recognition is cached by exact OCR input, so a restore
-  re-indexes without OCR. `GET /api/v1/search` fuses tsvector and pgvector.
-- P7: annotation search at `/reader/search` (device keys); the Kotlin
-  `recognitionSearchRoundTripsAndInvalidatesAfterInkChanges` passes.
-  `/mcp` serves UltraBridge's thirteen tools with the same names and schemas.
-- P8: CalDAV at `/caldav/` with UltraBridge's backend and stubs unchanged
-  (its CalDAV, task store and task service suites pass on PostgreSQL), signed
-  public attachment URLs backed by object storage.
-- P9 (2026-10-07): web UI (notebooks with page images, PDF export, delete,
-  recognize again; Books with annotations, ink and downloads; search; tasks;
-  devices with rename/revoke; settings and API tokens) with a strict CSP and
-  same-origin form posts, and OAuth 2.1 consent for Claude Web on `/mcp`.
-  Checked in a browser against a seeded library.
-- P10 (2026-10-07): `deploy/compose/install.sh`, `backup.sh`, `restore.sh`
-  and `docs/deployment-compose.md`.
-
-### Open before calling S2 done
-
-- ~~Run `install.sh` end to end.~~ Done 2026-10-07 with rootless Podman 5.7
-  and podman-compose 1.6: first install, two upgrades, backup while running,
-  and restore all pass a smoke test (admin web sign-in, device enrollment,
-  /sync/v1 push, a two-chunk book upload read back byte-identical, CalDAV
-  PROPFIND, the /mcp OAuth challenge). It found and fixed five deployment
-  bugs (commit 77add2d). Not yet tried with Docker Compose.
-- On-device qualification, partly done 2026-10-07. The Musnap Ocean and a phone (T951K,
-  Android 15), both on productionLab, synced through a Cloudflare quick tunnel to the Compose stack.
-  - **Passed:**
-    - Both devices enrolled.
-    - The Ocean uploaded a seeded library: 4 EPUBs, 21 annotations with tags and stars.
-      Server asset hashes match the device files, and a web download gives the same bytes.
-    - The phone received the books (offline) and the annotations; device search finds them.
-    - A notebook created on the phone (2 pages) reached the Ocean.
-    - A notebook deleted in the web UI disappeared from the Ocean.
-    - Web book pages and annotation search show the synced data.
-  - **Not yet:**
-    - Ink: injected input doesn't draw on either device.
-    - `page_text_from_server`: OCR is not configured.
-    - Restore publish and adoption.
-    - Server restart mid-upload.
-    - Book upload resumed after a kill.
-- [x] **Server backup restore lost later device changes silently** (found and fixed 2026-10-07).
-  - **The bug:**
-    - A restored server forgot each device's ops after the backup, which the devices had already
-      pruned as acknowledged.
-    - A device's next op left a gap that `accepted_through` never crossed, so the bounded client
-      resent it forever.
-  - **The fix:** a sync epoch (Rhizome `1a5461a`, spec "Server rewind"; migration 0014;
-    `restore.sh` rotates it).
-    - A device that sees a new epoch re-sends the rows it authored after the server's
-      acknowledgement point, keeping their original stamps.
-    - It then re-pulls from cursor 0.
-    - The client also stops instead of looping when no op is acknowledged.
-  - **Qualified on the Ocean and the phone:**
-    - Backup, then a new notebook on each device, then `restore.sh`.
-    - Both notebooks came back, plus the notebook lost by the first, pre-fix restore.
-    - Both devices and the server converged on 5 notebooks, 4 books and 21 annotations, with
-      empty outboxes.
-  - **Still lost:** a device that never syncs again can't return its own post-backup changes.
-    Devices on builds before the fix can't detect a restore.
-- `alexandria-lab` lacks `--reader-inspect/-backup/-inventory/-restore`, so
-  the shared-library e2e runner (`shared-library-e2e.mjs`) cannot target this
-  server yet; `run.mjs --server alexandria` is not wired.
-- Not ported on purpose: UltraBridge's sources other than Alexandria
-  (Supernote, Boox, reMarkable), its chat page, and relay compaction.
-- PostgreSQL text cannot hold U+0000. Writer and reader mirror text replaces it
-  with U+FFFD; relay payloads stay byte-exact, so devices still converge.
-
-Coordinate generic changes with [Rhizome](../../rhizome/docs/remaining-steps.md),
-not reader-specific logic inside the transport library. Refer to the client's
-[production integration plan](../../AragoniteAlexandria/docs/design-plans/2026-09-16-alexandria-server-integration.md)
-for proven legacy behavior, not proof of the PostgreSQL port.
-
-## S3. End-to-end application parity and qualification — after resumption
-
-- [ ] Complete the agreed release slices for search/indexing, server transcription,
-  MCP, book/library file management and other device protocols identified by S2's
-  parity inventory. Existing task CRUD and a blob verification job are not those
-  features. Scope missing legacy surfaces explicitly instead of assuming parity.
-- [ ] Qualify real two-tablet enrollment, mixed libraries, offline ordering,
-  restart/retry, assets and authoritative restore against the new executable.
-- [ ] Repeat through Hosting's bound runtime with two isolated customers, and
-  independently through standalone Server. Verify no cross-library auth, database,
-  blob, worker, derived-search or restore leakage.
-- [ ] Update the pinned Server dependency in Hosting only after fresh independent
-  tests; record the exact deployed artifact separately from checkout HEAD.
-
-## S4. Data movement and operational release gates
-
-- [ ] Finish/qualify the intended whole-library download/upload replacement
-  interface with explicit destructive confirmation. Keep the user flow simple;
-  do not recreate the discarded backup/recovery wizard.
-- [ ] Rehearse the agreed legacy import/cutover on protected copies, preserving
-  source snapshots and checking counts/hashes. Current task import/preflight is
-  not a complete notes/books migration. Follow [migration safety](ultrabridge-migration.md).
-- [ ] Exercise database-plus-object backup/restore on an isolated target, document
-  recovery and storage/credential boundaries, and test interrupted recovery.
-- [ ] Finish operator diagnostics, permission/security checks and upgrade runbooks
-  for the supported deployment profiles. Keep customer content/secrets out of logs.
-- [ ] Release and cut over only with an agreed plan. Make the first external-write
-  boundary explicit: do not promise lossless reverse migration without testing one.
-
-## Queued after notebook management — 2026-10-19
-
-Requested for a later round; do not expand the current notebook-management release:
-
-- [x] Search result sorting: alphanumeric ascending/descending and creation-date
-  ascending/descending, at minimum.
-  Deployed 2026-10-19 with independent group pagination; [implementation and evidence](search-sorting/20261019/implementation.md).
-- [x] Recognition admission: default maximum of 100 pages per notebook, configurable
-  in Settings. The job manager must offer a persistent per-notebook override to
-  "always let it through." This concerns admission, not truncating recognition.
-  Deployed 2026-10-19; [implementation and evidence](recognition-limit/20261019/implementation.md).
-- [x] All Settings pages: categories initially appear as collapsed, simple tiles
-  describing what their settings do. Expand a category to edit it. Pay particular
-  attention to the crowded AI/Recognition page.
-  Deployed 2026-10-19; [implementation and evidence](settings-tiles/20261019/implementation.md).
-
-## Scope guards
-
-VM and personal-cloud use remain subscription-free. Commercial customer management
-belongs to Hosting; each library has one author. No E2EE, cross-customer deduplication,
-automatic billing-triggered deletion or requirement to provision per-customer compute.
-Do not let optional HA/scale-out work obscure qualification of the modest deployment.
+- Hosting owns updating its Server pin and qualifying two isolated customers,
+  including auth/database/blob/worker/search/restore isolation. Recent Hosting
+  compile checks are compatibility evidence, not a deployment or tenancy test.
+- PowerSync owns firmware/device enrollment and native-editor behavior. Consult its
+  current handoff for remaining physical-device tests; do not revive superseded
+  October experiments from Server's historical log.
+- Inspect and preserve the older dirty `.52` checkout before using it again.
+  Its historical cleanup item does not authorize a reset or remote deployment.
+- External cutover, rented infrastructure and commercial launch need their own
+  agreed scope. VM and personal-cloud use remain subscription-free. No Stripe,
+  E2EE, cross-customer deduplication or billing-triggered deletion is added here.
