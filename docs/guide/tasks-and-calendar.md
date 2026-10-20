@@ -100,7 +100,7 @@ of the week. Change the section order above the sections, or choose Monday in
 a different browser has its own. Returning to Calendar starts at today's date.
 Links and forms work with JavaScript disabled.
 
-![Calendar Month view with synthetic events](../calendar/20261018/desktop-month.png)
+![Calendar Month view with synthetic events](../calendar/20261020/filters/desktop-month-readable.png)
 
 ### Adding an Event
 

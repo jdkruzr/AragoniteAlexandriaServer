@@ -1,0 +1,273 @@
+{
+  "checks": [
+    {
+      "path": "/readyz",
+      "status": 200,
+      "language": "en",
+      "authenticated": false,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/livez",
+      "status": 200,
+      "language": "en",
+      "authenticated": false,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 401,
+      "language": "en",
+      "authenticated": false,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/tasks",
+      "status": 401,
+      "language": "en",
+      "authenticated": false,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/settings/integrations",
+      "status": 401,
+      "language": "en",
+      "authenticated": false,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/metrics",
+      "status": 401,
+      "language": "en",
+      "authenticated": false,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/tasks",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/settings/integrations",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/settings/integrations",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/jobs",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/jobs/size",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/settings/recognition",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/search",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/calendar",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/tasks",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/settings/integrations",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    },
+    {
+      "path": "/settings/integrations",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/jobs",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/jobs/size",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/settings/recognition",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/search",
+      "status": 200,
+      "language": "es",
+      "authenticated": true,
+      "copyVerified": false,
+      "method": "GET"
+    },
+    {
+      "path": "/static/app.css",
+      "status": 200,
+      "language": "en",
+      "authenticated": true,
+      "copyVerified": true,
+      "method": "GET"
+    }
+  ],
+  "passed": 33,
+  "baseURL": "https://alexandria.federation.engineering",
+  "version": "calendar-filters-fb0bfb1c9e76",
+  "liveWrites": false,
+  "writeQualification": "isolated synthetic PostgreSQL/browser fixtures"
+}

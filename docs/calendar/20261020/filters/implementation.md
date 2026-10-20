@@ -25,4 +25,17 @@ format change is needed.
 
 See [validation](validation.txt), [browser checks](browser.json), and the retained
 [desktop](desktop-month-readable.png) and [phone](phone-month-readable.png) views.
-Deployment evidence is recorded separately after installation.
+
+Deployed as `calendar-filters-fb0bfb1c9e76` from feature commit `9e4db4c`.
+[Deployment](deployment.json) and [live checks](live-smoke.json) verify the app,
+authentication, both languages and every view. All 330 runtime source inputs,
+37 migration checksums and Compose config hashes matched. No migration or live
+qualification writes were needed; existing subscriptions were preserved.
+
+Rollback retains the prior image and source/config archives under
+`deploy/compose/private/calendar-filters-fb0bfb1c9e76/` on the host. Its
+`rollback.sh` restores the preceding app without modifying stored calendar data;
+rollback was not exercised live. Existing S3 checksum warning noise remains.
+
+The [feature CI run](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39372990074)
+was running at the deployment checkpoint, with packaging passed.

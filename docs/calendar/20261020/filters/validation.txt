@@ -104,3 +104,6 @@ all views, both section orders and no-JavaScript flows. Separate source/text
 filters, browser isolation, seven-day default, horizon expansion/reset and
 filter-preserving navigation verified. Screenshots retained alongside this log.
 All write qualification used synthetic databases and feeds.
+
+Cleanup: gate-created databases were dropped; the disposable calendar-filters
+S3 container and its anonymous volume were removed. Shared fixtures were preserved.

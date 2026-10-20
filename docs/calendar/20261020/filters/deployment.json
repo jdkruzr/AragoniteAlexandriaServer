@@ -1,0 +1,25 @@
+{
+  "version": "calendar-filters-fb0bfb1c9e76",
+  "sourceCommit": "9e4db4cfe8ef2cf9c0f51e690bcc00cd3e11eef8",
+  "verifiedAt": "2026-10-20T05:06:43.561912+00:00",
+  "image": "sha256:e11e7e973757eae1634274c9b0e3dc72da0daafd4f7cceadbe37f704f5b2bf4d",
+  "previousImage": "sha256:5abb9a381234ac285d7eac371ccf6f3a9be3e16dbd4b2567f0b073017ef4c76b",
+  "binarySHA256": "19858fb8ab854b3099af9cbdd1c30d5516d7c7fae034915a29a14691c208dc02",
+  "runtimeInputsVerified": 330,
+  "stagedPaths": 9,
+  "schema": 37,
+  "migrationChecksumsVerified": 37,
+  "migrationRequired": false,
+  "liveChecksPassed": 33,
+  "liveQualificationWrites": false,
+  "restartCount": 0,
+  "configurationHashesVerified": true,
+  "startupLogCounts": {
+    "errors": 0,
+    "structuredWarnings": 0,
+    "s3ChecksumWarnings": 30
+  },
+  "rollbackArtifacts": "/opt/aragonite-alexandria-server/deploy/compose/private/calendar-filters-fb0bfb1c9e76",
+  "rollbackExercisedLive": false,
+  "existingSubscriptionURLsChanged": false
+}
