@@ -1,0 +1,10 @@
+{{define "content"}}{{$d := .Data}}
+<div class="page-head"><h1>{{t "Event details"}}</h1><a class="button secondary" href="{{$d.Return}}">{{t "Back to calendar"}}</a></div>
+<p class="notice">{{t "This event belongs to a subscribed calendar and is read-only."}}</p>
+<p class="subscription-label calendar-source-{{$d.Subscription.Color}}">{{$d.Subscription.Name}}</p>
+{{if $d.Subscription.ErrorCode}}<p class="notice">{{t $d.Subscription.Status}} {{t "Showing the last successful calendar refresh."}}</p>{{end}}
+{{if $d.Row}}<h2>{{or $d.Row.Event.Title (t "Untitled event")}}</h2><p>{{$d.Row.When}}</p><p>{{$d.Row.Event.Location}}</p><p class="event-detail">{{$d.Row.Event.Detail}}</p>{{with $d.Row.Event.URL}}<p><a href="{{.}}" rel="noreferrer">{{t "Open source event"}}</a></p>{{end}}
+{{else}}<h2>{{or $d.Event.Title (t "Untitled event")}}</h2><p>{{t "This occurrence is unavailable. It may have moved or been cancelled; return to the calendar to refresh."}}</p>{{end}}
+{{if $d.Incomplete}}<p class="notice">{{t "Some calendar results are incomplete."}} {{t "This series has malformed or unsupported calendar data. View it in its source calendar."}}</p>{{end}}
+<a href="/settings/integrations?section=subscriptions#subscriptions">{{t "Manage calendar subscriptions"}}</a>
+{{end}}

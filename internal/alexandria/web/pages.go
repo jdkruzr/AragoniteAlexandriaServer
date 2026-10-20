@@ -20,6 +20,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath"
@@ -600,6 +601,12 @@ func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, o
 		name, title = "settings-recognition", i18n.M("AI Tools and Recognition")
 	case "integrations":
 		name, title = "settings-integrations", i18n.M("Tasks & Integrations")
+		all, err := (subscriptions.Store{DB: d.DB}).List(ctx)
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		data["Subscriptions"], data["SubscriptionColors"] = all, subscriptions.Colors
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	if pv, ok := data["Providers"].(*providers.View); ok && tab == "search" && pv != nil && pv.IndexState != "" && pv.SavedEmbedding.Enabled {

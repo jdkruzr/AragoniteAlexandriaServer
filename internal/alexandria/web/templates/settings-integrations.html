@@ -28,6 +28,34 @@
 
 </div>
 </details>
+<details class="settings-tile" id="subscriptions" {{if eq .SettingsSection "subscriptions"}}open{{end}}>
+<summary><h2>{{t "Calendar subscriptions"}}</h2><span class="settings-description">{{t "Show public calendars alongside your events and manage automatic refreshes."}}</span></summary>
+<div class="settings-body">
+{{if eq .SettingsSection "subscriptions"}}{{template "settings-notice" .}}{{end}}
+<p>{{t "Subscribe using a public HTTPS iCalendar (ICS) feed. In Google Calendar, copy the Public address in iCal format."}}</p>
+<p class="small muted">{{t "Subscribed calendars are read-only and refresh every 30 minutes. You can subscribe to at most 20 calendars."}}</p>
+<form method="post" action="/calendar/subscriptions" class="stack">
+<label>{{t "Calendar name"}} <input name="name" required maxlength="120"></label>
+<label>{{t "Public iCalendar URL"}} <input name="feed_url" type="url" required maxlength="4096" placeholder="https://example.org/calendar.ics" autocomplete="off"></label>
+<label>{{t "Calendar color"}} <select name="color">{{range $d.SubscriptionColors}}<option value="{{.}}">{{t .}}</option>{{end}}</select></label>
+<div><button>{{t "Subscribe to calendar"}}</button></div>
+</form>
+{{range $d.Subscriptions}}{{$s := .}}
+<article class="subscription-card">
+<h3 class="subscription-label calendar-source-{{.Color}}">{{.Name}}</h3>
+<p role="status">{{t .Status}}</p>
+{{if .LastSuccess}}<p class="small muted">{{t "Last successful refresh"}}: {{utc .LastSuccess}}</p>{{if .ErrorCode}}<p class="notice">{{t "Showing the last successful calendar refresh."}}</p>{{end}}{{else if .ErrorCode}}<p class="notice">{{t "No calendar snapshot is available yet."}}</p>{{end}}
+<form method="post" action="/calendar/subscriptions/{{.ID}}/update" class="stack">
+<input type="hidden" name="revision" value="{{.Revision}}">
+<label>{{t "Calendar name"}} <input name="name" value="{{.Name}}" required maxlength="120"></label>
+<label>{{t "Calendar color"}} <select name="color">{{range $d.SubscriptionColors}}<option value="{{.}}" {{if eq . $s.Color}}selected{{end}}>{{t .}}</option>{{end}}</select></label>
+<label><input type="checkbox" name="enabled" value="yes" {{if .Enabled}}checked{{end}}> {{t "Enable calendar and automatic refresh"}}</label>
+<div><button class="secondary">{{t "Save"}}</button></div>
+</form>
+<div class="actions">{{if .Enabled}}<form method="post" action="/calendar/subscriptions/{{.ID}}/refresh"><button class="secondary">{{t "Refresh now"}}</button></form>{{end}}
+<form method="post" action="/calendar/subscriptions/{{.ID}}/remove"><input type="hidden" name="revision" value="{{.Revision}}"><label><input type="checkbox" name="confirm" value="yes" required> {{t "Remove this subscription and its cached events"}}</label> <button class="danger">{{t "Unsubscribe"}}</button></form></div>
+</article>{{end}}
+</div></details>
 <details class="settings-tile" id="api" {{if eq .SettingsSection "api"}}open{{end}}>
 <summary><h2>{{t "API and MCP Access"}}</h2><span class="settings-description">{{t "Connect external tools and create or revoke access tokens."}}</span></summary>
 <div class="settings-body">

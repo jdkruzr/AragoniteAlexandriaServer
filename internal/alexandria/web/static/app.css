@@ -375,3 +375,18 @@ dl.transcript dd { margin:0; }
 .settings-body > :last-child { margin-bottom:0; }
 .settings-help { text-align:right; margin:0 0 .5rem; }
 .settings-tiles > p { grid-column:1 / -1; }
+
+/* Public calendar source labels remain useful without color on e-ink displays. */
+.subscription-card { border-top: 1px solid var(--line); margin-top: 1.5rem; padding-top: 1rem; }
+.subscription-label { border-inline-start: .3rem solid; padding-inline-start: .5rem; overflow-wrap: anywhere; }
+.calendar-sources { margin: 1rem 0; }
+.calendar-sources summary { cursor: pointer; font-weight: bold; }
+.calendar-source-name { display: block; font-size: .72rem; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; }
+.calendar-source-blue { border-inline-start: .3rem solid #3776bd; }
+.calendar-source-green { border-inline-start: .3rem solid #408258; }
+.calendar-source-purple { border-inline-start: .3rem solid #9561a8; }
+.calendar-source-orange { border-inline-start: .3rem solid #be762e; }
+.calendar-source-gray { border-inline-start: .3rem solid #838383; }
+
+.calendar-all-day .calendar-source-name { display:inline; }
+.calendar-all-day .calendar-source-name::after { content:" · "; }

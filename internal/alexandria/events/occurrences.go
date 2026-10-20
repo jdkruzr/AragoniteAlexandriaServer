@@ -283,11 +283,22 @@ func expandSeries(ctx context.Context, e Event, windows []Window, loc *time.Loca
 	if master == nil {
 		return nil, unsupported
 	}
+	if p := master.Props.Get("STATUS"); p != nil && p.Value == "CANCELLED" {
+		return nil, nil
+	}
 	if master.Props.Get("EXRULE") != nil || len(master.Props["RRULE"]) > 1 {
 		return nil, unsupported
 	}
 	seriesUID, _ := master.Props.Text("UID")
-	base, err := componentEvent(master, Event{ID: e.ID, Title: e.Title}, loc)
+	seriesLoc := loc
+	if e.TZID != "" {
+		var zoneErr error
+		seriesLoc, zoneErr = time.LoadLocation(e.TZID)
+		if zoneErr != nil {
+			return nil, unsupported
+		}
+	}
+	base, err := componentEvent(master, Event{ID: e.ID, Title: e.Title}, seriesLoc)
 	if err != nil {
 		return nil, err
 	}

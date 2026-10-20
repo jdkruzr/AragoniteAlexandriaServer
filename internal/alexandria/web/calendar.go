@@ -18,6 +18,8 @@ import (
 
 // calendarRow is an event as the Calendar page shows it, in the owner's zone.
 type calendarRow struct {
+	CalendarName, Color    string
+	ReadOnly               bool
 	Event                  events.Event
 	When                   string
 	Source                 *NoteSource
@@ -166,6 +168,7 @@ func calendarReturn(r *http.Request) string {
 }
 
 func (d Deps) calendarRoutes(mux *http.ServeMux) {
+	d.subscriptionRoutes(mux)
 	store := func() *events.Store { return events.NewStore(d.DB) }
 	mux.HandleFunc("GET /calendar", d.calendarPage)
 	mux.HandleFunc("GET /calendar/new", func(w http.ResponseWriter, r *http.Request) {

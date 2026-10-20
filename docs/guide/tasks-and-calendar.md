@@ -224,3 +224,32 @@ their next sync.
 | Due dates are a day off | Time zone not set, or the app mishandles due times | Set **Time zone**; if it persists, choose **Date only** under **Due dates**. |
 | A deleted task is missing from Deleted Tasks | It was deleted permanently | Permanent deletion can't be undone. |
 | Events show at the wrong hour | Time zone not set | Set it in **Settings → Tasks & Integrations**. |
+
+## Subscribe to a public calendar
+
+Choose **Subscribe to calendar** on Calendar, or open **Settings → Tasks &
+Integrations → Calendar subscriptions**. Enter a name, choose a color, and paste
+an HTTPS iCalendar (ICS) feed address. In Google Calendar, use **Public address
+in iCal format**; a normal calendar webpage/share URL is not the feed.
+
+Subscribed events appear in Day, Week, Month, Upcoming and Past, with the source
+calendar's name and color. **Visible calendars** lets you hide or show each source
+and the local calendar for this browser. Event details are read-only; make changes
+at the source. Subscriptions do not add events to Alexandria's writable CalDAV
+collection or its event API.
+
+Alexandria refreshes enabled subscriptions every 30 minutes. **Refresh now**
+requests an earlier refresh; repeated requests are limited to one attempt per
+30 seconds. Settings shows the last successful refresh and any error. A failed
+refresh keeps the last good snapshot. An unsupported time zone or recurrence rule
+produces an incomplete-results notice instead of silently hiding the problem.
+Uncheck **Enable calendar and automatic refresh** to pause a source. **Unsubscribe**
+removes its cached events after confirmation and leaves local events untouched.
+
+Public feeds need no Google sign-in. There is a limit of 20 subscriptions, 4 MiB
+per downloaded feed, and 2,000 event series per source. The Server worker must be
+running for refreshes; normal page loads read the cached snapshot.
+
+Example checked on 2026-10-19: the [TCDP Community Calendar page](https://www.traviscountydemocrats.org/tcdp-calendar)
+embeds a public Google Calendar. Its direct [public ICS feed](https://calendar.google.com/calendar/ical/info%40travisdems.org/public/basic.ics)
+can be pasted into the subscription form. The webpage URL itself cannot.

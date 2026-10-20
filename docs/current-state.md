@@ -18,7 +18,9 @@ The first publication CI run passed packaging but failed imported-PDF recognitio
 the runner lacked Poppler, which is already installed in the application image
 and local verification environment. CI now installs `poppler-utils` and verifies
 `pdftoppm` before testing; the integration test names that prerequisite explicitly.
-This correction changes CI/test setup only, not the deployed runtime.
+This correction changes CI/test setup only, not the deployed runtime. The
+[rerun at `f48fa83`](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39357371705)
+passed both CI and packaging.
 
 ## Deployed checkpoint
 
@@ -50,6 +52,11 @@ languages, including no-JS paging and keyboard access.
 | Natural title/date Search sorting and group pagination | [Implementation](search-sorting/20261019/implementation.md) |
 
 ## Next work and recovery
+
+**Implemented locally:** [public calendar subscriptions](calendar-subscriptions/20261019/implementation.md),
+authorized 2026-10-19. Read-only public ICS feeds, automatic refresh and Calendar
+overlays, with schema migration 37. This is not deployed or released; the deployed
+checkpoint above remains schema 36. Google OAuth and CalDAV republication remain deferred.
 
 The three user-requested follow-ups are complete. The [reconciled roadmap](remaining-steps.md)
 separates confirmed implementation gaps from older qualification items that need

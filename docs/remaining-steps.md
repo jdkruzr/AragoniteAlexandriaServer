@@ -28,6 +28,18 @@ is retained as history; its unchecked boxes are not automatically current defect
   reconcile this roadmap. Publication CI is tracked in
   [GitHub Actions](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions).
 
+## Implemented locally — deployment pending
+
+- [x] **Public calendar subscriptions.** Read-only ICS feeds, including public
+  Google calendars, with background refresh, Calendar overlays, source controls
+  and last-good-data preservation. [Implementation and verification](calendar-subscriptions/20261019/implementation.md).
+- [ ] Deploy subscriptions with migration 37 when requested. The existing
+  instance remains on schema 36; this work does not create a versioned release.
+- [ ] Hosting adopters of the new Server library must schedule
+  `Runtime.ProcessCalendarSubscriptions` alongside their other workers. Server's
+  standalone worker/all roles already schedule it. Hosting compilation remains compatible.
+  Google OAuth and CalDAV republication remain outside this version.
+
 ## Confirmed implementation gaps
 
 - [ ] **BOOX named-volume cold backup and restore.** `backup-cold.sh` still requires

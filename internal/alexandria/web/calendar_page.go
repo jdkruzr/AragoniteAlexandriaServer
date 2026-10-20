@@ -8,6 +8,7 @@ import (
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 )
 
 func (d Deps) calendarPage(w http.ResponseWriter, r *http.Request) {
@@ -34,6 +35,38 @@ func (d Deps) calendarPage(w http.ResponseWriter, r *http.Request) {
 		d.fail(w, err)
 		return
 	}
+	hidden := hiddenSources(r)
+	imported := map[string]subscriptions.Imported{}
+	sourceRows := []calendarSource{}
+	var importIssues []events.Incomplete
+	if !trash {
+		if hidden["local"] {
+			records = nil
+		}
+		ss := subscriptions.Store{DB: d.DB}
+		all, err := ss.List(ctx)
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		selected := []string{}
+		for _, s := range all {
+			sourceRows = append(sourceRows, calendarSource{s, !hidden[s.ID]})
+			if s.Enabled && !hidden[s.ID] {
+				selected = append(selected, s.ID)
+			}
+		}
+		incoming, issues, err := ss.Read(ctx, selected, loc)
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		importIssues = issues
+		for _, v := range incoming {
+			imported[v.Event.ID] = v
+			records = append(records, v.Event)
+		}
+	}
 	expansion := events.Expansion{}
 	if trash {
 		for _, e := range records {
@@ -42,15 +75,30 @@ func (d Deps) calendarPage(w http.ResponseWriter, r *http.Request) {
 	} else {
 		expansion = events.Expand(ctx, records, windows, loc)
 	}
+	for i := range expansion.Incomplete {
+		if v, ok := imported[expansion.Incomplete[i].ID]; ok {
+			title := expansion.Incomplete[i].Title
+			if title == "" {
+				title = d.Localizer(r).T("Untitled event")
+			}
+			expansion.Incomplete[i].Title = v.Name + ": " + title
+		}
+	}
+	expansion.Incomplete = append(expansion.Incomplete, importIssues...)
 	ids := make([]string, 0, len(records))
 	for _, e := range records {
-		ids = append(ids, e.ID)
+		if _, ok := imported[e.ID]; !ok {
+			ids = append(ids, e.ID)
+		}
 	}
 	sources := d.noteSources(ctx, "event", ids)
 	var futureRows, pastRows, gridRows []calendarRow
 	for _, o := range expansion.Occurrences {
 		row := makeCalendarRow(o, view.URL(), loc)
 		row.Source = sources[o.Event.ID]
+		if v, ok := imported[o.Event.ID]; ok {
+			row = subscriptionRow(row, v, loc)
+		}
 		if trash || events.Overlaps(o.Event, upcoming, loc) {
 			futureRows = append(futureRows, row)
 		}
@@ -65,7 +113,7 @@ func (d Deps) calendarPage(w http.ResponseWriter, r *http.Request) {
 	for i, j := 0, len(pastRows)-1; i < j; i, j = i+1, j-1 {
 		pastRows[i], pastRows[j] = pastRows[j], pastRows[i]
 	}
-	data := map[string]any{"Upcoming": futureRows, "Past": pastRows, "Trash": trash, "Zone": settings.ZoneName(loc), "Today": today.Format("2006-01-02"), "View": view, "Days": calendarDays(view, gridRows, now), "Incomplete": expansion.Incomplete, "UpcomingEnd": upcoming.To.AddDate(0, 0, -1).Format("2006-01-02")}
+	data := map[string]any{"Sources": sourceRows, "LocalVisible": !hidden["local"], "Upcoming": futureRows, "Past": pastRows, "Trash": trash, "Zone": settings.ZoneName(loc), "Today": today.Format("2006-01-02"), "View": view, "Days": calendarDays(view, gridRows, now), "Incomplete": expansion.Incomplete, "UpcomingEnd": upcoming.To.AddDate(0, 0, -1).Format("2006-01-02")}
 	d.render(w, r, "calendar", "Calendar", "calendar", data)
 }
 func makeCalendarRow(o events.Occurrence, ret string, loc *time.Location) calendarRow {

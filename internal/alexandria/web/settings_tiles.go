@@ -25,7 +25,7 @@ func settingsSection(r *http.Request) string {
 	allowed := map[string][]string{
 		"/settings":              {"password", "language", "about"},
 		"/settings/search":       {"semantic-search", "embedding-model"},
-		"/settings/integrations": {"caldav", "api"},
+		"/settings/integrations": {"caldav", "subscriptions", "api"},
 		"/settings/recognition":  {"page-limit", "provider", "minutes", "embedding", "automatic", "note-actions", "reprocess"},
 		"/sources/client":        {"devices", "recognition-search"},
 		"/boox/settings":         {"connection", "maintenance", "diagnostics"},

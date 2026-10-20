@@ -375,6 +375,7 @@ func runService(logger *slog.Logger) error {
 	}
 	recognitionWork := loop("recognition", runtime.ProcessPages)
 	indexWork := loop("index", runtime.ProcessIndex)
+	subscriptionWork := loop("calendar subscriptions", runtime.ProcessCalendarSubscriptions)
 
 	switch cfg.Role {
 	case config.RoleGateway:
@@ -387,7 +388,7 @@ func runService(logger *slog.Logger) error {
 			}
 			return runtime.RunJob(ctx, id, cfg.WorkerID)
 		}
-		return runComponents(ctx, cancel, work, recognitionWork, indexWork)
+		return runComponents(ctx, cancel, work, recognitionWork, indexWork, subscriptionWork)
 	case config.RoleMaintenance:
 		if _, err := runtime.Reconcile(ctx); err != nil {
 			return err
@@ -395,7 +396,7 @@ func runService(logger *slog.Logger) error {
 		_, err := runtime.CollectAssets(ctx, 10000)
 		return err
 	case config.RoleAll:
-		return runComponents(ctx, cancel, gateway.Run, work, recognitionWork, indexWork)
+		return runComponents(ctx, cancel, gateway.Run, work, recognitionWork, indexWork, subscriptionWork)
 	default:
 		return fmt.Errorf("unsupported role %q", cfg.Role)
 	}
