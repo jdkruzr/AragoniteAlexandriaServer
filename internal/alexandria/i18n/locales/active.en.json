@@ -1483,5 +1483,21 @@
   "Calendar link": "Calendar link",
   "No calendar feed was found on this page. Paste a Google Calendar share link or a direct public ICS URL.": "No calendar feed was found on this page. Paste a Google Calendar share link or a direct public ICS URL.",
   "This page contains several calendars. Paste the share link or ICS URL for the calendar you want.": "This page contains several calendars. Paste the share link or ICS URL for the calendar you want.",
-  "This address returned a webpage instead of calendar data. Check that the calendar is public and use its public ICS address.": "This address returned a webpage instead of calendar data. Check that the calendar is public and use its public ICS address."
+  "This address returned a webpage instead of calendar data. Check that the calendar is public and use its public ICS address.": "This address returned a webpage instead of calendar data. Check that the calendar is public and use its public ICS address.",
+  "Upcoming range": "Upcoming range",
+  "Next 7 days": "Next 7 days",
+  "14 days": "14 days",
+  "30 days": "30 days",
+  "90 days": "90 days",
+  "Uses the event list filters.": "Uses the event list filters.",
+  "Filter event list": "Filter event list",
+  "Filter calendar": "Filter calendar",
+  "Filters active": "Filters active",
+  "Search events": "Search events",
+  "Title, location, description, or calendar name": "Title, location, description, or calendar name",
+  "Source choices are remembered for this browser. Search applies only to this section.": "Source choices are remembered for this browser. Search applies only to this section.",
+  "Clear filters": "Clear filters",
+  "No events match these filters.": "No events match these filters.",
+  "Calendar filters applied.": "Calendar filters applied.",
+  "Description": "Description"
 }

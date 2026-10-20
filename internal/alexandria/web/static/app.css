@@ -390,3 +390,43 @@ dl.transcript dd { margin:0; }
 
 .calendar-all-day .calendar-source-name { display:inline; }
 .calendar-all-day .calendar-source-name::after { content:" · "; }
+
+/* Give Calendar its available width; event text gets the space, not its frame. */
+body[data-section=calendar] .workspace main { max-width:none; padding:1rem .75rem 2rem; }
+.calendar-section, #upcoming { margin:1rem 0 1.5rem; }
+.calendar-order { margin:.6rem 0; }
+.calendar-month .calendar-cell { min-height:13rem; padding:.2rem; }
+.calendar-month .calendar-entry { margin:.2rem 0; padding:.15rem .25rem; white-space:normal; font-size:.85rem; line-height:1.25; }
+.calendar-entry-title { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; overflow-wrap:anywhere; }
+.calendar-entry:focus .calendar-entry-title { -webkit-line-clamp:unset; }
+.calendar-month .calendar-source-name { margin-top:.15rem; white-space:nowrap; font-size:.68rem; }
+.calendar-horizon { flex-wrap:wrap; gap:.3rem; }
+.calendar-horizon .button { padding:.3rem .5rem; }
+.calendar-filters { margin:.5rem 0; }
+.calendar-filters summary, .calendar-past summary, .event-description summary { cursor:pointer; }
+.calendar-filters form { padding:.5rem 0; }
+.calendar-filters fieldset { margin:0; padding:.35rem .5rem; min-width:0; }
+.calendar-filter-sources { display:flex; flex-wrap:wrap; gap:.4rem 1rem; }
+.calendar-filter-sources label { overflow-wrap:anywhere; }
+.calendar-filters input[type=search] { width:100%; }
+.calendar-filters .small { margin:0; }
+.calendar-past { margin:1rem 0; }
+.calendar-past > summary { font-size:1.15rem; font-weight:620; }
+.events li { padding:.4rem .55rem; gap:.15rem .6rem; }
+.events .event-description { flex-basis:100%; order:2; }
+.events .event-description .event-detail { margin-top:.25rem; overflow-wrap:anywhere; }
+.events.done .title { text-decoration:none; }
+@media(max-width:600px) {
+ body[data-section=calendar] .workspace main { padding:.75rem .5rem 1.5rem; }
+ .calendar-month .calendar-cell { min-height:11rem; padding:.1rem; }
+ .calendar-month .calendar-entry { font-size:.72rem; padding:.1rem; }
+ .calendar-month .calendar-source-name { font-size:.62rem; }
+ #upcoming .page-head { gap:.3rem; }
+ .calendar-filter-sources { flex-direction:column; gap:.3rem; }
+}
+
+.calendar-weekday-short { display:none; text-decoration:none; }
+@media(max-width:600px) {
+ .calendar-weekday-long { display:none; }
+ .calendar-weekday-short { display:inline; }
+}

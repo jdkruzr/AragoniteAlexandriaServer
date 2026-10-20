@@ -85,7 +85,7 @@ gone, and a device that still has an old copy can't bring it back.
 
 ## Calendar
 
-Select **Calendar** in the top bar. **Upcoming** starts with the next 30 days,
+Select **Calendar** in the top bar. **Upcoming** starts with the next 7 days,
 anchored to today; **Show next 30 days** extends that list. **Past 30 Days**
 stays below the main sections, and **Deleted events** has its own page.
 
@@ -237,9 +237,19 @@ If several calendars are found, paste the share link or ICS URL for the specific
 calendar you want. Pages that require scripts to generate their calendar links
 need a direct share/ICS link. The calendar must be publicly accessible.
 
+Upcoming starts with **Next 7 days**, including today. Choose 14, 30, or 90 days,
+or **Show next 30 days** to extend the displayed range. It stays anchored to today
+while you browse other dates in the grid. Event descriptions and Past 30 Days
+start collapsed; open them when needed. Month cells have wrapping titles and
+less padding; **+N more** still opens the full Day view.
+
 Subscribed events appear in Day, Week, Month, Upcoming and Past, with the source
-calendar's name and color. **Visible calendars** lets you hide or show each source
-and the local calendar for this browser. Event details are read-only; make changes
+calendar's name and color. **Filter event list** and **Filter calendar** independently select sources and
+search titles, locations, descriptions, or calendar names. All search words must
+match, regardless of case. Source choices are remembered separately for this
+browser; searches stay in the current page URL and its navigation links. **Clear
+filters** restores all sources for that section. The event list filter also
+applies to Past 30 Days. Event details are read-only; make changes
 at the source. Subscriptions do not add events to Alexandria's writable CalDAV
 collection or its event API.
 

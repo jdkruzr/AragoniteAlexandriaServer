@@ -15,13 +15,14 @@ import (
 const calendarCookie = "alexandria_calendar"
 
 type calendarView struct {
-	View, Order, Week string
-	Date              time.Time
-	Horizon           int
+	View, Order, Week      string
+	Date                   time.Time
+	Horizon                int
+	ListFilter, GridFilter calendarFilter
 }
 
 func readCalendarView(r *http.Request, now time.Time, loc *time.Location) calendarView {
-	v := calendarView{"month", "upcoming", "sunday", midnight(now, loc), 30}
+	v := calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: midnight(now, loc), Horizon: 7, ListFilter: readCalendarFilter(r, "list"), GridFilter: readCalendarFilter(r, "grid")}
 	pref := url.Values{}
 	if c, err := r.Cookie(calendarCookie); err == nil && len(c.Value) < 256 {
 		pref, _ = url.ParseQuery(c.Value)
@@ -39,7 +40,7 @@ func readCalendarView(r *http.Request, now time.Time, loc *time.Location) calend
 	if d, err := time.ParseInLocation("2006-01-02", q.Get("date"), loc); err == nil && d.Year() >= 1900 && d.Year() <= 9998 {
 		v.Date = d
 	}
-	if n, err := strconv.Atoi(q.Get("days")); err == nil && n >= 30 && n <= 3660 && n%30 == 0 {
+	if n, err := strconv.Atoi(q.Get("days")); err == nil && n >= 7 && n <= 3660 {
 		v.Horizon = n
 	}
 	return v
@@ -52,6 +53,10 @@ func (v calendarView) remember(w http.ResponseWriter, r *http.Request) {
 func (v calendarView) URL() string { return v.Link("", "") }
 func (v calendarView) Link(key, value string) string {
 	q := url.Values{"view": {v.View}, "order": {v.Order}, "week": {v.Week}, "date": {v.Date.Format("2006-01-02")}, "days": {strconv.Itoa(v.Horizon)}}
+	q.Set("list_hide", v.ListFilter.Hidden)
+	q.Set("grid_hide", v.GridFilter.Hidden)
+	q.Set("list_q", v.ListFilter.Query)
+	q.Set("grid_q", v.GridFilter.Query)
 	if key != "" {
 		q.Set(key, value)
 	}

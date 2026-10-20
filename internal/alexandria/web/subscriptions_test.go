@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 )
 
@@ -234,6 +236,23 @@ func TestSubscriptionBrowserFixture(t *testing.T) {
 	}
 	d, _, _ := subscriptionFixture(t)
 	d.calendarHTTPClient = syntheticSubscriptionClient(t)
+	loc, _ := time.LoadLocation("America/Chicago")
+	today := midnight(time.Now(), loc)
+	local := events.NewStore(d.DB)
+	for _, fixture := range []struct {
+		title string
+		day   int
+	}{
+		{"Introduction to woodworking tools and safe workshop practices for community volunteers", 3},
+		{"Beyond the first seven days", 8},
+	} {
+		day := today.AddDate(0, 0, fixture.day)
+		start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
+		e := events.Event{ID: uuid.NewString(), Title: fixture.title, Start: start, End: start.AddDate(0, 0, 1), AllDay: true, Detail: strings.Repeat("A long synthetic description that should stay folded until requested. ", 80)}
+		if err := local.Create(context.Background(), &e); err != nil {
+			t.Fatal(err)
+		}
+	}
 	d.PublicURL = ""
 	srv := httptest.NewServer(Handler(d))
 	defer srv.Close()

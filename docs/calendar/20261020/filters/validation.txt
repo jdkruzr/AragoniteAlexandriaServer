@@ -1,0 +1,106 @@
+Calendar filters and readability qualification — 2026-10-20
+
+Go 1.25.0; ALEXANDRIA_REQUIRE_INTEGRATION=1; fresh PostgreSQL/pgvector
+and disposable SeaweedFS 3.85 fixtures. Object write/read/delete readiness
+passed before the full run. Full go test -race -count=1 ./... exited 0.
+Final web rerun covers subsequent weekday-label and disclosure refinements.
+Final go vet ./... and production binary build passed.
+
+Full fresh required race suite:
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.319s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	3.668s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-audit	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-lab	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-preview	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.024s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	11.833s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	14.861s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	9.250s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.046s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	1.476s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	13.458s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	9.537s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	119.436s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.066s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	235.819s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	52.133s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp	1.029s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	14.863s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	15.403s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	16.580s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	25.176s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	43.999s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	7.333s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	16.959s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.041s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/status	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions	7.454s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.042s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	23.202s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	14.241s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.013s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.045s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	83.611s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	8.727s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	4.151s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	3.080s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.137s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/searchorder	2.047s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	9.438s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.087s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	2.335s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	188.641s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/migrations	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	6.429s
+
+Final web race verification after layout refinements:
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	6.730s
+
+Hosting compatibility:
+ok  	github.com/jdkruzr/AragoniteAlexandriaHosting/cmd/alexandria-hosting	0.028s [no tests to run]
+?   	github.com/jdkruzr/AragoniteAlexandriaHosting/cmd/alexandria-sandbox-bootstrap	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaHosting/internal/hosting	0.025s [no tests to run]
+?   	github.com/jdkruzr/AragoniteAlexandriaHosting/migrations	[no test files]
+
+Packaging checks:
+test_complete_backup (test_cold_backup.ColdBackupTest.test_complete_backup) ... ok
+test_complete_podman_backup (test_cold_backup.ColdBackupTest.test_complete_podman_backup) ... ok
+test_copy_failure_restarts_without_publishing (test_cold_backup.ColdBackupTest.test_copy_failure_restarts_without_publishing) ... ok
+test_forced_stop_restarts_without_publishing (test_cold_backup.ColdBackupTest.test_forced_stop_restarts_without_publishing) ... ok
+test_manifest_archive_allowlist_and_quoted_boox (test_cold_backup.ColdBackupTest.test_manifest_archive_allowlist_and_quoted_boox) ... ok
+test_backup_restore_paths (test_configuration.ConfigurationTest.test_backup_restore_paths) ... ok
+test_override_engine_selection (test_configuration.ConfigurationTest.test_override_engine_selection) ... ok
+test_download_failure_is_reported (test_ollama.OllamaSetupTest.test_download_failure_is_reported) ... ok
+test_profile_selection (test_ollama.OllamaSetupTest.test_profile_selection) ... ok
+test_setup_only_starts_provider (test_ollama.OllamaSetupTest.test_setup_only_starts_provider) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.318s
+
+OK
+
+Browser: 63 checks passed; desktop, phone, Palma and Lumi, both languages,
+all views, both section orders and no-JavaScript flows. Separate source/text
+filters, browser isolation, seven-day default, horizon expansion/reset and
+filter-preserving navigation verified. Screenshots retained alongside this log.
+All write qualification used synthetic databases and feeds.

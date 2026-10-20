@@ -4,22 +4,23 @@
 {{if $d.Trash}}
 {{if not $d.Upcoming}}<p class="empty">{{t "No events."}}</p>{{else}}<ul class="tasks events">{{range $d.Upcoming}}{{template "event" (eventRow . true)}}{{end}}</ul>{{end}}
 {{else}}
-{{if or $d.Sources (not $d.LocalVisible)}}<details class="calendar-sources"><summary>{{t "Visible calendars"}}</summary>
-<form method="post" action="/calendar/subscriptions/visibility" class="stack"><input type="hidden" name="return" value="{{$v.URL}}">
-<label><input type="checkbox" name="visible" value="local" {{if $d.LocalVisible}}checked{{end}}> {{t "Local calendar"}}</label>
-{{range $d.Sources}}<label class="subscription-label calendar-source-{{.Subscription.Color}}"><input type="checkbox" name="visible" value="{{.Subscription.ID}}" {{if .Visible}}checked{{end}}> {{.Subscription.Name}}{{if not .Subscription.Enabled}} — {{t "Paused"}}{{end}}</label>{{end}}
-<div><button class="secondary">{{t "Apply"}}</button> <a href="/settings/integrations?section=subscriptions#subscriptions">{{t "Manage calendar subscriptions"}}</a></div></form></details>{{end}}
+
 {{range $d.Sources}}{{if and .Visible .Subscription.Enabled}}{{if or .Subscription.ErrorCode (not .Subscription.LastSuccess)}}<p class="notice" role="status"><strong>{{.Subscription.Name}}:</strong> {{t .Subscription.Status}}{{if .Subscription.LastSuccess}} {{t "Showing the last successful calendar refresh."}}{{else}} {{t "No calendar snapshot is available yet."}}{{end}}</p>{{end}}{{end}}{{end}}
 {{template "incomplete" $d.Incomplete}}
 <div class="actions calendar-order" aria-label="{{t "Section order"}}"><a class="button secondary" aria-current="{{eq $v.Order "upcoming"}}" href="{{$v.Link "order" "upcoming"}}">{{t "Upcoming first"}}</a><a class="button secondary" aria-current="{{eq $v.Order "calendar"}}" href="{{$v.Link "order" "calendar"}}">{{t "Calendar first"}}</a></div>
 {{if eq $v.Order "upcoming"}}{{template "upcoming" $d}}{{template "calendar-grid" $d}}{{else}}{{template "calendar-grid" $d}}{{template "upcoming" $d}}{{end}}
-<section aria-labelledby="past-heading"><h2 id="past-heading">{{t "Past 30 Days"}}</h2>{{if $d.Past}}<ul class="tasks done events">{{range $d.Past}}{{template "event" (eventRow . false)}}{{end}}</ul>{{else}}<p class="empty">{{t "No events."}}</p>{{end}}</section>
+<details id="past" class="calendar-past"><summary id="past-heading">{{t "Past 30 Days"}}</summary><p class="small muted">{{t "Uses the event list filters."}}</p>{{if $d.Past}}<ul class="tasks done events">{{range $d.Past}}{{template "event" (eventRow . false)}}{{end}}</ul>{{else}}<p class="empty">{{t "No events."}}</p>{{end}}</details>
 {{end}}
 {{end}}
 
 {{define "upcoming"}}
-<section id="upcoming" aria-labelledby="upcoming-heading"><h2 id="upcoming-heading">{{t "Upcoming"}}</h2><p class="small muted">{{t "From today through {{.Date}}" "Date" .UpcomingEnd}}</p>
-{{if .Upcoming}}<ul class="tasks events">{{range .Upcoming}}{{template "event" (eventRow . false)}}{{end}}</ul>{{else}}<p class="empty">{{t "No events."}}</p>{{end}}
+<section id="upcoming" aria-labelledby="upcoming-heading"><div class="page-head"><h2 id="upcoming-heading">{{t "Upcoming"}}</h2><div class="actions calendar-horizon" aria-label="{{t "Upcoming range"}}">
+<a class="button secondary" aria-current="{{eq .View.Horizon 7}}" href="{{.View.Link "days" "7"}}#upcoming">{{t "Next 7 days"}}</a>
+<a class="button secondary" aria-current="{{eq .View.Horizon 14}}" href="{{.View.Link "days" "14"}}#upcoming">{{t "14 days"}}</a>
+<a class="button secondary" aria-current="{{eq .View.Horizon 30}}" href="{{.View.Link "days" "30"}}#upcoming">{{t "30 days"}}</a>
+<a class="button secondary" aria-current="{{eq .View.Horizon 90}}" href="{{.View.Link "days" "90"}}#upcoming">{{t "90 days"}}</a></div></div>
+{{template "calendar-filters" .ListFilters}}<p class="small muted">{{t "From today through {{.Date}}" "Date" .UpcomingEnd}}</p>
+{{if .Upcoming}}<ul class="tasks events">{{range .Upcoming}}{{template "event" (eventRow . false)}}{{end}}</ul>{{else}}<p class="empty">{{if .View.ListFilter.Active}}{{t "No events match these filters."}}{{else}}{{t "No events."}}{{end}}</p>{{end}}
 {{if lt .View.Horizon 3660}}<a class="button secondary" href="{{.View.More}}#upcoming">{{t "Show next 30 days"}}</a>{{end}}</section>
 {{end}}
 
@@ -28,13 +29,15 @@
 <div class="page-head"><h2 id="grid-heading">{{calDate $v.Date "heading"}}</h2><div class="actions">
 <a class="button secondary" aria-current="{{eq $v.View "day"}}" href="{{$v.Link "view" "day"}}#calendar-grid">{{t "Day"}}</a><a class="button secondary" aria-current="{{eq $v.View "week"}}" href="{{$v.Link "view" "week"}}#calendar-grid">{{t "Week"}}</a><a class="button secondary" aria-current="{{eq $v.View "month"}}" href="{{$v.Link "view" "month"}}#calendar-grid">{{t "Month"}}</a></div></div>
 <div class="actions calendar-navigation"><a class="button secondary" href="{{$v.Previous}}#calendar-grid">{{t "Previous"}}</a><a class="button secondary" href="{{$v.Link "date" .Today}}#calendar-grid">{{t "Today"}}</a><a class="button secondary" href="{{$v.Next}}#calendar-grid">{{t "Next"}}</a>
-<form method="get" action="/calendar" class="inline"><input type="hidden" name="view" value="{{$v.View}}"><input type="hidden" name="order" value="{{$v.Order}}"><input type="hidden" name="days" value="{{$v.Horizon}}"><label>{{t "Date"}} <input type="date" name="date" value="{{$v.Date.Format "2006-01-02"}}" required></label><label>{{t "Week starts on"}} <select name="week"><option value="sunday" {{if eq $v.Week "sunday"}}selected{{end}}>{{t "Sunday"}}</option><option value="monday" {{if eq $v.Week "monday"}}selected{{end}}>{{t "Monday"}}</option></select></label><button class="secondary">{{t "Go"}}</button></form></div>
+<form method="get" action="/calendar" class="inline"><input type="hidden" name="view" value="{{$v.View}}"><input type="hidden" name="order" value="{{$v.Order}}"><input type="hidden" name="days" value="{{$v.Horizon}}"><input type="hidden" name="list_hide" value="{{$v.ListFilter.Hidden}}"><input type="hidden" name="grid_hide" value="{{$v.GridFilter.Hidden}}"><input type="hidden" name="list_q" value="{{$v.ListFilter.Query}}"><input type="hidden" name="grid_q" value="{{$v.GridFilter.Query}}"><label>{{t "Date"}} <input type="date" name="date" value="{{$v.Date.Format "2006-01-02"}}" required></label><label>{{t "Week starts on"}} <select name="week"><option value="sunday" {{if eq $v.Week "sunday"}}selected{{end}}>{{t "Sunday"}}</option><option value="monday" {{if eq $v.Week "monday"}}selected{{end}}>{{t "Monday"}}</option></select></label><button class="secondary">{{t "Go"}}</button></form></div>
+{{template "calendar-filters" .GridFilters}}
+{{if and .GridEmpty $v.GridFilter.Active}}<p class="empty">{{t "No events match these filters."}}</p>{{end}}
 <p class="small muted">{{t "Times are in {{.Zone}}. Select a date or time to add an event." "Zone" .Zone}}</p>
 {{if eq $v.View "month"}}
 <div class="calendar-month" role="group" aria-label="{{t "Month"}}">
-{{range $i, $day := .Days}}{{if lt $i 7}}<div class="calendar-weekday">{{calDate $day.Date "weekday"}}</div>{{end}}{{end}}
+{{range $i, $day := .Days}}{{if lt $i 7}}<div class="calendar-weekday"><span class="calendar-weekday-long">{{calDate $day.Date "weekday"}}</span><abbr class="calendar-weekday-short" title="{{calDate $day.Date "weekday"}}">{{calDate $day.Date "weekday-short"}}</abbr></div>{{end}}{{end}}
 {{range .Days}}<div class="calendar-cell {{if .Outside}}outside{{end}} {{if .Today}}is-today{{end}}"><a class="calendar-date" href="{{.Add}}" aria-label="{{t "Add event on {{.Date}}" "Date" (calDate .Date "full")}}" {{if .Today}}aria-current="date"{{end}}>{{.Date.Day}}</a>
-{{range .Rows}}<a class="calendar-entry calendar-source-{{.Color}}" href="{{.Link}}" title="{{or .Event.Title (t "Untitled event")}} · {{.When}}">{{if .CalendarName}}<span class="calendar-source-name">{{.CalendarName}}</span>{{end}}{{if .Event.AllDay}}<span class="small">{{t "all day"}}</span>{{else}}<span class="small">{{.Event.Start.In $v.Date.Location | clockTime}}</span>{{end}} <strong>{{or .Event.Title (t "Untitled event")}}</strong>{{if .Recurring}} <span aria-label="{{t "Recurring event"}}">↻</span>{{end}}</a>{{end}}
+{{range .Rows}}<a class="calendar-entry calendar-source-{{.Color}}" href="{{.Link}}" title="{{or .Event.Title (t "Untitled event")}} · {{.When}}{{if .CalendarName}} · {{.CalendarName}}{{end}}"><span class="small">{{if .Event.AllDay}}{{t "all day"}}{{else}}{{.Event.Start.In $v.Date.Location | clockTime}}{{end}}{{if .Recurring}} <span aria-label="{{t "Recurring event"}}">↻</span>{{end}}</span><strong class="calendar-entry-title">{{or .Event.Title (t "Untitled event")}}</strong>{{if .CalendarName}}<span class="calendar-source-name">{{.CalendarName}}</span>{{end}}</a>{{end}}
 {{if .More}}<a class="calendar-more" href="{{.Day}}#calendar-grid">{{t "+{{.N}} more" "N" .More}}</a>{{end}}</div>{{end}}</div>
 {{else}}
 <div class="calendar-time-scroll" tabindex="0" aria-label="{{t "Calendar time grid"}}"><div class="calendar-time-days {{if eq $v.View "week"}}week{{end}}">
@@ -50,8 +53,14 @@
 <li>{{if .Row.CalendarName}}<span class="subscription-label calendar-source-{{.Row.Color}}">{{.Row.CalendarName}}</span>{{end}}{{if .Trash}}<span class="title">{{or $e.Title (t "Untitled event")}}</span>{{else}}<a class="title" href="{{.Row.Link}}">{{or $e.Title (t "Untitled event")}}</a>{{end}}<span class="muted">{{.Row.When}}{{if $e.AllDay}} · {{t "all day"}}{{end}}{{if .Row.Recurring}} · {{t "Recurring event"}}{{end}}</span>
 {{if $e.Location}}<span class="muted small">{{$e.Location}}</span>{{end}}
 {{with .Row.Source}}<span class="badge">{{t "From note"}}</span><a class="small" href="{{.URL}}">{{if .Notebook}}{{.Notebook}}{{else}}{{t "Notebook page"}}{{end}}</a>{{end}}
-{{if $e.Detail}}<div class="muted small">{{$e.Detail}}</div>{{end}}
+{{if $e.Detail}}<details class="event-description small"><summary>{{t "Description"}}</summary><div class="muted event-detail">{{$e.Detail}}</div></details>{{end}}
 <span class="row-actions">{{if .Trash}}<form method="post" action="/calendar/{{$e.ID}}/restore"><button>{{t "Restore"}}</button></form>{{if .Row.Recurring}}<span class="small">{{t "Edit this series in your CalDAV app."}}</span>{{else}}<form method="post" action="/calendar/{{$e.ID}}/purge"><label class="small"><input type="checkbox" name="confirm" value="yes" required> {{t "Permanently"}}</label> <button class="danger">{{t "Delete permanently"}}</button></form>{{end}}
 {{else if or .Row.Recurring .Row.ReadOnly}}<a class="button secondary" href="{{.Row.Link}}">{{t "Event details"}}</a>
 {{else}}<a class="button secondary" href="{{.Row.Link}}">{{t "Edit"}}</a><form method="post" action="/calendar/{{$e.ID}}/delete"><input type="hidden" name="return" value="{{.Row.Return}}"><button class="quiet">{{t "Delete"}}</button></form>{{end}}</span></li>
 {{end}}
+
+{{define "calendar-filters"}}{{if .}}<details id="{{.Scope}}-filters" class="calendar-filters calendar-sources"><summary>{{if eq .Scope "list"}}{{t "Filter event list"}}{{else}}{{t "Filter calendar"}}{{end}}{{if .Filter.Active}} <span class="badge">{{t "Filters active"}}</span>{{end}}</summary>
+<form method="post" action="/calendar/subscriptions/visibility" class="stack"><input type="hidden" name="return" value="{{.Return}}"><input type="hidden" name="scope" value="{{.Scope}}">
+<label>{{t "Search events"}} <input type="search" name="q" value="{{.Filter.Query}}" maxlength="200" placeholder="{{t "Title, location, description, or calendar name"}}"></label>
+<fieldset><legend>{{t "Visible calendars"}}</legend><div class="calendar-filter-sources"><label><input type="checkbox" name="visible" value="local" {{if .LocalVisible}}checked{{end}}> {{t "Local calendar"}}</label>{{range .Sources}}<label class="subscription-label calendar-source-{{.Subscription.Color}}"><input type="checkbox" name="visible" value="{{.Subscription.ID}}" {{if .Visible}}checked{{end}}> {{.Subscription.Name}}{{if not .Subscription.Enabled}} — {{t "Paused"}}{{end}}</label>{{end}}</div></fieldset>
+<p class="small muted">{{t "Source choices are remembered for this browser. Search applies only to this section."}}</p><div class="actions"><button class="secondary">{{t "Apply"}}</button>{{if .Filter.Active}}<button class="quiet" name="reset" value="yes">{{t "Clear filters"}}</button>{{end}}<a href="/settings/integrations?section=subscriptions#subscriptions">{{t "Manage calendar subscriptions"}}</a></div></form></details>{{end}}{{end}}

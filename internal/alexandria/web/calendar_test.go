@@ -27,7 +27,7 @@ func TestCalendarPreferencesAndBoundaries(t *testing.T) {
 	now := calTime("2024-02-29T12:00:00Z")
 	req := httptest.NewRequest("GET", "/calendar", nil)
 	v := readCalendarView(req, now, time.UTC)
-	if v.View != "month" || v.Order != "upcoming" || v.Week != "sunday" || v.Horizon != 30 {
+	if v.View != "month" || v.Order != "upcoming" || v.Week != "sunday" || v.Horizon != 7 {
 		t.Fatal(v)
 	}
 	v.View = "week"
@@ -56,7 +56,7 @@ func TestCalendarPreferencesAndBoundaries(t *testing.T) {
 		{"2026-02-01T00:00:00Z", "sunday", "2026-02-01", "2026-03-01"},
 		{"2026-12-31T00:00:00Z", "sunday", "2026-11-29", "2027-01-03"},
 	} {
-		v := calendarView{"month", "upcoming", tc.week, calTime(tc.date), 30}
+		v := calendarView{View: "month", Order: "upcoming", Week: tc.week, Date: calTime(tc.date), Horizon: 30}
 		w := v.Window()
 		if w.From.Format("2006-01-02") != tc.from || w.To.Format("2006-01-02") != tc.to {
 			t.Fatal(tc, w)
@@ -64,14 +64,14 @@ func TestCalendarPreferencesAndBoundaries(t *testing.T) {
 	}
 	bad := httptest.NewRequest("GET", "/calendar?view=evil&week=evil&days=9999999&date=garbage", nil)
 	got = readCalendarView(bad, now, time.UTC)
-	if got.View != "month" || got.Horizon != 30 {
+	if got.View != "month" || got.Horizon != 7 {
 		t.Fatal(got)
 	}
 }
 func TestCalendarLayoutAndDST(t *testing.T) {
 	loc, _ := time.LoadLocation("America/Chicago")
 	date := time.Date(2026, 11, 1, 0, 0, 0, 0, loc)
-	v := calendarView{"day", "upcoming", "sunday", date, 30}
+	v := calendarView{View: "day", Order: "upcoming", Week: "sunday", Date: date, Horizon: 30}
 	rows := []calendarRow{}
 	for i := 0; i < 5; i++ {
 		e := events.Event{ID: fmt.Sprint(i), Title: "overlap", Start: date.Add(8 * time.Hour), End: date.Add(9 * time.Hour)}

@@ -35,12 +35,11 @@ func (d Deps) calendarPage(w http.ResponseWriter, r *http.Request) {
 		d.fail(w, err)
 		return
 	}
-	hidden := hiddenSources(r)
 	imported := map[string]subscriptions.Imported{}
 	sourceRows := []calendarSource{}
 	var importIssues []events.Incomplete
 	if !trash {
-		if hidden["local"] {
+		if !view.ListFilter.Visible("local") && !view.GridFilter.Visible("local") {
 			records = nil
 		}
 		ss := subscriptions.Store{DB: d.DB}
@@ -51,8 +50,9 @@ func (d Deps) calendarPage(w http.ResponseWriter, r *http.Request) {
 		}
 		selected := []string{}
 		for _, s := range all {
-			sourceRows = append(sourceRows, calendarSource{s, !hidden[s.ID]})
-			if s.Enabled && !hidden[s.ID] {
+			visible := view.ListFilter.Visible(s.ID) || view.GridFilter.Visible(s.ID)
+			sourceRows = append(sourceRows, calendarSource{s, visible})
+			if s.Enabled && visible {
 				selected = append(selected, s.ID)
 			}
 		}
@@ -96,24 +96,26 @@ func (d Deps) calendarPage(w http.ResponseWriter, r *http.Request) {
 	for _, o := range expansion.Occurrences {
 		row := makeCalendarRow(o, view.URL(), loc)
 		row.Source = sources[o.Event.ID]
+		sourceID := "local"
 		if v, ok := imported[o.Event.ID]; ok {
+			sourceID = v.SubscriptionID
 			row = subscriptionRow(row, v, loc)
 		}
-		if trash || events.Overlaps(o.Event, upcoming, loc) {
+		if trash || view.ListFilter.Matches(row, sourceID) && events.Overlaps(o.Event, upcoming, loc) {
 			futureRows = append(futureRows, row)
 		}
 		// An event still occupying today belongs to Upcoming only.
-		if !trash && events.Overlaps(o.Event, past, loc) && !events.Overlaps(o.Event, upcoming, loc) {
+		if !trash && view.ListFilter.Matches(row, sourceID) && events.Overlaps(o.Event, past, loc) && !events.Overlaps(o.Event, upcoming, loc) {
 			pastRows = append(pastRows, row)
 		}
-		if !trash && events.Overlaps(o.Event, grid, loc) {
+		if !trash && view.GridFilter.Matches(row, sourceID) && events.Overlaps(o.Event, grid, loc) {
 			gridRows = append(gridRows, row)
 		}
 	}
 	for i, j := 0, len(pastRows)-1; i < j; i, j = i+1, j-1 {
 		pastRows[i], pastRows[j] = pastRows[j], pastRows[i]
 	}
-	data := map[string]any{"Sources": sourceRows, "LocalVisible": !hidden["local"], "Upcoming": futureRows, "Past": pastRows, "Trash": trash, "Zone": settings.ZoneName(loc), "Today": today.Format("2006-01-02"), "View": view, "Days": calendarDays(view, gridRows, now), "Incomplete": expansion.Incomplete, "UpcomingEnd": upcoming.To.AddDate(0, 0, -1).Format("2006-01-02")}
+	data := map[string]any{"ListFilters": filterForm("list", view, sourceRows), "GridFilters": filterForm("grid", view, sourceRows), "GridEmpty": len(gridRows) == 0, "Sources": sourceRows, "Upcoming": futureRows, "Past": pastRows, "Trash": trash, "Zone": settings.ZoneName(loc), "Today": today.Format("2006-01-02"), "View": view, "Days": calendarDays(view, gridRows, now), "Incomplete": expansion.Incomplete, "UpcomingEnd": upcoming.To.AddDate(0, 0, -1).Format("2006-01-02")}
 	d.render(w, r, "calendar", "Calendar", "calendar", data)
 }
 func makeCalendarRow(o events.Occurrence, ret string, loc *time.Location) calendarRow {

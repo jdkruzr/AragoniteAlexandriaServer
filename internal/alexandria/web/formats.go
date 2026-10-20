@@ -16,6 +16,10 @@ func formatFuncs(l i18n.Localizer) template.FuncMap {
 		"calDate": func(t time.Time, kind string) string {
 			weekdays := []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
 			months := []string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
+			if kind == "weekday-short" {
+				day := []rune(l.T(weekdays[t.Weekday()]))
+				return string(day[:min(3, len(day))])
+			}
 			if kind == "weekday" {
 				return l.T(weekdays[t.Weekday()])
 			}

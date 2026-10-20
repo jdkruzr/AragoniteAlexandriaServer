@@ -6,10 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
@@ -17,18 +15,6 @@ import (
 
 const subscriptionSettings = "/settings/integrations?section=subscriptions#subscriptions"
 const sourceCookie = "alexandria_calendar_sources"
-
-func hiddenSources(r *http.Request) map[string]bool {
-	out := map[string]bool{}
-	if c, err := r.Cookie(sourceCookie); err == nil && len(c.Value) <= 1000 {
-		for _, id := range strings.Split(c.Value, ",") {
-			if _, err := uuid.Parse(id); id == "local" || err == nil {
-				out[id] = true
-			}
-		}
-	}
-	return out
-}
 
 type calendarSource struct {
 	Subscription subscriptions.Subscription
@@ -97,29 +83,7 @@ func (d Deps) subscriptionRoutes(mux *http.ServeMux) {
 		}
 		back(w, r, subscriptionSettings, "Calendar unsubscribed. Local events were kept.")
 	})
-	mux.HandleFunc("POST /calendar/subscriptions/visibility", func(w http.ResponseWriter, r *http.Request) {
-		all, err := store.List(r.Context())
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		_ = r.ParseForm()
-		selected := map[string]bool{}
-		for _, id := range r.PostForm["visible"] {
-			selected[id] = true
-		}
-		hidden := []string{}
-		if !selected["local"] {
-			hidden = append(hidden, "local")
-		}
-		for _, s := range all {
-			if !selected[s.ID] {
-				hidden = append(hidden, s.ID)
-			}
-		}
-		http.SetCookie(w, &http.Cookie{Name: sourceCookie, Value: strings.Join(hidden, ","), Path: "/calendar", MaxAge: 31536000, HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"})
-		back(w, r, calendarReturn(r), "Calendar visibility saved for this browser.")
-	})
+	mux.HandleFunc("POST /calendar/subscriptions/visibility", d.updateCalendarFilters)
 	mux.HandleFunc("GET /calendar/subscriptions/{id}/events/{key}", func(w http.ResponseWriter, r *http.Request) {
 		sub, err := store.Get(r.Context(), r.PathValue("id"))
 		if errors.Is(err, sql.ErrNoRows) || err == nil && !sub.Enabled {

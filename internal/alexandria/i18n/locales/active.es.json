@@ -1533,5 +1533,21 @@
   "Calendar link": "Enlace del calendario",
   "No calendar feed was found on this page. Paste a Google Calendar share link or a direct public ICS URL.": "No se encontró ninguna fuente de calendario en esta página. Pega un enlace para compartir de Google Calendar o una URL pública directa de ICS.",
   "This page contains several calendars. Paste the share link or ICS URL for the calendar you want.": "Esta página contiene varios calendarios. Pega el enlace para compartir o la URL de ICS del calendario que quieras.",
-  "This address returned a webpage instead of calendar data. Check that the calendar is public and use its public ICS address.": "Esta dirección devolvió una página web en lugar de datos de calendario. Comprueba que el calendario sea público y usa su dirección pública de ICS."
+  "This address returned a webpage instead of calendar data. Check that the calendar is public and use its public ICS address.": "Esta dirección devolvió una página web en lugar de datos de calendario. Comprueba que el calendario sea público y usa su dirección pública de ICS.",
+  "Upcoming range": "Intervalo de próximos eventos",
+  "Next 7 days": "Próximos 7 días",
+  "14 days": "14 días",
+  "30 days": "30 días",
+  "90 days": "90 días",
+  "Uses the event list filters.": "Usa los filtros de la lista de eventos.",
+  "Filter event list": "Filtrar la lista de eventos",
+  "Filter calendar": "Filtrar el calendario",
+  "Filters active": "Filtros activos",
+  "Search events": "Buscar eventos",
+  "Title, location, description, or calendar name": "Título, lugar, descripción o nombre del calendario",
+  "Source choices are remembered for this browser. Search applies only to this section.": "Las fuentes elegidas se recuerdan en este navegador. La búsqueda solo se aplica a esta sección.",
+  "Clear filters": "Quitar filtros",
+  "No events match these filters.": "Ningún evento coincide con estos filtros.",
+  "Calendar filters applied.": "Filtros de calendario aplicados.",
+  "Description": "Descripción"
 }
