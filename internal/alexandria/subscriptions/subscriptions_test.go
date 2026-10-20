@@ -34,11 +34,16 @@ func testFeed(t *testing.T, handler http.HandlerFunc) *http.Client {
 	target, _ := url.Parse(srv.URL)
 	transport := srv.Client().Transport
 	return &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		original := r
 		r = r.Clone(r.Context())
 		u := *r.URL
 		u.Host = target.Host
 		r.URL = &u
-		return transport.RoundTrip(r)
+		resp, err := transport.RoundTrip(r)
+		if resp != nil {
+			resp.Request = original
+		}
+		return resp, err
 	}), Timeout: 3 * time.Second}
 }
 func TestFeedValidationAndRecurrence(t *testing.T) {

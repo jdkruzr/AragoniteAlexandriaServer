@@ -59,10 +59,21 @@ const base=fs.readFileSync(dir+'/url','utf8');
   await page.locator('.subscription-card').getByLabel('Enable calendar and automatic refresh').check();await page.locator('.subscription-card').getByRole('button',{name:'Save',exact:true}).click();
   await page.locator('.subscription-card').getByLabel('Remove this subscription and its cached events').check();await page.locator('.subscription-card').getByRole('button',{name:'Unsubscribe',exact:true}).click();
   if(await page.locator('.subscription-card').count())throw Error('Unsubscribe');
-  await page.locator('#subscriptions input[name=name]').fill('Browser synthetic feed');await page.locator('input[name=feed_url]').fill('https://example.org/synthetic.ics');
-  await page.getByRole('button',{name:'Subscribe to calendar',exact:true}).click();
-  if(!await page.getByText('Waiting for the first calendar refresh.',{exact:true}).isVisible())throw Error('Subscribe');
-  await ctx.close();results.push({noJavaScript:true,keyboardDisclosure:true,details:true,visibility:true,isolation:true,subscribe:true,pause:true,refresh:true,unsubscribe:true});
+  for(const [path,message] of [['page','No calendar feed was found'],['multiple','This page contains several calendars']]) {
+   await page.locator('#subscriptions input[name=name]').fill('Rejected synthetic feed');
+   await page.getByLabel('Calendar link',{exact:true}).fill('https://example.org/'+path);
+   await page.getByRole('button',{name:'Subscribe to calendar',exact:true}).click();
+   if(!await page.getByText(message,{exact:false}).isVisible() || await page.locator('.subscription-card').count())throw Error('Discovery error '+path);
+  }
+  for(const link of ['https://example.org/synthetic.ics','https://calendar.google.com/calendar?cid=YUBi','https://example.org/calendar-page']) {
+   await page.locator('#subscriptions input[name=name]').fill('Browser synthetic feed');
+   await page.getByLabel('Calendar link',{exact:true}).fill(link);
+   await page.getByRole('button',{name:'Subscribe to calendar',exact:true}).click();
+   if(!await page.getByText('Waiting for the first calendar refresh.',{exact:true}).isVisible())throw Error('Subscribe '+link);
+   await page.locator('.subscription-card').getByLabel('Remove this subscription and its cached events').check();
+   await page.locator('.subscription-card').getByRole('button',{name:'Unsubscribe',exact:true}).click();
+  }
+  await ctx.close();results.push({noJavaScript:true,keyboardDisclosure:true,details:true,visibility:true,isolation:true,subscribe:true,googleShare:true,webpageDiscovery:true,discoveryErrors:true,pause:true,refresh:true,unsubscribe:true});
   const dark=await browser.newContext({viewport:{width:390,height:844},colorScheme:'dark'});const dp=await dark.newPage();await dp.goto(base+'/calendar?view=month&order=calendar');
   await dp.screenshot({path:dir+'/phone-dark.png'});await dark.close();results.push({dark:true});
   fs.writeFileSync(dir+'/browser.json',JSON.stringify({checks:results.length,results},null,2));

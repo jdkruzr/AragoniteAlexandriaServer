@@ -32,11 +32,11 @@
 <summary><h2>{{t "Calendar subscriptions"}}</h2><span class="settings-description">{{t "Show public calendars alongside your events and manage automatic refreshes."}}</span></summary>
 <div class="settings-body">
 {{if eq .SettingsSection "subscriptions"}}{{template "settings-notice" .}}{{end}}
-<p>{{t "Subscribe using a public HTTPS iCalendar (ICS) feed. In Google Calendar, copy the Public address in iCal format."}}</p>
+<p>{{t "Paste a public ICS URL, a Google Calendar share link, or a webpage with one calendar. We find and check the feed before subscribing."}}</p>
 <p class="small muted">{{t "Subscribed calendars are read-only and refresh every 30 minutes. You can subscribe to at most 20 calendars."}}</p>
 <form method="post" action="/calendar/subscriptions" class="stack">
 <label>{{t "Calendar name"}} <input name="name" required maxlength="120"></label>
-<label>{{t "Public iCalendar URL"}} <input name="feed_url" type="url" required maxlength="4096" placeholder="https://example.org/calendar.ics" autocomplete="off"></label>
+<label>{{t "Calendar link"}} <input name="feed_url" type="url" required maxlength="4096" placeholder="https://example.org/calendar.ics" autocomplete="off"></label>
 <label>{{t "Calendar color"}} <select name="color">{{range $d.SubscriptionColors}}<option value="{{.}}">{{t .}}</option>{{end}}</select></label>
 <div><button>{{t "Subscribe to calendar"}}</button></div>
 </form>

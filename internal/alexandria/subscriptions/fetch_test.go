@@ -19,7 +19,7 @@ func TestFetchFailuresAndBounds(t *testing.T) {
 	}{
 		{"http", "http_error", 503, "text/calendar", "", false},
 		{"unsolicited304", "http_error", 304, "", "", false},
-		{"html", "invalid_feed", 200, "text/html", "<html>not a calendar</html>", false},
+		{"html", "html_page", 200, "text/html", "<html>not a calendar</html>", false},
 		{"size", "too_large", 200, "text/calendar", strings.Repeat("x", MaxFeedBytes+1), false},
 		{"gzip size", "too_large", 200, "text/calendar", strings.Repeat("x", MaxFeedBytes+1), true},
 		{"valid gzip", "", 200, "text/calendar", feed(event("x", "x")), true},

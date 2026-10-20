@@ -48,6 +48,12 @@ func Problem(code string) string {
 	switch code {
 	case "invalid_url":
 		return "Enter a public HTTPS iCalendar feed URL (port 443)."
+	case "no_feed":
+		return "No calendar feed was found on this page. Paste a Google Calendar share link or a direct public ICS URL."
+	case "multiple_feeds":
+		return "This page contains several calendars. Paste the share link or ICS URL for the calendar you want."
+	case "html_page":
+		return "This address returned a webpage instead of calendar data. Check that the calendar is public and use its public ICS address."
 	case "too_large":
 		return "This calendar exceeds the subscription import limits."
 	case "invalid_feed":

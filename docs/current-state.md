@@ -5,6 +5,9 @@ Updated 2026-10-19. Work continues on `main`. The Server port resumed on
 
 ## Source and publication
 
+Calendar share-link and webpage discovery is implemented; deployment qualification
+is in progress. [Details](calendar-subscriptions/20261019/discovery/implementation.md).
+
 Public calendar subscriptions are deployed and feature commit `8327887` is pushed
 on `main`. [Feature CI](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39361064128)
 passed both Go and packaging jobs. The previous Poppler CI prerequisite fix remains

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -50,8 +51,41 @@ func subscriptionFixture(t *testing.T) (Deps, string, string) {
 	return d, id, key
 }
 
+func syntheticSubscriptionClient(t *testing.T) *http.Client {
+	t.Helper()
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/calendar-page" {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, `<iframe src="https://calendar.google.com/calendar/embed?src=a%40b"></iframe>`)
+			return
+		}
+		if r.URL.Path == "/multiple" {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, `<iframe src="https://calendar.google.com/calendar/embed?src=a%40b&amp;src=c%40d"></iframe>`)
+			return
+		}
+		if r.URL.Path == "/page" {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, "<html>No feed</html>")
+			return
+		}
+		w.Header().Set("Content-Type", "text/calendar")
+		fmt.Fprint(w, "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//synthetic//EN\r\nEND:VCALENDAR\r\n")
+	}))
+	t.Cleanup(srv.Close)
+	transport := srv.Client().Transport.(*http.Transport).Clone()
+	target, _ := url.Parse(srv.URL)
+	transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+	transport.TLSClientConfig.ServerName = target.Hostname()
+	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, target.Host)
+	}
+	return &http.Client{Transport: transport}
+}
+
 func TestSubscriptionPagesAndMutations(t *testing.T) {
 	d, id, key := subscriptionFixture(t)
+	d.calendarHTTPClient = syntheticSubscriptionClient(t)
 	h := Handler(d)
 	call := func(method, path, lang, origin string, values url.Values, cookie *http.Cookie) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, path, strings.NewReader(values.Encode()))
@@ -179,7 +213,13 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 	if err != nil || len(all) != 0 {
 		t.Fatal(all, err)
 	}
-	call("POST", "/calendar/subscriptions", "en", d.PublicURL, url.Values{"name": {"New calendar"}, "color": {"blue"}, "feed_url": {"https://example.org/feed"}}, nil)
+	w = call("POST", "/calendar/subscriptions", "es", d.PublicURL, url.Values{"name": {"No feed"}, "color": {"blue"}, "feed_url": {"https://example.org/page"}}, nil)
+	redirect, _ := url.Parse(w.Header().Get("Location"))
+	redirect.Fragment = ""
+	if !strings.Contains(get(redirect.String(), "es", nil), "No se encontró") {
+		t.Fatal("missing translated discovery error")
+	}
+	call("POST", "/calendar/subscriptions", "en", d.PublicURL, url.Values{"name": {"New calendar"}, "color": {"blue"}, "feed_url": {"https://calendar.google.com/calendar?cid=a%40b"}}, nil)
 	all, err = s.List(ctx)
 	if err != nil || len(all) != 1 {
 		t.Fatal(all, err)
@@ -193,6 +233,7 @@ func TestSubscriptionBrowserFixture(t *testing.T) {
 		t.Skip("browser driver not requested")
 	}
 	d, _, _ := subscriptionFixture(t)
+	d.calendarHTTPClient = syntheticSubscriptionClient(t)
 	d.PublicURL = ""
 	srv := httptest.NewServer(Handler(d))
 	defer srv.Close()

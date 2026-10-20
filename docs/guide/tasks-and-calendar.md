@@ -229,8 +229,13 @@ their next sync.
 
 Choose **Subscribe to calendar** on Calendar, or open **Settings → Tasks &
 Integrations → Calendar subscriptions**. Enter a name, choose a color, and paste
-an HTTPS iCalendar (ICS) feed address. In Google Calendar, use **Public address
-in iCal format**; a normal calendar webpage/share URL is not the feed.
+an HTTPS iCalendar (ICS) feed address, a Google Calendar share/embed link, or a
+webpage containing one calendar. Alexandria resolves Google calendar IDs and
+looks for embedded Google calendars or explicit ICS links on the page, then
+checks the complete feed before saving. No JavaScript or Google sign-in is needed.
+If several calendars are found, paste the share link or ICS URL for the specific
+calendar you want. Pages that require scripts to generate their calendar links
+need a direct share/ICS link. The calendar must be publicly accessible.
 
 Subscribed events appear in Day, Week, Month, Upcoming and Past, with the source
 calendar's name and color. **Visible calendars** lets you hide or show each source
@@ -252,4 +257,4 @@ running for refreshes; normal page loads read the cached snapshot.
 
 Example checked on 2026-10-19: the [TCDP Community Calendar page](https://www.traviscountydemocrats.org/tcdp-calendar)
 embeds a public Google Calendar. Its direct [public ICS feed](https://calendar.google.com/calendar/ical/info%40travisdems.org/public/basic.ics)
-can be pasted into the subscription form. The webpage URL itself cannot.
+and the webpage URL can both be pasted into the subscription form.

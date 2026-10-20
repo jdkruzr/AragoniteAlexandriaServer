@@ -38,14 +38,15 @@ type calendarSource struct {
 func (d Deps) subscriptionRoutes(mux *http.ServeMux) {
 	store := subscriptions.Store{DB: d.DB}
 	mux.HandleFunc("POST /calendar/subscriptions", func(w http.ResponseWriter, r *http.Request) {
-		_, err := store.Create(r.Context(), r.FormValue("name"), r.FormValue("color"), r.FormValue("feed_url"))
+		_, err := store.Subscribe(r.Context(), r.FormValue("name"), r.FormValue("color"), r.FormValue("feed_url"), d.calendarHTTPClient)
 		if err != nil {
+			var inputError *subscriptions.InputError
 			message := "Choose a name and a calendar color."
 			switch {
 			case errors.Is(err, subscriptions.ErrLimit):
 				message = "You can subscribe to at most 20 calendars."
-			case err.Error() == "invalid_url":
-				message = subscriptions.Problem("invalid_url")
+			case errors.As(err, &inputError):
+				message = subscriptions.Problem(inputError.Code)
 			case !errors.Is(err, subscriptions.ErrInvalid):
 				d.fail(w, err)
 				return

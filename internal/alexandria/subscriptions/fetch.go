@@ -90,9 +90,15 @@ type fetched struct {
 	raw            []byte
 	etag, modified string
 	unchanged      bool
+	html           bool
+	finalURL       *url.URL
 }
 
 func fetch(ctx context.Context, client *http.Client, s Subscription) (fetched, string) {
+	return fetchDocument(ctx, client, s, false)
+}
+
+func fetchDocument(ctx context.Context, client *http.Client, s Subscription, allowHTML bool) (fetched, string) {
 	var f fetched
 	if ValidateURL(s.feedURL) != nil {
 		return f, "invalid_url"
@@ -102,6 +108,9 @@ func fetch(ctx context.Context, client *http.Client, s Subscription) (fetched, s
 		return f, "invalid_url"
 	}
 	req.Header.Set("Accept", "text/calendar, application/ics;q=0.9, text/plain;q=0.5")
+	if allowHTML {
+		req.Header.Set("Accept", "text/calendar, text/html;q=0.8, text/plain;q=0.5")
+	}
 	req.Header.Set("User-Agent", "Alexandria-Calendar/1.0")
 	if s.LastSuccess != nil {
 		if s.etag != "" {
@@ -125,10 +134,16 @@ func fetch(ctx context.Context, client *http.Client, s Subscription) (fetched, s
 	}
 	typ, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	switch strings.ToLower(typ) {
+	case "text/html", "application/xhtml+xml":
+		if !allowHTML {
+			return f, "html_page"
+		}
+		f.html = true
 	case "text/calendar", "application/ics", "application/icalendar", "text/plain", "application/octet-stream", "":
 	default:
 		return f, "invalid_feed"
 	}
+	f.finalURL = resp.Request.URL
 	f.raw, err = io.ReadAll(io.LimitReader(resp.Body, MaxFeedBytes+1))
 	if err != nil {
 		return f, "fetch_failed"

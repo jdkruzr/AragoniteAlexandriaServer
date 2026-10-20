@@ -162,6 +162,8 @@ type Status struct {
 }
 
 type Deps struct {
+	// calendarHTTPClient is injected by synthetic subscription tests; nil uses the public-network client.
+	calendarHTTPClient *http.Client
 	LocalPasswords     bool
 	RecognitionCatalog recognition.Catalog
 	Providers          *providers.Store
