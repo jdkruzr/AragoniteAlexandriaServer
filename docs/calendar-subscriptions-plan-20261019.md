@@ -1,7 +1,7 @@
 # Plan: public calendar subscriptions
 
 Recorded 2026-10-19; implementation authorized later the same day.
-**Status: implemented locally; verification recorded in the [implementation handoff](calendar-subscriptions/20261019/implementation.md). Not deployed or released.** The primary use case is
+**Status: implemented, pushed and deployed with migration 37; see the [implementation handoff](calendar-subscriptions/20261019/implementation.md). No versioned release.** The primary use case is
 public calendars, including public Google Calendar calendars. This is separate
 from preparing a versioned Server release.
 

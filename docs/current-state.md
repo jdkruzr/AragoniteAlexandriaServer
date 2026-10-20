@@ -5,38 +5,30 @@ Updated 2026-10-19. Work continues on `main`. The Server port resumed on
 
 ## Source and publication
 
-The user authorized consolidation/publication and roadmap reconciliation on
-2026-10-19. GitHub `main` at `b0f6607` is an ancestor of the 25 locally validated
-commits through `f93b190`; no remote-only commits were found after fetching.
-Those commits and this documentation reconciliation are consolidated onto `main`
-by fast-forward, preserving history. Existing feature worktrees are retained.
-Check [GitHub Actions](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions)
-for the CI result of the published head; local validation is recorded separately.
-No release tag or new deployment is part of this housekeeping round.
-
-The first publication CI run passed packaging but failed imported-PDF recognition:
-the runner lacked Poppler, which is already installed in the application image
-and local verification environment. CI now installs `poppler-utils` and verifies
-`pdftoppm` before testing; the integration test names that prerequisite explicitly.
-This correction changes CI/test setup only, not the deployed runtime. The
-[rerun at `f48fa83`](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39357371705)
-passed both CI and packaging.
+Public calendar subscriptions are deployed and feature commit `8327887` is pushed
+on `main`. [Feature CI](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39361064128)
+passed both Go and packaging jobs. The previous Poppler CI prerequisite fix remains
+in place. No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment: **`search-sorting-f5f0998f3571`**, runtime source
-`f93b190`, schema **36**, image
-`sha256:c50ed35c89c24a5e3114f72ca816ee391c5c18594ef4129be11dcf93a58766c0`.
-[Live evidence](search-sorting/20261019/deployment.json): 39 checks, zero restarts,
-no startup warnings/errors; all 320 runtime inputs verified. Schema, provider
-revision, job identities and native projection/blob fingerprints were unchanged.
-This is the recorded deployment checkpoint, not a fresh device/sync census.
+Latest recorded deployment: **`subscriptions-8327887`**, runtime source
+`8327887`, schema **37**, image
+`sha256:b92712c2f845ea429cda2c1bcc60682964c069bed84fc3372a035e8bf56fd2da`.
+[Live evidence](calendar-subscriptions/20261019/deployment.json): 33 checks across
+both languages and all Calendar views, zero restarts, and all 328 runtime inputs
+verified. Migration 37 preserved the earlier migration checksums, local event
+fingerprint, native projections/blobs, provider revision and job identities.
+Compose configuration hashes were unchanged. The S3 SDK logged missing-response-
+checksum warnings (360 at the recorded check); there were no application errors
+or other warnings. No checksum/storage configuration was changed.
 
-The final runtime received fresh required Go 1.25 PostgreSQL/object-store race
-tests (51 packages), build/vet, Hosting compile compatibility and ten packaging
-checks. [Validation](search-sorting/20261019/validation.txt).
-The search browser run covered 47 check groups across four viewports and both
-languages, including no-JS paging and keyboard access.
+[Validation](calendar-subscriptions/20261019/validation.txt): fresh required Go 1.25
+PostgreSQL/object-store race tests (52 packages), build/vet, Hosting compile
+compatibility and ten packaging checks. The browser run covered 58 checks across
+four viewports, both languages and section orders, all views, and a no-JavaScript
+subscription workflow. The TCDP public feed also passed a read-only interoperability
+probe. No real subscription was added during deployment qualification.
 
 ## Completed recent work
 
@@ -50,13 +42,14 @@ languages, including no-JS paging and keyboard access.
 | Default 100-page recognition cap and persistent notebook overrides | [Implementation](recognition-limit/20261019/implementation.md) |
 | Collapsed Settings categories | [Implementation](settings-tiles/20261019/implementation.md) |
 | Natural title/date Search sorting and group pagination | [Implementation](search-sorting/20261019/implementation.md) |
+| Public ICS calendar subscriptions | [Implementation and deployment](calendar-subscriptions/20261019/implementation.md) |
 
 ## Next work and recovery
 
-**Implemented locally:** [public calendar subscriptions](calendar-subscriptions/20261019/implementation.md),
-authorized 2026-10-19. Read-only public ICS feeds, automatic refresh and Calendar
-overlays, with schema migration 37. This is not deployed or released; the deployed
-checkpoint above remains schema 36. Google OAuth and CalDAV republication remain deferred.
+**Deployed:** [public calendar subscriptions](calendar-subscriptions/20261019/implementation.md).
+Google OAuth and CalDAV republication remain deferred. Hosting still needs to
+schedule the new additive worker method when adopting this feature; the standalone
+Server already schedules it. The S3 checksum warning noise is recorded for follow-up.
 
 The three user-requested follow-ups are complete. The [reconciled roadmap](remaining-steps.md)
 separates confirmed implementation gaps from older qualification items that need
@@ -64,11 +57,13 @@ an evidence refresh. The clearest remaining Server gap is BOOX cold backup/resto
 for named-volume installs; its proposal remains unimplemented and is not started
 by this documentation/publication task.
 
-The existing host-directory deployment retains its previous image, source/config
-archives and catalog-checked metadata dump under
-`deploy/compose/private/search-sorting-f5f0998f3571/`. The included rollback script
-restores only the app/source; it has not been exercised for this particular
-release. A metadata dump alone is not a coordinated native BOOX backup.
+The host-directory deployment retains the previous image, a schema-37-compatible
+rollback image, source/config archives and catalog-checked metadata dump under
+`deploy/compose/private/subscriptions-8327887/`. Its `rollback.sh` selects the
+compatible image once migration 37 exists and retains subscription data. The
+rollback runtime passed fresh synthetic schema/runtime tests; live rollback and
+metadata restoration were not exercised. A metadata dump alone is not a coordinated
+native BOOX backup.
 
 Use [project ownership](project-map.md), [development rules](development.md),
 and the [user guides](guide/README.md). Device-specific PowerSync status belongs

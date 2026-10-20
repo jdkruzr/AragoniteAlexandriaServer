@@ -1,8 +1,9 @@
 # Public calendar subscriptions — 2026-10-19
 
 Implemented on Server `main`, following the [approved plan](../../calendar-subscriptions-plan-20261019.md).
-This feature is locally verified, not deployed or released. The recorded live
-instance remains on schema 36; this feature adds migration **0037**.
+Feature commit `8327887` is pushed and deployed as **subscriptions-8327887**,
+with migration **0037**. [Feature CI](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39361064128)
+passed. No versioned release was created.
 
 ## Behavior
 
@@ -76,10 +77,34 @@ All database/browser write fixtures are synthetic and removed by test cleanup;
 the outer fresh-gate database is also dropped. The public feed sample is not checked
 into the repository. Screenshots retain only synthetic event data.
 
-## Rollout boundary
+## Deployment and recovery
 
-A later deployment needs the reviewed migration-and-app procedure, a pre-migration
-metadata backup and compatible rollback artifacts; it is not an app-only swap.
-No deployment, version tag, or GitHub Release is included here. Google OAuth,
-private account-shared calendars, two-way writes and CalDAV republication remain
-deferred. Paste an ICS address into this version; it does not scrape calendar webpages.
+The user authorized deployment and push after implementation verification.
+[Deployment evidence](deployment.json): 33 read-only live checks passed, covering
+readiness, authentication, Tasks/CalDAV links, every Calendar view and section
+order, both languages, collapsed subscription settings, and existing job/search
+pages. All 328 runtime inputs and 20 staged paths were hash-verified. The app has
+zero restarts. Migration 37 preserved earlier schema checksums, local events,
+native records, provider revision and job identities; Compose config hashes are
+unchanged. All four CRUD privileges on both new tables were verified for the
+runtime role. No real subscription was added and no live notebook/settings writes
+were submitted for qualification.
+
+The S3 SDK logged 360 missing-response-checksum warnings at the recorded check.
+No application errors or other warning types were observed. Readiness and page
+checks passed; checksum policy and object-store configuration were left unchanged.
+This warning noise is recorded separately on the follow-up list.
+
+Recovery artifacts are retained on the host under
+`/opt/aragonite-alexandria-server/deploy/compose/private/subscriptions-8327887/`:
+a 51,026,616-byte catalog-checked metadata dump, original source/config archives,
+previous image tag, and a schema-37-compatible rollback image/source archive.
+`rollback.sh` selects the compatible image after migration 37 and preserves the
+new subscription tables/data. The compatible runtime is the exact preceding
+runtime plus migration 37; fresh synthetic runtime admission/isolation and schema
+migration/checksum tests passed. Live rollback and metadata restoration were not
+exercised. The metadata dump is not a coordinated native BOOX/object-store backup.
+
+No version tag or GitHub Release is included. Google OAuth, private account-shared
+calendars, two-way writes and CalDAV republication remain deferred. Paste an ICS
+address into this version; it does not scrape calendar webpages.

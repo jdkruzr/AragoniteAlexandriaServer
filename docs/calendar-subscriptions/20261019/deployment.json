@@ -1,0 +1,344 @@
+{
+  "version": "subscriptions-8327887",
+  "runtimeCommit": "8327887c3f05cfc147bfd9aa15d01890e38e53e9",
+  "image": "sha256:b92712c2f845ea429cda2c1bcc60682964c069bed84fc3372a035e8bf56fd2da",
+  "previousImage": "sha256:c50ed35c89c24a5e3114f72ca816ee391c5c18594ef4129be11dcf93a58766c0",
+  "compatibleRollbackImage": "sha256:b2d6fd1b785a8b54137cc8ea106ed79f2caaecc735777f136507319b88a92018",
+  "restarts": 0,
+  "state": "running",
+  "startedAt": "2026-10-20T02:59:46.547303584Z",
+  "startupLogLevels": {
+    "INFO": 3,
+    "WARN": 360
+  },
+  "s3ChecksumWarnings": 360,
+  "logAssessment": "S3 SDK reports that responses have no supported checksum; no application errors or other warnings. No checksum configuration changed.",
+  "runtimeInputsVerified": 328,
+  "stagedPathsVerified": 20,
+  "configurationHashesUnchanged": true,
+  "recoveryDirectory": "/opt/aragonite-alexandria-server/deploy/compose/private/subscriptions-8327887",
+  "metadataDumpBytes": 51026616,
+  "metadataCatalogVerified": true,
+  "before": {
+    "migration_count": 36,
+    "prior_migration_fingerprint": "66ea183c0fdf0056daa48b8def030701",
+    "management_migration_checksum": "e052703d7c26cfbc57b9db9a8540a578ce0501a35e920ee5e97f5723490a0888",
+    "events_fingerprint": "bf2adc68c36c70ec0882685fce489d65",
+    "provider_revision": 13,
+    "job_count": 5416,
+    "jobs_fingerprint": "5d4dae51372a054ee6244b2f9ae93e39",
+    "native_projection_fingerprint": "106c48ce0eeac358f1f75721134dc86e",
+    "native_blobs_fingerprint": "93352cfc0d9f53d43c0d1af24dc30d2c"
+  },
+  "migrated": {
+    "migration_count": 37,
+    "prior_migration_fingerprint": "66ea183c0fdf0056daa48b8def030701",
+    "management_migration_checksum": "e052703d7c26cfbc57b9db9a8540a578ce0501a35e920ee5e97f5723490a0888",
+    "events_fingerprint": "bf2adc68c36c70ec0882685fce489d65",
+    "provider_revision": 13,
+    "job_count": 5416,
+    "jobs_fingerprint": "5d4dae51372a054ee6244b2f9ae93e39",
+    "native_projection_fingerprint": "106c48ce0eeac358f1f75721134dc86e",
+    "native_blobs_fingerprint": "93352cfc0d9f53d43c0d1af24dc30d2c"
+  },
+  "after": {
+    "migration_count": 37,
+    "prior_migration_fingerprint": "66ea183c0fdf0056daa48b8def030701",
+    "management_migration_checksum": "e052703d7c26cfbc57b9db9a8540a578ce0501a35e920ee5e97f5723490a0888",
+    "events_fingerprint": "bf2adc68c36c70ec0882685fce489d65",
+    "provider_revision": 13,
+    "job_count": 5416,
+    "jobs_fingerprint": "5d4dae51372a054ee6244b2f9ae93e39",
+    "native_projection_fingerprint": "106c48ce0eeac358f1f75721134dc86e",
+    "native_blobs_fingerprint": "93352cfc0d9f53d43c0d1af24dc30d2c"
+  },
+  "subscriptionSchema": {
+    "migration_checksum": "1d7f846f28ea9e7c07478c7ec67784367641baedf1850b00c3af5c524a277477",
+    "source_count": 0,
+    "import_count": 0,
+    "runtime_source_access": true,
+    "runtime_import_access": true,
+    "runtimeCRUDVerified": true
+  },
+  "smoke": {
+    "checks": [
+      {
+        "path": "/readyz",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/livez",
+        "status": 200,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/integrations",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/metrics",
+        "status": 401,
+        "language": "en",
+        "authenticated": false,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/integrations",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/integrations",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/size",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/recognition",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/calendar",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/tasks",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/integrations",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/integrations",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/jobs/size",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/settings/recognition",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/search",
+        "status": 200,
+        "language": "es",
+        "authenticated": true,
+        "copyVerified": false,
+        "method": "GET"
+      },
+      {
+        "path": "/static/app.css",
+        "status": 200,
+        "language": "en",
+        "authenticated": true,
+        "copyVerified": true,
+        "method": "GET"
+      }
+    ],
+    "passed": 33,
+    "baseURL": "https://alexandria.federation.engineering",
+    "version": "subscriptions-8327887",
+    "liveWrites": false,
+    "writeQualification": "isolated synthetic PostgreSQL/browser fixtures"
+  },
+  "rollbackExercised": false,
+  "rollbackQualification": "Previous deployed runtime plus migration 37; fresh required synthetic schema/runtime admission tests passed. No live database restoration.",
+  "writeQualification": "Isolated synthetic PostgreSQL and browser fixtures; live smoke requests read-only. No real subscriptions added.",
+  "featureCI": {
+    "url": "https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39361064128",
+    "conclusion": "success",
+    "commit": "8327887c3f05cfc147bfd9aa15d01890e38e53e9"
+  }
+}

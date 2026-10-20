@@ -28,17 +28,20 @@ is retained as history; its unchecked boxes are not automatically current defect
   reconcile this roadmap. Publication CI is tracked in
   [GitHub Actions](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions).
 
-## Implemented locally — deployment pending
+## Calendar subscriptions — deployed, follow-ups separate
 
 - [x] **Public calendar subscriptions.** Read-only ICS feeds, including public
   Google calendars, with background refresh, Calendar overlays, source controls
   and last-good-data preservation. [Implementation and verification](calendar-subscriptions/20261019/implementation.md).
-- [ ] Deploy subscriptions with migration 37 when requested. The existing
-  instance remains on schema 36; this work does not create a versioned release.
+- [x] Deploy subscriptions with migration 37 and push `8327887`.
+  [Deployment evidence](calendar-subscriptions/20261019/deployment.json); feature CI passed.
+  No versioned release was created.
 - [ ] Hosting adopters of the new Server library must schedule
   `Runtime.ProcessCalendarSubscriptions` alongside their other workers. Server's
   standalone worker/all roles already schedule it. Hosting compilation remains compatible.
   Google OAuth and CalDAV republication remain outside this version.
+- [ ] Investigate recurring S3 SDK missing-response-checksum warnings recorded
+  during deployment. Readiness and live checks passed; no checksum policy was changed.
 
 ## Confirmed implementation gaps
 

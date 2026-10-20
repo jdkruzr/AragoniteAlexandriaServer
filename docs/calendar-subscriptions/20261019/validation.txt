@@ -1,6 +1,7 @@
 Calendar subscriptions validation — 2026-10-19
 Base: f48fa83; Server main; Go 1.25.0.
-No deployment, release, or live database writes.
+Implementation gate performed before deployment; no live database writes in those tests.
+Subsequent authorized deployment evidence is appended below.
 
 Required fresh integration gate: go test -race -count=1 ./...
 ALEXANDRIA_REQUIRE_INTEGRATION=1; disposable PostgreSQL/pgvector + S3 fixtures.
@@ -119,3 +120,20 @@ Read-only real-world public Google feed probe (user-provided TCDP calendar):
 --- PASS: TestPublicCalendarSample (1.42s)
 PASS
 ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions	1.424s
+
+Deployment 2026-10-19 (local date), runtime 8327887:
+All runtime inputs match reviewed baseline: 328
+Staged and verified paths: 20
+Migration 37 applied; prior schema, local events, native records, provider revision and job identities preserved.
+Deployment and live checks complete: subscriptions-8327887
+
+Compatible rollback runtime admission/isolation:
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	3.856s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	1.015s [no tests to run]
+
+Compatible rollback schema migration/checksum tests:
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	1.485s
+
+Feature CI: success, https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39361064128
+Live checks: 33 passed; zero restarts. See deployment.json for image/schema/fingerprint evidence.
+S3 SDK missing-response-checksum warnings recorded; no application errors or other warning types.
