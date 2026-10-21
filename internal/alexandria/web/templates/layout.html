@@ -10,6 +10,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/app.css?v={{version}}">
+{{if eq .Section "calendar"}}<script src="/static/calendar.js?v={{version}}" defer></script>{{end}}
 {{if .Live}}<meta name="alexandria-live" content="{{.Live}}">
 <noscript><meta http-equiv="refresh" content="{{.Live}}"></noscript>
 <script src="/static/live.js?v={{version}}" defer></script>{{end}}

@@ -297,6 +297,8 @@ dl.transcript dd { margin:0; }
 .calendar-order { margin:1rem 0; }
 .calendar-section, #upcoming { margin:1.5rem 0 2rem; min-width:0; }
 .calendar-section .page-head { margin-bottom:.5rem; }
+.calendar-disclosure > summary { padding:.5rem 0; color:var(--ink); }
+.calendar-disclosure > summary h2 { display:inline; margin:0; font-size:1.25rem; }
 .button.secondary[aria-current=true] { background:var(--ink); color:var(--bg); border-color:var(--ink); }
 .calendar-navigation { flex-wrap:wrap; align-items:end; }
 .calendar-navigation form { flex-wrap:wrap; }

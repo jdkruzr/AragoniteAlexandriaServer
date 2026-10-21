@@ -14,19 +14,19 @@
 {{end}}
 
 {{define "upcoming"}}
-<section id="upcoming" aria-labelledby="upcoming-heading"><div class="page-head"><h2 id="upcoming-heading">{{t "Upcoming"}}</h2><div class="actions calendar-horizon" aria-label="{{t "Upcoming range"}}">
+<details id="upcoming" class="calendar-disclosure" open aria-labelledby="upcoming-heading"><summary><h2 id="upcoming-heading">{{t "Upcoming"}}</h2></summary><div class="page-head"><div class="actions calendar-horizon" aria-label="{{t "Upcoming range"}}">
 <a class="button secondary" aria-current="{{eq .View.Horizon 7}}" href="{{.View.Link "days" "7"}}#upcoming">{{t "Next 7 days"}}</a>
 <a class="button secondary" aria-current="{{eq .View.Horizon 14}}" href="{{.View.Link "days" "14"}}#upcoming">{{t "14 days"}}</a>
 <a class="button secondary" aria-current="{{eq .View.Horizon 30}}" href="{{.View.Link "days" "30"}}#upcoming">{{t "30 days"}}</a>
 <a class="button secondary" aria-current="{{eq .View.Horizon 90}}" href="{{.View.Link "days" "90"}}#upcoming">{{t "90 days"}}</a></div></div>
 {{template "calendar-filters" .ListFilters}}<p class="small muted">{{t "From today through {{.Date}}" "Date" .UpcomingEnd}}</p>
 {{if .Upcoming}}<ul class="tasks events">{{range .Upcoming}}{{template "event" (eventRow . false)}}{{end}}</ul>{{else}}<p class="empty">{{if .View.ListFilter.Active}}{{t "No events match these filters."}}{{else}}{{t "No events."}}{{end}}</p>{{end}}
-{{if lt .View.Horizon 3660}}<a class="button secondary" href="{{.View.More}}#upcoming">{{t "Show next 30 days"}}</a>{{end}}</section>
+{{if lt .View.Horizon 3660}}<a class="button secondary" href="{{.View.More}}#upcoming">{{t "Show next 30 days"}}</a>{{end}}</details>
 {{end}}
 
 {{define "calendar-grid"}}{{$v := .View}}
-<section id="calendar-grid" class="calendar-section" aria-labelledby="grid-heading">
-<div class="page-head"><h2 id="grid-heading">{{calDate $v.Date "heading"}}</h2><div class="actions">
+<details id="calendar-grid" class="calendar-section calendar-disclosure" open aria-labelledby="grid-heading">
+<summary><h2 id="grid-heading">{{t "Calendar"}} · {{calDate $v.Date "heading"}}</h2></summary><div class="page-head"><div class="actions">
 <a class="button secondary" aria-current="{{eq $v.View "day"}}" href="{{$v.Link "view" "day"}}#calendar-grid">{{t "Day"}}</a><a class="button secondary" aria-current="{{eq $v.View "week"}}" href="{{$v.Link "view" "week"}}#calendar-grid">{{t "Week"}}</a><a class="button secondary" aria-current="{{eq $v.View "month"}}" href="{{$v.Link "view" "month"}}#calendar-grid">{{t "Month"}}</a></div></div>
 <div class="actions calendar-navigation"><a class="button secondary" href="{{$v.Previous}}#calendar-grid">{{t "Previous"}}</a><a class="button secondary" href="{{$v.Link "date" .Today}}#calendar-grid">{{t "Today"}}</a><a class="button secondary" href="{{$v.Next}}#calendar-grid">{{t "Next"}}</a>
 <form method="get" action="/calendar" class="inline"><input type="hidden" name="view" value="{{$v.View}}"><input type="hidden" name="order" value="{{$v.Order}}"><input type="hidden" name="days" value="{{$v.Horizon}}"><input type="hidden" name="list_hide" value="{{$v.ListFilter.Hidden}}"><input type="hidden" name="grid_hide" value="{{$v.GridFilter.Hidden}}"><input type="hidden" name="list_q" value="{{$v.ListFilter.Query}}"><input type="hidden" name="grid_q" value="{{$v.GridFilter.Query}}"><label>{{t "Date"}} <input type="date" name="date" value="{{$v.Date.Format "2006-01-02"}}" required></label><label>{{t "Week starts on"}} <select name="week"><option value="sunday" {{if eq $v.Week "sunday"}}selected{{end}}>{{t "Sunday"}}</option><option value="monday" {{if eq $v.Week "monday"}}selected{{end}}>{{t "Monday"}}</option></select></label><button class="secondary">{{t "Go"}}</button></form></div>
@@ -44,7 +44,7 @@
 {{range .Days}}<section class="calendar-time-day {{if .Today}}is-today{{end}}"><h3><a href="{{.Add}}">{{calDate .Date "full"}}</a></h3><div class="calendar-all-day" style="height:{{.AllDayHeight}}px"><a class="small" href="{{.Add}}">{{t "all day"}}</a>{{range .AllDay}}<a class="calendar-entry calendar-source-{{.Color}}" href="{{.Link}}">{{if .CalendarName}}<span class="calendar-source-name">{{.CalendarName}}</span>{{end}}{{or .Event.Title (t "Untitled event")}}{{if .Recurring}} ↻{{end}}</a>{{end}}</div>
 <div class="calendar-hours" style="height:{{.Height}}px">{{range .Slots}}<a class="calendar-slot" href="{{.URL}}" style="top:{{.Top}}px" aria-label="{{t "Add event at {{.Time}}" "Time" .Label}}"><span>{{.Label}}</span></a>{{end}}{{range .Timed}}<a class="calendar-block calendar-source-{{.Row.Color}}" style="{{.Style}}" href="{{.Row.Link}}" title="{{or .Row.Event.Title (t "Untitled event")}} · {{.Row.When}}"><strong>{{or .Row.Event.Title (t "Untitled event")}}</strong>{{if .Row.CalendarName}}<span class="calendar-source-name">{{.Row.CalendarName}}</span>{{end}}<span>{{.Row.When}}{{if .Row.Recurring}} ↻{{end}}</span></a>{{end}}</div></section>{{end}}
 </div></div>
-{{end}}</section>
+{{end}}</details>
 {{end}}
 
 {{define "incomplete"}}{{if .}}<aside class="notice" role="status"><strong>{{t "Some calendar results are incomplete."}}</strong><ul>{{range .}}<li>{{.Title}} ({{.ID}}): {{if eq .Reason "limit"}}{{t "Expansion limit reached. Narrow the date range or view the source calendar."}}{{else if eq .Reason "cancelled"}}{{t "Calendar expansion was interrupted. Try again."}}{{else}}{{t "This series has malformed or unsupported calendar data. View it in its source calendar."}}{{end}}</li>{{end}}</ul></aside>{{end}}{{end}}
