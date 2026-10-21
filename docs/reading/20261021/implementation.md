@@ -107,4 +107,5 @@ while ordinary uploads continue. Do not start the original schema-37 Calendar
 binary against schema 38. The feature checkpoint also retains a catalog-checked
 pre-migration metadata dump; it is not a coordinated native BOOX backup.
 
-Feature and evidence commits remain local on `main`; nothing was pushed.
+Feature and evidence commits were published on `origin/main` on 2026-10-21,
+following the user’s explicit request to push all completed work.

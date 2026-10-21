@@ -7,7 +7,7 @@ Updated 2026-10-21. Work continues on `main`. The Server port resumed on
 
 BOOX bookshelves, directory imports, and the earlier collapsible Calendar/Upcoming
 are deployed. Feature commit `5b1d856` and responsive fixes `d2c204d` / `d8ff5ca`
-remain local on `main`, along with their evidence; they have not been pushed.
+are published on `origin/main`, along with their deployment and device evidence.
 No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
