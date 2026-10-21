@@ -148,3 +148,19 @@ reading-packaging
 Ran 10 tests in 0.647s
 
 OK
+
+
+reading-import-final
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	3.280s
+
+
+reading-browser-long-gate
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	7.865s
+
+
+reading-browser-final2-gate
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	10.172s
+
+Final responsive browser regression: 37 checks passed; two stored-book cards and per-card badge bounds checked.
+Final public app browser run: 20 checks passed, English/Spanish, 390/1440 pixels.
+Final source build: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath passed.

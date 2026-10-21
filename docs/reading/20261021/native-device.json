@@ -1,0 +1,39 @@
+{
+  "verifiedAt": "2026-10-21T21:32:00.792463+00:00",
+  "deviceModel": "Go6_2",
+  "importBatch": "4dbbde14-978c-4f06-ad4b-4a2393b4c3d3",
+  "synthetic": true,
+  "rootShelf": "Alexandria folder check 20261021",
+  "nestedShelf": "Science",
+  "rootParentNull": true,
+  "nestedParentMatches": true,
+  "activeMemberships": 2,
+  "books": [
+    {
+      "format": "epub",
+      "bookId": "5b9b997d0f7a4b1c902b5228eb31bb54",
+      "bytes": 1324,
+      "sha256": "d8b1b1bce57afe477a015f79ceba0bc0feb086adc964b7c24dafc85b431be561",
+      "nativeSourceMatches": true,
+      "openedInNeoReader": true,
+      "screenshot": "go6-epub-open.png"
+    },
+    {
+      "format": "pdf",
+      "bookId": "e356724c2bdb4dd7bcebec096df59678",
+      "bytes": 678,
+      "sha256": "034586b5dea23397c1b05122b9a37e0ab939ee9ced998acb2decd439a8f05123",
+      "nativeSourceMatches": true,
+      "openedInNeoReader": true,
+      "screenshot": "go6-pdf-open.png"
+    }
+  ],
+  "fixtureRetention": "Two synthetic books and their two shelves retained for user inspection. No existing books were modified.",
+  "accountOrEnrollmentChanged": false,
+  "serverImportState": {
+    "items": 4,
+    "published": 4,
+    "files": 2,
+    "folders": 2
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "baseURL": "https://alexandria.federation.engineering",
+  "version": "reading-wrap-cbc425658561",
+  "passed": 20,
+  "checks": [
+    {
+      "width": 390,
+      "language": "en",
+      "view": "stored"
+    },
+    {
+      "width": 390,
+      "language": "en",
+      "view": "all"
+    },
+    {
+      "width": 390,
+      "language": "en",
+      "view": "metadata"
+    },
+    {
+      "width": 390,
+      "language": "en",
+      "view": "stats"
+    },
+    {
+      "width": 390,
+      "language": "en",
+      "uploadReady": true
+    },
+    {
+      "width": 390,
+      "language": "es",
+      "view": "stored"
+    },
+    {
+      "width": 390,
+      "language": "es",
+      "view": "all"
+    },
+    {
+      "width": 390,
+      "language": "es",
+      "view": "metadata"
+    },
+    {
+      "width": 390,
+      "language": "es",
+      "view": "stats"
+    },
+    {
+      "width": 390,
+      "language": "es",
+      "uploadReady": true
+    },
+    {
+      "width": 1440,
+      "language": "en",
+      "view": "stored"
+    },
+    {
+      "width": 1440,
+      "language": "en",
+      "view": "all"
+    },
+    {
+      "width": 1440,
+      "language": "en",
+      "view": "metadata"
+    },
+    {
+      "width": 1440,
+      "language": "en",
+      "view": "stats"
+    },
+    {
+      "width": 1440,
+      "language": "en",
+      "uploadReady": true
+    },
+    {
+      "width": 1440,
+      "language": "es",
+      "view": "stored"
+    },
+    {
+      "width": 1440,
+      "language": "es",
+      "view": "all"
+    },
+    {
+      "width": 1440,
+      "language": "es",
+      "view": "metadata"
+    },
+    {
+      "width": 1440,
+      "language": "es",
+      "view": "stats"
+    },
+    {
+      "width": 1440,
+      "language": "es",
+      "uploadReady": true
+    }
+  ],
+  "liveDataWrites": false
+}

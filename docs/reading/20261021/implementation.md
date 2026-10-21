@@ -43,13 +43,68 @@ SeaweedFS 3.85 race-test run. Its sole initial failure was the translation-catal
 stale-message check; the affected web package passed after registering durable
 import messages and removing superseded copy. Import and template tests passed
 again after the native null-field correction. Build/vet and ten packaging checks
-passed. [37 synthetic browser checks](browser.json) covered English/Spanish,
+passed. All 52 tested packages passed across the full run and the corrected web
+package rerun. [37 synthetic browser checks](browser.json) covered English/Spanish,
 390/1440-pixel layouts, filters/preferences, book details, directory upload, partial
-failure, resumption without retransmission, and the no-JavaScript fallback.
+failure, resumption without retransmission, and the no-JavaScript fallback. The final source repeated all 37 checks successfully.
 
 The rollback runtime is the prior main snapshot plus the immutable migration-38
 file. Fresh synthetic tests confirm it opens the new schema, processes ordinary
 uploads, and leaves new coordination rows untouched. The original schema-37 binary
 cannot open schema 38, so rollback must use this compatible image after migration.
 
-Deployment and Go 6 II evidence will be added after live qualification.
+## Deployment and native qualification
+
+The [feature deployment](feature-deployment.json) applied migration 38 and checked
+that existing migration fingerprints and library records remained unchanged.
+Two subsequent app-only patches keep long folder selectors, folder names, and
+Spanish source badges inside narrow screens. The final [deployment](deployment.json)
+is `reading-wrap-cbc425658561`, source commit `d8ff5ca`, image
+`sha256:ac46889cf2e4715dcb995de413ff7c13bef53cb3e602c5c87d423c86fd62df4f`.
+All 337 runtime inputs and 38 migration checksums match. Twenty-three read-only
+HTTP checks and [20 public-app browser checks](live-browser.json) passed, with
+zero restarts or application errors. Existing S3 checksum-warning noise remains.
+HTTP/browser checks did not write library data; native qualification separately
+created the explicitly labeled fixtures below.
+
+On the attached Go 6 II, the deployed importer published
+`Alexandria folder check 20261021/Science` with one synthetic EPUB and one PDF.
+[Device evidence](native-device.json) confirms the root's null parent, the child's
+parent link, two active memberships, and both downloaded source hashes matching
+the uploads. Both books opened successfully in NeoReader:
+[root shelf](go6-root-shelf.png), [nested shelf](go6-nested-shelf.png),
+[EPUB open](go6-epub-open.png), [PDF open](go6-pdf-open.png).
+The two sample books and shelves remain for user inspection. Existing books,
+account configuration, and enrollment were not changed.
+
+Synthetic browser previews: [bookshelf](bookshelf-desktop.png),
+[directory upload](upload-desktop.png). Live user library screenshots are not
+included in the repository.
+
+## Recovery
+
+Each deployment archived and verified its prior image, changed source, and Compose
+configuration before switching the app. Failed deployment checks automatically
+invoke that checkpoint's rollback script. The scripts preserve stored data.
+Rollback was prepared and validated against synthetic fixtures; no live rollback
+or database restore was exercised.
+
+On `sysop@192.168.9.90`, the latest app-only rollback is:
+
+```sh
+sudo /opt/aragonite-alexandria-server/deploy/compose/private/reading-wrap-cbc425658561/rollback.sh
+```
+
+To remove the entire Reading feature, unwind the checkpoints in reverse order.
+After the command above, run the `rollback.sh` in
+`deploy/compose/private/reading-layout-93c09e967f01/`, then the one in
+`deploy/compose/private/reading-9b8fbf4c38a5/`. This order matters: source drift
+guards reject bypassing an intervening patch. The final step selects the archived
+schema-38-compatible pre-feature runtime
+`sha256:c20638eb1c4fbcbd105a5bc3a990a5d8e882dcdbdcae12ed0856e28e9ae1554d`.
+Accepted source bytes and coordination rows remain; import coordination pauses,
+while ordinary uploads continue. Do not start the original schema-37 Calendar
+binary against schema 38. The feature checkpoint also retains a catalog-checked
+pre-migration metadata dump; it is not a coordinated native BOOX backup.
+
+Feature and evidence commits remain local on `main`; nothing was pushed.

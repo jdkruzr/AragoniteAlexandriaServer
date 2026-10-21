@@ -1,0 +1,29 @@
+{
+  "version": "reading-layout-93c09e967f01",
+  "sourceCommit": "d2c204d7d731170ab5f3a8e2004894e76975d79a",
+  "verifiedAt": "2026-10-21T21:26:01.739667+00:00",
+  "image": "sha256:ee572c0db6690edb433ec4e0a10225cfe3c3abf7caf6c99555dfe909ebad231c",
+  "previousImage": "sha256:0161532763bc3c9b6bccbd4040385e4fbf73c26f46b65b0c84901215e660bc76",
+  "binarySHA256": "4ba6fe620789d93aa39759e07a9518185f1be1983cd39378a1396bce8505286a",
+  "runtimeInputsVerified": 337,
+  "stagedPaths": 1,
+  "schema": 38,
+  "migrationChecksumsVerified": 38,
+  "migrationRequired": false,
+  "liveChecksPassed": 23,
+  "liveQualificationWrites": false,
+  "restartCount": 0,
+  "configurationHashesVerified": true,
+  "startupLogCounts": {
+    "errors": 0,
+    "structuredWarnings": 0,
+    "s3ChecksumWarnings": 162
+  },
+  "rollbackArtifacts": "/opt/aragonite-alexandria-server/deploy/compose/private/reading-layout-93c09e967f01",
+  "rollbackExercisedLive": false,
+  "rollbackImageArchived": true,
+  "rollbackArchivesVerified": true,
+  "automaticRollbackOnFailedChecks": true,
+  "originalFeatureVersion": "reading-9b8fbf4c38a5",
+  "originalFeatureRollbackArtifacts": "/opt/aragonite-alexandria-server/deploy/compose/private/reading-9b8fbf4c38a5"
+}
