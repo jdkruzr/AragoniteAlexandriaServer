@@ -1,0 +1,72 @@
+{
+  "baseURL": "https://alexandria.federation.engineering",
+  "version": "calendar-collapse-ce8142923739",
+  "passed": 8,
+  "checks": [
+    {
+      "width": 390,
+      "language": "en",
+      "section": "upcoming",
+      "keyboard": true,
+      "reloadPersistence": true,
+      "contentHidden": true
+    },
+    {
+      "width": 390,
+      "language": "en",
+      "section": "calendar-grid",
+      "keyboard": true,
+      "reloadPersistence": true,
+      "contentHidden": true
+    },
+    {
+      "width": 390,
+      "language": "es",
+      "section": "upcoming",
+      "keyboard": true,
+      "reloadPersistence": true,
+      "contentHidden": true
+    },
+    {
+      "width": 390,
+      "language": "es",
+      "section": "calendar-grid",
+      "keyboard": true,
+      "reloadPersistence": true,
+      "contentHidden": true
+    },
+    {
+      "width": 1440,
+      "language": "en",
+      "section": "upcoming",
+      "keyboard": true,
+      "reloadPersistence": true,
+      "contentHidden": true
+    },
+    {
+      "width": 1440,
+      "language": "en",
+      "section": "calendar-grid",
+      "keyboard": true,
+      "reloadPersistence": true,
+      "contentHidden": true
+    },
+    {
+      "width": 1440,
+      "language": "es",
+      "section": "upcoming",
+      "keyboard": true,
+      "reloadPersistence": true,
+      "contentHidden": true
+    },
+    {
+      "width": 1440,
+      "language": "es",
+      "section": "calendar-grid",
+      "keyboard": true,
+      "reloadPersistence": true,
+      "contentHidden": true
+    }
+  ],
+  "liveDataWrites": false
+}

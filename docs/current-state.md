@@ -1,49 +1,47 @@
 # Alexandria Server — current handoff
 
-Updated 2026-10-20. Work continues on `main`. The Server port resumed on
+Updated 2026-10-21. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
 
-Calendar filtering/readability is deployed; feature commit `9e4db4c` is pushed
-on `main`. [Feature CI](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39372990074)
-was still running at the deployment checkpoint; packaging passed. No version tag
-or GitHub Release was created. Both prior calendar-link discovery CI runs passed
-([feature](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39370771422),
-[documentation](https://github.com/jdkruzr/AragoniteAlexandriaServer/actions/runs/39371200541)).
+Collapsible Calendar and Upcoming are deployed from feature commit `7caeb93`.
+The feature and this deployment evidence are local on `main`; they have not yet
+been pushed. No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment: **`calendar-filters-fb0bfb1c9e76`**, runtime source
-`9e4db4c`, schema **37**, image
-`sha256:e11e7e973757eae1634274c9b0e3dc72da0daafd4f7cceadbe37f704f5b2bf4d`.
-[Live evidence](calendar/20261020/filters/deployment.json): 33 read-only checks
-passed across both languages and all Calendar views; zero restarts/application
-errors. All 330 runtime inputs, 37 migration checksums and Compose config hashes
-were verified. Nine paths changed, with no migration. Existing S3 SDK
-missing-response-checksum warnings remain (30 at this checkpoint).
+Latest recorded deployment: **`calendar-collapse-ce8142923739`**, runtime source
+`7caeb93`, schema **37**, image
+`sha256:dbc6193f832f8b67cd36102bee913c48a5e1c1f0698108d49cb2afdc1ab30cfe`.
+[Live evidence](calendar/20261021/collapse/deployment.json): 34 read-only HTTP
+checks passed across both languages and all Calendar views, with zero restarts
+or application errors. Eight additional [live browser checks](calendar/20261021/collapse/live-browser.json)
+passed on phone/desktop layouts in both languages. All 331 runtime inputs, 37 migration checksums and Compose
+config hashes were verified. Four runtime paths changed; no migration was needed.
+Existing S3 SDK missing-response-checksum warnings remain (48 at this checkpoint).
 
-Upcoming and the calendar grid now have independent source selections and text
-search. Source choices persist per browser. Upcoming defaults to seven days,
-with 14/30/90-day choices and further expansion. Descriptions and Past start
-collapsed. Month uses more width, taller cells and wrapped titles.
-[Implementation](calendar/20261020/filters/implementation.md).
+Calendar and Upcoming now collapse independently by selecting their headings.
+Both start expanded; browser storage remembers their state across navigation
+and reloads. Native disclosures also work without JavaScript, without persistence.
+[Implementation and rollback](calendar/20261021/collapse/implementation.md).
 
-[Validation](calendar/20261020/filters/validation.txt): full fresh required
-PostgreSQL/object-store race suite passed all 52 tested packages; final web race
-rerun, build/vet, Hosting compatibility, ten packaging checks and 63 browser checks
-passed. All qualification writes used synthetic fixtures. The disposable object
-store and gate-created databases were removed; shared fixtures were preserved.
+[Validation](calendar/20261021/collapse/validation.txt): 52 packages passed fresh
+required PostgreSQL/object-store race tests across the full run and a CalDAV rerun.
+The original full run hit stalled object-store writes in the shared fixture;
+CalDAV passed against a ready disposable fixture. Build/vet, ten packaging checks
+and 101 synthetic browser checks passed. Shared fixtures and live data were preserved.
 
-The preceding [calendar link discovery deployment](calendar-subscriptions/20261019/discovery/deployment.json)
-resolves Google share/embed links and webpages before saving subscriptions.
-The [original subscriptions deployment](calendar-subscriptions/20261019/deployment.json)
-introduced migration 37. Google OAuth and CalDAV republication remain deferred.
+The preceding [Calendar filters deployment](calendar/20261020/filters/deployment.json)
+added independent filters, a seven-day Upcoming default, and readable month cells.
+Calendar subscriptions and share-link discovery remain deployed; Google OAuth
+and CalDAV republication remain deferred.
 
 ## Completed recent work
 
 | Change | Evidence |
 |---|---|
+| Independently collapsible Calendar and Upcoming | [Implementation and deployment](calendar/20261021/collapse/implementation.md) |
 | Twelve Server quality/refactoring batches | [Implementation and measurements](quality-implementation-20261018.md) |
 | PowerSync setup guidance | [Deployment](powersync/20261018/deployment.json) |
 | CalDAV links, Day/Week/Month Calendar, imported recurrence | [Calendar validation](calendar/20261018/validation.txt) |
@@ -70,9 +68,12 @@ an evidence refresh. The clearest remaining Server gap is BOOX cold backup/resto
 for named-volume installs; its proposal remains unimplemented and is not started
 by this documentation/publication task.
 
-The current app rollback uses the previous schema-37 image and source/config
-archives under `deploy/compose/private/calendar-filters-fb0bfb1c9e76/`; its
-`rollback.sh` preserves subscription data. It was not exercised live.
+The current app rollback uses the previous schema-37 image and verified
+source/config archives under
+`deploy/compose/private/calendar-collapse-ce8142923739/`; its `rollback.sh`
+restores the previous app without changing stored data. The previous image is
+also saved as a checksummed archive. Rollback was prepared and verified, not
+exercised against the live app.
 
 The earlier subscriptions deployment also retains its previous image, a schema-37-compatible
 rollback image, source/config archives and catalog-checked metadata dump under

@@ -1,0 +1,376 @@
+{
+  "existingCalendarChecks": [
+    {
+      "device": "desktop",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "en",
+      "order": "calendar",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "en",
+      "order": "calendar",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "en",
+      "order": "calendar",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "es",
+      "order": "calendar",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "es",
+      "order": "calendar",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "desktop",
+      "lang": "es",
+      "order": "calendar",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "en",
+      "order": "calendar",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "en",
+      "order": "calendar",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "en",
+      "order": "calendar",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "es",
+      "order": "calendar",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "es",
+      "order": "calendar",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "phone",
+      "lang": "es",
+      "order": "calendar",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "en",
+      "order": "calendar",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "en",
+      "order": "calendar",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "en",
+      "order": "calendar",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "es",
+      "order": "calendar",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "es",
+      "order": "calendar",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "palma",
+      "lang": "es",
+      "order": "calendar",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "en",
+      "order": "upcoming",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "en",
+      "order": "calendar",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "en",
+      "order": "calendar",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "en",
+      "order": "calendar",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "es",
+      "order": "upcoming",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "es",
+      "order": "calendar",
+      "view": "month",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "es",
+      "order": "calendar",
+      "view": "week",
+      "overflow": false
+    },
+    {
+      "device": "lumi",
+      "lang": "es",
+      "order": "calendar",
+      "view": "day",
+      "overflow": false
+    },
+    {
+      "noJavaScript": "create/edit/delete/navigation/recurring details passed",
+      "preferences": "persistence and isolation passed",
+      "clipboard": "success and fallback selected text",
+      "keyboard": "visible focus",
+      "dark": "rendered"
+    }
+  ],
+  "collapseChecks": {
+    "passed": 52,
+    "languages": [
+      "en",
+      "es"
+    ],
+    "widths": [
+      390,
+      1440
+    ],
+    "views": [
+      "day",
+      "week",
+      "month"
+    ],
+    "orders": [
+      "calendar",
+      "upcoming"
+    ],
+    "coverage": [
+      "keyboard",
+      "independent state",
+      "reload and navigation persistence",
+      "browser isolation",
+      "disabled JavaScript",
+      "blocked localStorage"
+    ]
+  },
+  "liveDataUsed": false
+}

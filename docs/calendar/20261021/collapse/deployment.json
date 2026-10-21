@@ -1,0 +1,28 @@
+{
+  "version": "calendar-collapse-ce8142923739",
+  "sourceCommit": "7caeb93fe7131e9d1eff0dd721c782fe6b694386",
+  "verifiedAt": "2026-10-21T19:30:50.677484+00:00",
+  "image": "sha256:dbc6193f832f8b67cd36102bee913c48a5e1c1f0698108d49cb2afdc1ab30cfe",
+  "previousImage": "sha256:e11e7e973757eae1634274c9b0e3dc72da0daafd4f7cceadbe37f704f5b2bf4d",
+  "binarySHA256": "cc9a29d098e9e8c59c12b8ea2bc688a88c582d8f57d4b1191dd7edd5f473a2c0",
+  "runtimeInputsVerified": 331,
+  "stagedPaths": 4,
+  "schema": 37,
+  "migrationChecksumsVerified": 37,
+  "migrationRequired": false,
+  "liveChecksPassed": 34,
+  "liveQualificationWrites": false,
+  "restartCount": 0,
+  "configurationHashesVerified": true,
+  "startupLogCounts": {
+    "errors": 0,
+    "structuredWarnings": 0,
+    "s3ChecksumWarnings": 48
+  },
+  "rollbackArtifacts": "/opt/aragonite-alexandria-server/deploy/compose/private/calendar-collapse-ce8142923739",
+  "rollbackExercisedLive": false,
+  "rollbackImageArchived": true,
+  "rollbackArchivesVerified": true,
+  "automaticRollbackOnFailedChecks": true,
+  "existingSubscriptionURLsChanged": false
+}

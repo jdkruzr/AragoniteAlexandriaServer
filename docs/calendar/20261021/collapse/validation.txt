@@ -1,0 +1,76 @@
+Calendar collapse qualification — 2026-10-21
+
+Fresh required PostgreSQL/object-store race tests: 52 packages passed across
+the full run (51 packages) and the isolated CalDAV rerun (1 package).
+The original full run did not pass: shared object-store PUT requests stalled,
+CalDAV attachment tests failed, and the remaining CalDAV process was interrupted.
+The other packages completed. A disposable SeaweedFS 3.85 fixture was created;
+its first CalDAV attempt started before readiness and failed HeadBucket/CreateBucket.
+After readiness, the complete CalDAV package passed fresh with race detection.
+No application change was needed; shared fixtures were preserved.
+
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.689s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	3.107s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.027s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	13.735s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	16.362s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.039s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	1.452s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	15.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	11.203s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	117.608s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.074s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	231.944s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	52.658s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp	1.025s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	16.352s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	17.446s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	18.225s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	26.559s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	47.240s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	6.885s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	19.438s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.021s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions	7.765s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.036s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	23.938s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.013s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.024s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	16.116s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.015s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.053s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	101.832s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	10.453s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	4.277s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	4.224s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.019s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.879s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/searchorder	3.199s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	12.034s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.017s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.110s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	2.769s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	197.835s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	8.483s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	4.261s
+
+Additional checks:
+- go vet ./...: passed
+- Production linux/amd64 binary build: passed
+- Compose packaging tests: 10 passed
+- Existing Calendar browser driver: 49 passed
+- Collapse browser checks: 52 passed (English/Spanish, desktop/phone, all
+  views and section orders, keyboard, independent state, reload/navigation
+  persistence, browser isolation, disabled JS and blocked storage)
+- JavaScript syntax and git diff --check: passed
+
+The disposable SeaweedFS container and its anonymous volume were removed.
+Gate-created databases were cleaned up; existing shared fixtures were preserved.
