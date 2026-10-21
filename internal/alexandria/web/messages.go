@@ -6,6 +6,31 @@ import "github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 // ({{t .State}}, {{t .Label}}, {{t .Kind}}). They are listed here so the
 // catalogs carry them and the catalog test can check every language has them.
 var dynamicMessages = []string{
+	// Durable BOOX import errors are translated when read back from the queue.
+	"Book publication needs attention. Check BOOX activity before retrying.",
+	"Choose an available native folder.",
+	"Choose fewer folders in one import.",
+	"Invalid import request.",
+	"Resolve the parent folder first.",
+	"The book source was removed or changed. This import will not restore it.",
+	"The book was removed or changed. This import will not restore it.",
+	"The book was removed. This import will not restore it.",
+	"The destination folder changed after preview. Start a new import.",
+	"The destination folder identity is already in use. Start a new import.",
+	"The destination folder moved or was renamed. Start a new import.",
+	"The destination folder was removed or changed. Start a new import.",
+	"The destination folder was removed. This import will not restore it.",
+	"The folder membership changed. This import will not replace it.",
+	"The folder membership was removed. This import will not restore it.",
+	"The import could not be processed. Try again.",
+	"The selected file has changed. Start a new import.",
+	"The selected folder is no longer available.",
+	"The selection contains an unsafe or repeated path.",
+	"This file cannot be uploaded in this import.",
+	"This import belongs to an earlier library generation. Start a new import.",
+	"This import or file is unavailable.",
+	"Waiting for native sync. Retrying shortly.",
+
 	// Calendar subscription status and validated color labels.
 	"Calendar subscriptions",
 	"Show public calendars alongside your events and manage automatic refreshes.",

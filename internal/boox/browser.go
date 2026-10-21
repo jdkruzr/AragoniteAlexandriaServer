@@ -19,6 +19,9 @@ var devicesTemplate = template.Must(template.New("devices.html").Funcs(web.Funcs
 func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *template.Template, title string, data any) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	if r.URL.Path == "/boox/books/upload" {
+		w.Header().Set("Content-Security-Policy", w.Header().Get("Content-Security-Policy")+"; script-src 'self'; connect-src 'self'")
+	}
 	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}}.RenderContent(w, r, content, title, "boox", data)
 }
 
@@ -39,6 +42,9 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			return
 		case "/boox/reading":
 			s.reading(w, r)
+			return
+		case "/boox/books/cover":
+			s.readingCover(w, r)
 			return
 		case "/boox/activity":
 			s.browse(w, r)
@@ -79,6 +85,8 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		s.audioRecoveryHTTP(w, r)
 	case "/boox/reading/refresh":
 		s.readerRefreshHTTP(w, r)
+	case "/boox/books/imports", "/boox/books/imports/preview", "/boox/books/imports/file", "/boox/books/imports/retry":
+		s.bookImportHTTP(w, r)
 	case "/boox/books/upload":
 		s.uploadBookHTTP(w, r)
 	case "/boox/text-notes/new":

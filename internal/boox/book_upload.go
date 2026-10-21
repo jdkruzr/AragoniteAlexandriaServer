@@ -139,7 +139,6 @@ func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string
 	if s.identity == "" {
 		return "", errBookEnrollment
 	}
-	fingerprint := bookFingerprint(raw)
 	ct := "application/pdf"
 	if kind == "epub" {
 		ct = "application/epub+zip"
@@ -148,8 +147,6 @@ func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string
 	if e != nil {
 		return "", e
 	}
-	sha := asset.SHA256
-
 	tx, e := s.DB.BeginTx(ctx, nil)
 	if e != nil {
 		return "", e
@@ -159,6 +156,17 @@ func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string
 	if e != nil {
 		return "", e
 	}
+	id, e := s.queueBookTx(ctx, tx, generation, name, kind, raw, asset)
+	if e == nil {
+		e = tx.Commit()
+	}
+	return id, e
+}
+
+// Shared by the single-file form and atomic import-item acceptance.
+func (s Service) queueBookTx(ctx context.Context, tx *sql.Tx, generation, name, kind string, raw []byte, asset publicationAsset) (string, error) {
+	fingerprint, sha := bookFingerprint(raw), asset.SHA256
+	var e error
 	// Serialize native fingerprint decisions, including concurrent uploads with
 	// different whole-file hashes but identical BOOX sampled fingerprints.
 	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, s.uid()+":book:"+fingerprint); e != nil {
@@ -203,9 +211,6 @@ func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string
 	if e == nil {
 		_, e = tx.ExecContext(ctx, `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,payload,state) VALUES($1,$2,'upload_book',$3,'',$4,'queued')`, id, idem, doc, payload)
 	}
-	if e == nil {
-		e = tx.Commit()
-	}
 	return id, e
 }
 
@@ -243,8 +248,13 @@ func (s Service) publishBookRecord(ctx context.Context, tx *sql.Tx, id, doc stri
 
 var uploadBookTemplate = template.Must(template.New("upload-book.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/upload-book.html"))
 
+type uploadBookView struct {
+	Error, State, Name, ID string
+	Folders                []readingFolder
+}
+
 func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
-	data := struct{ Error, State, Name, ID string }{}
+	data := uploadBookView{}
 	if r.Method == http.MethodPost {
 		r.Body = http.MaxBytesReader(w, r.Body, maxObject+(1<<20))
 		if e := r.ParseMultipartForm(1 << 20); e != nil {
@@ -301,5 +311,11 @@ func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.renderPage(w, r, uploadBookTemplate, "Upload a BOOX Book", data)
+	var err error
+	data.Folders, err = s.readingFolders(r.Context())
+	if err != nil {
+		s.failure(w, "uploadFolders", err)
+		return
+	}
+	s.renderPage(w, r, uploadBookTemplate, "Upload BOOX Books", data)
 }

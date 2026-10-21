@@ -9,7 +9,7 @@ Alexandria Server can stand in for the Onyx cloud. A companion app called **Powe
 - **Notebooks and folders**, browsable on the web with read-only page previews drawn from the ink the server has received.
 - **Reading records** from NeoReader: books, highlights, bookmarks and notes.
 - **Tags** you add on the tablet with the lasso's Tag action. They're read-only here, but searching for a tag finds its pages even when the handwriting doesn't say it.
-- **Book upload**: send an EPUB or PDF to every tablet's library.
+- **Book upload**: send EPUBs, PDFs, or folders of books to your tablets' native libraries.
 - **Things sent to the tablet**: [Audio Note Minutes](minutes.md) and text notes arrive as ordinary BOOX text notebooks.
 - **Handwriting recognition, search and note actions** on BOOX pages. See [Recognize Handwriting](recognition.md), [Search and Tags](search-and-tags.md) and [Note Actions](note-actions.md).
 
@@ -128,7 +128,7 @@ These are two different things:
 | Tab | What it's for |
 |---|---|
 | **Notebooks** | Every notebook and folder. Switch between **All notebooks** and **Folders**, filter by **Type** (handwritten, text, reading or other notes), sort, and find by title. The **More** menu has **Clean up numbered notebooks…**, **Deleted notebooks** and **Connect a device**. **Recognize this library…** starts a whole-library recognition review. |
-| **Reading** | Books, highlights, bookmarks and notes from NeoReader, plus **Upload a book…**. Page numbers are shown exactly as the tablet recorded them. |
+| **Reading** | A bookshelf with **Stored Here**, **All Books**, **Metadata Only**, and **Your Reading** views. Open a book for its highlights and bookmarks; page and progress values remain as recorded by the tablet. |
 | **Tags** | Every lasso tag, with how many pages and notebooks use it. Open a tag to list its pages, or choose **Search for it**. |
 | **Devices** | Connected tablets: **Authorized** or **Revoked**, and **Last Upload Received**. *Authorized* means the tablet may connect, not that everything has finished uploading. |
 | **Settings** | Your connection address, library maintenance links, and diagnostics. |
@@ -152,13 +152,46 @@ The side panel shows, when they apply:
 
 Deleted notebooks stay viewable under **Deleted notebooks**. Viewing one doesn't restore it.
 
-### Upload a Book
+### Browse and Upload Books
 
-1. Open **BOOX → Reading** and choose **Upload a book…**.
-2. Pick an EPUB or PDF of up to 64 MiB and choose **Upload book**.
-3. The page shows **Server publication:** and its state. Choose **Refresh status** to update it.
+**Stored Here** opens by default and includes books whose source file is present
+in Alexandria's native BOOX storage. **Metadata Only** shows books whose reading
+records arrived without a source file; **All Books** combines them. A cover,
+device path, or sync flag alone does not mean the source file is stored here.
+Your browser remembers the chosen view and bookshelf/list layout. Search, status
+filters, folders, breadcrumbs, and pagination help narrow a larger library.
 
-Tablets with reading sync on list the book in their library and download it when you open it there. The server can't see that download, so the page says *Device download: not verified*. Uploading the same file again returns the same upload, even with a different file name. Uploads never replace or rename an existing book.
+1. Open **BOOX → Reading → Upload books…**.
+2. Choose a destination, then **Choose files…** or **Choose folder…**. Select up
+   to 1,000 files, with a maximum of 64 MiB per EPUB or PDF.
+3. Review the preview. The selected top-level folder and its subfolders become
+   native BOOX shelves. Matching names under the same parent reuse that shelf;
+   if multiple shelves match, choose one. Empty folders and unsupported files
+   are skipped.
+4. Choose **Import books**. Two files transfer at a time. Each has its own status
+   and retry; a failed file doesn't stop the others.
+
+Keep the page open during transfers. Its address preserves the import, and
+**Continue your last import** returns to it later. Reselect unfinished files or
+the original folder to resume; accepted files aren't transferred again. Changed
+files need a new import. The single-file form also works without JavaScript.
+
+**Published** means available in native sync. Tablets with reading sync enabled
+list the book and download its source when opened. Server storage does not prove
+that a tablet has downloaded it. Folder relationships are native shelves; the
+underlying source-object keys keep BOOX's canonical layout.
+
+Identical bytes reuse an existing upload, even under a different filename; an
+existing uploaded book may be added to another shelf. Uploads do not replace,
+rename, restore, or automatically attach bytes to a metadata-only book with a
+matching native fingerprint. A destination changed or removed during publication
+blocks that file so it can be reviewed safely.
+
+**Your Reading** shows current New / In Progress / Finished counts, highlights,
+bookmarks, and recently accessed books across all active books. These come from
+the native reading records already received by Alexandria. BOOX's separate timed
+statistics database/service is not imported, so this view does not invent daily
+minutes, streaks, or completion dates.
 
 If a book's ink or annotations look stale on a tablet, open the book's **Reading Details** and choose **Refresh received reading data**, then **Request refresh**. Then open the book on each tablet and accept Sync if prompted.
 

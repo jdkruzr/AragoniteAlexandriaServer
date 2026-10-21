@@ -1,0 +1,150 @@
+reading-full-race
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-lab	1.860s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/alexandria-server	3.160s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-audit	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-lab	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-preview	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/cmd/boox-verify	1.024s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria	1.018s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/assetstore	12.942s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books	15.679s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/caldav	10.717s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/contract	1.041s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/embed	1.024s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events	1.505s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation	14.353s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/host	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity	10.359s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/mcptools	118.091s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes	1.069s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions	1.030s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes	232.388s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/ocr	53.487s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providerhttp	1.025s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers	15.652s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/reader	17.137s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/readersearch	18.948s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition	26.917s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay	46.370s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/render	7.108s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/restore	18.768s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings	1.038s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/speech	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/status	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions	7.526s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach	1.034s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb	24.228s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskhost	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskstore	1.020s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc	1.022s
+--- FAIL: TestCatalogsCoverEveryMessage (3.14s)
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Book publication needs attention. Check BOOX activity before retrying."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Choose an available native folder."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Choose fewer folders in one import."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "EPUB or PDF, up to 64 MiB. Tablets with reading sync on will list it in their library and download it when you open it."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Invalid import request."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "No books or annotations have arrived yet."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Resolve the parent folder first."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The book source was removed or changed. This import will not restore it."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The book was removed or changed. This import will not restore it."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The book was removed. This import will not restore it."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The destination folder changed after preview. Start a new import."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The destination folder identity is already in use. Start a new import."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The destination folder moved or was renamed. Start a new import."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The destination folder was removed or changed. Start a new import."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The destination folder was removed. This import will not restore it."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The folder membership changed. This import will not replace it."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The folder membership was removed. This import will not restore it."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The import could not be processed. Try again."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The selected file has changed. Start a new import."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The selected folder is no longer available."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "The selection contains an unsafe or repeated path."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "This file cannot be uploaded in this import."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "This import belongs to an earlier library generation. Start a new import."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "This import or file is unavailable."
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Upload a BOOX Book"
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Upload a Book"
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Upload a book…"
+    catalog_test.go:223: en: no longer used (reworded or removed?): "Waiting for native sync. Retrying shortly."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Book publication needs attention. Check BOOX activity before retrying."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Choose an available native folder."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Choose fewer folders in one import."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "EPUB or PDF, up to 64 MiB. Tablets with reading sync on will list it in their library and download it when you open it."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Invalid import request."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "No books or annotations have arrived yet."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Resolve the parent folder first."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The book source was removed or changed. This import will not restore it."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The book was removed or changed. This import will not restore it."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The book was removed. This import will not restore it."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The destination folder changed after preview. Start a new import."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The destination folder identity is already in use. Start a new import."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The destination folder moved or was renamed. Start a new import."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The destination folder was removed or changed. Start a new import."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The destination folder was removed. This import will not restore it."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The folder membership changed. This import will not replace it."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The folder membership was removed. This import will not restore it."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The import could not be processed. Try again."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The selected file has changed. Start a new import."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The selected folder is no longer available."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "The selection contains an unsafe or repeated path."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "This file cannot be uploaded in this import."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "This import belongs to an earlier library generation. Start a new import."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "This import or file is unavailable."
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Upload a BOOX Book"
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Upload a Book"
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Upload a book…"
+    catalog_test.go:223: es: no longer used (reworded or removed?): "Waiting for native sync. Retrying shortly."
+FAIL
+FAIL	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	14.705s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire	1.015s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/api	1.022s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth	1.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob	1.055s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	92.251s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage	9.066s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto	[no test files]
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/config	1.024s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/database	3.842s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/diagnostics	1.025s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath	1.023s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/jobs	2.944s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing	1.016s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/migration	1.807s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/searchorder	1.926s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/server	11.566s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/source	1.014s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/tasks	1.067s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv	2.351s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	196.790s
+?   	github.com/jdkruzr/AragoniteAlexandriaServer/migrations	[no test files]
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	8.579s
+FAIL
+
+
+reading-web-final
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web	5.402s
+
+
+reading-final-targeted
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	2.850s
+
+
+reading-rollback-test
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox	2.398s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/library	5.707s
+ok  	github.com/jdkruzr/AragoniteAlexandriaServer/schema	1.017s [no tests to run]
+
+
+reading-vet
+
+
+reading-packaging
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.647s
+
+OK

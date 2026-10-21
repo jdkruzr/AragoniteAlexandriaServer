@@ -694,6 +694,9 @@ func (r *Runtime) ProcessNativeBOOX(ctx context.Context) (int, error) {
 	if err == nil {
 		_, err = native.PublishOne(ctx)
 	}
+	if err == nil {
+		_, err = native.ProcessBookImport(ctx)
+	}
 	return n, err
 }
 

@@ -45,7 +45,7 @@ func searchHTML(t *testing.T, s Service, query string) string {
 func readingHTML(t *testing.T, s Service, doc string) string {
 	t.Helper()
 	w := httptest.NewRecorder()
-	s.Admin(w, httptest.NewRequest("GET", "/boox/reading?record="+url.QueryEscape(doc), nil))
+	s.Admin(w, httptest.NewRequest("GET", "/boox/reading?view=all&record="+url.QueryEscape(doc), nil))
 	if w.Code != 200 {
 		t.Fatalf("reading HTTP %d: %s", w.Code, w.Body.String())
 	}
@@ -55,7 +55,12 @@ func readingHTML(t *testing.T, s Service, doc string) string {
 func assertReadingVisibility(t *testing.T, s Service, doc, id string, want bool) {
 	t.Helper()
 	title := "Needle title " + id
-	for surface, html := range map[string]string{"search": searchHTML(t, s, title), "reading": readingHTML(t, s, ""), "direct reading": readingHTML(t, s, doc)} {
+	surfaces := map[string]string{"search": searchHTML(t, s, title), "direct reading": readingHTML(t, s, doc)}
+	var mode string
+	if err := s.DB.QueryRowContext(context.Background(), `SELECT body->>'modeType' FROM boox_projection WHERE document_id=$1`, doc).Scan(&mode); err == nil && mode == "4" {
+		surfaces["reading"] = readingHTML(t, s, "")
+	}
+	for surface, html := range surfaces {
 		// Search echoes the query in its input; only result labels count.
 		if got := strings.Contains(html, ">"+title+"<"); got != want {
 			t.Fatalf("%s visibility of %s: got %v want %v", surface, id, got, want)

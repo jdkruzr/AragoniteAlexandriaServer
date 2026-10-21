@@ -68,7 +68,7 @@ func TestBOOXViewsRender(t *testing.T) {
 			Start, End, Total      int
 		}{Items: []diag{{ID: "n1", Revision: "3-abc", Domain: "notebook", Title: "Synthetic sync", Supported: true}, {ID: "m1", Revision: "1-def", Domain: "message", Title: "m1"}}, Domains: []string{"message", "notebook"}, Start: 1, End: 2, Total: 2}},
 		{"boox-cleanup", "/boox/cleanup", "Clean up BOOX notebooks", cleanupTemplate, cleanupPage{Token: "t", Total: 2, Items: []cleanupItem{{ID: "a", Title: "Notebook-1", Choice: "a", Pages: 1, Created: 1, Modified: 2}, {ID: "b", Title: "Notebook-23", Choice: "b", Pages: 3}}}},
-		{"boox-upload", "/boox/books/upload", "Upload a book", uploadBookTemplate, struct{ Error, State, Name, ID string }{}},
+		{"boox-upload", "/boox/books/upload", "Upload a book", uploadBookTemplate, uploadBookView{}},
 		{"boox-notebook-minutes", "/boox/notebook", "Synthetic meeting", notebookTemplate, notebookView{ID: "b", Title: "Synthetic meeting", Page: "p1", Number: 1, Count: 4, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", Recordings: 2, MinutesState: "ready", MinutesTopic: ready.Topic, PageRecordings: []minutes.Source{recs[0].Source}}},
 		{"boox-notebook-recordings", "/boox/notebook", "Synthetic meeting", notebookTemplate, notebookView{ID: "b", Title: "Synthetic meeting", Page: "p1", Number: 1, Count: 4, Zoom: "fit", Recordings: 1}},
 		{"boox-minutes", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Has: true, Stored: ready, Recordings: 2, OnPages: map[string][]int{"resource/data/a.mp3": {1, 3}}, Keywords: []minutesKeyword{{"schedule", ""}, {"Friday", ""}, {"testing", "Testing"}, {"release notes", ""}}, TaggedKeywords: 1}},
