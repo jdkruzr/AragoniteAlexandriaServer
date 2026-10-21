@@ -49,6 +49,7 @@ func readingFixture(t *testing.T) Service {
 	putSearchRecord(t, s, s.uid(), "removed", 4, 1, "")
 	putSearchRecord(t, s, s.uid(), "orphan", 1, 0, "removed")
 	importFixtureFolder(t, s, "shelf", "Synthetic Shelf", "")
+	importFixtureFolder(t, s, "long-shelf", "A deliberately long synthetic folder name for narrow upload destinations", "")
 	raw, _ := json.Marshal(map[string]any{"modeType": 5, "status": 0, "documentUniqueId": "stored", "libraryUniqueId": "shelf"})
 	if _, e := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'1-test','reading','5',$2,$3)`, s.uid()+"#member", s.uid(), raw); e != nil {
 		t.Fatal(e)

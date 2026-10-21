@@ -464,3 +464,7 @@ body[data-section=calendar] .workspace main { max-width:none; padding:1rem .75re
 .import-scroll td { overflow-wrap: anywhere; }
 .import-scroll progress { display: block; max-width: 10rem; }
 #import-summary { margin-bottom: .8rem; }
+/* Native shelf paths can be much longer than the phone viewport. */
+.reading-filters label { max-width:100%; }
+#book-import > label { display:block; min-width:0; max-width:100%; }
+#import-destination { max-width:100%; }
