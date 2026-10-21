@@ -468,3 +468,5 @@ body[data-section=calendar] .workspace main { max-width:none; padding:1rem .75re
 .reading-filters label { max-width:100%; }
 #book-import > label { display:block; min-width:0; max-width:100%; }
 #import-destination { max-width:100%; }
+.reading-book .badge { white-space:normal; max-width:100%; }
+.reading-folders .button { white-space:normal; overflow-wrap:anywhere; max-width:100%; }

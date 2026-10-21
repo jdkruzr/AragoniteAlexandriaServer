@@ -22,7 +22,7 @@ func readingFixture(t *testing.T) Service {
 		id     string
 		status int
 		stored bool
-	}{{"stored", 1, true}, {"elsewhere", 2, false}, {"new", 0, false}} {
+	}{{"stored", 1, true}, {"elsewhere", 2, false}, {"new", 0, true}} {
 		doc := putSearchRecord(t, s, s.uid(), book.id, 4, 0, "")
 		raw, _ := json.Marshal(map[string]any{"authors": []string{"Synthetic Author"}, "readingStatus": book.status, "lastAccess": 1760000000000, "progress": "native:1/3"})
 		if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET body=body||$2 WHERE document_id=$1`, doc, raw); e != nil {
