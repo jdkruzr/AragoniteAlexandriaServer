@@ -130,14 +130,18 @@ bold lead-ins, key points as bullets with their source, the conclusion, and an
 "About these minutes" section. The operation payload records `minutesOf`.
 
 Sending again follows "native wins":
-- **Untouched** (title and folder unchanged, and every live file under the note
-  except `pageModel/` byte-identical to what was published): the new note is
-  queued, then a `set_note_status` retirement of the old one, fenced on the
-  record revision seen. If a device changes the old note first, the Gateway
-  revision check blocks the retirement and both notes stay. Opening a note
-  rewrites only its page model, so opening doesn't count as a change.
-- **Changed** (edited text, handwriting on the blank page, renamed or moved):
-  a new note is added and the old one is left alone.
+- **Untouched** (title, folder and pages unchanged, the current typed text's
+  content equal to what was published, no shape besides the text itself, and
+  the template and page-layout files unchanged): the new note is queued, then a
+  `set_note_status` retirement of the old one, fenced on the record revision
+  seen. If a device changes the old note first, the Gateway revision check
+  blocks the retirement and both notes stay. Opening a note saves it again (a
+  new editor file, resource list and shape revision, even when only the cursor
+  moved); that doesn't count as a change (2026-10-25, see
+  [text notes](boox-text-notes.md#device-saves-and-the-current-text-2026-10-25)).
+- **Changed** (edited or reformatted text, handwriting or images, pages added or
+  removed, renamed or moved, or a history Alexandria can't resolve): a new note
+  is added and the old one is left alone.
 - **Deleted on a device:** a new note is added.
 
 While a send is still publishing, the card hides the button.

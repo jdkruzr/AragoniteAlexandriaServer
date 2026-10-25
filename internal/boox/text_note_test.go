@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
+	pb "github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage/proto"
 	"google.golang.org/protobuf/encoding/protowire"
 )
 
@@ -73,7 +74,8 @@ func TestBuildTextNoteGraph(t *testing.T) {
 		}
 		keys[strings.TrimPrefix(a.Key, "uid1/note/"+ids.Doc)] = a.Body
 	}
-	if len(keys) != 9 || keys["/resource/data/"+ids.Resource+".html"] == nil || keys[".png"] == nil || keys["/template/json/"+ids.Scribble+".template_json"] == nil {
+	// No thumbnail: devices draw their own when the note is first opened.
+	if len(keys) != 8 || keys["/resource/data/"+ids.Resource+".html"] == nil || keys[".png"] != nil || keys["/template/json/"+ids.Scribble+".template_json"] == nil {
 		t.Fatal("asset set", len(keys))
 	}
 	entry := ids.Rich + "#" + ids.ShapeRev + "#1791669879703"
@@ -137,7 +139,7 @@ func TestTextNotePublicationDurableAndIdempotent(t *testing.T) {
 	var bound int
 	s.DB.QueryRowContext(ctx, `SELECT document_id FROM boox_operation WHERE id=$1`, id).Scan(&doc)
 	s.DB.QueryRowContext(ctx, `SELECT count(*) FROM boox_blob_live WHERE native_key LIKE $1`, s.uid()+"/note/"+doc+"%").Scan(&bound)
-	if bound != 9 {
+	if bound != 8 { // eight files; no server thumbnail
 		t.Fatal("bound assets", bound)
 	}
 	documents := map[string]map[string]any{}
@@ -262,6 +264,28 @@ func TestMinutesNoteResendPolicy(t *testing.T) {
 	prefix := s.uid() + "/note/" + doc + "/"
 	bind(prefix+"pageModel/pb/opened-on-device", "model")
 	bind(s.uid()+"/note/"+doc+".png", "device thumbnail")
+	status("untouched")
+	// Opening the note and moving the cursor saves it again: a new editor file
+	// with the same content, a resource list and a shape revision. Not an edit.
+	var published []textAsset
+	var res, editorSHA string
+	rows, _ := s.DB.QueryContext(ctx, `SELECT a->>'Key',a->>'SHA256' FROM boox_operation, jsonb_array_elements(payload->'assets') a WHERE id=$1`, first)
+	for rows.Next() {
+		var key, sha string
+		rows.Scan(&key, &sha)
+		body, e := s.storedBody(ctx, sha, 1<<20)
+		if e != nil {
+			t.Fatal(key, e)
+		}
+		published = append(published, textAsset{Key: key, Body: body})
+		if strings.Contains(key, "/resource/data/") {
+			res, editorSHA = strings.TrimSuffix(key[strings.LastIndex(key, "/")+1:], ".html"), sha
+		}
+	}
+	rows.Close()
+	editor, _ := s.storedBody(ctx, editorSHA, 1<<20)
+	put := blobsIn(t, s, doc)
+	deviceSave(t, put, published, res, "opened", time.Now().UnixMilli(), cursorMoved(editor, 7))
 	sent := status("untouched")
 
 	// Untouched: the new note is queued first, then the old one retired.
@@ -286,16 +310,29 @@ func TestMinutesNoteResendPolicy(t *testing.T) {
 
 	// Detection for the first note, with later sends set aside.
 	s.DB.ExecContext(ctx, `DELETE FROM boox_operation WHERE id<>$1`, first)
-	// Ink on the blank handwriting page arrives as new shape and point files.
+	// Ink on the blank handwriting page arrives as a new shape archive.
 	var scribble string
 	s.DB.QueryRowContext(ctx, `SELECT body->'pageNameList'->'pageNameList'->>0 FROM boox_projection WHERE document_id=$1`, doc).Scan(&scribble)
-	bind(prefix+"shape/"+scribble+"#ink#1.zip", "a stroke")
+	put("shape/"+scribble+"#ink#1.zip", colorShapeZip(t, &pb.ShapeInfoProto{UniqueId: "stroke", ShapeType: 2, CreatedAt: 1, UpdatedAt: 1}))
 	status("changed")
 	s.DB.ExecContext(ctx, `DELETE FROM boox_blob_live WHERE native_key=$1`, prefix+"shape/"+scribble+"#ink#1.zip")
 	status("untouched")
-	var res string
-	s.DB.QueryRowContext(ctx, `SELECT a->>'Key' FROM boox_operation, jsonb_array_elements(payload->'assets') a WHERE id=$1 AND a->>'Key' LIKE '%/resource/data/%'`, first).Scan(&res)
-	bind(res, "edited on a device")
+	// New point data is ink too, even before its shape arrives.
+	put("point/"+scribble+"#pen#points", []byte("synthetic points"))
+	status("changed")
+	s.DB.ExecContext(ctx, `DELETE FROM boox_blob_live WHERE native_key=$1`, prefix+"point/"+scribble+"#pen#points")
+	status("untouched")
+	// Adding or removing a page is an edit.
+	s.DB.ExecContext(ctx, `UPDATE boox_projection SET body=jsonb_set(body,'{pageNameList,pageNameList}',(body->'pageNameList'->'pageNameList')||'["added"]') WHERE document_id=$1`, doc)
+	status("changed")
+	s.DB.ExecContext(ctx, `UPDATE boox_projection SET body=jsonb_set(body,'{pageNameList,pageNameList}',(body->'pageNameList'->'pageNameList')-'added') WHERE document_id=$1`, doc)
+	status("untouched")
+	// Formatting is content: making a word bold is an edit, like typing.
+	bold := bytes.Replace(cursorMoved(editor, 7), []byte(`{"text":"x","type":"text"}`), []byte(`{"marks":[{"type":"bold"}],"text":"x","type":"text"}`), 1)
+	if bytes.Equal(bold, cursorMoved(editor, 7)) {
+		t.Fatalf("fixture: no plain text node in %s", editor)
+	}
+	deviceSave(t, put, published, "opened", "bolded", time.Now().UnixMilli()+1000, bold)
 	status("changed")
 	s.DB.ExecContext(ctx, `UPDATE boox_projection SET body=jsonb_set(body,'{status}','0') WHERE document_id=$1`, doc)
 	status("deleted")

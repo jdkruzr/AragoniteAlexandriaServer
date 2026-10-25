@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-10-21. Work continues on `main`. The Server port resumed on
+Updated 2026-10-25. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -12,7 +12,23 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment: **`reading-wrap-cbc425658561`**, runtime source
+Latest recorded deployment (2026-10-25): **`typed-text-b274aa0dbb7d`**, app-only on
+top of the checkpoint below (schema still **38**), image
+`sha256:fa81f4820eb245a0d8efb9b5f5dd9d5a2feb625e22a7437b7d49bc21f06ab931`.
+Text notebooks now show only their current typed text, as generated HTML; server
+text notes ship without a thumbnail; opening a sent minutes note on a device no
+longer marks it edited ([details](boox-text-notes.md#device-saves-and-the-current-text-2026-10-25)).
+Live checks: "20261023 Singh Lab_Minutes" shows one copy (it showed three); its
+minutes card reads "On your BOOX"; search lists the note once. Four text-notebook
+index rows with duplicated typed text were re-queued with `QueuePage`'s update
+(no model call; Singh Lab 5,194 → 1,730 characters). Fresh required
+PostgreSQL/S3 `go test -race -count=1 ./...` (52 packages, no skips) and `go vet`
+passed. Rollback: `sudo /opt/aragonite-alexandria-server/deploy/compose/private/typed-text-b274aa0dbb7d/rollback.sh`
+restores the previous image and source without touching stored data.
+Open: audio resources follow the same delta model; check with a deleted test
+recording before changing minutes inputs.
+
+Previous deployment: **`reading-wrap-cbc425658561`**, runtime source
 `d8ff5ca`, schema **38**, image
 `sha256:ac46889cf2e4715dcb995de413ff7c13bef53cb3e602c5c87d423c86fd62df4f`.
 [Live evidence](reading/20261021/deployment.json): 23 read-only HTTP checks and

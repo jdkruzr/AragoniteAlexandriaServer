@@ -201,7 +201,7 @@ func (s Service) notebookSnapshot(ctx context.Context, id string) (notebookSnaps
 		return out, e
 	}
 	h := sha256.New()
-	h.Write([]byte("boox-preview-v3\x00" + out.Revision))
+	h.Write([]byte("boox-preview-v4\x00" + out.Revision))
 	for rows.Next() {
 		var v assetBinding
 		if e = rows.Scan(&v.Key, &v.SHA, &v.Bytes); e != nil {
@@ -276,6 +276,8 @@ type notebookView struct {
 	Warnings                                                      []string
 	// PageRecordings are the recordings whose chips are on this page.
 	PageRecordings []minutes.Source
+	// TypedHTML is a text notebook's typed text, rendered by booxpage.RichHTML.
+	TypedHTML template.HTML
 }
 
 var notebookTemplate = template.Must(template.New("notebook.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/notebook.html"))
@@ -334,16 +336,29 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		preview, typed, err := s.typedPreview(r.Context(), n, num)
+		preview, err := s.renderPreview(r.Context(), n, num)
 		if err != nil {
 			d.Warnings = append(d.Warnings, "Preview unavailable: "+err.Error())
 		} else {
 			d.Warnings = append(append([]string{}, preview.Warnings...), preview.Notices...)
 			d.Texts = preview.Texts
 			d.Image = "/boox/page.png?id=" + url.QueryEscape(d.ID) + "&page=" + strconv.Itoa(num) + "&version=" + n.Version
-			if typed {
-				d.Image += "&typed=1"
-				d.TypedText = true
+		}
+		// A text notebook's first page is its typed text, shown as HTML. Its
+		// handwriting page holds no ink in practice, so its blank image is
+		// only kept if something is drawn on it.
+		if n.Meta.ActiveScene == 1 && num == 1 {
+			typed, notices, warning := s.typedHTML(r.Context(), n)
+			if typed != "" {
+				d.TypedHTML, d.TypedText = typed, true
+				d.Warnings = slices.DeleteFunc(d.Warnings, func(w string) bool { return w == booxpage.RichTextNotebookWarning })
+				d.Warnings = append(d.Warnings, notices...)
+				if err == nil && preview.Blank {
+					d.Image = ""
+				}
+			}
+			if warning != "" {
+				d.Warnings = append(d.Warnings, warning)
 			}
 		}
 
@@ -389,12 +404,7 @@ var previewSlots = make(chan struct{}, 2)
 func (s Service) pageImage(w http.ResponseWriter, r *http.Request) {
 	id, version := r.URL.Query().Get("id"), r.URL.Query().Get("version")
 	num, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	typed := r.URL.Query().Get("typed") == "1"
-	key := s.previewKey(id, version, num)
-	if typed {
-		key += ":typed"
-	}
-	v, ok := cachedPreview(key)
+	v, ok := cachedPreview(s.previewKey(id, version, num))
 	if !ok {
 		n, e := s.notebookSnapshot(r.Context(), id)
 		if e != nil {
@@ -405,12 +415,7 @@ func (s Service) pageImage(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Content changed; reload the notebook.", http.StatusConflict)
 			return
 		}
-		if typed {
-			v, _, e = s.typedPreview(r.Context(), n, num)
-		} else {
-			v, e = s.renderPreview(r.Context(), n, num)
-		}
-		if e != nil {
+		if v, e = s.renderPreview(r.Context(), n, num); e != nil {
 			http.Error(w, "Preview unavailable; reload the notebook for details.", 422)
 			return
 		}
@@ -419,10 +424,67 @@ func (s Service) pageImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "private, max-age=300")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	etag := version + "-" + strconv.Itoa(num)
-	if typed {
-		etag += "-typed"
-	}
-	w.Header().Set("ETag", `"`+etag+`"`)
+	w.Header().Set("ETag", `"`+version+"-"+strconv.Itoa(num)+`"`)
 	w.Write(v.PNG)
+}
+
+// typedHTML renders a text notebook's current typed documents for the page.
+func (s Service) typedHTML(ctx context.Context, n notebookSnapshot) (template.HTML, []string, string) {
+	docs, warning := s.currentRichText(ctx, n)
+	image := func(name string) string {
+		return "/boox/resource?id=" + url.QueryEscape(n.Meta.UniqueID) + "&version=" + url.QueryEscape(n.Version) + "&name=" + url.QueryEscape(name)
+	}
+	var out strings.Builder
+	var notices []string
+	for _, d := range docs {
+		h, more := booxpage.RichHTML(d.Body, image)
+		out.WriteString(string(h))
+		for _, m := range more {
+			if !slices.Contains(notices, m) {
+				notices = append(notices, m)
+			}
+		}
+	}
+	return template.HTML(out.String()), notices, warning
+}
+
+// typedResource serves an image placed in a text notebook's typed text. Only
+// files the current documents refer to are served, and only as raster images.
+func (s Service) typedResource(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	n, e := s.notebookSnapshot(r.Context(), q.Get("id"))
+	if e != nil || n.Meta.ActiveScene != 1 {
+		http.NotFound(w, r)
+		return
+	}
+	if n.Version != q.Get("version") {
+		http.Error(w, "Content changed; reload the notebook.", http.StatusConflict)
+		return
+	}
+	name := q.Get("name")
+	docs, _ := s.currentRichText(r.Context(), n)
+	referenced := false
+	for _, d := range docs {
+		referenced = referenced || slices.Contains(booxpage.RichImageNames(d.Body), name)
+	}
+	key := "resource/data/" + name
+	if _, live := n.Assets[key]; !referenced || !live {
+		http.NotFound(w, r)
+		return
+	}
+	body, e := s.snapshotLoader(r.Context(), n)(key)
+	if e != nil {
+		http.Error(w, "Image unavailable.", http.StatusBadGateway)
+		return
+	}
+	ct := http.DetectContentType(body)
+	if !slices.Contains([]string{"image/png", "image/jpeg", "image/gif", "image/webp"}, ct) {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Security-Policy", "default-src 'none'")
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Write(body)
 }

@@ -1,86 +1,35 @@
 package booxpage
 
 import (
-	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"image"
+	"html"
+	"html/template"
 	"image/color"
 	"math"
 	"path"
 	"strconv"
 	"strings"
-	"unicode"
-
-	"github.com/fogleman/gg"
-	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/draw"
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/gofont/gobolditalic"
-	"golang.org/x/image/font/gofont/goitalic"
-	_ "golang.org/x/image/webp" // typed-text images are often WebP
 )
 
-var italicTextFont, _ = truetype.Parse(goitalic.TTF)
-var boldItalicTextFont, _ = truetype.Parse(gobolditalic.TTF)
+// RichTextShownNotice goes with a text notebook's typed text in the browser.
+const RichTextShownNotice = "Typed text is shown with this browser's fonts; the device's layout may differ."
 
-// RichTextDrawnNotice goes with a preview that draws a text notebook's typed text.
-const RichTextDrawnNotice = "Typed text is drawn with a substitute font; the device's layout may differ."
+// RichTextFormattingNotice is shown when part of the typed text's formatting isn't reproduced.
+const RichTextFormattingNotice = "Some typed-text formatting isn't reproduced; its text is shown plainly."
 
-// RichTextImageNotice is shown when a typed-text image couldn't be drawn.
-const RichTextImageNotice = "Some images in typed text haven't arrived or can't be read; placeholders mark them."
-
-// richImage finds and decodes a typed-text image: a data: URI, or the
-// note's resource/data file named like its dataKey or src. Nil if it can't.
-func richImage(b richBlock, load Load) image.Image {
-	var raw []byte
-	if data, ok := strings.CutPrefix(b.src, "data:"); ok {
-		if _, enc, ok := strings.Cut(data, ";base64,"); ok && len(enc) <= 16<<20 {
-			raw, _ = base64.StdEncoding.DecodeString(enc)
-		}
-	} else if load != nil {
-		for _, ref := range []string{b.dataKey, b.src} {
-			name := path.Base(strings.SplitN(ref, "?", 2)[0])
-			if ref == "" || name == "." || name == "/" || strings.Contains(name, "..") {
-				continue
-			}
-			if got, e := load("resource/data/" + name); e == nil {
-				raw = got
-				break
-			}
-		}
-	}
-	if len(raw) == 0 {
-		return nil
-	}
-	c, _, e := image.DecodeConfig(bytes.NewReader(raw))
-	if e != nil || c.Width <= 0 || c.Height <= 0 || int64(c.Width)*int64(c.Height) > 20e6 {
-		return nil
-	}
-	img, _, e := image.Decode(bytes.NewReader(raw))
-	if e != nil {
-		return nil
-	}
-	return img
-}
-
-// A text notebook's typed page is a document from the BOOX editor (JSON,
-// docVersion 2: doc → heading, paragraph, bulletList/orderedList/taskList →
 // listItem/taskItem; onyxImg images; attach files; bold/italic/textStyle marks).
-// richBlock is one laid-out line source: a block of styled runs with a marker.
+// richBlock is one block of styled runs with a list marker.
 type richBlock struct {
-	kind    string // "heading", "paragraph", "image", "attach"
+	kind    string // "heading", "paragraph", "image", "attach", "rule"
 	level   int    // heading level
 	indent  int    // list nesting
 	marker  string // "•", "1.", "[ ]", "[x]" or ""
 	runs    []richRun
-	aspect  float64 // image height/width
 	unknown bool
 	// Images: the editor's src (a device path or data: URI) and dataKey
 	// (its cloud name); the file is resource/data/<base name> in the note.
 	src, dataKey string
-	img          image.Image
 }
 
 type richRun struct {
@@ -181,13 +130,7 @@ func collectBlocks(n docNode, indent int, marker string, out *[]richBlock, depth
 			}
 		}
 	case "onyxImg", "image":
-		w, _ := strconv.ParseFloat(n.attr("width"), 64)
-		h, _ := strconv.ParseFloat(n.attr("height"), 64)
-		aspect := 0.6
-		if w > 0 && h > 0 {
-			aspect = math.Min(math.Max(h/w, 0.1), 3)
-		}
-		*out = append(*out, richBlock{kind: "image", indent: indent, aspect: aspect, src: n.attr("src"), dataKey: n.attr("dataKey")})
+		*out = append(*out, richBlock{kind: "image", indent: indent, src: n.attr("src"), dataKey: n.attr("dataKey")})
 	case "attach":
 		title := n.attr("title")
 		if title == "" || title == "null" {
@@ -270,320 +213,123 @@ func cssColor(s string) color.Color {
 }
 
 // richLayout places blocks at a page width; it measures before drawing so the
-// canvas can grow to fit the text.
-type richLayout struct {
-	width, body float64
-	faces       map[string]font.Face
-}
 
-func newRichLayout(width float64) *richLayout {
-	return &richLayout{width: width, body: math.Max(width/34, 12), faces: map[string]font.Face{}}
-}
-
-func (l *richLayout) face(bold, italic bool, size float64) font.Face {
-	size = math.Round(size)
-	key := fmt.Sprint(bold, italic, size)
-	if f, ok := l.faces[key]; ok {
-		return f
-	}
-	ttf := regularTextFont
-	switch {
-	case bold && italic:
-		ttf = boldItalicTextFont
-	case bold:
-		ttf = boldTextFont
-	case italic:
-		ttf = italicTextFont
-	}
-	f := truetype.NewFace(ttf, &truetype.Options{Size: size})
-	l.faces[key] = f
-	return f
-}
-
-func (l *richLayout) margin() float64 { return math.Round(l.width * 0.06) }
-
-// placed is a word (or marker) at a position, ready to draw.
-type placed struct {
-	text               string
-	face               font.Face
-	x, y, w            float64 // y is the baseline
-	color              color.Color
-	underline, strike  bool
-	box                *[4]float64 // images and rules: x, y, w, h
-	boxLabel, checkbox string
-	img                image.Image // a drawn image fills box
-}
-
-// layout returns what to draw and the height used.
-func (l *richLayout) layout(blocks []richBlock) ([]placed, float64) {
-	var out []placed
-	y := l.margin()
-	right := l.width - l.margin()
-	for _, b := range blocks {
-		size := l.body
-		bold := false
-		gapBefore := 0.35 * l.body
-		if b.kind == "heading" {
-			bold = true
-			size *= map[int]float64{1: 1.6, 2: 1.35, 3: 1.15}[min(b.level, 3)]
-			if b.level > 3 {
-				size = l.body * 1.05
-			}
-			gapBefore = 0.8 * l.body
+// RichHTML renders an editor resource for the browser. Nothing in the
+// resource passes through as markup: block kinds and marks map to fixed tags,
+// sizes and colours are generated from validated numbers, and all text is
+// escaped. imageURL turns an image's resource/data name into a URL; an image
+// without a usable name becomes a placeholder.
+func RichHTML(raw []byte, imageURL func(name string) string) (template.HTML, []string) {
+	var b strings.Builder
+	unknown := false
+	for _, k := range richDocument(raw) {
+		unknown = unknown || k.unknown
+		class := ""
+		if k.indent > 0 {
+			class = fmt.Sprintf(` class="rt-i%d"`, min(k.indent, 8))
 		}
-		left := l.margin() + float64(b.indent)*1.6*l.body
-		y += gapBefore
-		switch b.kind {
+		switch k.kind {
+		case "heading":
+			// The page has its own title, so editor headings start one level down.
+			tag := fmt.Sprintf("h%d", min(max(k.level, 1)+1, 6))
+			fmt.Fprintf(&b, "<%s%s>%s</%s>\n", tag, class, richRunsHTML(k.runs), tag)
 		case "image":
-			w := right - left
-			if b.img == nil {
-				h := math.Min(w*b.aspect, 12*l.body)
-				out = append(out, placed{box: &[4]float64{left, y, w, h}, boxLabel: "Image not shown"})
-				y += h
-				continue
+			if name := richImageName(k); name != "" && imageURL != nil {
+				fmt.Fprintf(&b, "<figure%s><img src=\"%s\" alt=\"\"></figure>\n", class, html.EscapeString(imageURL(name)))
+			} else {
+				fmt.Fprintf(&b, "<p%s class=\"rt-missing\">[image]</p>\n", class)
 			}
-			// A drawn image keeps its proportions, at most 24 lines tall.
-			h := w * b.aspect
-			if limit := 24 * l.body; h > limit {
-				h, w = limit, limit/b.aspect
-			}
-			out = append(out, placed{box: &[4]float64{left, y, w, h}, img: b.img})
-			y += h + 0.4*l.body
-			continue
 		case "rule":
-			out = append(out, placed{box: &[4]float64{left, y + l.body*0.5, right - left, 2}})
-			y += l.body
-			continue
-		}
-		if b.marker != "" {
-			markerFace := l.face(false, false, size)
-			mw := font.MeasureString(markerFace, b.marker).Ceil()
-			ascent := float64(markerFace.Metrics().Ascent.Ceil())
-			p := placed{text: b.marker, face: markerFace, x: left - float64(mw) - 0.4*l.body, y: y + ascent, w: float64(mw)}
-			if b.marker == "[ ]" || b.marker == "[x]" {
-				p.text, p.checkbox = "", b.marker
-				p.x, p.w = left-1.3*l.body, 0.8*size
-			}
-			out = append(out, p)
-		}
-		lines := l.wrap(b.runs, size, bold, right-left)
-		if len(lines) == 0 {
-			lines = [][]placed{nil} // an empty paragraph still takes a line
-		}
-		for _, line := range lines {
-			lineSize := size
-			ascent := float64(l.face(bold, false, size).Metrics().Ascent.Ceil())
-			for _, w := range line {
-				if a := float64(w.face.Metrics().Ascent.Ceil()); a > ascent {
-					ascent = a
+			b.WriteString("<hr>\n")
+		default: // paragraph, attach
+			marker := ""
+			if k.marker != "" {
+				m := k.marker
+				switch m {
+				case "[ ]":
+					m = "\u2610"
+				case "[x]":
+					m = "\u2611"
 				}
-				if s := float64(w.face.Metrics().Height.Ceil()); s > lineSize {
-					lineSize = s
-				}
+				marker = `<span class="rt-m">` + html.EscapeString(m) + "</span> "
 			}
-			for _, w := range line {
-				w.x += left
-				w.y = y + ascent
-				out = append(out, w)
+			body := richRunsHTML(k.runs)
+			if body == "" {
+				body = "<br>"
 			}
-			y += lineSize * 1.45
+			fmt.Fprintf(&b, "<p%s>%s%s</p>\n", class, marker, body)
 		}
 	}
-	return out, y + l.margin()
+	if b.Len() == 0 {
+		return "", nil
+	}
+	notices := []string{RichTextShownNotice}
+	if unknown {
+		notices = append(notices, RichTextFormattingNotice)
+	}
+	return template.HTML(b.String()), notices
 }
 
-// wrap breaks runs into lines of words that fit width (x relative to the block).
-func (l *richLayout) wrap(runs []richRun, size float64, bold bool, width float64) [][]placed {
-	var lines [][]placed
-	var line []placed
-	x := 0.0
-	flush := func() {
-		lines = append(lines, line)
-		line, x = nil, 0
-	}
+func richRunsHTML(runs []richRun) string {
+	var b strings.Builder
 	for _, r := range runs {
 		if r.brk {
-			flush()
+			b.WriteString("<br>")
 			continue
 		}
-		face := l.face(bold || r.bold, r.italic, size*r.scale)
-		for _, word := range splitWords(r.text) {
-			w := float64(font.MeasureString(face, word).Ceil())
-			if strings.TrimSpace(word) == "" {
-				if x == 0 {
-					continue // no leading space on a wrapped line
-				}
-				line = append(line, placed{text: word, face: face, x: x, w: w, color: r.color, underline: r.underline, strike: r.strike})
-				x += w
-				continue
-			}
-			if x > 0 && x+w > width {
-				// Drop the trailing space before wrapping.
-				if n := len(line); n > 0 && strings.TrimSpace(line[n-1].text) == "" {
-					line = line[:n-1]
-				}
-				flush()
-			}
-			// A word longer than the line is broken by characters.
-			for x == 0 && w > width && len([]rune(word)) > 1 {
-				rs := []rune(word)
-				cut := len(rs) - 1
-				for cut > 1 && float64(font.MeasureString(face, string(rs[:cut])).Ceil()) > width {
-					cut--
-				}
-				part := string(rs[:cut])
-				line = append(line, placed{text: part, face: face, x: 0, w: float64(font.MeasureString(face, part).Ceil()), color: r.color, underline: r.underline, strike: r.strike})
-				flush()
-				word = string(rs[cut:])
-				w = float64(font.MeasureString(face, word).Ceil())
-			}
-			line = append(line, placed{text: word, face: face, x: x, w: w, color: r.color, underline: r.underline, strike: r.strike})
-			x += w
+		if r.text == "" {
+			continue
 		}
+		text := html.EscapeString(r.text)
+		var style []string
+		if r.scale != 0 && r.scale != 1 {
+			style = append(style, "font-size:"+strconv.FormatFloat(math.Round(r.scale*100)/100, 'f', -1, 64)+"em")
+		}
+		if c, ok := r.color.(color.RGBA); ok {
+			style = append(style, fmt.Sprintf("color:#%02x%02x%02x", c.R, c.G, c.B))
+		}
+		for _, w := range []struct {
+			on  bool
+			tag string
+		}{{r.strike, "s"}, {r.underline, "u"}, {r.italic, "em"}, {r.bold, "strong"}} {
+			if w.on {
+				text = "<" + w.tag + ">" + text + "</" + w.tag + ">"
+			}
+		}
+		if len(style) > 0 {
+			text = `<span style="` + strings.Join(style, ";") + `">` + text + "</span>"
+		}
+		b.WriteString(text)
 	}
-	if len(line) > 0 || len(lines) == 0 && len(runs) > 0 {
-		flush()
-	}
-	return lines
+	return b.String()
 }
 
-// splitWords splits text into words and the spaces between them.
-func splitWords(s string) []string {
-	var out []string
-	start := 0
-	space := false
-	for i, r := range s {
-		isSpace := unicode.IsSpace(r)
-		if i > 0 && isSpace != space {
-			out = append(out, s[start:i])
-			start = i
+// richImageName is the resource/data file an editor image refers to, by its
+// cloud name or else its device path. Inline data: images have none.
+func richImageName(b richBlock) string {
+	for _, ref := range []string{b.dataKey, b.src} {
+		if ref == "" || strings.HasPrefix(ref, "data:") {
+			continue
 		}
-		space = isSpace
+		name := path.Base(strings.SplitN(ref, "?", 2)[0])
+		if name == "." || name == "/" || name == ".." || strings.ContainsAny(name, "/\\") {
+			continue
+		}
+		return name
 	}
-	if start < len(s) {
-		out = append(out, s[start:])
-	}
-	return out
+	return ""
 }
 
-func (l *richLayout) draw(dc *gg.Context, items []placed) {
-	for _, p := range items {
-		if p.box != nil && p.img != nil {
-			b := *p.box
-			if dst, ok := dc.Image().(draw.Image); ok {
-				r := image.Rect(int(b[0]), int(b[1]), int(math.Round(b[0]+b[2])), int(math.Round(b[1]+b[3])))
-				draw.BiLinear.Scale(dst, r, p.img, p.img.Bounds(), draw.Over, nil)
+// RichImageNames lists the resource/data files an editor resource's images
+// refer to, so only those can be served alongside it.
+func RichImageNames(raw []byte) []string {
+	var names []string
+	for _, b := range richDocument(raw) {
+		if b.kind == "image" {
+			if name := richImageName(b); name != "" {
+				names = append(names, name)
 			}
-			continue
-		}
-		if p.box != nil {
-			b := *p.box
-			dc.SetRGB(0.6, 0.6, 0.6)
-			if p.boxLabel == "" {
-				dc.DrawRectangle(b[0], b[1], b[2], b[3])
-				dc.Fill()
-				continue
-			}
-			dc.SetLineWidth(2)
-			dc.DrawRectangle(b[0], b[1], b[2], b[3])
-			dc.Stroke()
-			dc.SetFontFace(l.face(false, true, l.body))
-			dc.DrawStringAnchored(p.boxLabel, b[0]+b[2]/2, b[1]+b[3]/2, 0.5, 0.35)
-			continue
-		}
-		if p.checkbox != "" {
-			s := p.w
-			top := p.y - s
-			dc.SetRGB(0, 0, 0)
-			dc.SetLineWidth(math.Max(2, s/12))
-			dc.DrawRectangle(p.x, top, s, s)
-			dc.Stroke()
-			if p.checkbox == "[x]" {
-				dc.MoveTo(p.x+s*0.2, top+s*0.55)
-				dc.LineTo(p.x+s*0.42, top+s*0.78)
-				dc.LineTo(p.x+s*0.82, top+s*0.22)
-				dc.Stroke()
-			}
-			continue
-		}
-		if p.color != nil {
-			dc.SetColor(p.color)
-		} else {
-			dc.SetRGB(0, 0, 0)
-		}
-		dc.SetFontFace(p.face)
-		dc.DrawString(p.text, p.x, p.y)
-		size := float64(p.face.Metrics().Height.Ceil())
-		if p.underline {
-			dc.DrawRectangle(p.x, p.y+size*0.12, p.w, math.Max(1, size/16))
-			dc.Fill()
-		}
-		if p.strike {
-			dc.DrawRectangle(p.x, p.y-size*0.28, p.w, math.Max(1, size/16))
-			dc.Fill()
 		}
 	}
-}
-
-// ComposeRichText draws a text notebook's typed documents (editor resources,
-// in order) and lays the handwriting page's ink over them, as the device
-// shows its handwriting layer above the text. The canvas grows downward to
-// fit the text, within the preview size limit. It returns notices describing
-// the approximation; resources that can't be read are reported, not fatal.
-func ComposeRichText(ink image.Image, resources [][]byte, load Load) (image.Image, []string) {
-	var blocks []richBlock
-	for _, raw := range resources {
-		blocks = append(blocks, richDocument(raw)...)
-	}
-	if len(blocks) == 0 {
-		return ink, nil
-	}
-	missingImage := false
-	for i := range blocks {
-		if blocks[i].kind != "image" {
-			continue
-		}
-		if img := richImage(blocks[i], load); img != nil {
-			blocks[i].img = img
-			c := img.Bounds()
-			blocks[i].aspect = math.Min(math.Max(float64(c.Dy())/float64(c.Dx()), 0.1), 3)
-		} else {
-			missingImage = true
-		}
-	}
-	bounds := ink.Bounds()
-	w := bounds.Dx()
-	l := newRichLayout(float64(w))
-	items, needed := l.layout(blocks)
-	h := max(bounds.Dy(), int(math.Ceil(needed)))
-	notices := []string{RichTextDrawnNotice}
-	if limit := int(20e6) / max(w, 1); h > limit || h > 32768 {
-		h = min(limit, 32768)
-		notices = append(notices, "Typed text is longer than the preview can show; the end is cut off.")
-	}
-	if missingImage {
-		notices = append(notices, RichTextImageNotice)
-	}
-	for _, b := range blocks {
-		if b.unknown {
-			notices = append(notices, "Some typed-text formatting isn't reproduced; its text is shown plainly.")
-			break
-		}
-	}
-	dc := gg.NewContext(w, h)
-	dc.SetRGB(1, 1, 1)
-	dc.Clear()
-	l.draw(dc, items)
-	out := dc.Image().(*image.RGBA)
-	// Darken: ink (on white paper) over text keeps the darker of the two.
-	for y := 0; y < bounds.Dy() && y < h; y++ {
-		for x := 0; x < w; x++ {
-			r, g, b, _ := ink.At(bounds.Min.X+x, bounds.Min.Y+y).RGBA()
-			i := out.PixOffset(x, y)
-			out.Pix[i] = min(out.Pix[i], uint8(r>>8))
-			out.Pix[i+1] = min(out.Pix[i+1], uint8(g>>8))
-			out.Pix[i+2] = min(out.Pix[i+2], uint8(b>>8))
-		}
-	}
-	return out, notices
+	return names
 }

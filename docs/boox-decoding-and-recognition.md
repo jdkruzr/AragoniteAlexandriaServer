@@ -33,6 +33,9 @@ UltraBridge itself is not a runtime dependency.
 - Text boxes use bundled substitute fonts, wrapping and alignment. Font family,
   rich spans and exact native typography are not promised. Rich HTML is reduced
   to escaped readable text; scripts/styles are excluded, and raw HTML is not served.
+  2026-10-25: a text notebook's typed text is shown as HTML that Alexandria
+  generates from the parsed editor document (fixed tags, escaped text); the
+  device's resource is still never served as markup.
 - Scene 3 is native PDF scribble and is renderable. Scene 1 text, scene 2 meeting
   and scene 4 draft retain explicit limitations; encrypted notebooks are refused.
 

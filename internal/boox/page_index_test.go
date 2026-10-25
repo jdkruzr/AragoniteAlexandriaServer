@@ -7,9 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image/png"
 	"net/http/httptest"
-	"net/url"
 	"os/exec"
 	"slices"
 	"strings"
@@ -312,7 +310,8 @@ func TestTextNotebookTypedTextIsSearchableWithoutRecognition(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "Synthetic plan") {
 		t.Fatal("typed text not searchable")
 	}
-	// The notebook view draws the typed text; recognition's render stays ink-only.
+	// The notebook view shows the typed text as HTML; recognition's render
+	// stays ink-only, so typed text never reaches a provider as an image.
 	n, e := s.notebookSnapshot(ctx, "note")
 	if e != nil {
 		t.Fatal(e)
@@ -321,32 +320,9 @@ func TestTextNotebookTypedTextIsSearchableWithoutRecognition(t *testing.T) {
 	if e != nil || !plain.Blank {
 		t.Fatal("recognition preview should stay blank", e)
 	}
-	shown, typed, e := s.typedPreview(ctx, n, 1)
-	if e != nil || !typed || !slices.Contains(shown.Notices, booxpage.RichTextDrawnNotice) || slices.Contains(shown.Warnings, booxpage.RichTextNotebookWarning) {
-		t.Fatalf("typed preview: %v %v %q %q", typed, e, shown.Notices, shown.Warnings)
-	}
-	dark := func(b []byte) int {
-		img, err := png.Decode(bytes.NewReader(b))
-		if err != nil {
-			t.Fatal(err)
-		}
-		n := 0
-		for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
-			for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
-				if r, _, _, _ := img.At(x, y).RGBA(); r < 0x8000 {
-					n++
-				}
-			}
-		}
-		return n
-	}
-	if dark(plain.PNG) != 0 || dark(shown.PNG) == 0 {
-		t.Fatal("typed text should appear only in the shown preview")
-	}
-	w = httptest.NewRecorder()
-	s.pageImage(w, httptest.NewRequest("GET", "/boox/page.png?id=note&page=1&typed=1&version="+url.QueryEscape(n.Version), nil))
-	if w.Code != 200 || !bytes.Equal(w.Body.Bytes(), shown.PNG) {
-		t.Fatalf("typed page image: %d", w.Code)
+	typed, notices, warning := s.typedHTML(ctx, n)
+	if !strings.Contains(string(typed), "launch the zeppelin") || !slices.Contains(notices, booxpage.RichTextShownNotice) || warning != "" {
+		t.Fatalf("typed text: %q %q %q", typed, notices, warning)
 	}
 }
 

@@ -58,6 +58,87 @@ func PageIDs(raw json.RawMessage) []string {
 	}
 	return nil
 }
+
+// pageShapes merges a page's shape archives the native way: the newest record
+// per shape wins, and equal times with different records are refused. Zeroed
+// pen-session archives are counted (emptyAt is the earliest), not read.
+func pageShapes(id string, keys []string, load Load) (winners map[string]*pb.ShapeInfoProto, emptySessions int, emptyAt int64, err error) {
+	winners = map[string]*pb.ShapeInfoProto{}
+	sort.Strings(keys)
+	count := 0
+	decodedBytes := 0
+	for _, key := range keys {
+		if !strings.HasPrefix(key, "shape/"+id+"#") || !strings.HasSuffix(key, ".zip") {
+			continue
+		}
+		raw, err := load(key)
+		if err != nil {
+			return nil, 0, 0, unavailable("shape archive unavailable or failed verification")
+		}
+		// The firmware sometimes leaves a pen session's archive all zeros on
+		// the device; the rest of the page is still good.
+		if len(raw) > 0 && len(bytes.Trim(raw, "\x00")) == 0 {
+			emptySessions++
+			if at := sessionTime(key); emptyAt == 0 || (at > 0 && at < emptyAt) {
+				emptyAt = at
+			}
+			continue
+		}
+		z, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
+		if err != nil {
+			return nil, 0, 0, fmt.Errorf("invalid shape archive")
+		}
+		for _, f := range z.File {
+			if f.FileInfo().IsDir() {
+				continue
+			}
+			if f.UncompressedSize64 > 16<<20 {
+				return nil, 0, 0, fmt.Errorf("shape archive exceeds preview limit")
+			}
+			b, e := readEntry(f, 16<<20)
+			if e != nil {
+				return nil, 0, 0, fmt.Errorf("unreadable shape archive")
+			}
+			decodedBytes += len(b)
+			if decodedBytes > 128<<20 {
+				return nil, 0, 0, fmt.Errorf("expanded shape data exceeds preview limit")
+			}
+			var list pb.ShapeInfoProtoList
+			if proto.Unmarshal(b, &list) != nil {
+				return nil, 0, 0, fmt.Errorf("invalid shape metadata")
+			}
+			for _, s := range list.Proto {
+				// Whole-page rewrites repeat every shape, so the record
+				// ceiling is generous; the shape limit counts distinct shapes.
+				count++
+				if count > 500000 {
+					return nil, 0, 0, fmt.Errorf("page exceeds preview record limit")
+				}
+				if s.UniqueId == "" {
+					return nil, 0, 0, fmt.Errorf("shape identity missing")
+				}
+				old := winners[s.UniqueId]
+				if old == nil && len(winners) >= 50000 {
+					return nil, 0, 0, fmt.Errorf("page exceeds preview shape limit")
+				}
+				if old == nil || s.UpdatedAt > old.UpdatedAt {
+					winners[s.UniqueId] = s
+				} else if s.UpdatedAt == old.UpdatedAt && !proto.Equal(s, old) {
+					return nil, 0, 0, fmt.Errorf("ambiguous shape versions; preview withheld")
+				}
+			}
+		}
+	}
+	return winners, emptySessions, emptyAt, nil
+}
+
+// PageShapes is a page's current shapes, removed ones included, merged across
+// all its archives.
+func PageShapes(id string, keys []string, load Load) (map[string]*pb.ShapeInfoProto, error) {
+	winners, _, _, err := pageShapes(id, append([]string(nil), keys...), load)
+	return winners, err
+}
+
 func ShapePage(meta Metadata, id string, keys []string, load Load) (*Page, []string, error) {
 	return shapePage(meta, id, keys, load, map[string]bool{})
 }
@@ -104,73 +185,9 @@ func shapePage(meta Metadata, id string, keys []string, load Load, visiting map[
 	if meta.NotePageInfo.CanvasExpandType != "" && meta.NotePageInfo.CanvasExpandType != "DEFAULT" {
 		warnings = append(warnings, "Expanded canvas layout has not been qualified; this preview may be cropped.")
 	}
-	winners := map[string]*pb.ShapeInfoProto{}
-	sort.Strings(keys)
-	count := 0
-	decodedBytes := 0
-	emptySessions := 0
-	var emptyAt int64 // earliest zeroed session, from the archive name
-	for _, key := range keys {
-		if !strings.HasPrefix(key, "shape/"+id+"#") || !strings.HasSuffix(key, ".zip") {
-			continue
-		}
-		raw, err := load(key)
-		if err != nil {
-			return nil, nil, unavailable("shape archive unavailable or failed verification")
-		}
-		// The firmware sometimes leaves a pen session's archive all zeros on
-		// the device; the rest of the page is still good.
-		if len(raw) > 0 && len(bytes.Trim(raw, "\x00")) == 0 {
-			emptySessions++
-			if at := sessionTime(key); emptyAt == 0 || (at > 0 && at < emptyAt) {
-				emptyAt = at
-			}
-			continue
-		}
-		z, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid shape archive")
-		}
-		for _, f := range z.File {
-			if f.FileInfo().IsDir() {
-				continue
-			}
-			if f.UncompressedSize64 > 16<<20 {
-				return nil, nil, fmt.Errorf("shape archive exceeds preview limit")
-			}
-			b, e := readEntry(f, 16<<20)
-			if e != nil {
-				return nil, nil, fmt.Errorf("unreadable shape archive")
-			}
-			decodedBytes += len(b)
-			if decodedBytes > 128<<20 {
-				return nil, nil, fmt.Errorf("expanded shape data exceeds preview limit")
-			}
-			var list pb.ShapeInfoProtoList
-			if proto.Unmarshal(b, &list) != nil {
-				return nil, nil, fmt.Errorf("invalid shape metadata")
-			}
-			for _, s := range list.Proto {
-				// Whole-page rewrites repeat every shape, so the record
-				// ceiling is generous; the shape limit counts distinct shapes.
-				count++
-				if count > 500000 {
-					return nil, nil, fmt.Errorf("page exceeds preview record limit")
-				}
-				if s.UniqueId == "" {
-					return nil, nil, fmt.Errorf("shape identity missing")
-				}
-				old := winners[s.UniqueId]
-				if old == nil && len(winners) >= 50000 {
-					return nil, nil, fmt.Errorf("page exceeds preview shape limit")
-				}
-				if old == nil || s.UpdatedAt > old.UpdatedAt {
-					winners[s.UniqueId] = s
-				} else if s.UpdatedAt == old.UpdatedAt && !proto.Equal(s, old) {
-					return nil, nil, fmt.Errorf("ambiguous shape versions; preview withheld")
-				}
-			}
-		}
+	winners, emptySessions, emptyAt, err := pageShapes(id, keys, load)
+	if err != nil {
+		return nil, nil, err
 	}
 	layerOrder := map[int32]int{}
 	hidden := map[int32]bool{}

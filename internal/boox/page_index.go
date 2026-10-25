@@ -236,21 +236,14 @@ func (s Service) ProcessPageIndex(ctx context.Context, ocr notes.OCR, prompt str
 	return true, e
 }
 
-// typedText is the readable text of a text notebook's typed pages, from its
-// editor resources in key order, capped at 1 MiB.
+// typedText is the readable text of a text notebook's current typed
+// documents (currentRichText), capped at 1 MiB.
 func (s Service) typedText(ctx context.Context, n notebookSnapshot) string {
-	load := s.snapshotLoader(ctx, n)
+	docs, _ := s.currentRichText(ctx, n)
 	var parts []string
 	total := 0
-	for _, k := range n.Keys {
-		if !strings.HasPrefix(k, "resource/data/") || !strings.HasSuffix(k, ".html") || n.Assets[k].Bytes > 1<<20 {
-			continue
-		}
-		b, e := load(k)
-		if e != nil {
-			continue
-		}
-		if t := booxpage.RichText(b); t != "" && total+len(t) <= 1<<20 {
+	for _, d := range docs {
+		if t := booxpage.RichText(d.Body); t != "" && total+len(t) <= 1<<20 {
 			parts = append(parts, t)
 			total += len(t)
 		}

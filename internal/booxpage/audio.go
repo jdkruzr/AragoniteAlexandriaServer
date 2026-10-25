@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/fogleman/gg"
@@ -16,11 +17,15 @@ import (
 type Resource struct {
 	ID, DocumentID, Title, RelativePath string
 	CreatedAt, UpdatedAt, DurationMS    int64
-	Type                                int32
+	Type, Status                        int32
 }
 
-// ResourceAudio is the native resource type for recordings.
-const ResourceAudio = 2
+// Native resource types and statuses (ResourceStatus: ENABLED 0, REMOVED 1).
+const (
+	ResourceAudio    = 2
+	ResourceRichText = 3
+	ResourceRemoved  = 1
+)
 
 // ParseResources decodes a resource record without a generated schema. Unknown
 // fields are skipped so newer firmware does not break older servers.
@@ -82,7 +87,7 @@ func parseResource(b []byte) (Resource, error) {
 				r.RelativePath = v
 			}
 			b = b[n:]
-		case typ == protowire.VarintType && (num == 3 || num == 4 || num == 6 || num == 7):
+		case typ == protowire.VarintType && (num == 3 || num == 4 || num == 6 || num == 7 || num == 13):
 			v, n := protowire.ConsumeVarint(b)
 			if n < 0 {
 				return r, errors.New("invalid resource entry")
@@ -96,6 +101,8 @@ func parseResource(b []byte) (Resource, error) {
 				r.DurationMS = int64(v)
 			case 7:
 				r.Type = int32(v)
+			case 13:
+				r.Status = int32(v)
 			}
 			b = b[n:]
 		default:
@@ -110,6 +117,46 @@ func parseResource(b []byte) (Resource, error) {
 		return r, errors.New("invalid resource entry")
 	}
 	return r, nil
+}
+
+// CurrentResources replays a notebook's resource lists the way the Notes app
+// does. Each device save writes a list holding only what changed: the
+// superseded record restated as removed, plus its replacement. So the newest
+// record per resource wins and removed ones drop out; the newest list alone
+// would lose resources that a later save didn't touch. Equal timestamps with
+// different records are refused rather than guessed.
+func CurrentResources(lists [][]byte) ([]Resource, error) {
+	winners := map[string]Resource{}
+	for _, b := range lists {
+		records, err := ParseResources(b)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range records {
+			if r.ID == "" {
+				return nil, errors.New("resource identity missing")
+			}
+			old, seen := winners[r.ID]
+			if !seen || r.UpdatedAt > old.UpdatedAt {
+				winners[r.ID] = r
+			} else if r.UpdatedAt == old.UpdatedAt && r != old {
+				return nil, errors.New("ambiguous resource versions")
+			}
+		}
+	}
+	out := make([]Resource, 0, len(winners))
+	for _, r := range winners {
+		if r.Status != ResourceRemoved {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].CreatedAt != out[j].CreatedAt {
+			return out[i].CreatedAt < out[j].CreatedAt
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out, nil
 }
 
 // AudioRef is a recording placed on a page (native shape type 23).

@@ -256,11 +256,8 @@ func buildTextNote(uid string, n TextNote, ids textIDs, now time.Time) (map[stri
 		model = pbBytes(model, 1, m)
 	}
 
-	thumb, e := textThumbnail(n.Title, n.Blocks)
-	if e != nil {
-		return nil, nil, e
-	}
-
+	// No thumbnail: devices ignore a server-written one and draw their own
+	// the first time the note is opened (docs/boox-text-notes.md).
 	assets := []textAsset{
 		{base + "resource/data/" + ids.Resource + ".html", "text/html", richTextDocument(n.Title, n.Blocks)},
 		{base + "resource/pb/" + ids.ResourceRev + "#" + ts, "application/octet-stream", pbBytes(nil, 1, res)},
@@ -270,7 +267,6 @@ func buildTextNote(uid string, n TextNote, ids textIDs, now time.Time) (map[stri
 		{base + "virtual/page/pb/" + ids.VirtualPage, "application/octet-stream", pbBytes(nil, 1, vpage)},
 		{base + "pageModel/pb/" + ids.PageModel, "application/octet-stream", model},
 		{base + "template/json/" + ids.Scribble + ".template_json", "application/octet-stream", []byte(textTemplateJSON)},
-		{uid + "/note/" + ids.Doc + ".png", "image/png", thumb},
 	}
 	rect := map[string]any{"top": 0, "left": 0, "empty": false, "right": textPageWidth, "valid": true, "bottom": textPageHeight, "stability": 0}
 	record := map[string]any{

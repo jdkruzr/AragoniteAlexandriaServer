@@ -100,11 +100,10 @@ var storedDetails = []string{
 	i18n.M("Transcribing recordings."),
 	i18n.M("Waiting for handwriting recognition."),
 	i18n.M("Couldn't send these minutes to BOOX automatically. Use Send to BOOX to try again."),
-	// Typed-text preview notices (booxpage richdoc.go).
-	i18n.M("Typed text is drawn with a substitute font; the device's layout may differ."),
-	i18n.M("Some images in typed text haven't arrived or can't be read; placeholders mark them."),
-	i18n.M("Typed text is longer than the preview can show; the end is cut off."),
+	// Typed-text notices (booxpage richdoc.go, boox richtext_current.go).
+	i18n.M("Typed text is shown with this browser's fonts; the device's layout may differ."),
 	i18n.M("Some typed-text formatting isn't reproduced; its text is shown plainly."),
+	i18n.M("This note's typed-text history is ambiguous; showing its newest save."),
 	// Common preview warnings that appear as reasons.
 	i18n.M("Page resources cannot be rendered yet."),
 	i18n.M("Template metadata is unreadable."),

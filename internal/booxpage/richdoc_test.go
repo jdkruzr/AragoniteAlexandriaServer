@@ -1,16 +1,10 @@
 package booxpage
 
 import (
-	"bytes"
-	"encoding/base64"
-	"errors"
-	"image"
-	"image/color"
-	"image/draw"
-	"image/png"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -33,89 +27,73 @@ const syntheticRichDoc = `{"content":{"type":"doc","content":[
 {"type":"mysteryBlock","content":[{"type":"text","text":"Unknown block text"}]}
 ]},"docVersion":2}`
 
-func TestComposeRichTextDrawsTypedTextUnderInk(t *testing.T) {
-	ink := image.NewRGBA(image.Rect(0, 0, 1404, 1872))
-	draw.Draw(ink, ink.Bounds(), image.White, image.Point{}, draw.Src)
-	for x := 100; x < 1300; x++ { // a pen stroke across the text
-		ink.Set(x, 300, color.Black)
-	}
-	img, notices := ComposeRichText(ink, [][]byte{[]byte(syntheticRichDoc)}, nil)
-	if img.Bounds().Dx() != 1404 || img.Bounds().Dy() < 1872 {
-		t.Fatalf("size %v", img.Bounds())
-	}
-	if len(notices) != 3 || notices[0] != RichTextDrawnNotice || notices[1] != RichTextImageNotice {
-		t.Fatalf("notices %q", notices)
-	}
-	if r, _, _, _ := img.At(700, 300).RGBA(); r != 0 {
-		t.Fatal("ink stroke not kept over the text")
-	}
-	dark := 0
-	for y := 0; y < 400; y++ {
-		for x := 0; x < 1404; x++ {
-			if r, _, _, _ := img.At(x, y).RGBA(); r < 0x8000 && y != 300 {
-				dark++
-			}
+func TestRichHTMLRendersTheDocument(t *testing.T) {
+	out, notices := RichHTML([]byte(syntheticRichDoc), func(name string) string { return "/boox/resource?name=" + name })
+	got := string(out)
+	for _, want := range []string{
+		"<h2>Synthetic planning notes</h2>", "<h3>Follow-ups</h3>",
+		"<strong>Summary:</strong>", "<em>italic</em>",
+		`<span style="font-size:0.75em;color:#1a5fb4">smaller blue</span>`,
+		`<p class="rt-i1"><span class="rt-m">•</span> First synthetic bullet</p>`,
+		`<p class="rt-i2"><span class="rt-m">•</span> Nested bullet</p>`,
+		`<span class="rt-m">☑</span> Done item`, `<span class="rt-m">☐</span> Open item`,
+		`<span class="rt-m">1.</span> Numbered`,
+		"<p><br></p>", // an empty paragraph keeps its space
+		`<figure><img src="/boox/resource?name=synthetic" alt=""></figure>`,
+		"<em>Attachment: synthetic.txt</em>", "Unknown block text",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
 		}
 	}
-	if dark < 2000 {
-		t.Fatalf("typed text not drawn (%d dark pixels)", dark)
+	if len(notices) != 2 || notices[0] != RichTextShownNotice || notices[1] != RichTextFormattingNotice {
+		t.Fatalf("notices %q", notices)
 	}
 	if dir := os.Getenv("BOOXPAGE_RENDER_DIR"); dir != "" {
-		f, _ := os.Create(filepath.Join(dir, "richtext.png"))
-		_ = png.Encode(f, img)
-		f.Close()
+		_ = os.WriteFile(filepath.Join(dir, "richtext.html"), []byte(got), 0o600)
 	}
-	// Nothing typed: the ink comes back untouched.
-	if same, n := ComposeRichText(ink, [][]byte{[]byte(`{"content":{"type":"doc","content":[]}}`)}, nil); same != image.Image(ink) || n != nil {
-		t.Fatal("empty document changed the page")
+	if out, n := RichHTML([]byte(`{"content":{"type":"doc","content":[]}}`), nil); out != "" || n != nil {
+		t.Fatal("empty document produced output", out, n)
 	}
 }
 
-// A typed-text image is the note's resource/data file named like its
-// dataKey (or src), or a data: URI; it's drawn in place, keeping its shape.
-func TestComposeRichTextDrawsImages(t *testing.T) {
-	pic := image.NewRGBA(image.Rect(0, 0, 200, 100))
-	draw.Draw(pic, pic.Bounds(), &image.Uniform{color.RGBA{220, 0, 0, 255}}, image.Point{}, draw.Src)
-	var buf bytes.Buffer
-	if e := png.Encode(&buf, pic); e != nil {
-		t.Fatal(e)
-	}
-	load := func(k string) ([]byte, error) {
-		if k == "resource/data/pic.png" {
-			return buf.Bytes(), nil
-		}
-		return nil, errors.New("missing")
-	}
-	ink := image.NewRGBA(image.Rect(0, 0, 1000, 1400))
-	draw.Draw(ink, ink.Bounds(), image.White, image.Point{}, draw.Src)
-	red := func(img image.Image) int {
-		n := 0
-		for y := 0; y < img.Bounds().Dy(); y++ {
-			for x := 0; x < img.Bounds().Dx(); x++ {
-				if r, g, _, _ := img.At(x, y).RGBA(); r > 0xc000 && g < 0x2000 {
-					n++
-				}
-			}
-		}
-		return n
-	}
-	for name, attrs := range map[string]string{
-		"file":     `"src":"/storage/emulated/0/note/pic.png","dataKey":"https://oss.example/a/pic.png"`,
-		"data URI": `"src":"data:image/png;base64,` + base64.StdEncoding.EncodeToString(buf.Bytes()) + `"`,
-	} {
-		doc := `{"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Above"}]},{"type":"onyxImg","attrs":{"width":553,"height":420,` + attrs + `}}]},"docVersion":2}`
-		img, notices := ComposeRichText(ink, [][]byte{[]byte(doc)}, load)
-		if slices.Contains(notices, RichTextImageNotice) {
-			t.Fatalf("%s: image reported missing %q", name, notices)
-		}
-		// Drawn across the text width (1000 - 2×6% margins = 880) at 2:1.
-		if n := red(img); n < 880*440*9/10 {
-			t.Fatalf("%s: image not drawn (%d red pixels)", name, n)
+// Nothing in a resource reaches the browser as markup: text, attribute
+// values and image references are all escaped or rejected.
+func TestRichHTMLEscapesEverything(t *testing.T) {
+	doc := `{"content":{"type":"doc","content":[
+{"type":"paragraph","content":[{"type":"text","text":"<script>alert(1)</script> & \"quotes\""}]},
+{"type":"paragraph","content":[{"type":"text","marks":[{"type":"textStyle","attrs":{"fontColor":"red;background:url(x)","fontSize":"x\" onload=\"y"}}],"text":"styled"}]},
+{"type":"onyxImg","attrs":{"src":"javascript:alert(1)","dataKey":"../../etc/passwd"}},
+{"type":"onyxImg","attrs":{"src":"data:image/png;base64,AAAA"}}
+]},"docVersion":2}`
+	var asked []string
+	out, _ := RichHTML([]byte(doc), func(name string) string { asked = append(asked, name); return "/r?n=" + name + `"x` })
+	got := string(out)
+	for _, bad := range []string{"<script", "url(", "onload", "background", `"x`} {
+		if strings.Contains(got, bad) {
+			t.Fatalf("%q leaked into\n%s", bad, got)
 		}
 	}
-	// A reference that resolves to nothing stays a placeholder.
-	doc := `{"content":{"type":"doc","content":[{"type":"onyxImg","attrs":{"src":"/x/gone.webp","dataKey":"gone.webp"}}]},"docVersion":2}`
-	if img, notices := ComposeRichText(ink, [][]byte{[]byte(doc)}, load); !slices.Contains(notices, RichTextImageNotice) || red(img) != 0 {
-		t.Fatal("missing image not reported", notices)
+	if !strings.Contains(got, "&lt;script&gt;alert(1)&lt;/script&gt; &amp; &#34;quotes&#34;") || !strings.Contains(got, "<p>styled</p>") {
+		t.Fatalf("text not escaped as expected:\n%s", got)
+	}
+	// "../../etc/passwd" reduces to its base name, which is all a lookup can use;
+	// the javascript: src is only a fallback, and the data: image has no file.
+	if !slices.Equal(asked, []string{"passwd"}) || !strings.Contains(got, `/r?n=passwd&#34;x`) || !strings.Contains(got, `class="rt-missing"`) {
+		t.Fatalf("image references %q\n%s", asked, got)
+	}
+	// Old HTML resources are reduced to text, never passed through.
+	if out, _ := RichHTML([]byte(`<p>old <b>note</b><script>x()</script></p>`), nil); string(out) != "<p>old note</p>\n" {
+		t.Fatalf("%q", out)
+	}
+}
+
+func TestRichImageNames(t *testing.T) {
+	doc := `{"content":{"type":"doc","content":[
+{"type":"onyxImg","attrs":{"src":"/storage/emulated/0/note/pic.png","dataKey":"https://oss.example/a/pic.webp?x=1"}},
+{"type":"onyxImg","attrs":{"src":"/storage/emulated/0/note/two.jpg"}},
+{"type":"onyxImg","attrs":{"src":"data:image/png;base64,AAAA"}}]},"docVersion":2}`
+	if got := RichImageNames([]byte(doc)); !slices.Equal(got, []string{"pic.webp", "two.jpg"}) {
+		t.Fatal(got)
 	}
 }

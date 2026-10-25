@@ -22,6 +22,11 @@ func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *tem
 	if r.URL.Path == "/boox/books/upload" {
 		w.Header().Set("Content-Security-Policy", w.Header().Get("Content-Security-Policy")+"; script-src 'self'; connect-src 'self'")
 	}
+	if r.URL.Path == "/boox/notebook" {
+		// Typed text sizes and colours (booxpage.RichHTML generates them from
+		// validated numbers; no resource markup reaches the page).
+		w.Header().Set("Content-Security-Policy", w.Header().Get("Content-Security-Policy")+"; style-src-attr 'unsafe-inline'")
+	}
 	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}}.RenderContent(w, r, content, title, "boox", data)
 }
 
@@ -36,6 +41,9 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			return
 		case "/boox/page.png":
 			s.pageImage(w, r)
+			return
+		case "/boox/resource":
+			s.typedResource(w, r)
 			return
 		case "/boox/settings":
 			s.renderPage(w, r, booxSettings, "BOOX Settings", nil)

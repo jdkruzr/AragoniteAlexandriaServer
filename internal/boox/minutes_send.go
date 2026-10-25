@@ -8,8 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
+	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	texttemplate "text/template"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 )
 
 // Audio Note Minutes sent to BOOX become a new text note named
@@ -56,9 +59,9 @@ type sentNote struct {
 func (s Service) sentMinutesNote(ctx context.Context, notebook string) (*sentNote, error) {
 	var n sentNote
 	var parent string
-	var assets []byte
-	e := s.DB.QueryRowContext(ctx, `SELECT id::text,document_id,state,coalesce(error_code,''),created_at,coalesce(payload->>'title',''),coalesce(payload->>'parent',''),coalesce(payload->'assets','[]') FROM boox_operation WHERE kind='create_text_note' AND payload->>'minutesOf'=$1 ORDER BY created_at DESC LIMIT 1`, notebook).
-		Scan(&n.Op, &n.Doc, &n.State, &n.Code, &n.At, &n.Title, &parent, &assets)
+	var assets, metadata []byte
+	e := s.DB.QueryRowContext(ctx, `SELECT id::text,document_id,state,coalesce(error_code,''),created_at,coalesce(payload->>'title',''),coalesce(payload->>'parent',''),coalesce(payload->'assets','[]'),coalesce(payload->'metadata','{}') FROM boox_operation WHERE kind='create_text_note' AND payload->>'minutesOf'=$1 ORDER BY created_at DESC LIMIT 1`, notebook).
+		Scan(&n.Op, &n.Doc, &n.State, &n.Code, &n.At, &n.Title, &parent, &assets, &metadata)
 	if errors.Is(e, sql.ErrNoRows) {
 		return nil, nil
 	} else if e != nil {
@@ -94,46 +97,125 @@ func (s Service) sentMinutesNote(ctx context.Context, notebook string) (*sentNot
 	if body["title"] != n.Title || live != parent {
 		return &n, nil
 	}
-	// Opening a note rewrites pageModel on the device, so that alone isn't
-	// a change. Everything else under the notebook must still be ours.
-	ignored := func(key string) bool { return strings.Contains(key, "/pageModel/") }
-	var published []struct{ Key, SHA256 string }
-	if e = json.Unmarshal(assets, &published); e != nil {
-		return nil, e
-	}
-	prefix := s.uid() + "/note/" + n.Doc + "/"
-	want := map[string]string{}
-	for _, a := range published {
-		if strings.HasPrefix(a.Key, prefix) && !ignored(a.Key) {
-			want[a.Key] = a.SHA256
-		}
-	}
-	rows, e := s.DB.QueryContext(ctx, `SELECT l.native_key,v.sha256 FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE left(l.native_key,length($1))=$1 AND NOT v.deleted`, prefix)
+	untouched, e := s.minutesNoteUntouched(ctx, n.Doc, raw, metadata, assets)
 	if e != nil {
 		return nil, e
 	}
-	defer rows.Close()
-	seen := 0
-	for rows.Next() {
-		var key, sha string
-		if e = rows.Scan(&key, &sha); e != nil {
-			return nil, e
-		}
-		if ignored(key) {
-			continue
-		}
-		if want[key] != sha {
-			return &n, rows.Err()
-		}
-		seen++
-	}
-	if e = rows.Err(); e != nil {
-		return nil, e
-	}
-	if seen == len(want) {
+	if untouched {
 		n.Status = "untouched"
 	}
 	return &n, nil
+}
+
+// minutesNoteUntouched says whether a sent note still shows exactly what was
+// sent. Opening a note on a device saves it again, even when only the cursor
+// moves: a new shape revision, resource list and editor file with the same
+// text, and a page model and thumbnail. None of that is an edit. What counts
+// is what the owner can see: the typed text and its formatting, any shape
+// besides the text itself (ink, images), the pages, and the template and
+// page-layout files. Anything unclear counts as an edit, so a resend never
+// replaces a note the owner may have changed.
+func (s Service) minutesNoteUntouched(ctx context.Context, doc string, record, sentMeta, assets []byte) (bool, error) {
+	var live, sent booxpage.Metadata
+	if json.Unmarshal(record, &live) != nil || json.Unmarshal(sentMeta, &sent) != nil {
+		return false, nil
+	}
+	if !slices.Equal(booxpage.PageIDs(live.PageNameList), booxpage.PageIDs(sent.PageNameList)) ||
+		!slices.Equal(booxpage.PageIDs(live.RichTextPageNameList), booxpage.PageIDs(sent.RichTextPageNameList)) {
+		return false, nil
+	}
+	var published []struct{ Key, SHA256 string }
+	if e := json.Unmarshal(assets, &published); e != nil {
+		return false, e
+	}
+	n, e := s.notebookSnapshot(ctx, doc)
+	if errors.Is(e, sql.ErrNoRows) {
+		return false, nil
+	} else if e != nil {
+		return false, e
+	}
+	prefix := s.uid() + "/note/" + doc + "/"
+	sentText := ""
+	points := map[string]bool{}
+	for _, a := range published {
+		rel, ok := strings.CutPrefix(a.Key, prefix)
+		if !ok {
+			continue // a thumbnail sits beside the note's folder
+		}
+		switch {
+		case strings.HasPrefix(rel, "virtual/"), strings.HasPrefix(rel, "template/"):
+			if n.Assets[rel].SHA != a.SHA256 {
+				return false, nil
+			}
+		case strings.HasPrefix(rel, "resource/data/") && strings.HasSuffix(rel, ".html"):
+			sentText = a.SHA256
+		case strings.HasPrefix(rel, "point/"):
+			points[rel] = true
+		}
+	}
+	load := s.snapshotLoader(ctx, n)
+	shapes := 0
+	for _, page := range append(booxpage.PageIDs(live.PageNameList), booxpage.PageIDs(live.RichTextPageNameList)...) {
+		winners, e := booxpage.PageShapes(page, n.Keys, load)
+		if e != nil {
+			return false, nil
+		}
+		for _, sp := range winners {
+			if sp.ShapeType != 29 || sp.ShapeStatus != 0 {
+				return false, nil
+			}
+			shapes++
+		}
+	}
+	for _, k := range n.Keys {
+		if strings.HasPrefix(k, "point/") && !points[k] {
+			return false, nil
+		}
+	}
+	docs, warning := s.currentRichText(ctx, n)
+	if shapes != 1 || sentText == "" || warning != "" || len(docs) != 1 {
+		return false, nil
+	}
+	body, e := s.storedBody(ctx, sentText, 1<<20)
+	if e != nil {
+		return false, e
+	}
+	return editorContentEqual(body, docs[0].Body), nil
+}
+
+// storedBody reads a retained blob body by its digest.
+func (s Service) storedBody(ctx context.Context, sha string, limit int64) ([]byte, error) {
+	r, _, e := s.Objects.Get(ctx, "boox/bodies/"+sha)
+	if e != nil {
+		return nil, e
+	}
+	defer r.Close()
+	raw, e := io.ReadAll(io.LimitReader(r, limit+1))
+	if e != nil || int64(len(raw)) > limit || hash(raw) != sha {
+		return nil, errors.New("stored body integrity check failed")
+	}
+	return raw, nil
+}
+
+// editorContentEqual compares two editor documents by their content, which
+// holds the text and its formatting; cursor, selection and scroll state are
+// ignored. Documents without content compare byte for byte.
+func editorContentEqual(a, b []byte) bool {
+	canonical := func(raw []byte) ([]byte, bool) {
+		var env struct{ Content json.RawMessage }
+		var v any
+		if json.Unmarshal(raw, &env) != nil || len(env.Content) == 0 || json.Unmarshal(env.Content, &v) != nil {
+			return nil, false
+		}
+		out, e := json.Marshal(v)
+		return out, e == nil
+	}
+	ca, okA := canonical(a)
+	cb, okB := canonical(b)
+	if !okA || !okB {
+		return bytes.Equal(a, b)
+	}
+	return bytes.Equal(ca, cb)
 }
 
 func (s Service) folderTitle(ctx context.Context, id string) string {

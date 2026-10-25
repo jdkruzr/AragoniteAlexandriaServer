@@ -77,3 +77,60 @@ func TestAudioShapeLoadsWithoutCoverageWarning(t *testing.T) {
 		}
 	}
 }
+
+func resourceList(records ...Resource) []byte {
+	var b []byte
+	for _, r := range records {
+		var e []byte
+		e = protowire.AppendTag(e, 1, protowire.BytesType)
+		e = protowire.AppendString(e, r.ID)
+		e = protowire.AppendTag(e, 3, protowire.VarintType)
+		e = protowire.AppendVarint(e, uint64(r.CreatedAt))
+		e = protowire.AppendTag(e, 4, protowire.VarintType)
+		e = protowire.AppendVarint(e, uint64(r.UpdatedAt))
+		e = protowire.AppendTag(e, 7, protowire.VarintType)
+		e = protowire.AppendVarint(e, uint64(r.Type))
+		e = protowire.AppendTag(e, 8, protowire.BytesType)
+		e = protowire.AppendString(e, r.RelativePath)
+		if r.Status != 0 {
+			e = protowire.AppendTag(e, 13, protowire.VarintType)
+			e = protowire.AppendVarint(e, uint64(r.Status))
+		}
+		b = protowire.AppendTag(b, 1, protowire.BytesType)
+		b = protowire.AppendBytes(b, e)
+	}
+	return b
+}
+
+func TestCurrentResourcesReplaysDeltaLists(t *testing.T) {
+	text := func(id string, created, updated int64, status int32) Resource {
+		return Resource{ID: id, CreatedAt: created, UpdatedAt: updated, Type: ResourceRichText, RelativePath: "/" + id + ".html", Status: status}
+	}
+	photo := Resource{ID: "photo", CreatedAt: 5, UpdatedAt: 5, Type: 1, RelativePath: "/photo.png"}
+	// The server writes the note; two devices each save it once (cursor moves
+	// are enough). Each save restates the previous text as removed and adds a
+	// new one. The photo only appears in the first list.
+	lists := [][]byte{
+		resourceList(text("a", 10, 10, 0), photo),
+		resourceList(text("a", 10, 20, ResourceRemoved), text("b", 21, 21, 0)),
+		resourceList(text("b", 21, 30, ResourceRemoved), text("c", 31, 31, 0)),
+	}
+	got, err := CurrentResources(lists)
+	if err != nil || len(got) != 2 || got[0].ID != "photo" || got[1].ID != "c" || got[1].RelativePath != "/c.html" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	// Order of arrival doesn't matter; the newest record wins.
+	if got, err := CurrentResources([][]byte{lists[2], lists[0], lists[1]}); err != nil || len(got) != 2 || got[1].ID != "c" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	// Identical restatements are fine; a different record at the same time is not.
+	if _, err := CurrentResources([][]byte{lists[0], lists[0]}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CurrentResources([][]byte{lists[0], resourceList(text("a", 10, 10, ResourceRemoved))}); err == nil {
+		t.Fatal("conflicting equal-time records accepted")
+	}
+	if got, err := CurrentResources(nil); err != nil || len(got) != 0 {
+		t.Fatal(got, err)
+	}
+}

@@ -43,16 +43,11 @@ func (s Service) RichTextInventory(ctx context.Context) (RichTextInventory, erro
 			continue
 		}
 		inv.Notebooks++
-		load := s.snapshotLoader(ctx, n)
-		for _, k := range n.Keys {
-			if !strings.HasPrefix(k, "resource/data/") || !strings.HasSuffix(k, ".html") || n.Assets[k].Bytes > 1<<20 {
-				continue
-			}
-			b, err := load(k)
-			if err != nil {
-				inv.Unreadable++
-				continue
-			}
+		// Current documents only: superseded saves would count every
+		// structure once per save.
+		docs, _ := s.currentRichText(ctx, n)
+		for _, d := range docs {
+			b := d.Body
 			inv.Resources++
 			var env map[string]json.RawMessage
 			if json.Unmarshal(b, &env) == nil && env["content"] != nil {
