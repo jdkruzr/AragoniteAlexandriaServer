@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"path"
 	"sort"
@@ -168,6 +169,9 @@ func (s Service) oss(w http.ResponseWriter, r *http.Request) {
 		var modified time.Time
 		e = s.DB.QueryRowContext(r.Context(), `SELECT v.sha256,v.md5,v.bytes,v.content_type,l.published_at FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE l.native_key=$1`, key).Scan(&sha, &md, &size, &ct, &modified)
 		if errors.Is(e, sql.ErrNoRows) {
+			e = s.legacyPoint(r, key, &sha, &md, &size, &ct, &modified)
+		}
+		if errors.Is(e, sql.ErrNoRows) {
 			ossError(w, 404, "NoSuchKey")
 			return
 		}
@@ -236,6 +240,52 @@ func (s Service) oss(w http.ResponseWriter, r *http.Request) {
 		ossError(w, 501, "NotImplemented")
 	}
 }
+
+// legacyPoint answers ksync's V2 point fallback. When an ordinary pull of
+// <uid>/note/<doc>/point/<name> fails, ksync retries the flat key
+// <uid>/point/<name> and treats a 404 there as done, so the strokes never
+// arrive. The name carries the page and point revision, so the per-note
+// blob is found by name; differing bodies under one name are never guessed.
+func (s Service) legacyPoint(r *http.Request, key string, sha, md *string, size *int64, ct *string, modified *time.Time) error {
+	name, ok := strings.CutPrefix(key, s.uid()+"/point/")
+	if !ok || strings.Contains(name, "/") || strings.Count(name, "#") != 2 || !strings.HasSuffix(name, "#points") {
+		return sql.ErrNoRows
+	}
+	rows, e := s.DB.QueryContext(r.Context(), `SELECT v.sha256,v.md5,v.bytes,v.content_type,l.published_at FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE split_part(l.native_key,'/',2)='note' AND split_part(l.native_key,'/',4)='point' AND split_part(l.native_key,'/',5)=$1 AND starts_with(l.native_key,$2) ORDER BY l.published_at DESC`, name, s.uid()+"/note/")
+	if e != nil {
+		return e
+	}
+	defer rows.Close()
+	n := 0
+	for rows.Next() {
+		var rowSHA, rowMD, rowCT string
+		var rowSize int64
+		var rowModified time.Time
+		if e := rows.Scan(&rowSHA, &rowMD, &rowSize, &rowCT, &rowModified); e != nil {
+			return e
+		}
+		if n > 0 && rowSHA != *sha {
+			logger := s.Logger
+			if logger == nil {
+				logger = slog.Default()
+			}
+			logger.Warn("legacy point key ambiguous")
+			return sql.ErrNoRows
+		}
+		if n == 0 {
+			*sha, *md, *size, *ct, *modified = rowSHA, rowMD, rowSize, rowCT, rowModified
+		}
+		n++
+	}
+	if e := rows.Err(); e != nil {
+		return e
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func ossError(w http.ResponseWriter, n int, code string) {
 	w.Header().Set("Content-Type", "application/xml")
 	w.WriteHeader(n)

@@ -12,7 +12,27 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-25): **`typed-text-b274aa0dbb7d`**, app-only on
+Latest recorded deployment (2026-10-25, evening): **`legacy-point-ac32d9a40362`**, schema
+**39**, image `sha256:d3958b1f06f7c21d950cff8a7f572b812dcd89498df11e703f2a4377ea7195cc`.
+OSS GET/HEAD now answers ksync's flat V2 point key `<uid>/point/<page>#<rev>#points`
+from the live `note/*/point/<same name>` blob (migration 0039 indexes the name;
+[details](boox-native-integration-design.md#durable-ingestion-and-assets)). Found while
+enrolling the Note Mini C: a Wi-Fi change interrupted three notebooks' pulls, ksync's V2
+fallback asked for the flat key, got 404 and recorded the points as done. Live checks: the
+Mini C's 14 affected point records were reset to pending through ksync's record provider,
+and after the next note-tree push all three notebooks ("20241104 SciComp Team" 19/19,
+"20241102 Canvassing" 4/4, "20241004 Research IT" 22/22) hold point files byte-identical
+to the server; the tablet's own thumbnail of SciComp Team shows its ink. Fresh required
+PostgreSQL/S3 `go test -race -count=1 ./...` and `go vet` passed. A migration needs the
+app stopped first (the running server holds the schema lock shared): `stop` →
+`run --rm --no-deps -T migrate` → `up -d --no-deps --no-build --force-recreate`; the first
+attempt ran migrate beside the live app, timed out after five minutes, and left an orphaned
+lock waiter that paused the workers until it was terminated; serving was unaffected
+(16 s of downtime in the corrected run). Rollback:
+`private/legacy-point-ac32d9a40362/rollback-schema.sh` (the previous binary refuses schema
+0039), then `rollback.sh`.
+
+Previous deployment (2026-10-25): **`typed-text-b274aa0dbb7d`**, app-only on
 top of the checkpoint below (schema still **38**), image
 `sha256:fa81f4820eb245a0d8efb9b5f5dd9d5a2feb625e22a7437b7d49bc21f06ab931`.
 Text notebooks now show only their current typed text, as generated HTML; server

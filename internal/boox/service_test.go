@@ -146,7 +146,7 @@ func getSTS(t *testing.T, s Service, p map[string]any) ossCredentials {
 }
 func signed(t *testing.T, s Service, c ossCredentials, method, key, query string, raw []byte, bad bool) *httptest.ResponseRecorder {
 	t.Helper()
-	r := httptest.NewRequest(method, "/"+key+query, bytes.NewReader(raw))
+	r := httptest.NewRequest(method, "/"+strings.ReplaceAll(key, "#", "%23")+query, bytes.NewReader(raw))
 	r.Header.Set("Date", time.Now().UTC().Format(http.TimeFormat))
 	r.Header.Set("X-Oss-Security-Token", c.Security)
 	if method == "PUT" {
@@ -235,6 +235,70 @@ func TestOSSHistoryPaginationAndGeneration(t *testing.T) {
 	w = signed(t, s, c, "PUT", key, "", []byte("late"), false)
 	if w.Code != 403 {
 		t.Fatalf("stale generation %d", w.Code)
+	}
+}
+func TestOSSLegacyPointKey(t *testing.T) {
+	s := testService(t)
+	c := getSTS(t, s, enrollTest(t, s, uuid.NewString()))
+	uid := nativeUID(s.LibraryID)
+	put := func(key, raw string) {
+		t.Helper()
+		if w := signed(t, s, c, "PUT", key, "", []byte(raw), false); w.Code != 200 {
+			t.Fatalf("PUT %s: %d", key, w.Code)
+		}
+	}
+	name := "page#rev#points"
+	flat := uid + "/point/" + name
+	put(uid+"/note/a/point/"+name, "strokes")
+	w := signed(t, s, c, "GET", flat, "", nil, false)
+	sum := md5.Sum([]byte("strokes"))
+	if w.Code != 200 || w.Body.String() != "strokes" || w.Header().Get("Content-MD5") != base64.StdEncoding.EncodeToString(sum[:]) || w.Header().Get("ETag") == "" {
+		t.Fatalf("flat GET %d %q", w.Code, w.Header().Get("Content-MD5"))
+	}
+	w = signed(t, s, c, "HEAD", flat, "", nil, false)
+	if w.Code != 200 || w.Header().Get("Content-Length") != "7" || w.Header().Get("Content-MD5") == "" || w.Body.Len() != 0 {
+		t.Fatalf("flat HEAD %d", w.Code)
+	}
+	if w = signed(t, s, c, "GET", flat, "", nil, true); w.Code != 403 {
+		t.Fatalf("bad signature %d", w.Code)
+	}
+	// The same bytes stored under two notebooks are still one answer.
+	put(uid+"/note/b/point/"+name, "strokes")
+	if w = signed(t, s, c, "GET", flat, "", nil, false); w.Code != 200 || w.Body.String() != "strokes" {
+		t.Fatalf("identical copies %d", w.Code)
+	}
+	// Differing bodies under one name are never guessed.
+	put(uid+"/note/b/point/"+name, "other")
+	if w = signed(t, s, c, "GET", flat, "", nil, false); w.Code != 404 {
+		t.Fatalf("ambiguous %d", w.Code)
+	}
+	if w = signed(t, s, c, "DELETE", uid+"/note/b/point/"+name, "", nil, false); w.Code != 204 {
+		t.Fatal(w.Code)
+	}
+	if w = signed(t, s, c, "GET", flat, "", nil, false); w.Code != 200 || w.Body.String() != "strokes" {
+		t.Fatalf("after delete %d", w.Code)
+	}
+	// An object stored at the flat key itself wins.
+	put(flat, "literal")
+	if w = signed(t, s, c, "GET", flat, "", nil, false); w.Code != 200 || w.Body.String() != "literal" {
+		t.Fatalf("literal %d %q", w.Code, w.Body.String())
+	}
+	if w = signed(t, s, c, "DELETE", uid+"/note/a/point/"+name, "", nil, false); w.Code != 204 {
+		t.Fatal(w.Code)
+	}
+	if w = signed(t, s, c, "DELETE", flat, "", nil, false); w.Code != 204 {
+		t.Fatal(w.Code)
+	}
+	if w = signed(t, s, c, "GET", flat, "", nil, false); w.Code != 404 {
+		t.Fatalf("deleted %d", w.Code)
+	}
+	// Only point file names alias: no nested paths, other kinds or missing names.
+	put(uid+"/note/a/point/x/y#z#points", "nested")
+	put(uid+"/note/a/shape/s#r#1.zip", "shape")
+	for _, key := range []string{uid + "/point/x/y#z#points", uid + "/point/s#r#1.zip", uid + "/shape/s#r#1.zip", uid + "/point/missing#rev#points"} {
+		if w = signed(t, s, c, "GET", key, "", nil, false); w.Code != 404 || !strings.Contains(w.Body.String(), "NoSuchKey") {
+			t.Fatalf("%s: %d", key, w.Code)
+		}
 	}
 }
 func TestConfigAndCanonical(t *testing.T) {
