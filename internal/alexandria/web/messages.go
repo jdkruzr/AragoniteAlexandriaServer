@@ -26,6 +26,7 @@ var dynamicMessages = []string{
 	"The selected file has changed. Start a new import.",
 	"The selected folder is no longer available.",
 	"The selection contains an unsafe or repeated path.",
+	"This book is already on another shelf. BOOX keeps each book on one shelf, so move it there instead.",
 	"This file cannot be uploaded in this import.",
 	"This import belongs to an earlier library generation. Start a new import.",
 	"This import or file is unavailable.",

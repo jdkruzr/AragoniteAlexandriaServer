@@ -1618,6 +1618,7 @@
   "The selected folder is no longer available.": "La carpeta seleccionada ya no está disponible.",
   "The selection contains an unsafe or repeated path.": "La selección contiene una ruta no válida o repetida.",
   "These are current library counts. Timed reading history has not been imported.": "Estos son los recuentos actuales de la biblioteca. No se ha importado el historial de tiempo de lectura.",
+  "This book is already on another shelf. BOOX keeps each book on one shelf, so move it there instead.": "Este libro ya está en otro estante. BOOX mantiene cada libro en un solo estante, así que muévelo allí.",
   "This file cannot be uploaded in this import.": "No se puede subir este archivo en esta importación.",
   "This import belongs to an earlier library generation. Start a new import.": "Esta importación pertenece a una versión anterior de la biblioteca. Empieza una nueva importación.",
   "This import or file is unavailable.": "Esta importación o archivo no está disponible.",

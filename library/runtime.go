@@ -330,6 +330,15 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			native.ServeHTTP(w, req.WithContext(ctx))
 			return
 		}
+		if boox.OwnsDAV(req.URL.Path) {
+			if err := r.account(conn)(req); err != nil {
+				w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
+				http.Error(w, "unauthorized", 401)
+				return
+			}
+			native.DAV(w, req)
+			return
+		}
 		if req.URL.Path == "/boox" || strings.HasPrefix(req.URL.Path, "/boox/") || strings.HasPrefix(req.URL.Path, "/api/v1/boox/admin/") {
 			if err := r.account(conn)(req); err != nil {
 				if req.URL.Path == "/boox" || strings.HasPrefix(req.URL.Path, "/boox/") {

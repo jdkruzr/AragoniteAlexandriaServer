@@ -264,3 +264,64 @@ func TestImportGenerationAndChangedBytes(t *testing.T) {
 		t.Fatal("old generation accepted")
 	}
 }
+
+// Devices keep one live membership per book, so importing known bytes into a
+// second folder must not give the book a second shelf.
+func TestImportRefusesASecondShelf(t *testing.T) {
+	ctx := context.Background()
+	s := enrolledImportService(t)
+	g := installImportGateway(t, &s)
+	raw := testEPUB(t)
+	first := importRequest{RequestID: uuid.NewString(), Files: []importFile{{"Science/test.epub", int64(len(raw))}}}
+	v, e := s.createBookImport(ctx, first)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.acceptImportFile(ctx, v.ID, first.Files[0].Path, raw); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.PublishOne(ctx); e != nil {
+		t.Fatal(e)
+	}
+	runImport(t, s, 4)
+	// Project the published membership the way Observe would.
+	g.mu.Lock()
+	for id, b := range g.docs {
+		if b["modeType"] == float64(5) {
+			body, _ := json.Marshal(b)
+			if _, e = s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'1-test','reading','5',$2,$3)`, id, s.uid(), body); e != nil {
+				t.Fatal(e)
+			}
+		}
+	}
+	g.mu.Unlock()
+	second := importRequest{RequestID: uuid.NewString(), Files: []importFile{{"Other/test.epub", int64(len(raw))}}}
+	v, e = s.createBookImport(ctx, second)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.acceptImportFile(ctx, v.ID, second.Files[0].Path, raw); e != nil {
+		t.Fatal(e)
+	}
+	runImport(t, s, 4)
+	status, e := s.bookImportStatus(ctx, v.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, i := range status.Items {
+		if i.Kind == "file" && (i.State != "blocked" || !strings.Contains(i.Error, "one shelf")) {
+			t.Fatal("second shelf accepted", i)
+		}
+	}
+	memberships := 0
+	g.mu.Lock()
+	for _, b := range g.docs {
+		if b["modeType"] == float64(5) {
+			memberships++
+		}
+	}
+	g.mu.Unlock()
+	if memberships != 1 {
+		t.Fatal("memberships", memberships)
+	}
+}

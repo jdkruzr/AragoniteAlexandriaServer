@@ -273,6 +273,18 @@ func TestDirectBOOXBrowserLinkChallengesForOwnerLogin(t *testing.T) {
 	}
 }
 
+func TestBOOXBookWebDAVRequiresTheOwnerAccount(t *testing.T) {
+	r, _, _ := fixture(t)
+	r.cfg.NativeBOOX = &NativeBOOXConfig{PublicURL: "http://library.test", Database: "neocloud"}
+	b := browser{t, r}
+	if w := b.do("PROPFIND", "/dav/books/", "", map[string]string{"Depth": "1"}, false); w.Code != 401 || !strings.Contains(w.Header().Get("WWW-Authenticate"), "Basic realm=") {
+		t.Fatalf("unauthenticated WebDAV: %d", w.Code)
+	}
+	if w := b.do("PROPFIND", "/dav/books/", "", map[string]string{"Depth": "1"}, true); w.Code != 207 || !strings.Contains(w.Body.String(), "/dav/books/.Trash/") {
+		t.Fatalf("owner WebDAV: %d %s", w.Code, w.Body.String())
+	}
+}
+
 // The Tasks home page: bulk actions, restore, and a permanent delete that a
 // stale CalDAV client can't undo.
 func TestTasksBulkActionsAndPermanentDelete(t *testing.T) {

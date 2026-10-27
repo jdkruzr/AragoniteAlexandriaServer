@@ -120,7 +120,7 @@ func (s Service) readingFoldersFrom(ctx context.Context, db pg.Querier) ([]readi
 		f.ID = nativeString(m, "uniqueId")
 		f.Parent = nativeString(m, "parentUniqueId")
 		f.Name = nativeString(m, "name")
-		f.Writable = (nativeString(m, "fetchSource") == "0" || m["fetchSource"] == nil) && nativeString(m, "queryString") == "" && nativeString(m, "storageId") == ""
+		f.Writable = nativeShelf(m)
 		out = append(out, f)
 	}
 	if e = rows.Err(); e != nil {

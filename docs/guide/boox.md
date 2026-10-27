@@ -13,7 +13,7 @@ Alexandria Server can stand in for the Onyx cloud. A companion app called **Powe
 - **Things sent to the tablet**: [Audio Note Minutes](minutes.md) and text notes arrive as ordinary BOOX text notebooks.
 - **Handwriting recognition, search and note actions** on BOOX pages. See [Recognize Handwriting](recognition.md), [Search and Tags](search-and-tags.md) and [Note Actions](note-actions.md).
 
-Browsing never changes your tablets. Only a handful of actions write back (deleting numbered notebooks, uploading a book, refreshing reading data, sending a text note or minutes, and audio recovery), and each one tells you so before you confirm.
+Browsing never changes your tablets. Only a handful of actions write back (deleting numbered notebooks, uploading a book, refreshing reading data, sending a text note or minutes, and audio recovery), and each one tells you so before you confirm. Changes made through the [WebDAV book folder](#manage-books-from-a-file-manager-webdav) also write back, as a file manager's changes do.
 
 ## What You Need First
 
@@ -181,8 +181,9 @@ list the book and download its source when opened. Server storage does not prove
 that a tablet has downloaded it. Folder relationships are native shelves; the
 underlying source-object keys keep BOOX's canonical layout.
 
-Identical bytes reuse an existing upload, even under a different filename; an
-existing uploaded book may be added to another shelf. Uploads do not replace,
+Identical bytes reuse an existing upload, even under a different filename. A book
+already on one shelf is not added to another: tablets keep each book on a single
+shelf, so that file is blocked with a note to move the book instead. Uploads do not replace,
 rename, restore, or automatically attach bytes to a metadata-only book with a
 matching native fingerprint. A destination changed or removed during publication
 blocks that file so it can be reviewed safely.
@@ -194,6 +195,40 @@ statistics database/service is not imported, so this view does not invent daily
 minutes, streaks, or completion dates.
 
 If a book's ink or annotations look stale on a tablet, open the book's **Reading Details** and choose **Refresh received reading data**, then **Request refresh**. Then open the book on each tablet and accept Sync if prompted.
+
+### Manage Books from a File Manager (WebDAV)
+
+Your stored books are also a WebDAV folder at `https://<your server>/dav/books/`.
+Connect with your Alexandria username and password: in Finder, **Go → Connect to
+Server**; in Windows, **Map network drive**; or use rclone, Cyberduck, or any other
+WebDAV client. Shelves are folders and books are files. Every change is written to
+the tablets' native library, the same way the Library app would make it.
+
+| In the file manager | On the tablets |
+|---|---|
+| Copy an EPUB or PDF into a folder | Uploads the book onto that shelf |
+| New folder, rename a folder, move a folder | Creates, renames, or moves the shelf |
+| Delete a folder | Removes the shelf. Its books and non-empty subfolders move up one level, as on the tablet; no book is deleted. Books in a top-level folder become unshelved. Many file managers (pcmanfm and other GIO-based ones among them) delete a folder's contents first, though, which trashes those books; they can be restored from `.Trash`. |
+| Move a book to another folder | Moves it to that shelf |
+| Delete a book | Moves it to the trash |
+| Move a book out of `.Trash` | Restores it |
+| Rename a book | Changes its file name in the library. Its title is unchanged. |
+
+- **Only stored books appear.** Metadata-only books, smart and cloud-account shelves,
+  and books from other sources aren't shown and can't be changed here.
+- **A book is on one shelf at a time**, as on the tablets, or on none, in which case
+  it appears at the top level. Copying a book to another folder is refused: move it
+  instead. Two items with the same name in one folder are shown as *Name (2)*; the
+  suffix is only for display.
+- **Uploads accept EPUB and PDF up to 64 MiB**, checked the same way as the upload page.
+  Anything else is refused with a reason. Files your computer adds on its own
+  (`._*`, `.DS_Store`, `Thumbs.db`, `desktop.ini`) are quietly discarded. Existing
+  books are never overwritten. Bytes already in the library are refused under another
+  name or in another folder; sending the same file to the same place again is fine.
+- **`.Trash` is read-only.** Books there can be restored by moving them out. Removing
+  one permanently isn't available over WebDAV.
+- Changes reach the tablets on their next reading sync. A tablet edit made in the
+  meantime wins; the server's change is then held back rather than overwriting it.
 
 ### Clean Up Numbered Notebooks
 

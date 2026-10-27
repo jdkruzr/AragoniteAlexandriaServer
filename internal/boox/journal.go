@@ -217,6 +217,9 @@ func (s Service) publishOne(ctx context.Context, selected string) (bool, error) 
 		}
 		return true, tx.Commit()
 	}
+	if kind == "library_create" || kind == "library_update" {
+		return true, s.publishLibrary(ctx, tx, id, kind, doc, expected, state, payload)
+	}
 	var live map[string]any
 	if (kind == "upload_book" || kind == "create_text_note") && state == "queued" {
 		if kind == "upload_book" {
@@ -416,12 +419,15 @@ func (s Service) publishOne(ctx context.Context, selected string) (bool, error) 
 	}
 	return true, e
 }
+
+var errPublicationCollision = errors.New("publication identity collision")
+
 func (s Service) putIdempotent(ctx context.Context, doc, op string, body map[string]any) error {
 	var existing map[string]any
 	e := s.Config.gateway(ctx, "GET", "/"+url.PathEscape(doc), nil, &existing)
 	if e == nil {
 		if existing["alexandriaOperationId"] != op {
-			return errors.New("publication identity collision")
+			return errPublicationCollision
 		}
 		return nil
 	}

@@ -1568,6 +1568,7 @@
   "The selected folder is no longer available.": "The selected folder is no longer available.",
   "The selection contains an unsafe or repeated path.": "The selection contains an unsafe or repeated path.",
   "These are current library counts. Timed reading history has not been imported.": "These are current library counts. Timed reading history has not been imported.",
+  "This book is already on another shelf. BOOX keeps each book on one shelf, so move it there instead.": "This book is already on another shelf. BOOX keeps each book on one shelf, so move it there instead.",
   "This file cannot be uploaded in this import.": "This file cannot be uploaded in this import.",
   "This import belongs to an earlier library generation. Start a new import.": "This import belongs to an earlier library generation. Start a new import.",
   "This import or file is unavailable.": "This import or file is unavailable.",

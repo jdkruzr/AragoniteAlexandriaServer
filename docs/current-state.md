@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-10-25. Work continues on `main`. The Server port resumed on
+Updated 2026-10-27. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -12,7 +12,26 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-25, evening): **`legacy-point-ac32d9a40362`**, schema
+Latest recorded deployment (2026-10-27): **`file-view-dbddd91ae883`**, app-only on
+schema **39**, image `sha256:f1e33b2ca9b7eac4bb37ddafbb71fcb853a7c917df20ee474ba60d540adda39f`.
+Stored books are a WebDAV folder at `/dav/books/` (owner account): shelves are folders,
+with upload, move, rename, delete to a read-only `.Trash`, restore and shelf delete,
+all journaled as revision-fenced library changes that copy the Library app's writes
+([semantics and device evidence](reading-file-operations.md),
+[guide](guide/boox.md#manage-books-from-a-file-manager-webdav)). Cloud-account,
+smart and remote shelves and their books are excluded; their only marker is a
+`<Provider>-<account>` description, which the upload page also no longer offers as a
+destination. Devices keep one live membership per book and remove the rest, so
+WebDAV refuses copies and book imports block a second shelf. Qualified on the Note
+Mini C through gvfs (17 operations, none blocked); rclone and httptest WebDAV tests,
+fresh required PostgreSQL/S3 `go test -race -count=1 ./...` (52 packages) and `go vet`
+passed. Two earlier same-day builds were replaced during qualification:
+`file-view-bfc2a10bdabd` (cloud shelves visible) and `file-view-e1a2241d377d`
+(allowed a second membership). Rollback, newest first, through the `rollback.sh` of
+`private/file-view-dbddd91ae883`, then `-e1a2241d377d`, then `-bfc2a10bdabd`
+(back to `legacy-point-ac32d9a40362`). Data is untouched; no migration.
+
+Previous deployment (2026-10-25, evening): **`legacy-point-ac32d9a40362`**, schema
 **39**, image `sha256:d3958b1f06f7c21d950cff8a7f572b812dcd89498df11e703f2a4377ea7195cc`.
 OSS GET/HEAD now answers ksync's flat V2 point key `<uid>/point/<page>#<rev>#points`
 from the live `note/*/point/<same name>` blob (migration 0039 indexes the name;
@@ -45,8 +64,6 @@ index rows with duplicated typed text were re-queued with `QueuePage`'s update
 PostgreSQL/S3 `go test -race -count=1 ./...` (52 packages, no skips) and `go vet`
 passed. Rollback: `sudo /opt/aragonite-alexandria-server/deploy/compose/private/typed-text-b274aa0dbb7d/rollback.sh`
 restores the previous image and source without touching stored data.
-Open: audio resources follow the same delta model; check with a deleted test
-recording before changing minutes inputs.
 
 Previous deployment: **`reading-wrap-cbc425658561`**, runtime source
 `d8ff5ca`, schema **38**, image

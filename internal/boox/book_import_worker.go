@@ -139,6 +139,14 @@ func (s Service) ProcessBookImport(ctx context.Context) (bool, error) {
 		if e != nil && !errors.Is(e, sql.ErrNoRows) {
 			return false, e
 		}
+		// Devices keep one live membership per book and remove the others.
+		var elsewhere bool
+		if e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM boox_projection WHERE native_uid=$1 AND domain='reading' AND body->>'modeType'='5' AND body->>'documentUniqueId'=$2 AND body->>'libraryUniqueId'<>$3 AND coalesce(body->>'status','0')='0')`, s.uid(), bookID, parent).Scan(&elsewhere); e != nil {
+			return false, e
+		}
+		if existing == "" && elsewhere {
+			return fail(importProblem("This book is already on another shelf. BOOX keeps each book on one shelf, so move it there instead."))
+		}
 		member := strings.ReplaceAll(uuid.NewSHA1(uuid.NameSpaceOID, []byte("book-membership:"+generation+":"+s.uid()+":"+bookID+":"+parent)).String(), "-", "")
 		marker := "book-membership:" + member
 		if existing == "" {
@@ -158,8 +166,8 @@ func (s Service) ProcessBookImport(ctx context.Context) (bool, error) {
 			if existing != s.uid()+"#"+member {
 				return fail(importProblem("The folder membership was removed. This import will not restore it."))
 			}
-			now := time.Now().UnixMilli()
-			body := map[string]any{"_id": existing, "uniqueId": member, "user": s.uid(), "dbId": s.uid() + "-READER_LIBRARY", "modeType": 5, "documentUniqueId": bookID, "libraryUniqueId": parent, "status": 0, "createdAt": now, "updatedAt": now, "alexandriaOperationId": marker}
+			body := readerMembershipBody(s.uid(), member, bookID, parent, time.Now().UnixMilli())
+			body["alexandriaOperationId"] = marker
 			if e = s.putIdempotent(ctx, existing, marker, body); e != nil {
 				return fail(e)
 			}
@@ -183,7 +191,7 @@ func (s Service) importFolder(ctx context.Context, id, parent, name, revision st
 	var live map[string]any
 	e := s.Config.gateway(ctx, "GET", "/"+url.PathEscape(doc), nil, &live)
 	if e == nil {
-		if !nativeReaderFolder(live, s.uid(), id) || nativeString(live, "storageId") != "" || nativeString(live, "queryString") != "" || (nativeString(live, "fetchSource") != "" && nativeString(live, "fetchSource") != "0") {
+		if !writableReaderShelf(live, s.uid(), id) {
 			return false, importProblem("The destination folder was removed or changed. Start a new import.")
 		}
 		if revision != "" && live["_rev"] != revision {
@@ -204,12 +212,8 @@ func (s Service) importFolder(ctx context.Context, id, parent, name, revision st
 	if !allowCreate || revision != "" {
 		return false, importProblem("The destination folder was removed. This import will not restore it.")
 	}
-	now := time.Now().UnixMilli()
-	body := map[string]any{"_id": doc, "uniqueId": id, "user": s.uid(), "dbId": s.uid() + "-READER_LIBRARY", "modeType": 3, "name": name, "parentUniqueId": parent, "fetchSource": 0, "storageId": nil, "queryString": nil, "extraAttributes": "{}", "syncStatus": 1, "status": 0, "createdAt": now, "updatedAt": now, "alexandriaOperationId": marker}
-	// Native root and internal storage queries use IS NULL, not empty strings.
-	if parent == "" {
-		body["parentUniqueId"] = nil
-	}
+	body := readerShelfBody(s.uid(), id, parent, name, time.Now().UnixMilli())
+	body["alexandriaOperationId"] = marker
 	if e = s.putIdempotent(ctx, doc, marker, body); e != nil {
 		return false, e
 	}

@@ -129,6 +129,12 @@ func validateBook(name string, raw []byte) (string, error) {
 // QueueBook stores immutable bytes before atomically publishing their native
 // binding and durable operation. It never overwrites an existing native book.
 func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string, error) {
+	return s.queueBook(ctx, name, raw, nil)
+}
+
+// queueBook lets a caller extend the upload transaction, for example with the
+// shelf the book was uploaded into.
+func (s Service) queueBook(ctx context.Context, name string, raw []byte, then func(tx *sql.Tx, generation, operation string) error) (string, error) {
 	kind, e := validateBook(name, raw)
 	if e != nil {
 		return "", e
@@ -157,6 +163,9 @@ func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string
 		return "", e
 	}
 	id, e := s.queueBookTx(ctx, tx, generation, name, kind, raw, asset)
+	if e == nil && then != nil {
+		e = then(tx, generation, id)
+	}
 	if e == nil {
 		e = tx.Commit()
 	}
