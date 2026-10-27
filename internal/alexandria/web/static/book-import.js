@@ -51,8 +51,8 @@
     if (!files.size) { message(words.select); return; }
     try { const result = await json(api + '/preview', manifest()); if (version !== previewVersion) return; items = result.items; ready = result.ready; render(); message(items.some(i => i.kind === 'file' && i.state !== 'skipped') ? words.preview : words.empty); } catch(e) { if (version === previewVersion) message(e.message); }
   }
-  function select(list) {
-    const incoming = [...list].map(f => [f.webkitRelativePath || f.name, f]);
+  // Takes [path, File] pairs; a path's first folder becomes the top-level shelf.
+  function select(incoming) {
     if (!batch && new Set([...files.keys(), ...incoming.map(([p]) => p)]).size > 1000) { message(words.limit); return; }
     for (const [p,f] of incoming) { if (!batch || items.some(i => i.path === p && i.size === f.size && i.state === 'waiting')) { files.set(p,f); failures.delete(p); } }
     if (batch) { render(); message(words.resume); } else { requestId = crypto.randomUUID(); preview(); }
@@ -72,8 +72,27 @@
   }
   function schedule() { clearTimeout(timer); if(batch && items.some(i => i.kind === 'file' && i.state === 'queued')) timer=setTimeout(() => refresh().catch(e => {message(e.message); schedule();}),2500); }
   async function refresh() { const result=await json(api+'?id='+encodeURIComponent(batch)); items=result.items; render(); if(items.filter(i=>i.kind==='file').every(i=>['published','skipped'].includes(i.state))) message(words.done); schedule(); }
-  el('files').addEventListener('change',e=>{ select(e.target.files); e.target.value=''; });
-  el('folder').addEventListener('change',e=>{ select(e.target.files); e.target.value=''; });
+  const picked = list => [...list].map(f => [f.webkitRelativePath || f.name, f]);
+  el('files').addEventListener('change',e=>{ select(picked(e.target.files)); e.target.value=''; });
+  el('folder').addEventListener('change',e=>{ select(picked(e.target.files)); e.target.value=''; });
+  // Dropped folders are walked so their paths match a "Choose folder" selection.
+  const walk = async (entry, found) => {
+    if (entry.isFile) { found.push([entry.fullPath.replace(/^\//, ''), await new Promise((ok, fail) => entry.file(ok, fail))]); return; }
+    const reader = entry.createReader();
+    for (;;) { const batch = await new Promise((ok, fail) => reader.readEntries(ok, fail)); if (!batch.length) return; for (const child of batch) await walk(child, found); }
+  };
+  root.addEventListener('dragover', e => { if (running || batch) return; e.preventDefault(); root.classList.add('import-drop'); });
+  root.addEventListener('dragleave', e => { if (!root.contains(e.relatedTarget)) root.classList.remove('import-drop'); });
+  root.addEventListener('drop', async e => {
+    root.classList.remove('import-drop');
+    if (running || batch) return;
+    e.preventDefault();
+    const entries = [...e.dataTransfer.items].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+    if (!entries.length) { select(picked(e.dataTransfer.files)); return; }
+    const found = [];
+    try { for (const entry of entries) await walk(entry, found); } catch (_) { message(words.failed); return; }
+    select(found);
+  });
   el('destination').addEventListener('change',()=>{ for(const k of Object.keys(choices)) delete choices[k]; requestId=crypto.randomUUID(); preview(); });
   el('preview').addEventListener('click',preview);
   el('start').addEventListener('click',async()=>{

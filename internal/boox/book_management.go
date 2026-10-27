@@ -594,38 +594,41 @@ func (s Service) addBookToShelf(ctx context.Context, token, book, shelf string) 
 // A move between shelves updates the membership in place, as the device does.
 func (s Service) moveBook(ctx context.Context, token, book, from, to string) error {
 	return s.libraryChange(ctx, token, "move_book", []string{book, from, to}, func(v *librarySnapshot, now int64) ([]libraryOp, error) {
-		b := v.Books[book]
-		if b == nil || !b.Live || to != "" && v.Shelf(to) == nil {
+		return v.planMove(s.uid(), token, book, from, to, now)
+	})
+}
+func (v *librarySnapshot) planMove(uid, token, book, from, to string, now int64) ([]libraryOp, error) {
+	b := v.Books[book]
+	if b == nil || !b.Live || to != "" && v.Shelf(to) == nil {
+		return nil, errLibraryChanged
+	}
+	members := v.Memberships(book)
+	if from == "" {
+		if len(members) > 0 {
 			return nil, errLibraryChanged
-		}
-		members := v.Memberships(book)
-		if from == "" {
-			if len(members) > 0 {
-				return nil, errLibraryChanged
-			}
-			if to == "" {
-				return nil, nil
-			}
-			return v.shelve(s.uid(), token, book, to, now), nil
-		}
-		m := v.membership(book, from)
-		if m == nil || !m.Live || v.Shelf(from) == nil {
-			return nil, errLibraryChanged
-		}
-		if from == to {
-			return nil, nil
 		}
 		if to == "" {
-			if len(members) > 1 {
-				return nil, errLibraryShelves
-			}
-			return []libraryOp{update(5, m.ID, m.Revision, m.Head, map[string]any{"libraryUniqueId": nil, "status": 1})}, nil
+			return nil, nil
 		}
-		if t := v.membership(book, to); t != nil && t.Live {
-			return []libraryOp{update(5, m.ID, m.Revision, m.Head, map[string]any{"status": 1})}, nil
+		return v.shelve(uid, token, book, to, now), nil
+	}
+	m := v.membership(book, from)
+	if m == nil || !m.Live || v.Shelf(from) == nil {
+		return nil, errLibraryChanged
+	}
+	if from == to {
+		return nil, nil
+	}
+	if to == "" {
+		if len(members) > 1 {
+			return nil, errLibraryShelves
 		}
-		return []libraryOp{update(5, m.ID, m.Revision, m.Head, map[string]any{"libraryUniqueId": to})}, nil
-	})
+		return []libraryOp{update(5, m.ID, m.Revision, m.Head, map[string]any{"libraryUniqueId": nil, "status": 1})}, nil
+	}
+	if t := v.membership(book, to); t != nil && t.Live {
+		return []libraryOp{update(5, m.ID, m.Revision, m.Head, map[string]any{"status": 1})}, nil
+	}
+	return []libraryOp{update(5, m.ID, m.Revision, m.Head, map[string]any{"libraryUniqueId": to})}, nil
 }
 
 // removeBook is a file-manager delete: the book is trashed the way the Library
@@ -633,28 +636,31 @@ func (s Service) moveBook(ctx context.Context, token, book, from, to string) err
 // several memberships only leaves the one shelf.
 func (s Service) removeBook(ctx context.Context, token, book, from string) error {
 	return s.libraryChange(ctx, token, "remove_book", []string{book, from}, func(v *librarySnapshot, now int64) ([]libraryOp, error) {
-		b := v.Books[book]
-		if b == nil || !b.Live {
-			return nil, errLibraryChanged
-		}
-		members := v.Memberships(book)
-		trash := update(4, book, b.Revision, b.Head, map[string]any{"status": 1})
-		if from == "" {
-			if len(members) > 0 {
-				return nil, errLibraryChanged
-			}
-			return []libraryOp{trash}, nil
-		}
-		m := v.membership(book, from)
-		if m == nil || !m.Live || v.Shelf(from) == nil {
-			return nil, errLibraryChanged
-		}
-		leave := update(5, m.ID, m.Revision, m.Head, map[string]any{"status": 1})
-		if len(members) > 1 {
-			return []libraryOp{leave}, nil
-		}
-		return []libraryOp{trash, leave}, nil
+		return v.planRemove(book, from)
 	})
+}
+func (v *librarySnapshot) planRemove(book, from string) ([]libraryOp, error) {
+	b := v.Books[book]
+	if b == nil || !b.Live {
+		return nil, errLibraryChanged
+	}
+	members := v.Memberships(book)
+	trash := update(4, book, b.Revision, b.Head, map[string]any{"status": 1})
+	if from == "" {
+		if len(members) > 0 {
+			return nil, errLibraryChanged
+		}
+		return []libraryOp{trash}, nil
+	}
+	m := v.membership(book, from)
+	if m == nil || !m.Live || v.Shelf(from) == nil {
+		return nil, errLibraryChanged
+	}
+	leave := update(5, m.ID, m.Revision, m.Head, map[string]any{"status": 1})
+	if len(members) > 1 {
+		return []libraryOp{leave}, nil
+	}
+	return []libraryOp{trash, leave}, nil
 }
 
 // uploadBook queues a new book, and its shelf when shelf is not empty, in one
@@ -680,19 +686,34 @@ func (s Service) uploadBook(ctx context.Context, token, name string, raw []byte,
 	return e
 }
 
-// restoreBook brings a trashed stored book back, optionally onto a shelf.
+// restoreBook brings a trashed stored book back, optionally onto a shelf. A
+// book the Library app removed from All Books may still hold its membership;
+// it is moved rather than joined by a second one.
 func (s Service) restoreBook(ctx context.Context, token, book, to string) error {
 	return s.libraryChange(ctx, token, "restore_book", []string{book, to}, func(v *librarySnapshot, now int64) ([]libraryOp, error) {
-		b := v.Books[book]
-		if b == nil || b.Live || to != "" && v.Shelf(to) == nil {
-			return nil, errLibraryChanged
-		}
-		ops := []libraryOp{update(4, book, b.Revision, b.Head, map[string]any{"status": 0})}
-		if to != "" {
-			ops = append(ops, v.shelve(s.uid(), token, book, to, now)...)
-		}
-		return ops, nil
+		return v.planRestore(s.uid(), token, book, to, now)
 	})
+}
+func (v *librarySnapshot) planRestore(uid, token, book, to string, now int64) ([]libraryOp, error) {
+	b := v.Books[book]
+	if b == nil || b.Live || to != "" && v.Shelf(to) == nil {
+		return nil, errLibraryChanged
+	}
+	ops := []libraryOp{update(4, book, b.Revision, b.Head, map[string]any{"status": 0})}
+	members := v.Memberships(book)
+	for i, m := range members {
+		switch {
+		case i == 0 && m.Shelf == to:
+		case i == 0 && to != "":
+			ops = append(ops, update(5, m.ID, m.Revision, m.Head, map[string]any{"libraryUniqueId": to}))
+		default:
+			ops = append(ops, update(5, m.ID, m.Revision, m.Head, map[string]any{"status": 1}))
+		}
+	}
+	if to != "" && len(members) == 0 {
+		ops = append(ops, v.shelve(uid, token, book, to, now)...)
+	}
+	return ops, nil
 }
 
 func libraryDocument(b map[string]any, uid, mode string) bool {

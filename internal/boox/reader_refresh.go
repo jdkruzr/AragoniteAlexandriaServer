@@ -100,9 +100,8 @@ func (s Service) readerRefreshHTTP(w http.ResponseWriter, r *http.Request) {
 		d.Document = r.PostForm.Get("documentId")
 		id, err := s.QueueReaderRefresh(r.Context(), d.Document, r.PostForm.Get("expectedRevision"), r.PostForm.Get("idempotencyKey"))
 		if errors.Is(err, errReaderRefreshStale) {
-			w.WriteHeader(http.StatusConflict)
 			d.Error = err.Error()
-			s.renderPage(w, r, readerRefreshTemplate, "Refresh Reading Data", d)
+			s.renderPageStatus(w, r, http.StatusConflict, readerRefreshTemplate, "Refresh Reading Data", d)
 			return
 		}
 		if err != nil {

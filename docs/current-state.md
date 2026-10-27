@@ -12,7 +12,24 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-27): **`file-view-dbddd91ae883`**, app-only on
+Latest recorded deployment (2026-10-27): **`book-actions-fee778f290cd`**, app-only on
+schema **39**, image `sha256:02f6a947860b824d5ba1875c9b13f46bfe2903b151cc1caa2f7b6679556f3406`.
+The Reading page manages stored books through the same journaled library changes as
+WebDAV: Select/Download on each stored book, bulk **Move selected…** and **Move
+selected to Trash…**, per-book Rename/Move/Trash, a review step and a batch status
+page that names held-back books, a **Book Trash** page with restore onto a shelf,
+**Upload to this shelf…**, and file/folder drops on the upload box
+([guide](guide/boox.md#manage-stored-books-on-the-reading-page)). Restoring a book
+whose membership survived a tablet's All-Books delete moves that membership instead
+of adding one. Error pages rendered through `renderPage` after writing their status
+lost their own CSP and styling (notebook management, reader refresh, books); a shared
+`renderPageStatus` fixes all three. Fresh required PostgreSQL/S3 `go test -race
+-count=1 ./...` (52 packages) and `go vet` passed; synthetic pages were checked in
+Chrome at desktop and 390 px widths, and live pages (read-only) after deployment.
+Folder drops were exercised only with synthetic single-file drops. Rollback:
+`private/book-actions-fee778f290cd/rollback.sh` returns to `file-view-dbddd91ae883`.
+
+Previous deployment (2026-10-27): **`file-view-dbddd91ae883`**, app-only on
 schema **39**, image `sha256:f1e33b2ca9b7eac4bb37ddafbb71fcb853a7c917df20ee474ba60d540adda39f`.
 Stored books are a WebDAV folder at `/dav/books/` (owner account): shelves are folders,
 with upload, move, rename, delete to a read-only `.Trash`, restore and shelf delete,

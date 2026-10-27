@@ -258,12 +258,12 @@ func (s Service) publishBookRecord(ctx context.Context, tx *sql.Tx, id, doc stri
 var uploadBookTemplate = template.Must(template.New("upload-book.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/upload-book.html"))
 
 type uploadBookView struct {
-	Error, State, Name, ID string
-	Folders                []readingFolder
+	Error, State, Name, ID, Folder string
+	Folders                        []readingFolder
 }
 
 func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
-	data := uploadBookView{}
+	data := uploadBookView{Folder: r.URL.Query().Get("folder")}
 	if r.Method == http.MethodPost {
 		r.Body = http.MaxBytesReader(w, r.Body, maxObject+(1<<20))
 		if e := r.ParseMultipartForm(1 << 20); e != nil {

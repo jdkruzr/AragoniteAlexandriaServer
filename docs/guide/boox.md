@@ -196,6 +196,18 @@ minutes, streaks, or completion dates.
 
 If a book's ink or annotations look stale on a tablet, open the book's **Reading Details** and choose **Refresh received reading data**, then **Request refresh**. Then open the book on each tablet and accept Sync if prompted.
 
+### Manage Stored Books on the Reading Page
+
+Books stored here have **Select** and **Download** under them. Select several and
+choose **Move selected…** or **Move selected to Trash…**; a book's own page also
+offers **Rename…**, **Move…** and **Move to Trash…**. Each change is reviewed before
+you apply it, and a status page then shows when it has reached native sync.
+**Book Trash** lists removed stored books, which you can download or restore onto a
+shelf. Inside a shelf, **Upload to this shelf…** opens the upload page with that shelf
+already chosen, and you can drop files or folders onto the upload box. These actions
+follow the same rules as the WebDAV folder below: one shelf per book, names keep
+their extension, and a tablet edit made in the meantime wins.
+
 ### Manage Books from a File Manager (WebDAV)
 
 Your stored books are also a WebDAV folder at `https://<your server>/dav/books/`.

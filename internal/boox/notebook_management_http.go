@@ -37,8 +37,7 @@ func (s Service) notebookManagementHTTP(w http.ResponseWriter, r *http.Request) 
 	fail := func(e error) {
 		if errors.Is(e, errNotebookSelection) || errors.Is(e, errNotebookTitle) {
 			d.Error = e.Error()
-			w.WriteHeader(409)
-			s.renderPage(w, r, notebookManagementTemplate, "Manage notebooks", d)
+			s.renderPageStatus(w, r, 409, notebookManagementTemplate, "Manage notebooks", d)
 		} else {
 			s.failure(w, "notebookManagementHTTP", e)
 		}

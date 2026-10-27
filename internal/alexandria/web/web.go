@@ -409,7 +409,7 @@ func sourceTab(path, section string) string {
 		return "account"
 	case "boox":
 		switch path {
-		case "/boox/reading", "/boox/books/upload", "/boox/reading/refresh":
+		case "/boox/reading", "/boox/books/upload", "/boox/books/manage", "/boox/books/trash", "/boox/reading/refresh":
 			return "reading"
 		case "/boox/tags":
 			return "tags"

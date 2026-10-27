@@ -467,6 +467,7 @@ body[data-section=calendar] .workspace main { max-width:none; padding:1rem .75re
 .import-choices { margin-block: 1rem; }
 .import-choices label { position: relative; overflow: hidden; }
 .import-choices label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+#book-import.import-drop { outline: 2px dashed var(--accent); outline-offset: 4px; }
 .import-file-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .import-scroll { overflow-x: auto; max-height: 32rem; }
 .import-scroll td { overflow-wrap: anywhere; }

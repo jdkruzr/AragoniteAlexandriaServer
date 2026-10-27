@@ -4,8 +4,9 @@
 {{if .Data.Error}}<p role="alert">{{t .Data.Error}}</p>{{end}}
 <section id="book-import" class="card" hidden>
 <p><a id="import-resume" hidden>{{t "Continue your last import"}}</a></p>
-<label>{{t "Destination folder"}} <select id="import-destination"><option value="">{{t "Library root"}}</option>{{range .Data.Folders}}{{if .Writable}}<option value="{{.ID}}">{{.Path}}</option>{{end}}{{end}}</select></label>
+<label>{{t "Destination folder"}} <select id="import-destination"><option value="">{{t "Library root"}}</option>{{range .Data.Folders}}{{if .Writable}}<option value="{{.ID}}" {{if eq $.Data.Folder .ID}}selected{{end}}>{{.Path}}</option>{{end}}{{end}}</select></label>
 <div class="actions import-choices"><label class="button secondary">{{t "Choose files…"}}<input id="import-files" class="import-file-input" type="file" multiple accept=".epub,.pdf"></label><label class="button secondary">{{t "Choose folder…"}}<input id="import-folder" class="import-file-input" type="file" multiple webkitdirectory></label><button id="import-preview" class="secondary" type="button">{{t "Preview selection"}}</button><a class="button secondary" href="/boox/books/upload">{{t "Start another import"}}</a></div>
+<p class="small">{{t "You can also drop files or folders onto this box."}}</p>
 <p class="small muted">{{t "Empty folders and unsupported files are skipped. Keep this page open while files transfer. To resume later, reselect unfinished files; accepted files do not need uploading again."}}</p>
 <p id="import-message" role="status" aria-live="polite"></p><div id="import-summary" class="small"></div>
 <div class="import-scroll"><table id="import-table" hidden><thead><tr><th>{{t "Path"}}</th><th>{{t "Status"}}</th><th>{{t "Action"}}</th></tr></thead><tbody></tbody></table></div>

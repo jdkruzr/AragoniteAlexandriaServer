@@ -30,6 +30,30 @@ func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *tem
 	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}}.RenderContent(w, r, content, title, "boox", data)
 }
 
+// renderPageStatus renders with a non-200 status. Writing the status first
+// would send it before renderPage sets the page's own headers (its CSP among
+// them), leaving the page unstyled.
+func (s Service) renderPageStatus(w http.ResponseWriter, r *http.Request, status int, content *template.Template, title string, data any) {
+	s.renderPage(&statusWriter{ResponseWriter: w, status: status}, r, content, title, data)
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+	sent   bool
+}
+
+func (w *statusWriter) WriteHeader(int) {
+	if !w.sent {
+		w.sent = true
+		w.ResponseWriter.WriteHeader(w.status)
+	}
+}
+func (w *statusWriter) Write(b []byte) (int, error) {
+	w.WriteHeader(w.status)
+	return w.ResponseWriter.Write(b)
+}
+
 func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
@@ -53,6 +77,12 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			return
 		case "/boox/books/cover":
 			s.readingCover(w, r)
+			return
+		case "/boox/books/download":
+			s.bookDownload(w, r)
+			return
+		case "/boox/books/trash":
+			s.bookTrash(w, r)
 			return
 		case "/boox/activity":
 			s.browse(w, r)
@@ -97,6 +127,8 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		s.bookImportHTTP(w, r)
 	case "/boox/books/upload":
 		s.uploadBookHTTP(w, r)
+	case "/boox/books/manage":
+		s.bookManageHTTP(w, r)
 	case "/boox/text-notes/new":
 		s.textNoteHTTP(w, r)
 	case "/boox/recognize":

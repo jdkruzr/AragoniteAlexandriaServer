@@ -1,0 +1,21 @@
+{{define "content"}}{{$d:=.Data}}
+<p class="crumbs"><a href="{{$d.Return}}">{{t "Back to books"}}</a></p>
+<h1>{{t "Manage books"}}</h1>
+{{if $d.Batch}}
+<p>{{t "Changes reach your tablets on their next reading sync. A tablet edit made in the meantime wins, and the change is held back."}}</p>
+{{range $d.Results}}<section class="card"><h2>{{t .Name}}</h2><p><strong>{{t .State}}</strong></p>{{if .Detail}}<p>{{t .Detail}}</p>{{end}}</section>{{end}}
+<div class="toolbar">{{if $d.Pending}}<a class="button secondary" href="/boox/books/manage?batch={{$d.Batch}}&amp;return={{$d.Return}}">{{t "Refresh status"}}</a>{{end}}<a class="button" href="{{$d.Return}}">{{t "Back to books"}}</a></div>
+{{else}}
+{{if $d.Error}}<p class="callout" role="alert">{{t $d.Error}}</p>{{end}}
+{{if $d.Items}}<form method="post" action="/boox/books/manage">
+<input type="hidden" name="token" value="{{$d.Token}}"><input type="hidden" name="action" value="{{$d.Action}}"><input type="hidden" name="return" value="{{$d.Return}}">
+{{range $d.Items}}<input type="hidden" name="id" value="{{.ID}}"><section class="card"><h2>{{.Name}}</h2>{{if not .Trashed}}<p class="small muted">{{t "Shelf"}}: {{if .ShelfPath}}{{.ShelfPath}}{{else}}{{t "No shelf (top level)"}}{{end}}</p>{{end}}</section>{{end}}
+{{if eq $d.Action "rename"}}<label>{{t "New file name"}} <input name="name" value="{{$d.Name}}" required maxlength="240"></label>
+<p class="small muted">{{t "The book keeps its file extension and its title. Tablets show the new name after their next reading sync."}}</p>
+{{else if eq $d.Action "trash"}}<p class="callout">{{t "Move these books to Trash across native sync. Their files stay on the server, and Book Trash can restore them."}}</p>
+{{else}}<label>{{if eq $d.Action "move"}}{{t "Move to"}}{{else}}{{t "Restore to"}}{{end}} <select name="folder"><option value="">{{t "No shelf (top level)"}}</option>{{range $d.Folders}}{{if .Writable}}<option value="{{.ID}}">{{.Path}}</option>{{end}}{{end}}</select></label>
+<p class="small muted">{{t "BOOX keeps each book on one shelf at a time."}}</p>{{end}}
+{{if ne $d.Action "rename"}}<p><label><input type="checkbox" name="confirm" required> {{t "Apply this change to the selected books."}}</label></p>{{end}}
+<div class="toolbar"><button>{{t "Apply changes"}}</button><a class="button secondary" href="{{$d.Return}}">{{t "Cancel"}}</a></div>
+</form>{{else if not $d.Error}}<p>{{t "Choose books from Reading first."}}</p>{{end}}
+{{end}}{{end}}

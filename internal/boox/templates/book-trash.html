@@ -1,0 +1,9 @@
+{{define "content"}}{{$d:=.Data}}
+<p class="crumbs"><a href="/boox/reading">{{t "Reading"}}</a></p>
+<h1>{{t "Book Trash"}}</h1>
+<p>{{t "Stored books removed from your BOOX library. Restoring one puts it back on your tablets."}}</p>
+{{if $d.Items}}<form method="get" action="/boox/books/manage"><input type="hidden" name="action" value="restore"><input type="hidden" name="return" value="{{$d.Return}}">
+<ul>{{range $d.Items}}<li><label><input type="checkbox" name="id" value="{{.ID}}"> {{.Name}}</label> · <a href="/boox/books/download?book={{.ID}}">{{t "Download"}}</a></li>{{end}}</ul>
+<div class="toolbar"><button>{{t "Restore selected…"}}</button></div></form>
+{{else}}<p class="empty">{{t "Book Trash is empty."}}</p>{{end}}
+{{end}}

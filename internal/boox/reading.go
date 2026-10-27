@@ -32,6 +32,7 @@ type readingView struct {
 	Listing                                     listview.State
 	Items                                       []readingItem
 	View, Layout, Query, Folder, Status, Record string
+	Return                                      string
 	Folders, Crumbs                             []readingFolder
 	Counts                                      readingCounts
 }
@@ -189,6 +190,7 @@ const readingAssets = `WITH assets AS MATERIALIZED (
 func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	v := readingView{View: readingPreference(w, r, "view", "stored", "stored", "all", "metadata", "stats"), Layout: readingPreference(w, r, "layout", "shelf", "shelf", "list"), Query: q.Get("q"), Folder: q.Get("folder"), Status: q.Get("status"), Record: q.Get("record"), Listing: listview.Parse(q)}
+	v.Return = bookReturn(r.URL.RequestURI())
 	if len(v.Query) > 200 {
 		v.Query = v.Query[:200]
 	}
