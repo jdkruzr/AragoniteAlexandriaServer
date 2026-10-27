@@ -183,3 +183,117 @@ func TestReaderRefreshHTTPGuards(t *testing.T) {
 		t.Fatal("annotation accepted as book", w.Code)
 	}
 }
+
+// A stored book that replaced cloud-account records can take over one of their
+// reading positions, keeping its own identity and reader settings.
+func TestReaderCopyTakesOverAnEarlierCopysPosition(t *testing.T) {
+	s, doc, b := refreshFixture(t)
+	ctx := context.Background()
+	put := func(id, rev string, body map[string]any) {
+		t.Helper()
+		raw, _ := json.Marshal(body)
+		if _, err := s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,$2,'reading','',$3,$4) ON CONFLICT(document_id) DO UPDATE SET revision=EXCLUDED.revision,body=EXCLUDED.body`, s.uid()+"#"+id, rev, s.uid(), raw); err != nil {
+			t.Fatal(err)
+		}
+	}
+	b["hashTag"], b["fetchSource"] = "synthetic-fingerprint", 0
+	put("refresh-book", "1-baseline", b)
+	copyOf := func(id string, fields map[string]any) map[string]any {
+		c := map[string]any{"_id": s.uid() + "#" + id, "uniqueId": id, "user": s.uid(), "dbId": s.uid() + "-READER_LIBRARY", "modeType": 4, "status": 1, "fetchSource": 19, "hashTag": "synthetic-fingerprint", "progress": "652/661", "readingStatus": 1, "lastAccess": 1742321494000, "extraAttributes": `{"backend":{"user_doc_data_update_time":1,"current_page_position_v3":"chapter-50"},"fontSize":40}`}
+		for k, v := range fields {
+			c[k] = v
+		}
+		return c
+	}
+	put("old-copy", "2-retired", copyOf("old-copy", nil))
+	put("unread-copy", "1-cloud", copyOf("unread-copy", map[string]any{"progress": nil}))
+	put("native-twin", "1-native", copyOf("native-twin", map[string]any{"fetchSource": 0}))
+	put("other-book", "1-cloud", copyOf("other-book", map[string]any{"hashTag": "another-fingerprint"}))
+	copies, err := s.readerCopies(ctx, s.DB, doc, b)
+	if err != nil || len(copies) != 1 || copies[0].Document != s.uid()+"#old-copy" || copies[0].Progress != "652/661" {
+		t.Fatal("copies", copies, err)
+	}
+	copyDoc := s.uid() + "#old-copy"
+	key := uuid.NewString()
+	id, err := s.QueueReaderCopy(ctx, doc, "1-baseline", copyDoc, "2-retired", key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replay, err := s.QueueReaderCopy(ctx, doc, "1-baseline", copyDoc, "2-retired", key); err != nil || replay != id {
+		t.Fatal("replay", replay, err)
+	}
+	for name, c := range map[string][2]string{"changed copy": {copyDoc, "1-older"}, "native twin": {s.uid() + "#native-twin", "1-native"}, "unread copy": {s.uid() + "#unread-copy", "1-cloud"}, "other book": {s.uid() + "#other-book", "1-cloud"}} {
+		if _, err := s.QueueReaderCopy(ctx, doc, "1-baseline", c[0], c[1], uuid.NewString()); !errors.Is(err, errReaderRefreshStale) {
+			t.Error(name, err)
+		}
+	}
+	if _, err := s.QueueReaderCopy(ctx, doc, "1-baseline", s.uid()+"#native-twin", "1-native", key); !errors.Is(err, errReaderRefreshStale) {
+		t.Fatal("a key reused for another copy", err)
+	}
+	docs := map[string]map[string]any{doc: b}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		name := strings.TrimPrefix(r.URL.Path, "/neocloud/")
+		if r.Method == "GET" {
+			if v, ok := docs[name]; ok {
+				json.NewEncoder(w).Encode(v)
+				return
+			}
+			http.NotFound(w, r)
+			return
+		}
+		var v map[string]any
+		d := json.NewDecoder(r.Body)
+		d.UseNumber()
+		if d.Decode(&v) != nil {
+			w.WriteHeader(400)
+			return
+		}
+		v["_rev"] = "2-server"
+		docs[name] = v
+		json.NewEncoder(w).Encode(map[string]string{"rev": "2-server"})
+	}))
+	defer server.Close()
+	s.Config.GatewayAdminURL = server.URL
+	for i := 0; i < 5; i++ {
+		if worked, err := s.PublishOne(ctx); err != nil {
+			t.Fatal(err)
+		} else if !worked {
+			break
+		}
+	}
+	got := docs[doc]
+	if got["progress"] != "652/661" || got["uniqueId"] != "refresh-book" || got["alexandriaOperationId"] != id || fmt.Sprint(got["readingStatus"]) != "1" {
+		t.Fatal("reading position not taken over", got["progress"], got["uniqueId"])
+	}
+	var extra map[string]any
+	if json.Unmarshal([]byte(got["extraAttributes"].(string)), &extra) != nil {
+		t.Fatal("extra JSON")
+	}
+	if extra["backend"].(map[string]any)["current_page_position_v3"] != "chapter-50" || extra["keep"] != "exact" || extra["fontSize"] != nil {
+		t.Fatal("position or settings", extra)
+	}
+
+	// The page offers the copy and reports the request.
+	form := url.Values{"documentId": {doc}, "expectedRevision": {"2-server"}, "copy": {copyDoc}, "copyRevision": {"2-retired"}, "idempotencyKey": {uuid.NewString()}}
+	if _, err := s.DB.ExecContext(ctx, `UPDATE boox_projection SET revision='2-server' WHERE document_id=$1`, doc); err != nil {
+		t.Fatal(err)
+	}
+	call := func(method, path string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, bytes.NewBufferString(form.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.Header.Set("Origin", s.Config.PublicURL)
+		w := httptest.NewRecorder()
+		s.Admin(w, r)
+		return w
+	}
+	if w := call("GET", "/boox/reading/refresh?record="+url.QueryEscape(doc)); w.Code != 200 || !strings.Contains(w.Body.String(), "Use this reading position") || !strings.Contains(w.Body.String(), "652/661") {
+		t.Fatal("copy offered", w.Code)
+	}
+	w := call("POST", "/boox/reading/refresh")
+	if w.Code != 303 {
+		t.Fatal("queue", w.Code, w.Body.String())
+	}
+	if w = call("GET", w.Header().Get("Location")); w.Code != 200 || !strings.Contains(w.Body.String(), "not verified") {
+		t.Fatal("status", w.Code)
+	}
+}

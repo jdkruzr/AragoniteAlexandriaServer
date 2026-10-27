@@ -1608,5 +1608,10 @@
   "Upload remaining files": "Upload remaining files",
   "Waiting for native sync. Retrying shortly.": "Waiting for native sync. Retrying shortly.",
   "Your Reading": "Your Reading",
-  "Your files are being uploaded and published.": "Your files are being uploaded and published."
+  "Your files are being uploaded and published.": "Your files are being uploaded and published.",
+  "Earlier copies": "Earlier copies",
+  "Your tablets keep other records for this book file, for example from a cloud account. Using a copy's reading position moves this book to that page; this book keeps its own highlights, bookmarks and reader settings.": "Your tablets keep other records for this book file, for example from a cloud account. Using a copy's reading position moves this book to that page; this book keeps its own highlights, bookmarks and reader settings.",
+  "Progress": "Progress",
+  "Last read": "Last read",
+  "Use this reading position": "Use this reading position"
 }

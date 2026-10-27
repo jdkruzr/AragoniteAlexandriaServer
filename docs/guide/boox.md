@@ -206,6 +206,13 @@ minutes, streaks, or completion dates.
 
 If a book's ink or annotations look stale on a tablet, open the book's **Reading Details** and choose **Refresh received reading data**, then **Request refresh**. Then open the book on each tablet and accept Sync if prompted.
 
+When an upload replaced a cloud-account entry (see above), the same page lists that
+book's **Earlier copies**: the other entries your tablets keep for the file, with their
+progress and when they were last read. **Use this reading position** moves the stored
+book to that copy's page and keeps its own highlights, bookmarks and reader settings.
+Open the book on each tablet and accept Sync; the Library shows the new progress after
+that, in the tablet's own page count.
+
 ### Manage Stored Books on the Reading Page
 
 Books stored here have **Select** and **Download** under them. Select several and

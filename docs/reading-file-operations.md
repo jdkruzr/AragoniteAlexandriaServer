@@ -96,6 +96,17 @@ own. The server does not re-retire such a record: the reader has just opened it,
 account would revive it again on its next visit. Removing the cloud copy on the tablet, or
 simply reading from the stored copy, is enough.
 
+Which record's reading data a new book inherits is decided once, at upload: the most
+recently read one. That is not always the furthest: *Fourth Wing* had 652/661 on a record
+last read in March 2025 and 9/488 on one opened in July, and inherited 9/488. The
+Refresh Reading Data page therefore lists a stored book's **earlier copies** (other
+cloud-account records with its fingerprint that have a position) and can move the book
+to one of them. It queues the existing `restore_reader_fields` publication with the
+copy's `progress`, `readingStatus` and `current_page_position_v2/v3`, keeping the book's
+identity and its other `extraAttributes`. On the Mini C, *Fourth Wing* and *Glow of the
+Everflame* opened at the copies' chapters after accepting the reader's sync prompt; the
+Library list changed only then, in the tablet's own pagination.
+
 ## Server implementation
 
 `internal/boox/book_management.go` queues each change as revision-fenced

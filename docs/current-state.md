@@ -12,7 +12,17 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-27): **`books128-299dcdee001d`**, app-only on
+Latest recorded deployment (2026-10-27): **`reader-copy-0c463e54b153`**, app-only on
+schema **39**, image `sha256:6270368d851249142b32406c09e3ec584291ea07a9be12e865ae19643ba3487f`.
+The Refresh Reading Data page lists a stored book's earlier copies (cloud-account
+records with its fingerprint that have a reading position) and moves the book to one
+through the qualified `restore_reader_fields` publication. Used for *Fourth Wing*
+(9/488 → 652/661) and *Glow of the Everflame* (1/410 → 16/645): both published, and the
+Note Mini C opened them at those chapters after accepting the reader's sync prompt.
+Rollback: `private/reader-copy-0c463e54b153/rollback.sh` returns to
+`books128-299dcdee001d`.
+
+Previous deployment (2026-10-27): **`books128-299dcdee001d`**, app-only on
 schema **39**, image `sha256:67201742c1058dc1328af71e59a847d8c309d5aeb97e8dbf50dad5e6a321f01a`.
 Books may be up to 128 MiB on every book path, including the OSS endpoint tablets
 download from; tablet uploads stay at 64 MiB. EPUBs whose `mimetype` ends with a

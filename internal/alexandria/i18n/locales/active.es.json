@@ -1658,5 +1658,10 @@
   "Upload remaining files": "Subir archivos pendientes",
   "Waiting for native sync. Retrying shortly.": "Esperando la sincronización nativa. Se reintentará pronto.",
   "Your Reading": "Tus lecturas",
-  "Your files are being uploaded and published.": "Tus archivos se están subiendo y publicando."
+  "Your files are being uploaded and published.": "Tus archivos se están subiendo y publicando.",
+  "Earlier copies": "Copias anteriores",
+  "Your tablets keep other records for this book file, for example from a cloud account. Using a copy's reading position moves this book to that page; this book keeps its own highlights, bookmarks and reader settings.": "Tus tabletas guardan otros registros de este archivo de libro, por ejemplo de una cuenta en la nube. Usar la posición de lectura de una copia lleva este libro a esa página; el libro conserva sus propios resaltados, marcadores y ajustes de lectura.",
+  "Progress": "Progreso",
+  "Last read": "Última lectura",
+  "Use this reading position": "Usar esta posición de lectura"
 }
