@@ -697,7 +697,7 @@ func (s Service) uploadBook(ctx context.Context, token, name string, raw []byte,
 	_, e := s.queueBook(ctx, name, raw, func(tx *sql.Tx, generation string, q queuedBook) error {
 		book := q.Book
 		if q.Name != name {
-			return errBookConflict
+			return errBookOtherName
 		}
 		return s.libraryChangeTx(ctx, tx, generation, token, "upload_book", []string{book, shelf}, func(v *librarySnapshot, now int64) ([]libraryOp, error) {
 			if b := v.Books[book]; b == nil || !b.Live || shelf != "" && v.Shelf(shelf) == nil {

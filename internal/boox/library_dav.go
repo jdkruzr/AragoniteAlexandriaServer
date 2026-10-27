@@ -247,7 +247,7 @@ func (f *libraryFS) Open(ctx context.Context, name string) (io.ReadCloser, error
 		return nil, f.fail(e)
 	}
 	defer body.Close()
-	raw, e := io.ReadAll(io.LimitReader(body, maxObject+1))
+	raw, e := io.ReadAll(io.LimitReader(body, maxBook+1))
 	if e != nil || int64(len(raw)) != entry.Book.Size || hash(raw) != entry.Book.SHA {
 		return nil, f.fail(errors.New("stored book bytes unavailable or corrupt"))
 	}
@@ -263,19 +263,19 @@ func (f *libraryFS) Create(ctx context.Context, name string, body io.ReadCloser,
 		return nil, false, davStatus(http.StatusForbidden, "books cannot be uploaded into .Trash")
 	}
 	if davJunk(leaf) {
-		_, _ = io.Copy(io.Discard, io.LimitReader(body, maxObject))
+		_, _ = io.Copy(io.Discard, io.LimitReader(body, maxBook))
 		return &webdav.FileInfo{Path: DAVPrefix + p}, true, nil
 	}
 	existing, found := f.index.find(f.index.Children(folder.Key, f.placeholders(folder.Key)), leaf)
 	if found && opts != nil && opts.IfNoneMatch.IsWildcard() {
 		return nil, false, davStatus(http.StatusPreconditionFailed, "already exists")
 	}
-	raw, e := io.ReadAll(io.LimitReader(body, maxObject+1))
+	raw, e := io.ReadAll(io.LimitReader(body, maxBook+1))
 	if e != nil {
 		return nil, false, davStatus(http.StatusBadRequest, "could not read the upload")
 	}
-	if len(raw) > maxObject {
-		return nil, false, davStatus(http.StatusRequestEntityTooLarge, "books are limited to 64 MiB")
+	if len(raw) > maxBook {
+		return nil, false, davStatus(http.StatusRequestEntityTooLarge, "books are limited to 128 MiB")
 	}
 	if found && !existing.Placeholder {
 		// Re-sending the same bytes is a retry; anything else would replace a book.
@@ -443,7 +443,7 @@ func (f *libraryFS) fail(e error) error {
 	case errors.Is(e, errLibraryConflict), errors.Is(e, errLibraryShelves), errors.Is(e, errLibraryChanged):
 		return davStatus(http.StatusConflict, e.Error())
 	case errors.Is(e, errBookConflict):
-		return davStatus(http.StatusConflict, "this file is already in the library under another name")
+		return davStatus(http.StatusConflict, bookConflictMessage(e))
 	case errors.Is(e, errBookRemoved):
 		return davStatus(http.StatusConflict, errBookRemoved.Error())
 	case errors.Is(e, errBookEnrollment):

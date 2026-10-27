@@ -123,7 +123,7 @@ Point your TLS reverse proxy at it so it answers at $url, for example with Caddy
           }
       }
       request_body {
-          max_size 100MB
+          max_size 200MB
       }
   }
 

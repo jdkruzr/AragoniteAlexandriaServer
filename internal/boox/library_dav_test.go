@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func davDo(t *testing.T, s Service, method, target string, body string, headers ...string) *httptest.ResponseRecorder {
@@ -185,5 +187,62 @@ func TestLibraryDAVWritesThroughTheJournal(t *testing.T) {
 	davExpect(t, r, http.StatusOK)
 	if raw, _ := io.ReadAll(r.Body); string(raw) != syntheticPDF("nested") {
 		t.Fatal(string(raw))
+	}
+}
+
+// Books may exceed the 64 MiB limit on tablet uploads and must still come back whole.
+func TestLibraryDAVBooksOverTheTabletObjectLimit(t *testing.T) {
+	s, _ := libraryFixture(t)
+	managementObserve(t, s)
+	raw := make([]byte, maxObject+(1<<20))
+	copy(raw, "%PDF-1.4\n")
+	copy(raw[len(raw)-6:], "%%EOF\n")
+	davExpect(t, davDo(t, s, "PUT", "/dav/books/Big.pdf", string(raw)), http.StatusCreated, http.StatusNoContent)
+	libraryDrain(t, s)
+	w := davDo(t, s, "GET", "/dav/books/Big.pdf", "")
+	davExpect(t, w, http.StatusOK)
+	if w.Body.Len() != len(raw) || hash(w.Body.Bytes()) != hash(raw) {
+		t.Fatal("WebDAV download", w.Body.Len())
+	}
+	over := make([]byte, maxBook+1)
+	copy(over, "%PDF-1.4\n")
+	copy(over[len(over)-6:], "%%EOF\n")
+	w = davDo(t, s, "PUT", "/dav/books/Huge.pdf", string(over))
+	davExpect(t, w, http.StatusRequestEntityTooLarge)
+	if !strings.Contains(w.Body.String(), "128 MiB") {
+		t.Fatal(w.Body.String())
+	}
+}
+
+// Tablets download stored books through the OSS endpoint, which must serve books
+// larger than what it accepts from tablets.
+func TestOSSServesBooksOverTheTabletObjectLimit(t *testing.T) {
+	s := testService(t)
+	c := getSTS(t, s, enrollTest(t, s, uuid.NewString()))
+	ctx := context.Background()
+	raw := make([]byte, maxObject+(1<<20))
+	copy(raw, "%PDF-1.4\n")
+	key := nativeUID(s.LibraryID) + "/reader/big/book/big.pdf"
+	tx, e := s.DB.BeginTx(ctx, nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback()
+	a, e := s.stagePublicationAsset(ctx, raw, "application/pdf")
+	if e == nil {
+		e = s.bindPublicationAsset(ctx, tx, key, a)
+	}
+	if e == nil {
+		e = tx.Commit()
+	}
+	if e != nil {
+		t.Fatal(e)
+	}
+	w := signed(t, s, c, "GET", key, "", nil, false)
+	if w.Code != http.StatusOK || w.Body.Len() != len(raw) || hash(w.Body.Bytes()) != hash(raw) {
+		t.Fatal(w.Code, w.Body.Len())
+	}
+	if w = signed(t, s, c, "PUT", nativeUID(s.LibraryID)+"/note/big/resource/data/big.bin", "", raw, false); w.Code != http.StatusBadRequest {
+		t.Fatal("tablet uploads stay limited to 64 MiB", w.Code)
 	}
 }

@@ -327,7 +327,7 @@ func (s Service) bookDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer body.Close()
-	raw, e := io.ReadAll(io.LimitReader(body, maxObject+1))
+	raw, e := io.ReadAll(io.LimitReader(body, maxBook+1))
 	if e != nil || int64(len(raw)) != b.Size || hash(raw) != b.SHA {
 		http.Error(w, "The book is temporarily unavailable.", http.StatusServiceUnavailable)
 		return

@@ -22,7 +22,12 @@ import (
 	"time"
 )
 
-const maxObject = 64 << 20
+// maxObject bounds what tablets upload; maxBook bounds uploaded books, which
+// tablets also download through this endpoint.
+const (
+	maxObject = 64 << 20
+	maxBook   = 128 << 20
+)
 
 func ossCanonical(method, resource string, h http.Header) string {
 	selected := map[string]string{"content-md5": "", "content-type": "", "date": ""}
@@ -185,7 +190,7 @@ func (s Service) oss(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer body.Close()
-		raw, e := io.ReadAll(io.LimitReader(body, maxObject+1))
+		raw, e := io.ReadAll(io.LimitReader(body, maxBook+1))
 		if e != nil || int64(len(raw)) != size || hash(raw) != sha {
 			ossError(w, 503, "ServiceUnavailable")
 			return

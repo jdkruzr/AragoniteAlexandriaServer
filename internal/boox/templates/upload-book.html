@@ -1,5 +1,5 @@
 {{define "content"}}<p class="crumbs">{{th "<a href=\"/boox/reading\">Reading</a> /"}}</p><h1>{{t "Upload Books"}} {{template "help" "boox.upload"}}</h1>
-<p class="lede">{{t "Choose EPUB, PDF, MOBI or AZW3 books, or a folder of books. Each file can be up to 64 MiB; select up to 1,000 files at a time."}}</p>
+<p class="lede">{{t "Choose EPUB, PDF, MOBI or AZW3 books, or a folder of books. Each file can be up to 128 MiB; select up to 1,000 files at a time."}}</p>
 <p>{{t "Folder selections keep their top-level folder and nested shelves on the server and BOOX tablets. Matching folders are reused; existing books are never replaced."}}</p>
 {{if .Data.Error}}<p role="alert">{{t .Data.Error}}</p>{{end}}
 <section id="book-import" class="card" hidden>

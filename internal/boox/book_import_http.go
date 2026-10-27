@@ -27,12 +27,12 @@ func (s Service) bookImportHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/boox/books/imports/file" {
-		r.Body = http.MaxBytesReader(w, r.Body, maxObject+(1<<20))
+		r.Body = http.MaxBytesReader(w, r.Body, maxBook+(1<<20))
 		if e := r.ParseMultipartForm(1 << 20); e != nil {
 			if r.MultipartForm != nil {
 				r.MultipartForm.RemoveAll()
 			}
-			failure(importProblem("Choose a file up to 64 MiB."))
+			failure(importProblem("Choose a file up to 128 MiB."))
 			return
 		}
 		defer r.MultipartForm.RemoveAll()
@@ -42,7 +42,7 @@ func (s Service) bookImportHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer f.Close()
-		raw, e := io.ReadAll(io.LimitReader(f, maxObject+1))
+		raw, e := io.ReadAll(io.LimitReader(f, maxBook+1))
 		if e != nil {
 			failure(e)
 			return

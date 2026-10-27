@@ -24,6 +24,29 @@ import (
 )
 
 var errBookConflict = errors.New("book already exists in the native library")
+
+// bookConflict is an errBookConflict that says why the book was refused.
+type bookConflict string
+
+func (c bookConflict) Error() string        { return string(c) }
+func (c bookConflict) Is(target error) bool { return target == errBookConflict }
+
+var (
+	errBookOtherName     = bookConflict("This file is already in the library under another name.")
+	errBookFingerprint   = bookConflict("A different file with the same BOOX fingerprint is already stored. No existing book was replaced.")
+	errBookOnTablet      = bookConflict("A tablet already has this book from its own storage. No existing book was replaced.")
+	errBookCloudMismatch = bookConflict("Your tablets know this book from a cloud account, but as a different file (its size or source differs). No existing book was replaced.")
+)
+
+// bookConflictMessage is the public text for a refused book.
+func bookConflictMessage(e error) string {
+	var c bookConflict
+	if errors.As(e, &c) {
+		return string(c)
+	}
+	return "A book with this native fingerprint is already known. No existing book was replaced."
+}
+
 var errBookRemoved = errors.New("This book was uploaded before, but its book record or source file has since been removed. Re-uploading does not restore deleted books.")
 var errBookEnrollment = errors.New("Connect a BOOX device before uploading books.")
 
@@ -51,7 +74,7 @@ var bookFormats = map[string]struct{ Kind, ContentType string }{
 }
 
 const errBookFormat = "Only EPUB, PDF, MOBI and AZW3 books can be uploaded."
-const errBookFile = "Choose an EPUB, PDF, MOBI or AZW3 book up to 64 MiB with a plain filename."
+const errBookFile = "Choose an EPUB, PDF, MOBI or AZW3 book up to 128 MiB with a plain filename."
 
 func bookContentType(kind string) string {
 	for _, f := range bookFormats {
@@ -84,7 +107,7 @@ func validMobi(raw []byte) error {
 }
 
 func validateBook(name string, raw []byte) (string, error) {
-	if len(raw) == 0 || len(raw) > maxObject || len(name) > 240 || strings.ContainsAny(name, "/\\") || strings.IndexFunc(name, unicode.IsControl) >= 0 {
+	if len(raw) == 0 || len(raw) > maxBook || len(name) > 240 || strings.ContainsAny(name, "/\\") || strings.IndexFunc(name, unicode.IsControl) >= 0 {
 		return "", errors.New(errBookFile)
 	}
 	switch strings.ToLower(path.Ext(name)) {
@@ -126,7 +149,8 @@ func validateBook(name string, raw []byte) (string, error) {
 			return io.ReadAll(io.LimitReader(r, limit+1))
 		}
 		mime, e := read("mimetype", 64)
-		if e != nil || string(mime) != "application/epub+zip" {
+		// Some publishers end the mimetype file with a line break; NeoReader accepts it.
+		if e != nil || strings.TrimSpace(string(mime)) != "application/epub+zip" {
 			return "", errors.New("The archive is not an EPUB.")
 		}
 		container, e := read("META-INF/container.xml", 1<<20)
@@ -250,7 +274,7 @@ func (s Service) queueBookTx(ctx context.Context, tx *sql.Tx, generation, name, 
 		return queuedBook{}, e
 	}
 	if collision {
-		return queuedBook{}, errBookConflict
+		return queuedBook{}, errBookFingerprint
 	}
 	// Records the tablets already know: take over cloud-account ones, refuse the rest.
 	candidates, e := s.adoptionCandidates(ctx, tx, fingerprint)
@@ -304,8 +328,8 @@ func (s Service) publishBookRecord(ctx context.Context, tx *sql.Tx, id, doc stri
 		return nil, e
 	}
 	defer body.Close()
-	raw, e := io.ReadAll(io.LimitReader(body, maxObject+1))
-	if e != nil || hash(raw) != sha || len(raw) > maxObject {
+	raw, e := io.ReadAll(io.LimitReader(body, maxBook+1))
+	if e != nil || hash(raw) != sha || len(raw) > maxBook {
 		return nil, errors.New("book bytes unavailable or corrupt")
 	}
 	if e = s.putIdempotent(ctx, doc, id, metadata); e != nil {
@@ -326,12 +350,12 @@ type uploadBookView struct {
 func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 	data := uploadBookView{Folder: r.URL.Query().Get("folder")}
 	if r.Method == http.MethodPost {
-		r.Body = http.MaxBytesReader(w, r.Body, maxObject+(1<<20))
+		r.Body = http.MaxBytesReader(w, r.Body, maxBook+(1<<20))
 		if e := r.ParseMultipartForm(1 << 20); e != nil {
 			if r.MultipartForm != nil {
 				r.MultipartForm.RemoveAll()
 			}
-			http.Error(w, "Choose a file up to 64 MiB.", 413)
+			http.Error(w, "Choose a file up to 128 MiB.", 413)
 			return
 		}
 		defer r.MultipartForm.RemoveAll()
@@ -341,7 +365,7 @@ func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer file.Close()
-		raw, e := io.ReadAll(io.LimitReader(file, maxObject+1))
+		raw, e := io.ReadAll(io.LimitReader(file, maxBook+1))
 		if e != nil {
 			http.Error(w, "Could not read upload.", 400)
 			return
@@ -353,7 +377,7 @@ func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 			if errors.Is(err, errBookEnrollment) || errors.Is(err, errBookRemoved) {
 				data.Error = err.Error()
 			} else if errors.Is(err, errBookConflict) {
-				data.Error = "A book with this native fingerprint is already known. No existing book was replaced."
+				data.Error = bookConflictMessage(err)
 			} else if err != nil {
 				s.failure(w, "uploadBookHTTP", err)
 				return

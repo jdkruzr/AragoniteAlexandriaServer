@@ -54,24 +54,24 @@ func chooseAdoption(candidates []adoptCandidate, size int) (adoption, error) {
 	cloudID, cloudPath := "", ""
 	for _, c := range candidates {
 		if !cloudRecord(c.Body) && !c.Converted {
-			return adoption{}, errBookConflict
+			return adoption{}, errBookOnTablet
 		}
 		s := numberField(c.Body, "size")
 		if s == 0 {
 			s = numberField(c.Body, "fileOriginSize")
 		}
 		if s != int64(size) {
-			return adoption{}, errBookConflict
+			return adoption{}, errBookCloudMismatch
 		}
 		if id := nativeString(c.Body, "cloudId"); id != "" {
 			if cloudID != "" && id != cloudID {
-				return adoption{}, errBookConflict
+				return adoption{}, errBookCloudMismatch
 			}
 			cloudID = id
 		} else if cloudRecord(c.Body) {
 			p := nativeString(c.Body, "nativeAbsolutePath")
 			if cloudPath != "" && p != cloudPath {
-				return adoption{}, errBookConflict
+				return adoption{}, errBookCloudMismatch
 			}
 			cloudPath = p
 		}

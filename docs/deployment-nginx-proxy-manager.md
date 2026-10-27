@@ -25,7 +25,7 @@ proxy_buffering off;
 proxy_request_buffering off;
 ```
 
-The installed global `client_max_body_size` is `2000m`, sufficient for Alexandria's 64 MiB native asset request limit. Do not require a 2 GB limit on other installations; configure at least `64m` for this adapter. The global connection timeout is 90 seconds; read/send timeouts were also 90 seconds before the per-host override.
+The installed global `client_max_body_size` is `2000m`, sufficient for Alexandria's 64 MiB native asset and 128 MiB book request limits. Do not require a 2 GB limit on other installations; configure at least `64m` for this adapter. The global connection timeout is 90 seconds; read/send timeouts were also 90 seconds before the per-host override.
 
 WebSocket support generates HTTP/1.1 upstream requests with `Upgrade` and `Connection` forwarded. Proxy Manager's included `proxy.conf` preserves `$host`, forwards scheme/protocol, client IP and port, and proxies the full original request URI. This matters for native BLIP and signed asset paths. Mount Alexandria at the origin root, without an additional URL prefix. PostgreSQL, Couchbase administration, Sync Gateway admin/public ports and SPC are not routed through this host.
 

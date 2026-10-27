@@ -77,7 +77,7 @@ func importFiles(req importRequest) ([]importItem, error) {
 		if _, ok := bookFormats[ext]; !ok {
 			i.State = "skipped"
 			i.Error = errBookFormat
-		} else if f.Size <= 0 || f.Size > maxObject {
+		} else if f.Size <= 0 || f.Size > maxBook {
 			i.State = "skipped"
 			i.Error = errBookFile
 		}
@@ -353,7 +353,7 @@ func importPublicError(e error) string {
 		return string(p)
 	}
 	if errors.Is(e, errBookConflict) {
-		return "A book with this native fingerprint is already known. No existing book was replaced."
+		return bookConflictMessage(e)
 	}
 	if errors.Is(e, errBookRemoved) || errors.Is(e, errBookEnrollment) {
 		return e.Error()

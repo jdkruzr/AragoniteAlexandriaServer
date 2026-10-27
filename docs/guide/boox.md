@@ -18,7 +18,7 @@ Browsing never changes your tablets. Only a handful of actions write back (delet
 ## What You Need First
 
 - A working server from [Install Alexandria Server](install.md), behind HTTPS ([Put It Behind HTTPS](https-proxy.md)). **BOOX sync requires a real `https://` public address**: PowerSync refuses plain HTTP, and there's no certificate bypass. `ALEXANDRIA_PUBLIC_URL` in `deploy/compose/.env` must be that address, with no path.
-- Your reverse proxy must pass WebSocket upgrades and keep long-lived connections open (tablets hold a sync connection), and allow request bodies of at least 65 MiB (books and page files go up to 64 MiB). The Caddy example printed by `install.sh` does all three; see [Put Alexandria Behind HTTPS](https-proxy.md) for nginx and Nginx Proxy Manager.
+- Your reverse proxy must pass WebSocket upgrades and keep long-lived connections open (tablets hold a sync connection), and allow request bodies of at least 129 MiB (books go up to 128 MiB, page files up to 64 MiB). The Caddy example printed by `install.sh` does all three; see [Put Alexandria Behind HTTPS](https-proxy.md) for nginx and Nginx Proxy Manager.
 - The optional BOOX services: Couchbase Server and Sync Gateway, which the `boox.yml` Compose override adds. Setup is below.
 - The PowerSync app on each tablet.
 - **All your tablets signed in to the same BOOX account.** One library has one owner; the tablets share it.
@@ -163,7 +163,7 @@ filters, folders, breadcrumbs, and pagination help narrow a larger library.
 
 1. Open **BOOX → Reading → Upload books…**.
 2. Choose a destination, then **Choose files…** or **Choose folder…**. Select up
-   to 1,000 files, with a maximum of 64 MiB per EPUB, PDF, MOBI or AZW3 book.
+   to 1,000 files, with a maximum of 128 MiB per EPUB, PDF, MOBI or AZW3 book.
 3. Review the preview. The selected top-level folder and its subfolders become
    native BOOX shelves. Matching names under the same parent reuse that shelf;
    if multiple shelves match, choose one. Empty folders and unsupported files
@@ -242,7 +242,7 @@ the tablets' native library, the same way the Library app would make it.
   it appears at the top level. Copying a book to another folder is refused: move it
   instead. Two items with the same name in one folder are shown as *Name (2)*; the
   suffix is only for display.
-- **Uploads accept EPUB, PDF, MOBI and AZW3 up to 64 MiB**, checked the same way as the upload page. Kindle DRM-protected MOBI/AZW3 files are refused, since BOOX cannot open them.
+- **Uploads accept EPUB, PDF, MOBI and AZW3 up to 128 MiB**, checked the same way as the upload page. Kindle DRM-protected MOBI/AZW3 files are refused, since BOOX cannot open them.
   Anything else is refused with a reason. Files your computer adds on its own
   (`._*`, `.DS_Store`, `Thumbs.db`, `desktop.ini`) are quietly discarded. Existing
   books are never overwritten. Bytes already in the library are refused under another

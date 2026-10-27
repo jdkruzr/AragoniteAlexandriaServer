@@ -76,7 +76,7 @@ func run() error {
 		if e = db.QueryRowContext(ctx, `SELECT v.bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE NOT v.deleted AND v.sha256=$1 LIMIT 1`, *fetchHash).Scan(&size); e != nil {
 			return e
 		}
-		if size < 0 || size > 64<<20 {
+		if size < 0 || size > 128<<20 {
 			return fmt.Errorf("resource size exceeds bound")
 		}
 		stream, _, e := store.Get(ctx, "boox/bodies/"+*fetchHash)

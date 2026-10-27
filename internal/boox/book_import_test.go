@@ -24,7 +24,7 @@ func TestImportPathsAndLimits(t *testing.T) {
 	if !validImportPath("Biblioteca/Ciencia/Física.epub") {
 		t.Fatal("unicode path rejected")
 	}
-	v, e := importFiles(importRequest{Files: []importFile{{"books/a.epub", 10}, {"books/no.txt", 10}, {"books/huge.pdf", maxObject + 1}}})
+	v, e := importFiles(importRequest{Files: []importFile{{"books/a.epub", 10}, {"books/no.txt", 10}, {"books/huge.pdf", maxBook + 1}}})
 	if e != nil || v[0].State != "waiting" || v[1].State != "skipped" || v[2].State != "skipped" {
 		t.Fatal(v, e)
 	}

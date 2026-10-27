@@ -12,7 +12,22 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-27): **`adopt-b-6354a54738be`**, app-only on
+Latest recorded deployment (2026-10-27): **`books128-299dcdee001d`**, app-only on
+schema **39**, image `sha256:67201742c1058dc1328af71e59a847d8c309d5aeb97e8dbf50dad5e6a321f01a`.
+Books may be up to 128 MiB on every book path, including the OSS endpoint tablets
+download from; tablet uploads stay at 64 MiB. EPUBs whose `mimetype` ends with a
+line break are accepted, as NeoReader accepts them. Refused uploads say why: a
+different file than the cloud-account copy the tablets know, a book a tablet has from
+its own storage, the same bytes under another name, or another file with the same
+BOOX fingerprint. The re-copy of jtd's Nextcloud eBooks then adopted the last two
+books (a 77 MiB comic PDF and an EPUB with a CRLF `mimetype`); the 77 MiB PDF
+downloaded to the Note Mini C byte-identical in about 70 s and opened in NeoReader.
+Across the whole re-copy, 63 uploads published, 61 cloud-account records were
+retired and 15 highlights and bookmarks were re-pointed; five PDFs whose Nextcloud
+copy no longer matches the tablets' record were refused. Rollback:
+`private/books128-299dcdee001d/rollback.sh` returns to `adopt-b-6354a54738be`.
+
+Previous deployment (2026-10-27): **`adopt-b-6354a54738be`**, app-only on
 schema **39**, image `sha256:4219cbb2a87b6e68a7766362839e599a9f56485faf9b34c6ca17a3e252f71aa7`.
 An upload (page, importer or WebDAV) whose BOOX fingerprint matches only cloud-account
 records publishes a new stored book that inherits the most recently read record's

@@ -64,7 +64,7 @@ alexandria.example.com {
         }
     }
     request_body {
-        max_size 32MB
+        max_size 200MB
     }
 }
 ```
@@ -75,7 +75,7 @@ nginx:
 server {
     server_name alexandria.example.com;
     listen 443 ssl;   # plus your certificate settings
-    client_max_body_size 32m;
+    client_max_body_size 200m;
     location / {
         proxy_pass http://127.0.0.1:18443;
         proxy_set_header Host $host;

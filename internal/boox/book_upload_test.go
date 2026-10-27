@@ -19,11 +19,13 @@ import (
 	"testing"
 )
 
-func testEPUB(t *testing.T) []byte {
+func testEPUB(t *testing.T) []byte { t.Helper(); return testEPUBMimetype(t, "application/epub+zip") }
+
+func testEPUBMimetype(t *testing.T, mimetype string) []byte {
 	t.Helper()
 	var out bytes.Buffer
 	z := zip.NewWriter(&out)
-	for _, f := range [][2]string{{"mimetype", "application/epub+zip"}, {"META-INF/container.xml", `<?xml version="1.0"?><container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`}, {"content.opf", `<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">synthetic</dc:identifier><dc:title>Alexandria upload test</dc:title><dc:language>en</dc:language></metadata><manifest><item id="page" href="page.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="page"/></spine></package>`}, {"page.xhtml", `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Test</title></head><body><h1>Alexandria upload test</h1><p>This book came from the server.</p></body></html>`}} {
+	for _, f := range [][2]string{{"mimetype", mimetype}, {"META-INF/container.xml", `<?xml version="1.0"?><container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`}, {"content.opf", `<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">synthetic</dc:identifier><dc:title>Alexandria upload test</dc:title><dc:language>en</dc:language></metadata><manifest><item id="page" href="page.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="page"/></spine></package>`}, {"page.xhtml", `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Test</title></head><body><h1>Alexandria upload test</h1><p>This book came from the server.</p></body></html>`}} {
 		w, e := z.Create(f[0])
 		if e != nil {
 			t.Fatal(e)
@@ -39,6 +41,26 @@ func TestBookValidationAndFingerprint(t *testing.T) {
 	raw := testEPUB(t)
 	if kind, e := validateBook("test.epub", raw); e != nil || kind != "epub" {
 		t.Fatal(kind, e)
+	}
+	// Some publishers end the mimetype file with a line break; NeoReader opens those.
+	if kind, e := validateBook("crlf.epub", testEPUBMimetype(t, "application/epub+zip\r\n")); e != nil || kind != "epub" {
+		t.Fatal("trailing line break", kind, e)
+	}
+	if _, e := validateBook("other.epub", testEPUBMimetype(t, "application/zip")); e == nil {
+		t.Fatal("accepted a non-EPUB mimetype")
+	}
+	// Books may exceed the 64 MiB tablet object limit, up to 128 MiB.
+	pdf := func(n int) []byte {
+		b := make([]byte, n)
+		copy(b, "%PDF-1.4\n")
+		copy(b[n-6:], "%%EOF\n")
+		return b
+	}
+	if _, e := validateBook("big.pdf", pdf(maxObject+1)); e != nil {
+		t.Fatal("refused a book over 64 MiB", e)
+	}
+	if _, e := validateBook("huge.pdf", pdf(maxBook+1)); e == nil {
+		t.Fatal("accepted a book over 128 MiB")
 	}
 	for _, c := range []struct {
 		name string

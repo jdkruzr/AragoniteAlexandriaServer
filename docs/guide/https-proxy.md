@@ -16,14 +16,14 @@ This is the list. Every example below implements all of it.
 | Requirement | Setting | Why |
 |---|---|---|
 | **Serve Alexandria at the root of its own hostname** | `https://alexandria.example.com/`, not `https://example.com/alexandria/` | Devices and BOOX setup expect an origin with no path. |
-| **Request bodies up to at least 65 MiB.** Use 100 MB. | Caddy `max_size 100MB`; nginx `client_max_body_size 100m` | BOOX tablets upload files of up to 64 MiB, and uploading a 64 MiB book from the web page adds about 1 MiB of form overhead. Alexandria Client sync requests are smaller (up to 16 MiB). |
+| **Request bodies up to at least 129 MiB.** Use 200 MB. | Caddy `max_size 200MB`; nginx `client_max_body_size 200m` | Books can be up to 128 MiB, and uploading one from the web page adds about 1 MiB of form overhead. BOOX tablets upload files of up to 64 MiB. Alexandria Client sync requests are smaller (up to 16 MiB). |
 | **Long timeouts: 20 minutes** | Read and send/write timeouts of `20m` (`1200s`) | Restoring a library from a tablet can take minutes, and BOOX keeps a live connection open. |
 | **WebSockets** | Forward `Upgrade` and `Connection` headers over HTTP/1.1 | Needed for BOOX live sync, which uses `/boox-neocloud/`. Alexandria Client, the web app, CalDAV and MCP don't need it, but turning it on for the whole host is harmless. |
 | **No redirects on HTTPS requests** | No `www` rewrites, trailing-slash fixes, path rewrites, or single-sign-on/forward-auth login pages in front | Tablets refuse redirects during sync. Alexandria checks passwords and tokens itself; a login portal in front breaks devices, CalDAV and MCP. Redirecting plain `http://` to `https://` is fine. |
 | **No buffering** | nginx `proxy_buffering off` and `proxy_request_buffering off`; Caddy `flush_interval -1` | Long uploads and streamed responses should flow straight through. |
 | **Pass `Host` and `X-Forwarded-Proto`** | Caddy and Nginx Proxy Manager do this automatically | Keeps generated links and sign-in flows on your HTTPS address. |
 
-About that body size: the installer's printed Caddy example says `64MB`. In Caddy, `MB` means millions of bytes, which is slightly *less* than the 64 MiB Alexandria accepts, so the largest uploads would be refused. Use `100MB`. (Older notes that say 32 MB are too small for BOOX.)
+About that body size: in Caddy, `MB` means millions of bytes, so `128MB` would be slightly *less* than the 128 MiB books Alexandria accepts. Use `200MB`, as the installer's printed Caddy example does. (Older notes that say 32 MB, 64 MB or 100 MB are too small.)
 
 Two optional extras:
 
@@ -48,7 +48,7 @@ alexandria.example.com {
     respond @metrics 404
 
     request_body {
-        max_size 100MB
+        max_size 200MB
     }
 
     reverse_proxy 127.0.0.1:18443 {
@@ -85,7 +85,7 @@ server {
     ssl_certificate     /etc/ssl/alexandria/fullchain.pem;
     ssl_certificate_key /etc/ssl/alexandria/privkey.pem;
 
-    client_max_body_size 100m;
+    client_max_body_size 200m;
 
     location = /metrics { return 404; }
 
@@ -122,7 +122,7 @@ Check and reload: `nginx -t && nginx -s reload`.
 4. On the **Advanced** tab, paste into **Custom Nginx Configuration**:
 
    ```nginx
-   client_max_body_size 100m;
+   client_max_body_size 200m;
    proxy_read_timeout 20m;
    proxy_send_timeout 20m;
    proxy_buffering off;
@@ -151,8 +151,8 @@ Make changes through the Proxy Manager screens rather than editing its generated
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `413 Request Entity Too Large` (an HTML page from the proxy) on uploads or sync | The proxy's body limit is too low; nginx defaults to 1 MB. | Set `client_max_body_size 100m` or Caddy `max_size 100MB`. |
-| `Choose a file up to 64 MiB.` | That's Alexandria, not the proxy: the file really is too big. | Use a smaller file. |
+| `413 Request Entity Too Large` (an HTML page from the proxy) on uploads or sync | The proxy's body limit is too low; nginx defaults to 1 MB. | Set `client_max_body_size 200m` or Caddy `max_size 200MB`. |
+| `Choose a file up to 128 MiB.` | That's Alexandria, not the proxy: the file really is too big. | Use a smaller file. |
 | `502 Bad Gateway` | Alexandria isn't running or is still starting, or the proxy can't reach it. A common culprit: Alexandria listens on `127.0.0.1` while the proxy is on another machine. | Check `curl http://127.0.0.1:18443/readyz` on the Alexandria host and `docker compose ps`. Set `ALEXANDRIA_MAIN_HOST` to a reachable address and re-run `./install.sh`. |
 | `{"status":"not_ready"}` with HTTP 503 | The proxy works; a service behind Alexandria (database, storage, or BOOX sync services) isn't answering yet. | Wait a minute, then read `docker compose logs alexandria`. |
 | `504 Gateway Time-out`, or big uploads or tablet restores fail after about a minute | Default proxy timeouts, usually 60 seconds. | Raise read and send timeouts to 20 minutes. |

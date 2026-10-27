@@ -52,15 +52,18 @@ func TestChooseAdoption(t *testing.T) {
 	if _, e = chooseAdoption([]adoptCandidate{converted, cloudBook("cloud", nil)}, 100); e != nil {
 		t.Fatal("a record stored by an earlier in-place adoption is replaceable", e)
 	}
-	for name, c := range map[string][]adoptCandidate{
-		"native match":    {cloudBook("cloud", nil), cloudBook("native", map[string]any{"fetchSource": 0})},
-		"size mismatch":   {cloudBook("big", map[string]any{"size": 101})},
-		"two cloud files": {cloudBook("a", nil), cloudBook("b", map[string]any{"cloudId": "c2"})},
-		"two cloud paths": {cloudBook("a", map[string]any{"cloudId": nil}), cloudBook("b", map[string]any{"cloudId": nil, "nativeAbsolutePath": "/elsewhere.pdf"})},
-		"no fetch source": {cloudBook("a", map[string]any{"fetchSource": nil})},
-		"no candidates":   nil,
+	for name, c := range map[string]struct {
+		candidates []adoptCandidate
+		want       error
+	}{
+		"native match":    {[]adoptCandidate{cloudBook("cloud", nil), cloudBook("native", map[string]any{"fetchSource": 0})}, errBookOnTablet},
+		"size mismatch":   {[]adoptCandidate{cloudBook("big", map[string]any{"size": 101})}, errBookCloudMismatch},
+		"two cloud files": {[]adoptCandidate{cloudBook("a", nil), cloudBook("b", map[string]any{"cloudId": "c2"})}, errBookCloudMismatch},
+		"two cloud paths": {[]adoptCandidate{cloudBook("a", map[string]any{"cloudId": nil}), cloudBook("b", map[string]any{"cloudId": nil, "nativeAbsolutePath": "/elsewhere.pdf"})}, errBookCloudMismatch},
+		"no fetch source": {[]adoptCandidate{cloudBook("a", map[string]any{"fetchSource": nil})}, errBookOnTablet},
+		"no candidates":   {nil, errBookConflict},
 	} {
-		if _, e := chooseAdoption(c, 100); !errors.Is(e, errBookConflict) {
+		if _, e := chooseAdoption(c.candidates, 100); !errors.Is(e, c.want) || !errors.Is(e, errBookConflict) {
 			t.Error(name, e)
 		}
 	}
@@ -222,15 +225,22 @@ func TestUploadRehomesAnInPlaceAdoptedRecord(t *testing.T) {
 
 func TestUploadAdoptionRefusals(t *testing.T) {
 	raw := []byte(syntheticPDF("refused"))
-	for name, records := range map[string]map[string]map[string]any{
-		"native match":    {"cloud": {}, "native": {"fetchSource": 0, "nativeAbsolutePath": "/storage/emulated/0/Books/Book.pdf"}},
-		"size mismatch":   {"cloud": {"size": 1}},
-		"two cloud files": {"a": {}, "b": {"cloudId": "c2"}},
+	for name, c := range map[string]struct {
+		records map[string]map[string]any
+		want    bookConflict
+	}{
+		"native match":    {map[string]map[string]any{"cloud": {}, "native": {"fetchSource": 0, "nativeAbsolutePath": "/storage/emulated/0/Books/Book.pdf"}}, errBookOnTablet},
+		"size mismatch":   {map[string]map[string]any{"cloud": {"size": 1}}, errBookCloudMismatch},
+		"two cloud files": {map[string]map[string]any{"a": {}, "b": {"cloudId": "c2"}}, errBookCloudMismatch},
 	} {
 		t.Run(name, func(t *testing.T) {
-			s, g := adoptFixture(t, raw, records)
+			s, g := adoptFixture(t, raw, c.records)
 			managementObserve(t, s)
-			davExpect(t, davDo(t, s, "PUT", "/dav/books/Book.pdf", string(raw)), http.StatusConflict)
+			w := davDo(t, s, "PUT", "/dav/books/Book.pdf", string(raw))
+			davExpect(t, w, http.StatusConflict)
+			if !strings.Contains(w.Body.String(), string(c.want)) {
+				t.Fatal("refusal says why", w.Body.String())
+			}
 			var n int
 			if e := s.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM boox_operation`).Scan(&n); e != nil || n != 0 {
 				t.Fatal("nothing is queued", n, e)
