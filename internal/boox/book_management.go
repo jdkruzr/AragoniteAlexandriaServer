@@ -142,7 +142,7 @@ func (s Service) librarySnapshot(ctx context.Context, db pg.Querier) (*librarySn
 			if m, ok := p["metadata"].(map[string]any); ok {
 				v.apply(m, "", id)
 				if b := v.Books[nativeString(m, "uniqueId")]; b != nil {
-					b.SHA, b.Size, b.ContentType = nativeString(p, "sha256"), numberField(m, "size"), map[string]string{"pdf": "application/pdf", "epub": "application/epub+zip"}[b.Kind]
+					b.SHA, b.Size, b.ContentType = nativeString(p, "sha256"), numberField(m, "size"), bookContentType(b.Kind)
 				}
 			}
 		case "library_create":
@@ -822,8 +822,23 @@ func (s Service) publishLibrary(ctx context.Context, tx *sql.Tx, id, kind, doc, 
 				return e
 			}
 			if live["alexandriaOperationId"] != id {
+				// Devices keep unknown fields when they rewrite a record, so a chained
+				// change fences on the exact revision its predecessor published, not
+				// on the predecessor's marker.
 				after := nativeString(payload, "after")
-				if !libraryDocument(live, s.uid(), mode) || after == "" && live["_rev"] != expected || after != "" && live["alexandriaOperationId"] != after {
+				fence := expected
+				if after != "" {
+					var state string
+					var published sql.NullString
+					if e := tx.QueryRowContext(ctx, `SELECT state,published_revision FROM boox_operation WHERE id=$1`, after).Scan(&state, &published); e != nil && !errors.Is(e, sql.ErrNoRows) {
+						return e
+					}
+					if state == "queued" && !published.Valid {
+						return errors.New("earlier library change not yet published")
+					}
+					fence = published.String
+				}
+				if !libraryDocument(live, s.uid(), mode) || fence == "" || live["_rev"] != fence {
 					return block("stale_preview")
 				}
 				changes, ok := payload["changes"].(map[string]any)

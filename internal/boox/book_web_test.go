@@ -37,9 +37,13 @@ func TestReadingPageBookActions(t *testing.T) {
 	g.docs[s.uid()+"#cloudbook"]["fetchSource"] = 19
 	libraryRecord(s, g, 3, "A", map[string]any{"name": "Alpha"})
 	libraryRecord(s, g, 3, "B", map[string]any{"name": "Beta"})
+	libraryRecord(s, g, 3, "cloud", map[string]any{"name": "ultrabridge", "description": "WEBDAV-43022fa012224b40", "fetchSource": 0})
 	libraryRecord(s, g, 5, "m1", map[string]any{"documentUniqueId": "b1", "libraryUniqueId": "A"})
 	managementObserve(t, s)
 
+	if stored, all := bookWeb(t, s, "GET", "/boox/reading?view=stored", nil).Body.String(), bookWeb(t, s, "GET", "/boox/reading?view=all", nil).Body.String(); strings.Contains(stored, "ultrabridge") || !strings.Contains(stored, "Alpha") || !strings.Contains(all, "ultrabridge") {
+		t.Fatal("Stored Here lists only native shelves; All Books lists every shelf")
+	}
 	page := bookWeb(t, s, "GET", "/boox/reading?view=stored&folder=A", nil).Body.String()
 	for _, want := range []string{`form="book-bulk"`, "/boox/books/download?book=b1", "/boox/books/trash", "/boox/books/upload?folder=A"} {
 		if !strings.Contains(page, want) {

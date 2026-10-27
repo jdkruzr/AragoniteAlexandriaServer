@@ -319,3 +319,31 @@ func TestLibraryFencesAndReplay(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+// A tablet rewriting a record keeps unknown fields, including the publication
+// marker, so a chained change must fence on the exact published revision.
+func TestLibraryChainedChangeStopsAfterDeviceEdit(t *testing.T) {
+	s, g := libraryFixture(t)
+	ctx := context.Background()
+	libraryRecord(s, g, 3, "A", map[string]any{"name": "A"})
+	managementObserve(t, s)
+	must(t, s.renameShelf(ctx, uuid.NewString(), "A", "First"))
+	must(t, s.renameShelf(ctx, uuid.NewString(), "A", "Second"))
+	managementPublish(t, s)
+	g.mu.Lock()
+	doc := g.docs[s.uid()+"#A"]
+	if doc["name"] != "First" {
+		g.mu.Unlock()
+		t.Fatal(doc)
+	}
+	doc["name"] = "Device"
+	doc["_rev"] = "3-device-kept-marker"
+	g.mu.Unlock()
+	libraryDrain(t, s)
+	if got := libraryStates(t, s); got["published"] != 1 || got["blocked:stale_preview"] != 1 {
+		t.Fatal(got)
+	}
+	if a := g.record(s, "A"); a["name"] != "Device" {
+		t.Fatal("chained change overwrote the device edit", a)
+	}
+}

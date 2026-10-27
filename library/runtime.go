@@ -688,7 +688,7 @@ func (r *admittedReader) Close() error {
 	return r.err
 }
 
-// ProcessNativeBOOX runs bounded journal ingestion and one publication step.
+// ProcessNativeBOOX runs bounded journal ingestion and a bounded publication batch.
 func (r *Runtime) ProcessNativeBOOX(ctx context.Context) (int, error) {
 	if r.cfg.NativeBOOX == nil {
 		return 0, nil
@@ -700,8 +700,13 @@ func (r *Runtime) ProcessNativeBOOX(ctx context.Context) (int, error) {
 	defer done()
 	native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: r.cfg.Pages.OCR != nil}
 	n, err := native.Observe(ctx)
-	if err == nil {
-		_, err = native.PublishOne(ctx)
+	// A folder copy queues hundreds of changes; drain a bounded batch per pass
+	// so publication is not paced by indexing and jobs later in the loop.
+	for i, start := 0, time.Now(); err == nil && i < 32 && time.Since(start) < 5*time.Second; i++ {
+		var more bool
+		if more, err = native.PublishOne(ctx); !more {
+			break
+		}
 	}
 	if err == nil {
 		_, err = native.ProcessBookImport(ctx)

@@ -203,6 +203,17 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		s.failure(w, "readingFolders", e)
 		return
 	}
+	// Stored books only live on native shelves; cloud-account and smart shelves
+	// would always be empty here.
+	if v.View == "stored" {
+		native := v.Folders[:0]
+		for _, f := range v.Folders {
+			if f.Writable {
+				native = append(native, f)
+			}
+		}
+		v.Folders = native
+	}
 	parent := v.Folder
 	seen := map[string]bool{}
 	for parent != "" && parent != "unfiled" && !seen[parent] {

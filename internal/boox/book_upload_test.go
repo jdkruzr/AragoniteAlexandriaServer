@@ -5,13 +5,16 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"strings"
 	"testing"
 )
@@ -199,5 +202,72 @@ func TestBookUploadOriginAndReadingVisibility(t *testing.T) {
 	html := w.Body.String()
 	if w.Code != 200 || !strings.Contains(html, "livebook") || !strings.Contains(html, "livehighlight") || !strings.Contains(html, "livebookmark") || strings.Contains(html, "deletedbook") || strings.Contains(html, "deletedhighlight") || strings.Contains(html, "deletedbookmark") {
 		t.Fatal("reading lifecycle filter", w.Code)
+	}
+}
+
+// testMOBI builds a minimal PalmDB "BOOKMOBI" container: one text record and
+// record 0 carrying a PalmDOC header and the MOBI magic. It only exercises the
+// upload validator; NeoReader qualification used a Calibre-generated book.
+func testMOBI(encryption uint16) []byte {
+	header := make([]byte, 78+16+2)
+	copy(header, "Alexandria MOBI test")
+	copy(header[60:68], "BOOKMOBI")
+	binary.BigEndian.PutUint16(header[76:78], 2)
+	first := len(header)
+	record0 := make([]byte, 16+232)
+	binary.BigEndian.PutUint16(record0[0:2], 1) // no compression
+	binary.BigEndian.PutUint16(record0[12:14], encryption)
+	copy(record0[16:20], "MOBI")
+	binary.BigEndian.PutUint32(header[78:82], uint32(first))
+	binary.BigEndian.PutUint32(header[86:90], uint32(first+len(record0)))
+	return append(append(header, record0...), []byte("Synthetic MOBI text.")...)
+}
+
+func TestMOBIAndAZW3Validation(t *testing.T) {
+	for _, name := range []string{"Book.mobi", "Book.AZW3"} {
+		kind, e := validateBook(name, testMOBI(0))
+		if e != nil || kind != strings.ToLower(strings.TrimPrefix(path.Ext(name), ".")) {
+			t.Fatal(name, kind, e)
+		}
+	}
+	drm := testMOBI(2)
+	if _, e := validateBook("Locked.azw3", drm); e == nil || !strings.Contains(e.Error(), "DRM") {
+		t.Fatal("DRM-protected book accepted", e)
+	}
+	wrong := testMOBI(0)
+	copy(wrong[60:68], "TEXtREAd")
+	truncated := testMOBI(0)[:90]
+	for _, raw := range [][]byte{wrong, truncated, testEPUB(t)} {
+		if _, e := validateBook("Bad.mobi", raw); e == nil {
+			t.Fatal("invalid MOBI accepted")
+		}
+	}
+	if bookContentType("mobi") != "application/x-mobipocket-ebook" || bookContentType("azw3") != "application/x-mobi8-ebook" {
+		t.Fatal("content types")
+	}
+	if items, _ := importFiles(importRequest{Files: []importFile{{"Shelf/a.mobi", 10}, {"Shelf/b.azw3", 10}, {"Shelf/c.opf", 10}}}); items[0].State != "waiting" || items[1].State != "waiting" || items[2].State != "skipped" {
+		t.Fatal(items)
+	}
+}
+
+func TestMOBIUploadPublishesItsNativeType(t *testing.T) {
+	s, g := libraryFixture(t)
+	managementObserve(t, s)
+	davExpect(t, davDo(t, s, "PUT", "/dav/books/Synthetic.mobi", string(testMOBI(0))), http.StatusCreated)
+	libraryDrain(t, s)
+	var found map[string]any
+	g.mu.Lock()
+	for _, b := range g.docs {
+		if b["name"] == "Synthetic.mobi" {
+			found = b
+		}
+	}
+	g.mu.Unlock()
+	if found == nil || found["type"] != "mobi" || !strings.HasSuffix(fmt.Sprint(found["nativeAbsolutePath"]), ".mobi") {
+		t.Fatal(found)
+	}
+	var ct string
+	if e := s.DB.QueryRowContext(context.Background(), `SELECT v.content_type FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE l.native_key LIKE '%/book/%.mobi'`).Scan(&ct); e != nil || ct != "application/x-mobipocket-ebook" {
+		t.Fatal(ct, e)
 	}
 }

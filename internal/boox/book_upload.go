@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/md5"
 	"database/sql"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
@@ -41,9 +42,50 @@ func bookFingerprint(raw []byte) string {
 	return hex.EncodeToString(digest[:])
 }
 
+// bookFormats are the upload formats NeoReader opens; validateBook checks each.
+var bookFormats = map[string]struct{ Kind, ContentType string }{
+	".pdf":  {"pdf", "application/pdf"},
+	".epub": {"epub", "application/epub+zip"},
+	".mobi": {"mobi", "application/x-mobipocket-ebook"},
+	".azw3": {"azw3", "application/x-mobi8-ebook"},
+}
+
+const errBookFormat = "Only EPUB, PDF, MOBI and AZW3 books can be uploaded."
+const errBookFile = "Choose an EPUB, PDF, MOBI or AZW3 book up to 64 MiB with a plain filename."
+
+func bookContentType(kind string) string {
+	for _, f := range bookFormats {
+		if f.Kind == kind {
+			return f.ContentType
+		}
+	}
+	return ""
+}
+
+// validMobi checks a PalmDB "BOOKMOBI" container (MOBI, and AZW3/KF8 alike):
+// a record table, the MOBI header in record 0 and no encryption.
+func validMobi(raw []byte) error {
+	invalid := errors.New("The file is not a valid MOBI or AZW3 book.")
+	if len(raw) < 86 || string(raw[60:68]) != "BOOKMOBI" {
+		return invalid
+	}
+	records := int(binary.BigEndian.Uint16(raw[76:78]))
+	if records < 1 || 78+8*records > len(raw) {
+		return invalid
+	}
+	first := int(binary.BigEndian.Uint32(raw[78:82]))
+	if first < 78+8*records || first+32 > len(raw) || string(raw[first+16:first+20]) != "MOBI" {
+		return invalid
+	}
+	if binary.BigEndian.Uint16(raw[first+12:first+14]) != 0 {
+		return errors.New("This MOBI or AZW3 book is DRM-protected, so BOOX cannot open it.")
+	}
+	return nil
+}
+
 func validateBook(name string, raw []byte) (string, error) {
 	if len(raw) == 0 || len(raw) > maxObject || len(name) > 240 || strings.ContainsAny(name, "/\\") || strings.IndexFunc(name, unicode.IsControl) >= 0 {
-		return "", errors.New("Choose an EPUB or PDF up to 64 MiB with a plain filename.")
+		return "", errors.New(errBookFile)
 	}
 	switch strings.ToLower(path.Ext(name)) {
 	case ".pdf":
@@ -122,8 +164,13 @@ func validateBook(name string, raw []byte) (string, error) {
 			}
 		}
 		return "epub", nil
+	case ".mobi", ".azw3":
+		if e := validMobi(raw); e != nil {
+			return "", e
+		}
+		return bookFormats[strings.ToLower(path.Ext(name))].Kind, nil
 	}
-	return "", errors.New("Only EPUB and PDF source files are supported.")
+	return "", errors.New(errBookFormat)
 }
 
 // QueueBook stores immutable bytes before atomically publishing their native
@@ -145,11 +192,7 @@ func (s Service) queueBook(ctx context.Context, name string, raw []byte, then fu
 	if s.identity == "" {
 		return "", errBookEnrollment
 	}
-	ct := "application/pdf"
-	if kind == "epub" {
-		ct = "application/epub+zip"
-	}
-	asset, e := s.stagePublicationAsset(ctx, raw, ct)
+	asset, e := s.stagePublicationAsset(ctx, raw, bookContentType(kind))
 	if e != nil {
 		return "", e
 	}
@@ -276,7 +319,7 @@ func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 		defer r.MultipartForm.RemoveAll()
 		file, header, e := r.FormFile("book")
 		if e != nil {
-			http.Error(w, "Choose an EPUB or PDF.", 400)
+			http.Error(w, "Choose a book file.", 400)
 			return
 		}
 		defer file.Close()

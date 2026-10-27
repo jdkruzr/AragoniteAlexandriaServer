@@ -12,7 +12,22 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-27): **`book-actions-fee778f290cd`**, app-only on
+Latest recorded deployment (2026-10-27): **`mobi-87aad391ba47`**, app-only on schema
+**39**, image `sha256:8b8529c9f27fdf62f952b79f684cd9395331a360f660811d15ed8d81d772fb49`.
+Uploads (page, importer, WebDAV) accept MOBI and AZW3: the PalmDB `BOOKMOBI`
+container, record table and `MOBI` header are checked, and Kindle DRM is refused.
+Calibre-generated synthetic MOBI and AZW3 books published as `type=mobi`/`azw3`,
+downloaded byte-identical to the Note Mini C and opened in NeoReader. Stored Here
+lists only native shelves. A chained library change now fences on the exact revision
+its predecessor published: tablets keep `alexandriaOperationId` when they rewrite a
+record, so the marker alone let a chained change land on top of a tablet edit. The
+worker publishes up to 32 operations (or 5 s) per pass instead of one; during a
+329-operation pcmanfm copy, reader indexing had paced publication to a few per
+minute, and books sat unshelved until their membership caught up. After the deploy
+the queue drained in seconds. Rollback: `private/mobi-87aad391ba47/rollback.sh`
+returns to `book-actions-fee778f290cd`.
+
+Previous deployment (2026-10-27): **`book-actions-fee778f290cd`**, app-only on
 schema **39**, image `sha256:02f6a947860b824d5ba1875c9b13f46bfe2903b151cc1caa2f7b6679556f3406`.
 The Reading page manages stored books through the same journaled library changes as
 WebDAV: Select/Download on each stored book, bulk **Move selected…** and **Move

@@ -58,10 +58,11 @@ bytes into another shelf are refused, and book imports block such a file.
 
 `internal/boox/book_management.go` queues each change as revision-fenced
 `library_create` / `library_update` journal operations. A change to a record that
-still has an unpublished change is fenced on that change's marker
-(`alexandriaOperationId`) rather than on a revision, so consecutive edits made
-before the projection catches up chain safely, and a device edit in between
-blocks the chain. Library changes publish a READER_LIBRARY message only, like book
+still has an unpublished change is fenced on the exact revision that change
+publishes, so consecutive edits made before the projection catches up chain
+safely, and a device edit in between blocks the chain. A marker is not enough:
+devices keep unknown fields, `alexandriaOperationId` included, when they rewrite
+a record (observed on the Note Mini C on 2026-10-27). Library changes publish a READER_LIBRARY message only, like book
 imports; they carry no reader commit. `library_fs.go` and `library_dav.go`
 present the result as the WebDAV folder described in the
 [BOOX guide](guide/boox.md#manage-books-from-a-file-manager-webdav).

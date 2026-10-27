@@ -74,12 +74,12 @@ func importFiles(req importRequest) ([]importItem, error) {
 		seen[f.Path] = true
 		i := importItem{Path: f.Path, Size: f.Size, Kind: "file", State: "waiting"}
 		ext := strings.ToLower(path.Ext(f.Path))
-		if ext != ".epub" && ext != ".pdf" {
+		if _, ok := bookFormats[ext]; !ok {
 			i.State = "skipped"
-			i.Error = "Only EPUB and PDF source files are supported."
+			i.Error = errBookFormat
 		} else if f.Size <= 0 || f.Size > maxObject {
 			i.State = "skipped"
-			i.Error = "Choose an EPUB or PDF up to 64 MiB with a plain filename."
+			i.Error = errBookFile
 		}
 		out = append(out, i)
 	}
@@ -301,11 +301,7 @@ func (s Service) acceptImportFile(ctx context.Context, id, p string, raw []byte)
 	if e != nil {
 		return "", importProblem(e.Error())
 	}
-	ct := "application/pdf"
-	if kind == "epub" {
-		ct = "application/epub+zip"
-	}
-	asset, e := s.stagePublicationAsset(ctx, raw, ct)
+	asset, e := s.stagePublicationAsset(ctx, raw, bookContentType(kind))
 	if e != nil {
 		return "", e
 	}

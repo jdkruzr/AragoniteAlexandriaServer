@@ -38,7 +38,7 @@ func (s Service) bookImportHTTP(w http.ResponseWriter, r *http.Request) {
 		defer r.MultipartForm.RemoveAll()
 		f, _, e := r.FormFile("book")
 		if e != nil {
-			failure(importProblem("Choose an EPUB or PDF."))
+			failure(importProblem("Choose a book file."))
 			return
 		}
 		defer f.Close()

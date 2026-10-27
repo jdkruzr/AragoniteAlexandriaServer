@@ -117,7 +117,7 @@ func TestLibraryDAVWritesThroughTheJournal(t *testing.T) {
 
 	w = davDo(t, s, "PUT", "/dav/books/notes.txt", "plain text")
 	davExpect(t, w, http.StatusUnsupportedMediaType)
-	if !strings.Contains(w.Body.String(), "EPUB and PDF") {
+	if !strings.Contains(w.Body.String(), "EPUB, PDF, MOBI and AZW3") {
 		t.Fatal("refusal must say why", w.Body.String())
 	}
 	davExpect(t, davDo(t, s, "PUT", "/dav/books/fake.pdf", "not a pdf"), http.StatusUnsupportedMediaType)
