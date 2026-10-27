@@ -12,7 +12,23 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-27): **`mobi-87aad391ba47`**, app-only on schema
+Latest recorded deployment (2026-10-27): **`adopt-b-6354a54738be`**, app-only on
+schema **39**, image `sha256:4219cbb2a87b6e68a7766362839e599a9f56485faf9b34c6ca17a3e252f71aa7`.
+An upload (page, importer or WebDAV) whose BOOX fingerprint matches only cloud-account
+records publishes a new stored book that inherits the most recently read record's
+progress, status and reader settings. Every candidate's highlights and bookmarks are
+re-pointed to it with reader commits, and the old records are retired
+([details](reading-file-operations.md#adopting-cloud-account-books)). Native matches are
+still refused. Converting the record in place (`adopt-7ab280c28910`) was deployed,
+failed on the Note Mini C (the tablet hid the books as `NO_CLOUD_FILE`) and was rolled
+back. `adopt-b-ab1614d3f013` returned 409 on a re-copy, because its batch token
+collided with the withdrawn build's; this build keys it by the new book. Qualified on the Mini C
+with three Nextcloud books: progress, 3 highlights and 2 bookmarks arrived, and the download
+was byte-identical. Opening the file again from the tablet's cloud view revives the old
+record beside the stored book, as documented. Rollback: `private/adopt-b-6354a54738be/rollback.sh`
+returns to `adopt-b-ab1614d3f013`, whose kit returns to `mobi-87aad391ba47`.
+
+Previous deployment (2026-10-27): **`mobi-87aad391ba47`**, app-only on schema
 **39**, image `sha256:8b8529c9f27fdf62f952b79f684cd9395331a360f660811d15ed8d81d772fb49`.
 Uploads (page, importer, WebDAV) accept MOBI and AZW3: the PalmDB `BOOKMOBI`
 container, record table and `MOBI` header are checked, and Kindle DRM is refused.

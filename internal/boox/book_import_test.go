@@ -284,12 +284,12 @@ func TestImportRefusesASecondShelf(t *testing.T) {
 		t.Fatal(e)
 	}
 	runImport(t, s, 4)
-	// Project the published membership the way Observe would.
+	// Project the published shelf and membership the way Observe would.
 	g.mu.Lock()
 	for id, b := range g.docs {
-		if b["modeType"] == float64(5) {
+		if b["modeType"] == float64(3) || b["modeType"] == float64(5) {
 			body, _ := json.Marshal(b)
-			if _, e = s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'1-test','reading','5',$2,$3)`, id, s.uid(), body); e != nil {
+			if _, e = s.DB.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES($1,'1-test','reading',$4,$2,$3)`, id, s.uid(), body, fmt.Sprint(b["modeType"])); e != nil {
 				t.Fatal(e)
 			}
 		}

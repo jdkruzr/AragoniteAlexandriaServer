@@ -139,10 +139,15 @@ func (s Service) ProcessBookImport(ctx context.Context) (bool, error) {
 		if e != nil && !errors.Is(e, sql.ErrNoRows) {
 			return false, e
 		}
-		// Devices keep one live membership per book and remove the others.
-		var elsewhere bool
-		if e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM boox_projection WHERE native_uid=$1 AND domain='reading' AND body->>'modeType'='5' AND body->>'documentUniqueId'=$2 AND body->>'libraryUniqueId'<>$3 AND coalesce(body->>'status','0')='0')`, s.uid(), bookID, parent).Scan(&elsewhere); e != nil {
+		// Devices keep one live membership per book and remove the others. Only
+		// native shelves count: an adopted cloud book's account shelf is left.
+		v, e := s.librarySnapshot(ctx, tx)
+		if e != nil {
 			return false, e
+		}
+		elsewhere := false
+		for _, m := range v.Memberships(bookID) {
+			elsewhere = elsewhere || m.Shelf != parent
 		}
 		if existing == "" && elsewhere {
 			return fail(importProblem("This book is already on another shelf. BOOX keeps each book on one shelf, so move it there instead."))

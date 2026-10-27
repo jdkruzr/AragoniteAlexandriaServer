@@ -176,80 +176,92 @@ func validateBook(name string, raw []byte) (string, error) {
 // QueueBook stores immutable bytes before atomically publishing their native
 // binding and durable operation. It never overwrites an existing native book.
 func (s Service) QueueBook(ctx context.Context, name string, raw []byte) (string, error) {
-	return s.queueBook(ctx, name, raw, nil)
+	q, e := s.queueBook(ctx, name, raw, nil)
+	return q.Operation, e
 }
 
 // queueBook lets a caller extend the upload transaction, for example with the
 // shelf the book was uploaded into.
-func (s Service) queueBook(ctx context.Context, name string, raw []byte, then func(tx *sql.Tx, generation, operation string) error) (string, error) {
+func (s Service) queueBook(ctx context.Context, name string, raw []byte, then func(tx *sql.Tx, generation string, queued queuedBook) error) (queuedBook, error) {
 	kind, e := validateBook(name, raw)
 	if e != nil {
-		return "", e
+		return queuedBook{}, e
 	}
 	if e = s.ResolveIdentity(ctx); e != nil {
-		return "", e
+		return queuedBook{}, e
 	}
 	if s.identity == "" {
-		return "", errBookEnrollment
+		return queuedBook{}, errBookEnrollment
 	}
 	asset, e := s.stagePublicationAsset(ctx, raw, bookContentType(kind))
 	if e != nil {
-		return "", e
+		return queuedBook{}, e
 	}
 	tx, e := s.DB.BeginTx(ctx, nil)
 	if e != nil {
-		return "", e
+		return queuedBook{}, e
 	}
 	defer tx.Rollback()
 	generation, e := s.publicationOwner(ctx, tx)
 	if e != nil {
-		return "", e
+		return queuedBook{}, e
 	}
-	id, e := s.queueBookTx(ctx, tx, generation, name, kind, raw, asset)
+	q, e := s.queueBookTx(ctx, tx, generation, name, kind, raw, asset)
 	if e == nil && then != nil {
-		e = then(tx, generation, id)
+		e = then(tx, generation, q)
 	}
 	if e == nil {
 		e = tx.Commit()
 	}
-	return id, e
+	return q, e
 }
 
 // Shared by the single-file form and atomic import-item acceptance.
-func (s Service) queueBookTx(ctx context.Context, tx *sql.Tx, generation, name, kind string, raw []byte, asset publicationAsset) (string, error) {
+func (s Service) queueBookTx(ctx context.Context, tx *sql.Tx, generation, name, kind string, raw []byte, asset publicationAsset) (queuedBook, error) {
 	fingerprint, sha := bookFingerprint(raw), asset.SHA256
 	var e error
 	// Serialize native fingerprint decisions, including concurrent uploads with
 	// different whole-file hashes but identical BOOX sampled fingerprints.
 	if _, e = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, s.uid()+":book:"+fingerprint); e != nil {
-		return "", e
+		return queuedBook{}, e
 	}
 	idem := "book:" + hash([]byte(generation+":"+s.uid()+":"+sha))
-	var existing, state, existingDoc, existingKey string
-	e = tx.QueryRowContext(ctx, `SELECT id::text,state,document_id,payload->>'nativeKey' FROM boox_operation WHERE idempotency_key=$1`, idem).Scan(&existing, &state, &existingDoc, &existingKey)
+	var existing, state, existingDoc, existingKey, existingName string
+	e = tx.QueryRowContext(ctx, `SELECT id::text,state,document_id,payload->>'nativeKey',coalesce(payload->>'name','') FROM boox_operation WHERE idempotency_key=$1`, idem).Scan(&existing, &state, &existingDoc, &existingKey, &existingName)
 	if e == nil {
 		if state == "published" {
 			var removed bool
 			e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM boox_projection WHERE document_id=$1 AND body->>'status'='1') OR NOT EXISTS(SELECT 1 FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE l.native_key=$2 AND v.sha256=$3 AND NOT v.deleted)`, existingDoc, existingKey, sha).Scan(&removed)
 			if e != nil {
-				return "", e
+				return queuedBook{}, e
 			}
 			if removed {
-				return "", errBookRemoved
+				return queuedBook{}, errBookRemoved
 			}
 		}
-		return existing, nil
+		return queuedBook{Operation: existing, Book: strings.TrimPrefix(existingDoc, s.uid()+"#"), Name: existingName}, nil
 	}
 	if !errors.Is(e, sql.ErrNoRows) {
-		return "", e
+		return queuedBook{}, e
 	}
 	var collision bool
-	e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM boox_projection WHERE native_uid=$1 AND body->>'modeType'='4' AND body->>'hashTag'=$2) OR EXISTS(SELECT 1 FROM boox_operation WHERE kind='upload_book' AND payload->>'nativeUid'=$1 AND payload->>'fingerprint'=$2)`, s.uid(), fingerprint).Scan(&collision)
+	e = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM boox_operation WHERE kind='upload_book' AND payload->>'nativeUid'=$1 AND payload->>'fingerprint'=$2)`, s.uid(), fingerprint).Scan(&collision)
 	if e != nil {
-		return "", e
+		return queuedBook{}, e
 	}
 	if collision {
-		return "", errBookConflict
+		return queuedBook{}, errBookConflict
+	}
+	// Records the tablets already know: take over cloud-account ones, refuse the rest.
+	candidates, e := s.adoptionCandidates(ctx, tx, fingerprint)
+	if e != nil {
+		return queuedBook{}, e
+	}
+	var adopted adoption
+	if len(candidates) > 0 {
+		if adopted, e = chooseAdoption(candidates, len(raw)); e != nil {
+			return queuedBook{}, e
+		}
 	}
 	id := uuid.NewString()
 	book := strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -258,12 +270,18 @@ func (s Service) queueBookTx(ctx context.Context, tx *sql.Tx, generation, name, 
 	key := s.uid() + "/reader/" + book + "/book/" + book + "." + kind
 	nativePath := "/storage/emulated/0/.ksync/" + s.uid() + "/reader/" + book + "/book/" + book + "." + kind
 	metadata := map[string]any{"_id": doc, "uniqueId": book, "user": s.uid(), "dbId": s.uid() + "-READER_LIBRARY", "modeType": 4, "name": name, "title": strings.TrimSuffix(name, path.Ext(name)), "type": kind, "size": len(raw), "fileOriginSize": len(raw), "hashTag": fingerprint, "status": 0, "fetchSource": 0, "fileSyncStatus": 1, "userDataSyncStatus": 1, "nativeAbsolutePath": nativePath, "idString": nativePath, "location": nativePath, "readingStatus": 0, "createdAt": now, "updatedAt": now, "lastModified": now, "extraAttributes": "{}", "alexandriaOperationId": id}
+	for k, v := range adopted.inherited() {
+		metadata[k] = v
+	}
 	payload, _ := json.Marshal(map[string]any{"generation": generation, "nativeUid": s.uid(), "fingerprint": fingerprint, "sha256": sha, "nativeKey": key, "metadata": metadata, "updatedAt": now, "name": name})
 	e = s.bindPublicationAsset(ctx, tx, key, asset)
 	if e == nil {
 		_, e = tx.ExecContext(ctx, `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,payload,state) VALUES($1,$2,'upload_book',$3,'',$4,'queued')`, id, idem, doc, payload)
 	}
-	return id, e
+	if e == nil && len(adopted.Replaced) > 0 {
+		e = s.queueReplacements(ctx, tx, generation, sha, book, adopted)
+	}
+	return queuedBook{Operation: id, Book: book, Name: name}, e
 }
 
 // Called with the operation locked and the library generation fenced.

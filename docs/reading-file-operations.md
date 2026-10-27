@@ -54,6 +54,48 @@ won over the new membership too, leaving the book on no shelf. The server theref
 never creates a second live membership: WebDAV COPY is refused, uploads of known
 bytes into another shelf are refused, and book imports block such a file.
 
+## Adopting cloud-account books
+
+Tablets create their own records for books in a cloud account, such as a Nextcloud
+WebDAV account (`fetchSource` = provider + 10, so 19 for WebDAV), when they download
+a file or rebuild the library:
+- **Each tablet creates its own record**, with a random uuid (`SaveMetadataForNetDiskFileAction`).
+- **The records sync between tablets** through Couchbase.
+- **The account finds its records again by path only** (`DataManagerHelper.insertOrUpdateMetadata`), and revives a removed record it finds at that path.
+- **None of the observed records has a `uniqueCloudId`.**
+
+Highlights and bookmarks link to a book only by its uuid (`documentId`); progress,
+reading status and reader settings (`extraAttributes`) live in the record itself.
+
+An upload whose fingerprint matches only cloud records therefore takes them over
+instead of adding a second book. The rules:
+- **Candidates must agree:** every candidate must have the same size and the same cloud file (`cloudId`, or the NetDisk path). Any native match is still refused, because a tablet's dedupe deletes an untouched local copy and its file when a synced copy with the same fingerprint arrives (`MetadataDeduplicationHandler`).
+- **A new book:** the upload is published as a **new** stored book, inheriting the title and authors, and the `progress`, `readingStatus`, `lastAccess` and `extraAttributes` of the most recently read candidate that has reading data.
+- **Highlights and bookmarks:** every candidate's live ones are re-pointed to the new uuid, each with a reader commit.
+- **Old records:** every live candidate is retired (`status=1`). The new book joins the shelf it was uploaded into.
+- **The original file stays in the cloud service.**
+
+**Converting a record in place does not work** (tried and withdrawn on 2026-10-27). The cloud record was turned into a stored one with `fetchSource` 0 and a `.ksync` path, keeping its uuid. The Note Mini C kept its local record, never created a `READER_BOOK` (type 20) download record for it (`SaveReaderBookRecordRequest` runs only for books new to the tablet), matched it as "book file missing" and set `fileSyncStatus=3` (`NO_CLOUD_FILE`). The Library hides that state (`SQLOperatorUtils`: `fileSyncStatus != 3`), so the books disappeared despite intact data. Neither a rename round trip nor the Library's full sync changed it. Records left in that state are kept out of the file view, and the next upload of the same book replaces them like a cloud record, releasing their stored binding.
+
+**On the Note Mini C** (deployed `adopt-b-6354a54738be`, three Nextcloud books copied
+through pcmanfm onto their `eBooks/<Author>` shelves):
+
+| Book | Candidates | Mini C result |
+|---|---|---|
+| *A Forbidden Alchemy* | one live record with 3 highlights | New book at 1/326; the 3 highlights appeared after accepting the reader's sync prompt; the download matched the upload's SHA-256 |
+| *The Bone Shard Daughter* | data only on a removed record (667/668), plus an in-place-converted record | New book at 667/668; the converted record stayed retired and left the file view |
+| *The Bone Shard Emperor* | live record at 204/657 with 2 bookmarks | New book opened at 205/661 on chapter 17; both bookmarks arrived after accepting the sync prompt |
+
+**Opening the file from the cloud account brings the old record back.** Tapping
+*The Bone Shard Daughter* in the Mini C's Cloud Storage → `jtd` view downloaded it and
+revived the removed record at that NetDisk path (`status` 1 → 0, progress kept, rejoined
+the `jtd` cloud shelf), and the tablet pushed that as a new revision. The stored book was
+untouched, so the tablet then listed the book twice: the stored copy on its author shelf,
+with the highlights, and the cloud copy on the `jtd` shelf, whose progress now moves on its
+own. The server does not re-retire such a record: the reader has just opened it, and the
+account would revive it again on its next visit. Removing the cloud copy on the tablet, or
+simply reading from the stored copy, is enough.
+
 ## Server implementation
 
 `internal/boox/book_management.go` queues each change as revision-fenced

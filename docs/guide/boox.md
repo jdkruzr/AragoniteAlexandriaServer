@@ -181,6 +181,16 @@ list the book and download its source when opened. Server storage does not prove
 that a tablet has downloaded it. Folder relationships are native shelves; the
 underlying source-object keys keep BOOX's canonical layout.
 
+A book your tablets already know only through a cloud account (for example the Nextcloud
+WebDAV account) is not duplicated: uploading it replaces that entry with a stored book
+on the shelf you chose, carrying over its reading progress, highlights and bookmarks. The
+file stays in the cloud service. If the tablets created more than one entry for the file,
+the most recently read one's progress is kept and every entry's highlights move over.
+A book a tablet imported from its own storage is still refused. Opening the same file
+again from the tablet's cloud-account view brings its old entry back beside the stored
+book, with its own progress; read from the stored copy, or remove the cloud one on the
+tablet.
+
 Identical bytes reuse an existing upload, even under a different filename. A book
 already on one shelf is not added to another: tablets keep each book on a single
 shelf, so that file is blocked with a note to move the book instead. Uploads do not replace,

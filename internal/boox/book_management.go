@@ -110,9 +110,31 @@ func (s Service) librarySnapshot(ctx context.Context, db pg.Querier) (*librarySn
 	if e != nil {
 		return nil, e
 	}
+	// Records converted by the withdrawn in-place adoption are hidden on tablets
+	// (no download is ever registered); they stay out of the file view until an
+	// upload of the same book re-homes them.
+	converted := map[string]bool{}
+	rows, e = db.QueryContext(ctx, `SELECT DISTINCT payload->>'id' FROM boox_operation WHERE kind='library_update' AND payload->>'libraryAction'='adopt_book' AND payload ? 'record' AND payload->>'nativeUid'=$1`, s.uid())
+	if e != nil {
+		return nil, e
+	}
+	for rows.Next() {
+		var id string
+		if e = rows.Scan(&id); e != nil {
+			break
+		}
+		converted[id] = true
+	}
+	if e == nil {
+		e = rows.Err()
+	}
+	rows.Close()
+	if e != nil {
+		return nil, e
+	}
 	for id, b := range v.Books {
 		blob, ok := stored[id]
-		if !ok {
+		if !ok || converted[id] {
 			delete(v.Books, id)
 			continue
 		}
@@ -312,6 +334,7 @@ type libraryOp struct {
 	Mode            int
 	Expected, After string
 	Changes, Body   map[string]any
+	Extra           map[string]any // further payload fields
 }
 
 // update fences on the projection revision, or on the pending change that
@@ -385,6 +408,9 @@ func (s Service) libraryChangeTx(ctx context.Context, tx *sql.Tx, generation, to
 		}
 		touched[op.ID] = true
 		payload := map[string]any{"generation": generation, "nativeUid": s.uid(), "libraryBatch": token, "libraryFingerprint": fingerprint, "libraryAction": action, "id": op.ID, "mode": op.Mode, "updatedAt": now}
+		for k, v := range op.Extra {
+			payload[k] = v
+		}
 		if op.Kind == "library_create" {
 			payload["body"] = op.Body
 		} else {
@@ -668,12 +694,9 @@ func (v *librarySnapshot) planRemove(book, from string) ([]libraryOp, error) {
 // succeeds as a retry; identical bytes under another name, or bound for
 // another shelf, are the existing book and are refused.
 func (s Service) uploadBook(ctx context.Context, token, name string, raw []byte, shelf string) error {
-	_, e := s.queueBook(ctx, name, raw, func(tx *sql.Tx, generation, operation string) error {
-		var book, queued string
-		if e := tx.QueryRowContext(ctx, `SELECT payload->'metadata'->>'uniqueId',payload->>'name' FROM boox_operation WHERE id=$1`, operation).Scan(&book, &queued); e != nil {
-			return e
-		}
-		if queued != name {
+	_, e := s.queueBook(ctx, name, raw, func(tx *sql.Tx, generation string, q queuedBook) error {
+		book := q.Book
+		if q.Name != name {
 			return errBookConflict
 		}
 		return s.libraryChangeTx(ctx, tx, generation, token, "upload_book", []string{book, shelf}, func(v *librarySnapshot, now int64) ([]libraryOp, error) {
@@ -878,6 +901,15 @@ func (s Service) publishLibrary(ctx context.Context, tx *sql.Tx, id, kind, doc, 
 			e = tx.Commit()
 		}
 		return e
+	}
+	if mode == "1" || mode == "2" {
+		// Re-pointed highlights and bookmarks travel with a reader commit for
+		// their book, as restored reader fields do.
+		commitID := strings.ReplaceAll(id, "-", "")
+		commit := map[string]any{"_id": commitID, "uniqueId": commitID, "user": s.uid(), "dbId": s.uid() + "-READER_LIBRARY", "documentUniqueId": nativeString(live, "documentId"), "commitType": 4, "commitStatus": 1, "recordType": 1, "createdAt": payload["updatedAt"], "updatedAt": payload["updatedAt"], "alexandriaOperationId": id}
+		if e := s.putIdempotent(ctx, commitID, id, commit); e != nil {
+			return e
+		}
 	}
 	messageID := uuid.NewSHA1(uuid.NameSpaceOID, []byte("boox-message:"+id)).String()
 	message := map[string]any{"_id": messageID, "uniqueId": messageID, "user": s.uid(), "dbId": s.uid() + "-MESSAGE", "msgType": 6, "replicatorName": "READER_LIBRARY", "syncAt": payload["updatedAt"], "msgStatus": 0, "clusterLang": "powersync_" + strings.ReplaceAll(s.LibraryID, "-", "")[:16], "createdAt": payload["updatedAt"], "updatedAt": payload["updatedAt"], "alexandriaOperationId": id}

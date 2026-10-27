@@ -335,10 +335,11 @@ func (s Service) acceptImportFile(ctx context.Context, id, p string, raw []byte)
 	if state != "waiting" {
 		return "", importProblem("This file cannot be uploaded in this import.")
 	}
-	op, e = s.queueBookTx(ctx, tx, generation, path.Base(p), kind, raw, asset)
+	q, e := s.queueBookTx(ctx, tx, generation, path.Base(p), kind, raw, asset)
 	if e != nil {
 		return "", e
 	}
+	op = q.Operation
 	_, e = tx.ExecContext(ctx, `UPDATE boox_book_import_item SET operation_id=$3,sha256=$4,state='queued',error_code='',updated_at=now() WHERE import_id=$1 AND path=$2`, id, p, op, asset.SHA256)
 	if e == nil {
 		e = tx.Commit()
