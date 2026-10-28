@@ -8,6 +8,7 @@ import (
 	"html"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -127,8 +128,27 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if e != nil || snap.Config.Automatic.RecognizeOff || snap.Config.Automatic.SummarizeOff || snap.Config.Summary.Model != "synthetic-llm" || snap.SummaryKey != "private-summary-key" {
 		t.Fatal("automatic save", e, snap.Config.Automatic)
 	}
-	if page := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(page, `name="a_recognize" checked`) || !strings.Contains(page, "On. It applies to notebooks that change from now on.") {
+	if page := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(page, `name="a_recognize" checked`) || !strings.Contains(page, "On. It applies to notebooks that change from now on.") || !strings.Contains(page, `name="a_summarize_wait" min="0" max="120" step="1" required value="10"`) {
 		t.Fatal("automatic settings view")
+	}
+	// The wait before automatic minutes goes down to zero; out of range is refused.
+	auto.Set("revision", strconv.FormatInt(snap.Revision, 10))
+	auto.Set("a_summarize_wait", "0")
+	if got := b.do("POST", "/settings/automatic", auto.Encode(), sameSite, true); got.Code != 303 {
+		t.Fatal("zero wait", got.Code, got.Body.String())
+	}
+	if _, _, snap, e = r.pageConfiguration(ctx, db); e != nil || snap.Config.Automatic.SummarizeWaitMinutes() != 0 {
+		t.Fatal("zero wait not saved", e, snap.Config.Automatic)
+	}
+	for _, bad := range []string{"121", "-1", "soon"} {
+		auto.Set("revision", strconv.FormatInt(snap.Revision, 10))
+		auto.Set("a_summarize_wait", bad)
+		if got := b.do("POST", "/settings/automatic", auto.Encode(), sameSite, true); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "Choose+a+wait") {
+			t.Fatal("bad wait accepted", bad, got.Code, got.Header().Get("Location"))
+		}
+	}
+	if _, _, snap, e = r.pageConfiguration(ctx, db); snap.Config.Automatic.SummarizeWaitMinutes() != 0 {
+		t.Fatal("a refused wait changed the setting", snap.Config.Automatic)
 	}
 	// Enabling/saving never queues existing content for paid processing.
 	var count int

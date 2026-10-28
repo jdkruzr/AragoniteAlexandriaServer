@@ -515,14 +515,14 @@ func TestAutomaticProcessingIsOnUnlessTurnedOff(t *testing.T) {
 		t.Fatal(e)
 	}
 	v, _ = s.Load(ctx)
-	got, e := s.AutomaticCandidate(ctx, v.Revision, true, false)
+	got, e := s.AutomaticCandidate(ctx, v.Revision, true, false, DefaultSummarizeWait)
 	if e != nil || got.Config.Automatic.RecognizeOff || !got.Config.Automatic.SummarizeOff || !got.Config.Automatic.Since.IsZero() {
 		t.Fatal(e, got.Config.Automatic)
 	}
-	if got, _ = s.AutomaticCandidate(ctx, v.Revision, false, false); got.Config.Automatic.Chosen() {
+	if got, _ = s.AutomaticCandidate(ctx, v.Revision, false, false, DefaultSummarizeWait); got.Config.Automatic.Chosen() {
 		t.Fatal("turning both off", got.Config.Automatic)
 	}
-	if _, e = s.AutomaticCandidate(ctx, v.Revision-1, true, true); e != ErrStale {
+	if _, e = s.AutomaticCandidate(ctx, v.Revision-1, true, true, DefaultSummarizeWait); e != ErrStale {
 		t.Fatal("stale revision accepted", e)
 	}
 }

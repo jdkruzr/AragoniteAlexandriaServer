@@ -71,8 +71,14 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		}
 		saved, e := d.Providers.Load(r.Context())
 		candidate := saved
+		wait := saved.Config.Automatic.SummarizeWaitMinutes()
+		if v := strings.TrimSpace(r.Form.Get("a_summarize_wait")); v != "" && e == nil {
+			if wait, e = strconv.Atoi(v); e != nil {
+				e = errors.New("Choose a wait from 0 to 120 minutes.")
+			}
+		}
 		if e == nil {
-			candidate, e = d.Providers.AutomaticCandidate(r.Context(), rev, r.Form.Get("a_recognize") == "on", r.Form.Get("a_summarize") == "on")
+			candidate, e = d.Providers.AutomaticCandidate(r.Context(), rev, r.Form.Get("a_recognize") == "on", r.Form.Get("a_summarize") == "on", wait)
 		}
 		if e == nil {
 			e = d.Providers.Save(r.Context(), candidate)

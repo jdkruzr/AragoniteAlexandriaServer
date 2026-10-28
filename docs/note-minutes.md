@@ -171,7 +171,8 @@ turned on). The worker's minutes turn calls `boox.Service.AutoProcess` first:
   record or files changed after `Since` and that has been quiet for five minutes
   gets its never-recognized pages queued (`recognition.QueuePagesTx`, one batch).
 - **Summarize notes with new recordings automatically:** a notebook with an audio
-  file that arrived after `Since`, quiet for ten minutes, gets `RequestMinutes`
+  file that arrived after `Since`, quiet for the owner's wait
+  (`AutomaticConfig.SummarizeWait`, minutes, default 10, 0–120), gets `RequestMinutes`
   (recognizing missing pages first) when it has no minutes or its minutes don't
   include every current recording. Minutes out of date only from handwriting,
   queued or running minutes, and failed minutes are left for the owner.

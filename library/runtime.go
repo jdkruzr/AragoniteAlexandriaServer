@@ -624,7 +624,7 @@ func (r *Runtime) ProcessPages(ctx context.Context, max int) (int, error) {
 					found, err = native.ProcessMinutes(ctx, stt, summary, snapshot.Config.Summary.Model, snapshot.TranscriptionIdentity())
 					if !found && err == nil {
 						c := snapshot.Config
-						found, err = native.AutoProcess(ctx, boox.AutoConfig{Recognize: c.AutoRecognize(), Summarize: c.AutoSummarize(), Seed: c.Automatic.Since}, minutesConfig(snapshot))
+						found, err = native.AutoProcess(ctx, boox.AutoConfig{Recognize: c.AutoRecognize(), Summarize: c.AutoSummarize(), Seed: c.Automatic.Since, SummarizeQuiet: time.Duration(c.Automatic.SummarizeWaitMinutes()) * time.Minute}, minutesConfig(snapshot))
 					}
 				}
 			}

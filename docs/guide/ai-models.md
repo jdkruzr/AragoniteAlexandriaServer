@@ -101,7 +101,7 @@ Search by meaning only indexes text that already exists. It never starts handwri
 Automatic processing is **on by default** once its models are set up. Untick a box and choose **Save automatic processing** to turn that half off; then BOOX pages are recognized only when you ask.
 
 - **Recognize new BOOX pages automatically** queues pages that have never been recognized, in notebooks that change after it starts, once a notebook has been quiet for five minutes.
-- **Summarize notes with new recordings automatically** starts Audio Note Minutes for a note whose recording arrived after it started, ten minutes after the note goes quiet. It recognizes the note's unrecognized pages first.
+- **Summarize notes with new recordings automatically** starts Audio Note Minutes for a note whose recording arrived after it started, once the note has gone without changes for **Wait before summarizing** (ten minutes by default, 0 to 120). It recognizes the note's unrecognized pages first.
 
 It never sweeps up your existing library; use **Recognize a library…** for that. Pages are sent to your provider, so charges may apply. Alexandria Client pages don't need this: they're recognized as they sync.
 

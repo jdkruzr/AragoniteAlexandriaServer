@@ -67,10 +67,28 @@ type SummaryConfig struct {
 // either half off.
 type AutomaticConfig struct {
 	RecognizeOff, SummarizeOff bool `json:",omitempty"`
+	// SummarizeWait is how many minutes a note with a new recording must go
+	// without changes before its minutes start; nil means the default.
+	SummarizeWait *int `json:",omitempty"`
 	// Since is a start time saved by earlier versions, which kept automatic
 	// processing opt-in. The start time now lives in the automatic_since
 	// setting, set the first time it's needed; this only seeds it.
 	Since time.Time
+}
+
+// DefaultSummarizeWait and MaxSummarizeWait bound AutomaticConfig.SummarizeWait,
+// in minutes.
+const (
+	DefaultSummarizeWait = 10
+	MaxSummarizeWait     = 120
+)
+
+// SummarizeWaitMinutes is the wait before automatic minutes, in minutes.
+func (a AutomaticConfig) SummarizeWaitMinutes() int {
+	if a.SummarizeWait == nil {
+		return DefaultSummarizeWait
+	}
+	return *a.SummarizeWait
 }
 
 // Chosen reports whether the owner leaves any automatic processing on.
@@ -501,12 +519,21 @@ type KeyChange struct{ Key, Action string }
 // AutomaticCandidate applies the owner's automatic-processing choices to the
 // saved settings. The start time is kept separately (the web handler resets it
 // when processing is turned back on), so the legacy one is dropped here.
-func (s Store) AutomaticCandidate(ctx context.Context, revision int64, recognize, summarize bool) (Snapshot, error) {
+// AutomaticCandidate applies the automatic processing form. wait is the
+// minutes a note must be quiet before automatic minutes start (0 to 120).
+func (s Store) AutomaticCandidate(ctx context.Context, revision int64, recognize, summarize bool, wait int) (Snapshot, error) {
 	v, e := s.editableSnapshot(ctx, revision)
 	if e != nil {
 		return v, e
 	}
-	v.Config.Automatic = AutomaticConfig{RecognizeOff: !recognize, SummarizeOff: !summarize}
+	if wait < 0 || wait > MaxSummarizeWait {
+		return v, errors.New("Choose a wait from 0 to 120 minutes.")
+	}
+	a := AutomaticConfig{RecognizeOff: !recognize, SummarizeOff: !summarize}
+	if wait != DefaultSummarizeWait {
+		a.SummarizeWait = &wait
+	}
+	v.Config.Automatic = a
 	return v, nil
 }
 

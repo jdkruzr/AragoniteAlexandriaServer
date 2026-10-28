@@ -131,8 +131,13 @@ recordings automatically** under **Settings → AI Tools and Recognition →
 Automatic Processing** and choose **Save automatic processing**.
 
 - It starts minutes for a note whose recording arrived **after automatic
-  processing started**, **ten minutes** after the note goes quiet, recognizing its
-  unrecognized pages first.
+  processing started**, once the note has gone without changes for **Wait
+  before summarizing** (ten minutes unless you change it), recognizing its
+  unrecognized pages first. Any change to the note, including a new recording,
+  restarts the wait, so recordings restarted within it end up in one set of
+  minutes. Set it to **0** to start as soon as a recording reaches the server;
+  a note you're still recording in is then summarized again after each new
+  recording.
 - Minutes that went out of date only because of handwriting wait for you to
   update them, and failed minutes wait for your retry.
 - Skipped notebooks are left alone.

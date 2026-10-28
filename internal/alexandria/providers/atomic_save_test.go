@@ -18,7 +18,7 @@ func TestAutomaticClockAndSettingsCommitTogether(t *testing.T) {
 	if _, err = s.DB.ExecContext(ctx, `INSERT INTO alexandria_settings(key,value,secret) VALUES($1,'"old-clock"',false)`, settings.AutomaticSince); err != nil {
 		t.Fatal(err)
 	}
-	candidate, err := s.AutomaticCandidate(ctx, before.Revision, false, false)
+	candidate, err := s.AutomaticCandidate(ctx, before.Revision, false, false, DefaultSummarizeWait)
 	if err != nil {
 		t.Fatal(err)
 	}

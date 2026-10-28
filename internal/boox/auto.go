@@ -21,14 +21,14 @@ import (
 type AutoConfig struct {
 	Recognize, Summarize bool
 	Seed                 time.Time
+	// SummarizeQuiet is how long a note with a new recording must go without
+	// changes before its minutes start: the owner's setting, 0 to 2 hours.
+	SummarizeQuiet time.Duration
 }
 
-// How long a notebook must be quiet before automatic processing touches it:
-// pages and recordings sync in pieces, and a note may still be in use.
-const (
-	autoRecognizeQuiet = 5 * time.Minute
-	autoSummarizeQuiet = 10 * time.Minute
-)
+// How long a notebook must be quiet before automatic recognition touches it:
+// pages sync in pieces, and a note may still be in use.
+const autoRecognizeQuiet = 5 * time.Minute
 
 // quietNotebooks lists live, unskipped BOOX notebooks that changed after since
 // and have been quiet for at least quiet. Changes are the notebook record and
@@ -65,7 +65,7 @@ func (s Service) AutoProcess(ctx context.Context, auto AutoConfig, cfg MinutesCo
 		}
 	}
 	if summarize {
-		return s.autoSummarize(ctx, since, cfg)
+		return s.autoSummarize(ctx, since, cfg, max(auto.SummarizeQuiet, 0))
 	}
 	return false, nil
 }
@@ -155,10 +155,10 @@ func (s Service) autoRecognize(ctx context.Context, since time.Time) (bool, erro
 // autoSummarize requests minutes for a quiet note with a recording it hasn't
 // summarized. Minutes that are only out of date because of handwriting, and
 // minutes that failed, are left for the owner.
-func (s Service) autoSummarize(ctx context.Context, since time.Time, cfg MinutesConfig) (bool, error) {
+func (s Service) autoSummarize(ctx context.Context, since time.Time, cfg MinutesConfig, quiet time.Duration) (bool, error) {
 	// Freeze eligibility for this pass. Keyset pages avoid repeatedly stopping
 	// at the same finished notebooks, without loading the entire library at once.
-	cutoff := time.Now().Add(-autoSummarizeQuiet)
+	cutoff := time.Now().Add(-quiet)
 	var after time.Time
 	var afterID string
 	for {
@@ -170,7 +170,7 @@ func (s Service) autoSummarize(ctx context.Context, since time.Time, cfg Minutes
  AND ($5::timestamptz IS NULL OR (last_change,document_id)>($5,$6))
  AND EXISTS(SELECT 1 FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id
  WHERE l.native_key >= ($1||'/note/'||document_id||'/resource/data/') COLLATE "C" AND l.native_key < ($1||'/note/'||document_id||'/resource/data0') COLLATE "C" AND lower(right(l.native_key,4)) IN ('.mp3','.pcm') AND v.created_at>=$2 AND NOT v.deleted)
- ORDER BY last_change,document_id LIMIT 20`, s.uid(), since, interval(autoSummarizeQuiet), cutoff, sql.NullTime{Time: after, Valid: !after.IsZero()}, afterID)
+ ORDER BY last_change,document_id LIMIT 20`, s.uid(), since, interval(quiet), cutoff, sql.NullTime{Time: after, Valid: !after.IsZero()}, afterID)
 		if e != nil {
 			return false, e
 		}

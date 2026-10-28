@@ -120,6 +120,8 @@
 <fieldset {{if not $p.CanSave}}disabled{{end}}>
 <label><input type="checkbox" name="a_recognize" {{if not $p.Config.Automatic.RecognizeOff}}checked{{end}}> {{t "Recognize new BOOX pages automatically"}}</label>
 <label><input type="checkbox" name="a_summarize" {{if not $p.Config.Automatic.SummarizeOff}}checked{{end}}> {{t "Summarize notes with new recordings automatically"}}</label>
+<label>{{t "Wait before summarizing (minutes)"}} <input type="number" name="a_summarize_wait" min="0" max="120" step="1" required value="{{$p.Config.Automatic.SummarizeWaitMinutes}}"></label>
+<p class="hint">{{t "How long a note must go without changes before its minutes start. With 0 they start as soon as a new recording reaches the server, so a note you're still recording in may be summarized again after each recording."}}</p>
 </fieldset>
 <p class="small muted">{{t "On by default once its models are set up. It applies to notebooks that change after it starts, once they've been quiet for a few minutes. Pages are sent to your recognition provider; charges may apply."}}{{with $d.AutoSince}} {{t "On since {{.When}}." "When" .}}{{else}}{{if $d.AutoNew}} {{t "On. It applies to notebooks that change from now on."}}{{end}}{{end}}{{with $d.AutoWhy}} {{t .}}{{end}}</p>
 <p><button {{if not $p.CanSave}}disabled{{end}}>{{t "Save automatic processing"}}</button></p>

@@ -12,7 +12,16 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-28): **`today-615dbc1a9f01`**, app-only on schema **40**,
+Latest recorded deployment (2026-10-28): **`minutes-wait-0a8804fb6a4f`**, app-only on schema
+**40**, image `sha256:7eb69084eabba59c6e0e12584518bdaf951d13cc11197b0540d2b884d09e9e64`. The wait
+before automatic Audio Note Minutes is a setting (Settings → AI Tools and Recognition →
+Automatic Processing → **Wait before summarizing**, 0–120 minutes, default 10 when unset),
+stored as `AutomaticConfig.SummarizeWait`. 0 starts minutes as soon as a recording reaches the
+server; any change to the note still restarts a non-zero wait. Automatic recognition keeps its
+fixed five-minute wait. Checked live: the field shows the saved default (10). Rollback:
+`private/minutes-wait-0a8804fb6a4f/rollback.sh` returns to `today-615dbc1a9f01`.
+
+Previous deployment (2026-10-28): **`today-615dbc1a9f01`**, app-only on schema **40**,
 image `sha256:48e870c2f8a0d5c78020c71bb3bb7f923eb3aa73823b1d7d89780fd17a22dea0`. Phase 2 of the
 redesign: the home page is **Today**. Tasks are edited in place (`/?edit=<id>`; old
 `/tasks/<id>/edit` links redirect), show when they're due and the notebook page they came from

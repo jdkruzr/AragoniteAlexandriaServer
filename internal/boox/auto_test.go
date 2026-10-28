@@ -40,7 +40,7 @@ func TestAutomaticProcessingWaitsForQuietNewNotes(t *testing.T) {
 		}
 		return n
 	}
-	on := AutoConfig{Recognize: true, Summarize: true}
+	on := AutoConfig{Recognize: true, Summarize: true, SummarizeQuiet: 10 * time.Minute}
 	started := func(at time.Time) {
 		t.Helper()
 		if _, e := s.DB.ExecContext(ctx, `UPDATE alexandria_settings SET value=to_jsonb($2::text) WHERE key=$1`, settings.AutomaticSince, at.UTC().Format(time.RFC3339)); e != nil {
@@ -106,6 +106,18 @@ func TestAutomaticProcessingWaitsForQuietNewNotes(t *testing.T) {
 	if !run(on) {
 		t.Fatal("new recording not summarized")
 	}
+	// With no wait set, a new recording is summarized as soon as it arrives.
+	if _, e := s.DB.ExecContext(ctx, `UPDATE alexandria_note_minutes SET state='ready'`); e != nil {
+		t.Fatal(e)
+	}
+	putNoteBlob(t, s, "resource/data/rec2b.mp3", syntheticONY1(t, []byte("ID3 restarted body")))
+	age(time.Second)
+	if run(on) {
+		t.Fatal("summarized during the owner's ten-minute wait")
+	}
+	if !run(AutoConfig{Summarize: true}) {
+		t.Fatal("a zero wait should summarize the new recording right away")
+	}
 	// Skipped notebooks are left alone.
 	if _, e := s.DB.ExecContext(ctx, `UPDATE alexandria_note_minutes SET state='ready'; INSERT INTO alexandria_recognition_skip(source,notebook_id) VALUES('boox','note')`); e != nil {
 		t.Fatal(e)
@@ -148,7 +160,11 @@ func TestAutomaticMinutesTraversesFinishedNotebooks(t *testing.T) {
 			start := make(chan struct{})
 			results := make(chan result, 2)
 			for i := 0; i < 2; i++ {
-				go func() { <-start; found, err := s.autoSummarize(ctx, since, cfg); results <- result{found, err} }()
+				go func() {
+					<-start
+					found, err := s.autoSummarize(ctx, since, cfg, 10*time.Minute)
+					results <- result{found, err}
+				}()
 			}
 			close(start)
 			queued := 0
@@ -170,12 +186,12 @@ func TestAutomaticMinutesTraversesFinishedNotebooks(t *testing.T) {
 			if err = s.DB.QueryRowContext(ctx, `SELECT state FROM alexandria_note_minutes WHERE notebook_id=$1`, fmt.Sprintf("survey-%03d", size)).Scan(&state); err != nil || state != "queued" {
 				t.Fatalf("last candidate: %s %v", state, err)
 			}
-			if found, err = s.autoSummarize(ctx, since, cfg); err != nil || found {
+			if found, err = s.autoSummarize(ctx, since, cfg, 10*time.Minute); err != nil || found {
 				t.Fatalf("queued twice: %v %v", found, err)
 			}
 			cancelled, cancel := context.WithCancel(ctx)
 			cancel()
-			if _, err = s.autoSummarize(cancelled, since, cfg); err == nil {
+			if _, err = s.autoSummarize(cancelled, since, cfg, 10*time.Minute); err == nil {
 				t.Fatal("cancelled scan succeeded")
 			}
 		})
