@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
@@ -84,11 +85,13 @@ func previewPages() []previewPage {
 		{"client-notebooks-empty", "notebooks", "Notebooks", "notebooks", "/files/forestnote", map[string]any{"Listing": listing.State{}}},
 		{"client-books", "books", "Books", "books", "/files/forestnote/books", map[string]any{"Listing": listing.State{}, "Entries": []books.LibraryBook{{ID: "b", Title: "Synthetic book", Authors: "A. Author", Format: "EPUB", FileState: "ready", ByteLength: 2 << 20}}}},
 		{"client-devices", "devices", "Client devices", "devices", "/settings/devices", map[string]any{"Devices": []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.UnixMilli(), FirstSeenMs: 1}}}},
-		{"tasks", "tasks", "Tasks", "tasks", "/", map[string]any{"Open": openTasks, "Done": doneTasks, "View": taskView{Sort: "due", Dir: "asc"}, "Sorts": taskSorts}},
-		{"tasks-empty", "tasks", "Tasks", "tasks", "/", map[string]any{"View": taskView{Sort: "due", Dir: "asc"}, "Sorts": taskSorts}},
-		{"tasks-trash", "tasks", "Tasks", "tasks", "/?show=deleted", map[string]any{"Open": trashTasks, "Trash": true, "View": taskView{Trash: true, Sort: "updated", Dir: "desc"}, "Sorts": taskSorts}},
-		{"task-edit", "task-edit", "Edit Task", "tasks", "/tasks/t1/edit", map[string]any{"Task": openTasks[0], "Due": "2026-10-20", "Return": "/?sort=updated"}},
-		{"task-purge", "task-purge", "Delete Permanently", "tasks", "/tasks/bulk", map[string]any{"Tasks": trashTasks, "Return": "/?show=deleted"}},
+		{"tasks", "tasks", "Today", "tasks", "/", todayPreview(openTasks, doneTasks, taskView{Sort: "due", Dir: "asc"}, now, map[string]any{
+			"Events":       []todayEvent{{Day: "Tue 27", Time: "14:00", Title: "Synthetic review", From: "Synthetic notebook", Link: "#"}, {Day: "Thu 29", Time: "All day", Title: "Synthetic holiday", Link: "#"}},
+			"NeedsRestore": 1})},
+		{"tasks-done", "tasks", "Today", "tasks", "/?done=show", todayPreview(openTasks, doneTasks, taskView{Sort: "due", Dir: "asc", ShowDone: true}, now, nil)},
+		{"tasks-edit", "tasks", "Today", "tasks", "/?edit=t1", todayPreview(openTasks, doneTasks, taskView{Sort: "updated", Dir: "desc", Edit: "t1"}, now, nil)},
+		{"tasks-empty", "tasks", "Today", "tasks", "/", todayPreview(nil, nil, taskView{Sort: "due", Dir: "asc"}, now, nil)},
+		{"tasks-trash", "tasks", "Deleted tasks", "tasks", "/?show=deleted", todayPreview(trashTasks, nil, taskView{Trash: true, Sort: "updated", Dir: "desc"}, now, nil)},
 		{"sources", "sources", "Add source", "sources", "/sources", nil},
 		{"help", "help", "Help", "help", "/help", map[string]any{"NativeBOOX": true}},
 	}
@@ -197,4 +200,32 @@ func writePreviewFile(t *testing.T, dir, name string, html []byte) {
 	if err := os.WriteFile(filepath.Join(dir, name+".html"), html, 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// todayPreview is the Today page's data for synthetic tasks, as the handler
+// builds it (English, America/Chicago). extra adds or replaces fields.
+func todayPreview(open, done []tasksvc.Task, v taskView, now time.Time, extra map[string]any) map[string]any {
+	loc, _ := time.LoadLocation("America/Chicago")
+	l := i18n.For("en", "")
+	rows := func(list []tasksvc.Task) []todayTask {
+		out := []todayTask{}
+		for _, t := range list {
+			row := todayTask{Task: t, Editing: v.Edit == t.ID}
+			if t.DueAt != nil {
+				row.Due, row.Urgent = dueLabel(l, *t.DueAt, now, loc)
+				row.DueInput = t.DueAt.In(loc).Format("2006-01-02")
+			}
+			if f := t.ForestNote; f != nil {
+				row.Source = &pageLink{URL: "#", Notebook: f.NotebookName, Page: 3}
+			}
+			out = append(out, row)
+		}
+		return out
+	}
+	d := map[string]any{"Open": rows(open), "Done": rows(done), "DoneCount": len(done), "Deleted": 1, "Trash": v.Trash, "View": v, "Sorts": taskSorts,
+		"Date": dateWords{l}.long(now.In(loc))}
+	for k, val := range extra {
+		d[k] = val
+	}
+	return d
 }

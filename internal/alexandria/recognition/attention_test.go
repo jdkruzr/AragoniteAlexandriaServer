@@ -25,8 +25,8 @@ func TestAttentionCountsCurrentFailedAndBlockedPages(t *testing.T) {
 		}
 	}
 	s := Store{DB: db}
-	if n, e := s.Attention(ctx); e != nil || n != 0 {
-		t.Fatal(n, e)
+	if f, b, e := s.Attention(ctx); e != nil || f+b != 0 {
+		t.Fatal(f, b, e)
 	}
 	add("boox", "failed", false, false)
 	add("client", "blocked", false, false)
@@ -34,10 +34,11 @@ func TestAttentionCountsCurrentFailedAndBlockedPages(t *testing.T) {
 	add("boox", "blocked", false, true) // a newer attempt replaced it
 	add("boox", "ready", false, false)
 	add("client", "queued", false, false)
-	n, e := s.Attention(ctx)
-	if e != nil || n != 2 {
-		t.Fatal(n, e)
+	f, b, e := s.Attention(ctx)
+	if e != nil || f != 1 || b != 1 {
+		t.Fatal(f, b, e)
 	}
+	n := f + b
 	v, e := s.List(ctx, Filter{})
 	if e != nil || v.Counts["failed"]+v.Counts["blocked"] != n {
 		t.Fatal("badge disagrees with the Jobs list", v.Counts, e)
@@ -51,7 +52,7 @@ func TestAttentionCountsCurrentFailedAndBlockedPages(t *testing.T) {
 	if _, e = tx.ExecContext(ctx, `SET LOCAL enable_seqscan=off`); e != nil {
 		t.Fatal(e)
 	}
-	rows, e := tx.QueryContext(ctx, `EXPLAIN SELECT count(*) FROM alexandria_recognition_job WHERE state IN ('failed','blocked') AND cleaned_at IS NULL AND superseded_by IS NULL`)
+	rows, e := tx.QueryContext(ctx, `EXPLAIN SELECT count(*) FILTER (WHERE state='failed'), count(*) FILTER (WHERE state='blocked') FROM alexandria_recognition_job WHERE state IN ('failed','blocked') AND cleaned_at IS NULL AND superseded_by IS NULL`)
 	if e != nil {
 		t.Fatal(e)
 	}

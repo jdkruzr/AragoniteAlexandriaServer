@@ -36,6 +36,18 @@ func (d Device) DisplayName() string {
 	return "Unnamed device"
 }
 
+// NeedsRestore counts the devices ListDevices reports as needing adoption
+// (bound to a replaced generation) that are not revoked, without counting
+// each device's pending operations.
+func (s Store) NeedsRestore(ctx context.Context) (int, error) {
+	var n int
+	err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM (SELECT site_id FROM sync_device_identity UNION SELECT site_id FROM sync_cursors) s
+		JOIN sync_device_generation g ON g.site_id = s.site_id
+		LEFT JOIN sync_device_identity i ON i.site_id = s.site_id
+		WHERE NOT COALESCE(i.revoked,false) AND g.generation <> (SELECT generation FROM sync_library_generation WHERE id=1)`).Scan(&n)
+	return n, err
+}
+
 // ListDevices returns every enrolled or syncing device, most recent first.
 func (s Store) ListDevices(ctx context.Context) ([]Device, error) {
 	rows, err := s.DB.QueryContext(ctx, `WITH sites AS (

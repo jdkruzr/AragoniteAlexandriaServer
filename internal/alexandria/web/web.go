@@ -31,7 +31,6 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/blob"
 )
 
@@ -74,16 +73,11 @@ var funcs = withFormats(template.FuncMap{
 	// num groups thousands: 1624 → "1,624".
 	// until is a rounded time left before t, such as "2 h 5 min".
 	// taskRow pairs a task with the Tasks view its row links back to.
-	"taskRow": func(t tasksvc.Task, v taskView, sources ...map[string]*NoteSource) any {
-		var src *NoteSource
-		if len(sources) == 1 {
-			src = sources[0][t.ID]
-		}
+	"taskRow": func(t todayTask, v taskView) any {
 		return struct {
-			Task   tasksvc.Task
-			View   taskView
-			Source *NoteSource
-		}{t, v, src}
+			todayTask
+			View taskView
+		}{t, v}
 	},
 	// eventRow pairs a Calendar row with whether it is in the trash.
 	"connection": connection,
@@ -201,8 +195,10 @@ type page struct {
 	// Attention counts recognition pages that need the owner, for the
 	// header badge; 0 hides it.
 	Attention int
-	Query     string // the header search box's text on the Search page
-	Back      string // this page's path and query, for header forms
+	// AttentionURL lists those pages: failed ones first, else the blocked.
+	AttentionURL string
+	Query        string // the header search box's text on the Search page
+	Back         string // this page's path and query, for header forms
 }
 
 // InLibrary reports whether the page belongs under the Library nav item:
@@ -246,7 +242,8 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		w.Header().Set("Content-Language", loc.Lang())
 		w.Header().Add("Vary", "Accept-Language")
 		p := page{SettingsSection: settingsSection(r), Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
-			Notice: notice(loc, r), Theme: Theme(r), Attention: d.attention(r.Context()), Back: returnPath(r)}
+			Notice: notice(loc, r), Theme: Theme(r), Back: returnPath(r)}
+		p.Attention, p.AttentionURL = d.attention(r.Context())
 		if section == "search" {
 			p.Query = r.URL.Query().Get("q")
 		}
@@ -316,20 +313,23 @@ func returnPath(r *http.Request) string {
 
 // attention is the header badge's count. It never fails a page: without a
 // database, or when the count is slow or fails, the badge is left off.
-func (d Deps) attention(ctx context.Context) int {
+func (d Deps) attention(ctx context.Context) (int, string) {
 	if d.DB == nil {
-		return 0
+		return 0, ""
 	}
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-	n, err := (recognition.Store{DB: d.DB}).Attention(ctx)
+	failed, blocked, err := (recognition.Store{DB: d.DB}).Attention(ctx)
 	if err != nil {
 		if d.Logger != nil {
 			d.Logger.Warn("recognition attention count unavailable", "code", diagnostics.Code(err))
 		}
-		return 0
+		return 0, ""
 	}
-	return n
+	if failed == 0 {
+		return blocked, "/jobs?state=blocked"
+	}
+	return failed + blocked, "/jobs?state=failed"
 }
 
 // Localizer picks the language for owner-facing text: the one chosen in

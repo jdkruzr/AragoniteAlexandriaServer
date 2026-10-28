@@ -99,10 +99,9 @@ func (f Filter) where() (string, error) {
 
 // Attention counts current failed and blocked pages across sources: the
 // pages the Jobs list shows as needing the owner (partial index 0040).
-func (s Store) Attention(ctx context.Context) (int, error) {
-	var n int
-	err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM alexandria_recognition_job WHERE state IN ('failed','blocked') AND cleaned_at IS NULL AND superseded_by IS NULL`).Scan(&n)
-	return n, err
+func (s Store) Attention(ctx context.Context) (failed, blocked int, err error) {
+	err = s.DB.QueryRowContext(ctx, `SELECT count(*) FILTER (WHERE state='failed'), count(*) FILTER (WHERE state='blocked') FROM alexandria_recognition_job WHERE state IN ('failed','blocked') AND cleaned_at IS NULL AND superseded_by IS NULL`).Scan(&failed, &blocked)
+	return failed, blocked, err
 }
 
 func (s Store) List(ctx context.Context, f Filter) (View, error) {

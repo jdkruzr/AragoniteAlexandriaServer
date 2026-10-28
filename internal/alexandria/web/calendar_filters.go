@@ -79,7 +79,27 @@ func (f calendarFilter) Matches(row calendarRow, source string) bool {
 	return true
 }
 func (f calendarFilter) remember(w http.ResponseWriter, r *http.Request, scope string) {
-	http.SetCookie(w, &http.Cookie{Name: sourceCookie + "_" + scope, Value: f.Hidden, Path: "/calendar", MaxAge: 31536000, HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"})
+	setFilterCookie(w, r, sourceCookie+"_"+scope, f.Hidden)
+}
+
+// setFilterCookie keeps a calendar visibility choice for the whole site:
+// Today's Next 7 days follows the event list's choice too. Earlier releases
+// scoped these cookies to /calendar; that copy is removed so it can't shadow
+// the new one there.
+func setFilterCookie(w http.ResponseWriter, r *http.Request, name, value string) {
+	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	http.SetCookie(w, &http.Cookie{Name: name, Value: value, Path: "/", MaxAge: 31536000, HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: secure})
+	http.SetCookie(w, &http.Cookie{Name: name, Path: "/calendar", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: secure})
+}
+
+// moveFilterCookies carries visibility choices saved under /calendar by
+// earlier releases over to the site-wide cookie, once, on a Calendar visit.
+func moveFilterCookies(w http.ResponseWriter, r *http.Request) {
+	for _, name := range []string{sourceCookie, sourceCookie + "_list", sourceCookie + "_grid"} {
+		if c, err := r.Cookie(name); err == nil {
+			setFilterCookie(w, r, name, cleanHidden(c.Value))
+		}
+	}
 }
 
 type calendarFilterForm struct {
@@ -133,7 +153,7 @@ func (d Deps) updateCalendarFilters(w http.ResponseWriter, r *http.Request) {
 	}
 	// Older clients used the shared visibility endpoint without a scope.
 	if scope == "" {
-		http.SetCookie(w, &http.Cookie{Name: sourceCookie, Value: f.Hidden, Path: "/calendar", MaxAge: 31536000, HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"})
+		setFilterCookie(w, r, sourceCookie, f.Hidden)
 		f.remember(w, r, "list")
 		f.remember(w, r, "grid")
 		back(w, r, calendarReturn(r), "Calendar visibility saved for this browser.")

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
@@ -147,8 +148,11 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 	if got := b.do("POST", "/tasks/"+id+"/complete", "", sameSite, true); got.Code != 303 {
 		t.Fatalf("complete: %d", got.Code)
 	}
-	if got := b.do("GET", "/tasks", "", nil, true); !strings.Contains(got.Body.String(), "Clear Completed Tasks") {
-		t.Fatal("completed task not listed as done")
+	if got := b.do("GET", "/tasks", "", nil, true); !strings.Contains(got.Body.String(), "Show 1 done") {
+		t.Fatal("completed task not counted as done")
+	}
+	if got := b.do("GET", "/?done=show", "", nil, true); !strings.Contains(got.Body.String(), "Clear completed tasks") || !strings.Contains(got.Body.String(), "Save seeds") {
+		t.Fatal("completed task not listed when done tasks are shown")
 	}
 	if got := b.do("POST", "/settings/caldav", "collection=Garden+jobs&due_mode=date_only", sameSite, true); got.Code != 303 {
 		t.Fatalf("caldav settings: %d", got.Code)
@@ -313,8 +317,8 @@ func TestTasksBulkActionsAndPermanentDelete(t *testing.T) {
 	if i, j := strings.Index(home, "Synthetic beta"), strings.Index(home, "Synthetic alpha"); i < 0 || j < 0 || i > j {
 		t.Fatal("title sort, descending: beta should come first")
 	}
-	if !strings.Contains(home, `value="`+alpha+`" form="task-bulk"`) || !strings.Contains(home, "Created ") {
-		t.Fatal("home page lacks task checkboxes or dates")
+	if !strings.Contains(home, `value="`+alpha+`" form="task-bulk"`) || !strings.Contains(home, `href="/?dir=desc&amp;edit=`+alpha+`&amp;sort=title#task-`+alpha+`"`) {
+		t.Fatal("home page lacks task checkboxes or editor links")
 	}
 	bulk := func(action string, extra string, ids ...string) *httptest.ResponseRecorder {
 		form := "action=" + action + "&return=%2F" + extra
@@ -339,9 +343,15 @@ func TestTasksBulkActionsAndPermanentDelete(t *testing.T) {
 	if got := bulk("restore", "", beta); got.Code != 303 {
 		t.Fatalf("bulk restore: %d", got.Code)
 	}
-	// Permanent delete asks first, then purges only what is in the trash.
-	if got := bulk("purge", "", alpha, beta); got.Code != 200 || !strings.Contains(got.Body.String(), "Synthetic alpha") || strings.Contains(got.Body.String(), "Synthetic beta") {
-		t.Fatalf("purge confirmation: %d", got.Code)
+	if home := b.do("GET", "/", "", nil, true).Body.String(); !strings.Contains(home, "Deleted tasks (1)") {
+		t.Fatal("the open view counts deleted tasks")
+	}
+	// Permanent delete needs its confirmation box ticked, then purges only what is in the trash.
+	if got := bulk("purge", "", alpha, beta); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "Tick+the+box") {
+		t.Fatalf("purge without confirmation: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	if body := b.do("GET", "/?show=deleted", "", nil, true).Body.String(); !strings.Contains(body, "Synthetic alpha") || !strings.Contains(body, `name="confirm" value="yes" required`) {
+		t.Fatal("an unconfirmed purge removed the task, or the trash lacks its confirmation box")
 	}
 	if got := bulk("purge", "&confirm=yes", alpha); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "notice_n=1") {
 		t.Fatalf("purge: %d %s", got.Code, got.Header().Get("Location"))
@@ -366,7 +376,80 @@ func TestTasksBulkActionsAndPermanentDelete(t *testing.T) {
 	if got := b.do("POST", "/tasks/"+beta+"/edit", "title=Synthetic+gamma&due=2026-11-01&detail=notes&return=%2F%3Fsort%3Dupdated", sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/?sort=updated") {
 		t.Fatalf("edit: %d %s", got.Code, got.Header().Get("Location"))
 	}
-	if got := b.do("GET", "/tasks/"+beta+"/edit", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), `value="2026-11-01"`) {
-		t.Fatalf("edit page: %d", got.Code)
+	// The editor is inline: old edit links land on it, and an empty title returns to it.
+	if got := b.do("GET", "/tasks/"+beta+"/edit?return=%2F%3Fsort%3Dupdated", "", nil, true); got.Code != 303 || got.Header().Get("Location") != "/?edit="+beta+"&sort=updated#task-"+beta {
+		t.Fatalf("edit link: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	if got := b.do("GET", "/?edit="+beta, "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), `value="2026-11-01"`) || !strings.Contains(got.Body.String(), `formaction="/tasks/`+beta+`/delete"`) {
+		t.Fatalf("inline editor: %d", got.Code)
+	}
+	if got := b.do("POST", "/tasks/"+beta+"/edit", "title=&return=%2F%3Fsort%3Dupdated", sameSite, true); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "edit="+beta) {
+		t.Fatalf("empty title: %d %s", got.Code, got.Header().Get("Location"))
+	}
+}
+
+// Today shows the next seven days of events, where note-action tasks came
+// from (with the page number), and Client devices that need a restore.
+func TestTodayEventsSourcesAndAttention(t *testing.T) {
+	r, db, _ := fixture(t)
+	b := browser{t, r}
+	if got := b.do("POST", "/settings/caldav", "collection=Tasks&due_mode=preserve&events_collection=Calendar&time_zone=America%2FChicago", sameSite, true); got.Code != 303 {
+		t.Fatalf("save time zone: %d", got.Code)
+	}
+	chicago, _ := time.LoadLocation("America/Chicago")
+	soon, later := time.Now().In(chicago).AddDate(0, 0, 2), time.Now().In(chicago).AddDate(0, 0, 9)
+	for title, day := range map[string]time.Time{"Synthetic soon": soon, "Synthetic later": later} {
+		if got := b.do("POST", "/calendar", "title="+url.QueryEscape(title)+"&date="+day.Format("2006-01-02")+"&start=14:00", sameSite, true); got.Code != 303 {
+			t.Fatalf("add %s: %d", title, got.Code)
+		}
+	}
+	if got := b.do("POST", "/tasks", "title=Synthetic+from+ink", sameSite, true); got.Code != 303 {
+		t.Fatalf("create task: %d", got.Code)
+	}
+	var id string
+	if err := db.QueryRow(`SELECT task_id FROM alexandria_tasks WHERE title='Synthetic from ink'`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO boox_page_index(notebook_id,page_id,page_number,state,text,input_version) VALUES ('synthnb','synthpage',7,'ready','','synthetic')`,
+		`INSERT INTO alexandria_note_action_item(source,notebook_id,page_id,color,fingerprint,kind,item_id) VALUES ('boox','synthnb','synthpage','red','f1','task','` + id + `')`,
+		`INSERT INTO sync_library_generation(id,generation) VALUES (1,repeat('a',64)) ON CONFLICT (id) DO NOTHING`,
+		`INSERT INTO sync_device_identity(site_id,token_hash,created_at) VALUES ('synthsite1',repeat('1',64),0),('synthsite2',repeat('2',64),0),('synthsite3',repeat('3',64),0)`,
+		`UPDATE sync_device_identity SET revoked=true WHERE site_id='synthsite3'`,
+		`INSERT INTO sync_device_generation(site_id,generation) SELECT 'synthsite1',generation FROM sync_library_generation`,
+		`INSERT INTO sync_device_generation(site_id,generation) VALUES ('synthsite2',repeat('b',64)),('synthsite3',repeat('b',64))`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatal(q, err)
+		}
+	}
+	home := b.do("GET", "/", "", nil, true).Body.String()
+	if !strings.Contains(home, "Synthetic soon") || strings.Contains(home, "Synthetic later") {
+		t.Fatal("Next 7 days should list only this week's event")
+	}
+	// It follows the calendars Calendar's event list hides in this browser, and says so.
+	hiddenLocal := b.do("GET", "/", "", map[string]string{"Cookie": "alexandria_calendar_sources_list=local"}, true).Body.String()
+	if strings.Contains(hiddenLocal, "Synthetic soon") || !strings.Contains(hiddenLocal, "1 calendar hidden by Calendar&#39;s event filter") {
+		t.Fatal("a calendar hidden in Calendar's event list should be left out of Next 7 days, with a note")
+	}
+	if !strings.Contains(home, "Notebook page, p. 7") {
+		t.Fatal("the note-action task lacks its page number")
+	}
+	if !strings.Contains(home, "1 Client device needs a restore") {
+		t.Fatal("the attention notice should count the one unrevoked device on an old generation")
+	}
+	// The recognition part links to pages that are there: blocked ones when none failed.
+	job := func(state string) {
+		if _, err := db.Exec(`INSERT INTO alexandria_recognition_job(id,source,notebook_id,page_id,state) VALUES (gen_random_uuid(),'boox','synthnb',gen_random_uuid()::text,$1)`, state); err != nil {
+			t.Fatal(err)
+		}
+	}
+	job("blocked")
+	if home = b.do("GET", "/", "", nil, true).Body.String(); !strings.Contains(home, `<a href="/jobs?state=blocked">1 page needs attention in Recognition</a>`) {
+		t.Fatal("only blocked pages: the notice should open the blocked list")
+	}
+	job("failed")
+	if home = b.do("GET", "/", "", nil, true).Body.String(); !strings.Contains(home, `<a href="/jobs?state=failed">2 pages need attention in Recognition</a>`) || !strings.Contains(home, `nav-count" title="2 pages need attention">2</span>`) {
+		t.Fatal("failed and blocked: the notice and badge count both and open the failed list")
 	}
 }

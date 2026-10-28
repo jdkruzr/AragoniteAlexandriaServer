@@ -1,55 +1,99 @@
 {{define "content"}}{{$d := .Data}}{{$v := $d.View}}
-<div class="page-head"><h1>{{if $d.Trash}}{{t "Deleted Tasks"}}{{else}}{{t "Tasks"}}{{end}} {{template "help" "tasks.overview"}}</h1><a class="button secondary" href="{{$v.Toggle}}">{{if $d.Trash}}{{t "Back to tasks"}}{{else}}{{t "Deleted tasks"}}{{end}}</a></div>
-{{template "connection" (connection .Base "tasks")}}
+<div class="today">
+<section class="today-tasks" aria-labelledby="today-title">
+<div class="today-head">
+  <div>
+    <h1 id="today-title">{{if $d.Trash}}{{t "Deleted tasks"}}{{else}}{{t "Today"}}{{end}} {{template "help" "tasks.overview"}}</h1>
+    {{if not $d.Trash}}<p class="today-date">{{$d.Date}}</p>{{end}}
+  </div>
+  <div class="today-controls">
+    <form class="today-sort" method="get" action="/">
+      {{if $d.Trash}}<input type="hidden" name="show" value="deleted">{{end}}{{if and $v.ShowDone (not $d.Trash)}}<input type="hidden" name="done" value="show">{{end}}<input type="hidden" name="dir" value="{{$v.Dir}}">
+      <label class="visually-hidden" for="task-sort">{{t "Sort by"}}</label>
+      <select id="task-sort" name="sort" data-autosubmit>{{range $d.Sorts}}<option value="{{.}}" {{if eq . $v.Sort}}selected{{end}}>{{if eq . "due"}}{{t "Due date"}}{{else if eq . "created"}}{{t "Created"}}{{else if eq . "updated"}}{{t "Updated"}}{{else}}{{t "Title"}}{{end}}</option>{{end}}</select>
+      <button class="btn btn-secondary" data-sort-submit>{{t "Sort"}}</button>
+    </form>
+    <a class="btn btn-ghost" href="{{$v.Flip}}">{{if eq $v.Dir "desc"}}{{icon "sort-descending"}}{{else}}{{icon "sort-ascending"}}{{end}} {{t $v.Direction}}</a>
+    <a class="btn btn-ghost" href="{{$v.Toggle}}">{{if $d.Trash}}{{t "Back to tasks"}}{{else}}{{t "Deleted tasks ({{.Count}})" $d.Deleted}}{{end}}</a>
+  </div>
+</div>
+{{if and (not $d.Trash) (or .Attention $d.NeedsRestore)}}<p class="notice notice-attention"><strong>{{t "Needs attention:"}}</strong> {{if .Attention}}<a href="{{.AttentionURL}}">{{t "{{.Count}} pages need attention in Recognition" .Attention}}</a>{{end}}{{if and .Attention $d.NeedsRestore}} <span aria-hidden="true">·</span> {{end}}{{if $d.NeedsRestore}}<a href="/files/forestnote/devices">{{t "{{.Count}} Client devices need a restore" $d.NeedsRestore}}</a>{{end}}</p>{{end}}
 {{if not $d.Trash}}
-<form class="inline" method="post" action="/tasks">
-  <input type="hidden" name="return" value="{{$v.URL}}">
-  <input name="title" placeholder="{{t "New task"}}" required maxlength="500" aria-label="{{t "New task"}}">
-  <input type="date" name="due" aria-label="{{t "Due date"}}">
-  <button>{{t "Add task"}}</button>
+<form class="task-add" method="post" action="/tasks">
+  <input type="hidden" name="return" value="{{$v.List}}">
+  <input class="input" name="title" placeholder="{{t "Add a task"}}" required maxlength="500" aria-label="{{t "New task"}}">
+  <input class="input" type="date" name="due" aria-label="{{t "Due date"}}">
+  <button class="btn btn-primary">{{t "Add"}}</button>
 </form>
 {{end}}
-<form class="inline task-sort" method="get" action="/">
-  {{if $d.Trash}}<input type="hidden" name="show" value="deleted">{{end}}
-  <label>{{t "Sort by"}} <select name="sort">{{range $d.Sorts}}<option value="{{.}}" {{if eq . $v.Sort}}selected{{end}}>{{if eq . "due"}}{{t "Due date"}}{{else if eq . "created"}}{{t "Created"}}{{else if eq . "updated"}}{{t "Updated"}}{{else}}{{t "Title"}}{{end}}</option>{{end}}</select></label>
-  <select name="dir" aria-label="{{t "Order"}}"><option value="asc" {{if eq $v.Dir "asc"}}selected{{end}}>{{t "Oldest or A–Z first"}}</option><option value="desc" {{if eq $v.Dir "desc"}}selected{{end}}>{{t "Newest or Z–A first"}}</option></select>
-  <button class="secondary">{{t "Sort"}}</button>
-</form>
 {{if or $d.Open $d.Done}}
-<h2>{{t "Bulk Actions"}}</h2>
-<p class="muted small">{{t "Tick tasks below, then choose what to do with them."}}</p>
-<form id="task-bulk" class="inline task-bulk" method="post" action="/tasks/bulk">
-  <input type="hidden" name="return" value="{{$v.URL}}">
+<form id="task-bulk" class="selection-bar" method="post" action="/tasks/bulk" data-selection-bar data-count-template="{{t "Selected: {n}"}}">
+  <input type="hidden" name="return" value="{{$v.List}}">
   <label class="select-all" hidden><input type="checkbox" data-select-all="task-bulk"> {{t "Select all"}}</label>
-  {{if $d.Trash}}<button name="action" value="restore">{{t "Restore"}}</button><button class="danger" name="action" value="purge">{{t "Delete permanently"}}</button>
-  {{else}}<button name="action" value="complete">{{t "Mark done"}}</button><button class="secondary" name="action" value="reopen">{{t "Reopen"}}</button><button class="quiet" name="action" value="delete">{{t "Delete"}}</button>{{end}}
+  <span class="selection-count" data-selection-count hidden></span>
+  {{if $d.Trash}}<button class="btn btn-secondary" name="action" value="restore" formnovalidate>{{t "Restore"}}</button>
+  <label class="confirm-inline"><input type="checkbox" name="confirm" value="yes" required data-arm> {{t "Delete the selected tasks permanently"}}</label><button class="btn btn-danger" name="action" value="purge" data-armed>{{t "Delete permanently"}}</button>
+  {{else}}<button class="btn btn-secondary" name="action" value="complete">{{t "Mark done"}}</button><button class="btn btn-secondary" name="action" value="reopen">{{t "Reopen"}}</button><button class="btn btn-ghost danger-text" name="action" value="delete">{{t "Delete"}}</button>{{end}}
+  <button class="btn btn-ghost" type="reset" data-selection-clear hidden>{{t "Clear"}}</button>
 </form>
 {{end}}
-<h2>{{if $d.Trash}}{{t "Deleted"}}{{else}}{{t "To Do"}}{{end}}</h2>
-{{if not $d.Open}}<p class="empty">{{t "Nothing to do."}}</p>{{else}}<ul class="tasks">{{range $d.Open}}{{template "task" (taskRow . $v $d.Sources)}}{{end}}</ul>{{end}}
+{{if $d.Trash}}
+{{if or $d.Open $d.Done}}<ul class="task-list">{{range $d.Open}}{{template "deleted-task" (taskRow . $v)}}{{end}}{{range $d.Done}}{{template "deleted-task" (taskRow . $v)}}{{end}}</ul>{{else}}<p class="empty">{{t "No deleted tasks."}}</p>{{end}}
+{{else}}
+{{if not $d.Open}}<p class="empty">{{t "Nothing to do."}}</p>{{else}}<ul class="task-list">{{range $d.Open}}{{template "task" (taskRow . $v)}}{{end}}</ul>{{end}}
 {{if $d.Done}}
-<h2>{{t "Done"}}</h2>
-<ul class="tasks done">{{range $d.Done}}{{template "task" (taskRow . $v $d.Sources)}}{{end}}</ul>
-{{if not $d.Trash}}<form method="post" action="/tasks/purge-completed"><input type="hidden" name="return" value="{{$v.URL}}"><button class="quiet">{{t "Clear Completed Tasks"}}</button></form>{{end}}
+<div class="done-head" id="done"><a class="btn btn-ghost" href="{{$v.DoneToggle}}">{{if $v.ShowDone}}{{t "Hide done"}}{{else}}{{t "Show {{.Count}} done" $d.DoneCount}}{{end}}</a>
+{{if $v.ShowDone}}<form method="post" action="/tasks/purge-completed"><input type="hidden" name="return" value="{{$v.List}}"><button class="btn btn-ghost">{{t "Clear completed tasks"}}</button></form>{{end}}</div>
+{{if $v.ShowDone}}<ul class="task-list done">{{range $d.Done}}{{template "task" (taskRow . $v)}}{{end}}</ul>{{end}}
 {{end}}
+{{end}}
+</section>
+{{if not $d.Trash}}
+<aside class="today-side" aria-labelledby="next-title">
+  <div class="side-head"><h6 id="next-title">{{t "Next 7 days"}}</h6><a class="btn btn-ghost" href="/calendar/new?return=%2F">{{icon "plus"}} {{t "Event"}}</a></div>
+  {{if $d.Events}}<ul class="next-events">{{range $d.Events}}<li><a href="{{.Link}}"><span class="ev-when"><span class="ev-day">{{.Day}}</span><span class="ev-time">{{.Time}}</span></span><span class="ev-what"><span class="ev-title">{{.Title}}</span>{{with .From}}<span class="ev-from">{{t "From {{.Notebook}}" "Notebook" .}}</span>{{end}}</span></a></li>{{end}}</ul>
+  {{else}}<p class="empty">{{t "Nothing in the next 7 days."}}</p>{{end}}
+  {{with $d.HiddenCalendars}}<p class="muted small"><a href="/calendar#upcoming">{{t "{{.Count}} calendars hidden by Calendar's event filter" .}}</a></p>{{end}}
+  {{if $d.EventsIncomplete}}<p class="muted small">{{t "Some events couldn't be read. Open the calendar for details."}}</p>{{end}}
+  <p><a href="/calendar">{{t "Open calendar"}}</a></p>
+  {{template "connection" (connection .Base "tasks")}}
+</aside>
+{{end}}
+</div>
 <script src="/static/tasks.js?v={{version}}" defer></script>
 {{end}}
 
-{{define "task"}}{{$t := .Task}}
-<li>
+{{define "task"}}{{$t := .Task}}{{$done := or (eq $t.Status "completed") (eq $t.Status "cancelled")}}
+<li class="task{{if .Editing}} editing{{end}}{{if $done}} is-done{{end}}" id="task-{{$t.ID}}">
   <input type="checkbox" name="id" value="{{$t.ID}}" form="task-bulk" aria-label="{{t "Select {{.Title}}" "Title" $t.Title}}">
-  <span class="title">{{$t.Title}}</span>
-  {{if $t.DueAt}}<span class="muted">{{t "due {{.When}}" "When" (time $t.DueAt)}}</span>{{end}}
-  {{if $t.ForestNote}}<span class="badge">Alexandria Client</span><a class="small" href="/files/forestnote?notebook={{$t.ForestNote.NotebookID}}&page={{$t.ForestNote.PageID}}#page-{{$t.ForestNote.PageID}}">{{if $t.ForestNote.NotebookName}}{{$t.ForestNote.NotebookName}}{{else}}{{t "Notebook page"}}{{end}}</a>{{end}}
-  {{with .Source}}<span class="badge">{{t "From note"}}</span><a class="small" href="{{.URL}}">{{if .Notebook}}{{.Notebook}}{{else}}{{t "Notebook page"}}{{end}}</a>{{end}}
-  {{if $t.Detail}}<div class="muted small">{{deref $t.Detail}}</div>{{end}}
-  {{if not $t.Deleted}}
-  <span class="row-actions">
-    {{if ne $t.Status "completed"}}<form method="post" action="/tasks/{{$t.ID}}/complete"><input type="hidden" name="return" value="{{.View.URL}}"><button>{{t "Done"}}</button></form>{{end}}
-    <a class="button secondary" href="/tasks/{{$t.ID}}/edit?return={{.View.URL}}">{{t "Edit"}}</a>
-    <form method="post" action="/tasks/{{$t.ID}}/delete"><input type="hidden" name="return" value="{{.View.URL}}"><button class="quiet">{{t "Delete"}}</button></form>
-  </span>
+  <div class="task-body">
+  {{if .Editing}}
+    <form class="task-editor" method="post" action="/tasks/{{$t.ID}}/edit">
+      <input type="hidden" name="return" value="{{.View.List}}">
+      <label class="editor-field">{{t "Title"}} <input class="input" name="title" value="{{$t.Title}}" required maxlength="500" autofocus data-title></label>
+      <div class="editor-due"><label class="editor-field">{{t "Due date"}} <input class="input" type="date" name="due" value="{{.DueInput}}" data-due></label><button class="btn btn-ghost" type="button" data-clear-due hidden>{{t "No due date"}}</button></div>
+      <label class="editor-field">{{t "Notes"}} <textarea class="input" name="detail" rows="3">{{deref $t.Detail}}</textarea></label>
+      <p class="task-stamp">{{t "Created {{.Created}} · Updated {{.Updated}}" "Created" ($t.CreatedAt.Local.Format "2006-01-02 15:04") "Updated" ($t.UpdatedAt.Local.Format "2006-01-02 15:04")}}</p>
+      <div class="editor-actions"><button class="btn btn-primary" data-save>{{t "Save"}}</button><a class="btn btn-secondary" href="{{.View.List}}">{{t "Cancel"}}</a><button class="btn btn-ghost danger-text push" formaction="/tasks/{{$t.ID}}/delete" formnovalidate>{{t "Delete"}}</button></div>
+    </form>
+  {{else}}
+    <a class="task-title" href="{{.View.Editing $t.ID}}">{{$t.Title}}</a>
+    <div class="task-meta">{{if .Due}}<span class="due{{if .Urgent}} urgent{{end}}">{{.Due}}</span>{{end}}{{with .Source}}<a class="task-source" href="{{.URL}}">{{icon "notebook"}} {{if .Notebook}}{{.Notebook}}{{else}}{{t "Notebook page"}}{{end}}{{if .Page}}{{t ", p. {{.Page}}" "Page" .Page}}{{end}}</a>{{end}}{{with deref $t.Detail}}<span class="task-notes">{{.}}</span>{{end}}</div>
   {{end}}
-  <span class="task-dates muted small">{{t "Created {{.Created}} · Updated {{.Updated}}" "Created" ($t.CreatedAt.Local.Format "2006-01-02 15:04") "Updated" ($t.UpdatedAt.Local.Format "2006-01-02 15:04")}}</span>
+  </div>
+  {{if not .Editing}}{{if $done}}<form method="post" action="/tasks/bulk"><input type="hidden" name="return" value="{{.View.List}}"><input type="hidden" name="id" value="{{$t.ID}}"><button class="btn btn-ghost" name="action" value="reopen">{{t "Reopen"}}</button></form>
+  {{else}}<form method="post" action="/tasks/{{$t.ID}}/complete"><input type="hidden" name="return" value="{{.View.List}}"><button class="btn btn-ghost btn-icon" title="{{t "Mark done"}}" aria-label="{{t "Mark {{.Title}} done" "Title" $t.Title}}">{{icon "check-circle"}}</button></form>{{end}}{{end}}
+</li>
+{{end}}
+
+{{define "deleted-task"}}{{$t := .Task}}
+<li class="task deleted" id="task-{{$t.ID}}">
+  <input type="checkbox" name="id" value="{{$t.ID}}" form="task-bulk" aria-label="{{t "Select {{.Title}}" "Title" $t.Title}}">
+  <div class="task-body"><span class="task-title">{{$t.Title}}</span>
+    <div class="task-meta">{{t "Created {{.Created}} · Updated {{.Updated}}" "Created" ($t.CreatedAt.Local.Format "2006-01-02 15:04") "Updated" ($t.UpdatedAt.Local.Format "2006-01-02 15:04")}}</div></div>
+  <form class="deleted-actions" method="post" action="/tasks/bulk"><input type="hidden" name="return" value="{{.View.List}}"><input type="hidden" name="id" value="{{$t.ID}}">
+    <button class="btn btn-secondary" name="action" value="restore" formnovalidate>{{t "Restore"}}</button>
+    <label class="confirm-inline"><input type="checkbox" name="confirm" value="yes" required data-arm> {{t "Permanently"}}</label><button class="btn btn-danger" name="action" value="purge" data-armed>{{t "Delete"}}</button>
+  </form>
 </li>
 {{end}}

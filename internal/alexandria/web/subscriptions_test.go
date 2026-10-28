@@ -160,7 +160,7 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 	w := call("POST", "/calendar/subscriptions/visibility", "en", d.PublicURL, url.Values{"visible": {"local"}, "return": {ret}}, nil)
 	var cookie *http.Cookie
 	for _, c := range w.Result().Cookies() {
-		if c.Name == sourceCookie {
+		if c.Name == sourceCookie && c.MaxAge >= 0 { // not the expiry of the old /calendar copy
 			cookie = c
 		}
 	}

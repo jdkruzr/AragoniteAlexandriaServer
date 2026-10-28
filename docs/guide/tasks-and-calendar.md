@@ -31,61 +31,82 @@ times in this zone.
 
 ## Tasks
 
-Select **Tasks** in the top bar. It's also the home page.
+**Today** is the home page: select **Today** in the top bar. Open tasks are
+on the left, the next seven days of events on the right. A tinted **Needs
+attention** line appears when recognition has pages waiting for you or an
+Alexandria Client device needs a restore; each part links to where you fix it.
 
 ### Adding and Editing
 
-1. Type into **New task**, optionally pick a **Due date**, and select **Add
-   task**.
-2. To change a task, select **Edit**. You can change its **Title**, **Due
-   date** and **Notes**, then **Save**.
-3. Select **Done** on a task to mark it complete. Completed tasks move to the
-   **Done** list.
+1. Type into **Add a task**, optionally pick a due date, and select **Add**
+   (or press Enter).
+2. To change a task, select its title. It opens in place: change the
+   **Title**, **Due date** and **Notes**, then **Save**, or **Cancel**. **No
+   due date** empties the date. **Delete** here moves the task to Deleted
+   tasks.
+3. Select the tick beside a task to mark it done.
+
+Under each title: when it's due (**Due today**, **Due tomorrow**, **Due Fri**,
+**Overdue · Oct 20**; today and overdue are highlighted), the notebook page it
+came from, and the start of its notes.
 
 Due dates in the web app are dates only. A CalDAV app can set a time of day;
 see **Due dates** below.
 
 ### Sorting
 
-Use **Sort by** (**Due date**, **Created**, **Updated** or **Title**) and the
-order menu (**Oldest or A–Z first** / **Newest or Z–A first**), then **Sort**.
+Pick **Due date**, **Created**, **Updated** or **Title** from the menu beside
+the date. The link next to it flips the order (**Soonest first** / **Latest
+first**, **Oldest first** / **Newest first**, or **A–Z** / **Z–A**).
 
-### Bulk Actions
+### Several Tasks at Once
 
-Tick the boxes beside tasks, then choose under **Bulk Actions**:
+Tick the boxes beside tasks. A bar appears with how many you picked:
 
 | Button | What it does |
 |---|---|
 | **Mark done** | Completes the ticked tasks. |
-| **Reopen** | Puts completed tasks back in **To Do**. |
-| **Delete** | Moves the ticked tasks to Deleted Tasks. |
+| **Reopen** | Puts completed tasks back with the open ones. |
+| **Delete** | Moves the ticked tasks to Deleted tasks. |
+| **Clear** | Unticks everything. |
 
-**Clear Completed Tasks**, under the **Done** list, moves every completed task
-to Deleted Tasks in one go.
+### Done Tasks
+
+Completed tasks are hidden; **Show 1 done** (with the count) lists them, struck
+through, each with **Reopen**. **Clear completed tasks** moves every completed
+task to Deleted tasks in one go.
 
 ### Deleted Tasks
 
 Deleting is a two-step affair, on purpose.
 
-1. **Delete** moves a task to **Deleted tasks** (the button at the top of the
-   page). It disappears from your apps but can be brought back.
-2. In Deleted Tasks, tick tasks and select **Restore** to bring them back, or
-   **Delete permanently**. Alexandria lists what will go and asks you to
-   confirm.
+1. **Delete** moves a task to **Deleted tasks** (the link at the top of the
+   page shows how many are there). It disappears from your apps but can be
+   brought back.
+2. In Deleted tasks, select **Restore** to bring a task back. To erase it,
+   tick **Permanently** beside it, then **Delete**. To erase several, tick
+   them, tick **Delete the selected tasks permanently** in the bar, and select
+   **Delete permanently**.
 
 A permanently deleted task is erased for good: your devices are told it's
 gone, and a device that still has an old copy can't bring it back.
 
 ### Where a Task Came From
 
-- **Alexandria Client** badge: made from an Alexandria Client page; the link
-  opens that page.
-- **From note** badge: made by [Note Actions](note-actions.md) from a BOOX
-  page; the link opens the page.
+A task made from a notebook page links to it, with the page number: **Garden
+Committee, p. 7**. That covers tasks made by [Note Actions](note-actions.md)
+from a BOOX page and tasks made from an Alexandria Client page.
+
+### Next 7 Days
+
+The right-hand column lists events from today through the next week, from your
+local calendar and every enabled subscription, with the notebook an event came
+from. Select one to open it. **+ Event** adds one; **Open calendar** shows the
+full calendar.
 
 ## Calendar
 
-Select **Calendar** in the top bar. **Upcoming** starts with the next 7 days,
+Select **Open calendar** on Today. **Upcoming** starts with the next 7 days,
 anchored to today; **Show next 30 days** extends that list. **Past 30 Days**
 stays below the main sections, and **Deleted events** has its own page.
 

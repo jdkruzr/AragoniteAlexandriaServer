@@ -147,13 +147,18 @@ func TestSeparateCalendarFiltersAndSevenDayHorizon(t *testing.T) {
 	ret := "/calendar?view=week&date=2026-11-01&order=calendar&days=14&grid_q=appointment"
 	w := call("POST", "/calendar/subscriptions/visibility", url.Values{"scope": {"list"}, "return": {ret}, "q": {"Subscribed"}, "visible": {id}}, nil)
 	var saved *http.Cookie
+	expired := false
 	for _, c := range w.Result().Cookies() {
-		if c.Name == sourceCookie+"_list" {
+		if c.Name == sourceCookie+"_list" && c.Path == "/" {
 			saved = c
 		}
+		if c.Name == sourceCookie+"_list" && c.Path == "/calendar" && c.MaxAge < 0 {
+			expired = true
+		}
 	}
-	if saved == nil || saved.Value != "local" {
-		t.Fatal("source preference not saved")
+	// Site-wide, so Today's Next 7 days follows it; the old /calendar copy is removed.
+	if saved == nil || saved.Value != "local" || !expired {
+		t.Fatal("source preference not saved for the whole site")
 	}
 	redirect, _ := url.Parse(w.Header().Get("Location"))
 	q := redirect.Query()
@@ -182,5 +187,22 @@ func TestSeparateCalendarFiltersAndSevenDayHorizon(t *testing.T) {
 	// Past uses list filters; no filtering or hiding of deleted events.
 	if strings.Contains(calendarSection(t, get("/calendar?list_hide="+id, nil), "past"), "Subscribed event -1") {
 		t.Fatal("past ignores list source")
+	}
+}
+
+// Choices saved under /calendar by earlier releases move to the whole site on
+// the next Calendar visit.
+func TestMoveFilterCookies(t *testing.T) {
+	r := httptest.NewRequest("GET", "/calendar", nil)
+	r.AddCookie(&http.Cookie{Name: sourceCookie + "_list", Value: "local"})
+	w := httptest.NewRecorder()
+	moveFilterCookies(w, r)
+	var site, old bool
+	for _, c := range w.Result().Cookies() {
+		site = site || c.Name == sourceCookie+"_list" && c.Path == "/" && c.Value == "local" && c.MaxAge > 0
+		old = old || c.Name == sourceCookie+"_list" && c.Path == "/calendar" && c.MaxAge < 0
+	}
+	if !site || !old || len(w.Result().Cookies()) != 2 {
+		t.Fatalf("%+v", w.Result().Cookies())
 	}
 }

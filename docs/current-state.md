@@ -12,7 +12,25 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-28): **`shell-4ef30f068197`**, with migration 0040
+Latest recorded deployment (2026-10-28): **`today-615dbc1a9f01`**, app-only on schema **40**,
+image `sha256:48e870c2f8a0d5c78020c71bb3bb7f923eb3aa73823b1d7d89780fd17a22dea0`. Phase 2 of the
+redesign: the home page is **Today**. Tasks are edited in place (`/?edit=<id>`; old
+`/tasks/<id>/edit` links redirect), show when they're due and the notebook page they came from
+with its number, and are permanently deleted with an inline "Permanently" tick instead of a
+confirmation page. A selection bar appears when tasks are ticked; done tasks sit behind "Show n
+done". Next 7 days lists events from the calendars Calendar's event list shows in this browser
+(its visibility cookies are now site-wide; `/calendar` copies move on the next visit) and says
+how many calendars it leaves out. A needs-attention line counts recognition pages and Client
+devices needing a restore; its recognition link opens failed pages, or blocked ones when none
+failed. Calendar left the top bar. Deployed in three steps the same day (`today-d5d8e333859f`,
+`today-f1bcc066bc10`: selection-bar fix and the list filter, `today-615dbc1a9f01`: site-wide
+filter cookies). Checked live: page numbers on real note-action tasks, Next 7 days matching
+Calendar's list (5 events, Travis County Dems hidden there and on Today, still in the grid),
+inline edit/save/clear, selection bar, done/reopen, and delete/permanent purge of a synthetic
+task. Rollback: `private/today-615dbc1a9f01/rollback.sh` returns to `today-f1bcc066bc10`; each
+earlier kit returns one step further, to `shell-4ef30f068197`.
+
+Previous deployment (2026-10-28): **`shell-4ef30f068197`**, with migration 0040
 (schema **40**), image `sha256:09ffdfab5fb01e4f6f59ce122578e880438049d5b518f78d568b340e08378bd6`.
 Phase 1 of the web redesign ([handoff](design/redesign-2a/README.md)): every page uses the
 Broadsheet look (vendored Source Serif 4 and Phosphor icons) in light and dark, with a

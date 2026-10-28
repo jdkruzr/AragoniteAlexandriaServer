@@ -432,7 +432,7 @@ func (i pageActionItem) URL() string {
 	if i.Kind == "event" {
 		return "/calendar/" + url.PathEscape(i.ID) + "/edit"
 	}
-	return "/tasks/" + url.PathEscape(i.ID) + "/edit"
+	return "/?edit=" + url.QueryEscape(i.ID) + "#task-" + url.QueryEscape(i.ID)
 }
 
 func (s Service) pageActions(ctx context.Context, id, page string) ([]pageAction, []pageActionItem, error) {

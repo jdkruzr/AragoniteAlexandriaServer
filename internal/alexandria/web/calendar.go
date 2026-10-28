@@ -30,6 +30,7 @@ type calendarRow struct {
 // NoteSource is the BOOX page a task or event was made from (note actions).
 type NoteSource struct {
 	NotebookID, PageID, Notebook string
+	Page                         int // page number, 0 when unknown
 }
 
 // URL is the page in the BOOX notebook view.
@@ -43,8 +44,9 @@ func (d Deps) noteSources(ctx context.Context, kind string, ids []string) map[st
 	if len(ids) == 0 {
 		return out
 	}
-	rows, err := d.DB.QueryContext(ctx, `SELECT i.item_id,i.notebook_id,i.page_id,coalesce(n.body->>'title','')
+	rows, err := d.DB.QueryContext(ctx, `SELECT i.item_id,i.notebook_id,i.page_id,coalesce(n.body->>'title',''),coalesce(p.page_number,0)
 		FROM alexandria_note_action_item i LEFT JOIN boox_projection n ON n.domain='notebook' AND n.document_id=i.notebook_id
+		LEFT JOIN boox_page_index p ON p.notebook_id=i.notebook_id AND p.page_id=i.page_id
 		WHERE i.kind=$1 AND i.item_id=ANY($2)`, kind, ids)
 	if err != nil {
 		return out
@@ -53,7 +55,7 @@ func (d Deps) noteSources(ctx context.Context, kind string, ids []string) map[st
 	for rows.Next() {
 		var id string
 		var s NoteSource
-		if rows.Scan(&id, &s.NotebookID, &s.PageID, &s.Notebook) == nil {
+		if rows.Scan(&id, &s.NotebookID, &s.PageID, &s.Notebook, &s.Page) == nil {
 			out[id] = &s
 		}
 	}

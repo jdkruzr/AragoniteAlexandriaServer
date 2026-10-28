@@ -66,8 +66,15 @@ func docsPages() []previewPage {
 			{Source: "boox", Kind: "Highlight", NotebookName: "The Market Gardener", Snippet: "…plant garlic in the fall, a few weeks before the ground freezes…", URL: "#"},
 			{Source: "client", Kind: "Notebook page", NotebookName: "Bed layout sketches", PageNumber: 4, Snippet: "…bed 3: alliums (garlic, shallots), rotate from last year's tomatoes…", URL: "#"}},
 			"Native": []sourceMatch{{Title: "Garlic varieties to try", Kind: "Notebook", URL: "#"}}}},
-		{"tasks", "tasks", "Tasks", "tasks", "/", map[string]any{"Open": open, "Done": done, "View": taskView{Sort: "due", Dir: "asc"}, "Sorts": taskSorts,
-			"Sources": map[string]*NoteSource{"t1": garden, "t2": garden}}},
+		{"tasks", "tasks", "Today", "tasks", "/", func() map[string]any {
+			d := todayPreview(open, done, taskView{Sort: "due", Dir: "asc"}, now, map[string]any{"Events": []todayEvent{
+				{Day: "Wed 28", Time: "18:30", Title: "Seed swap at the library", From: "Garden Committee", Link: "#"},
+				{Day: "Sun 1", Time: "All day", Title: "Water shut-off at the garden", Link: "#"}}})
+			rows := d["Open"].([]todayTask)
+			rows[0].Source = &pageLink{URL: "#", Notebook: garden.Notebook, Page: 1}
+			rows[1].Source = &pageLink{URL: "#", Notebook: garden.Notebook, Page: 2}
+			return d
+		}()},
 		{"calendar", "calendar", "Calendar", "calendar", "/calendar", map[string]any{"View": calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: at(10, 18, 0, 0), Horizon: 7}, "Days": calendarDays(calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: at(10, 18, 0, 0), Horizon: 7}, upcoming, now), "Upcoming": upcoming, "Past": past, "Trash": false, "Zone": "America/Chicago", "Today": "2026-10-16"}},
 		{"settings-recognition", "settings-recognition", "AI tools and recognition", "settings", "/settings/recognition", map[string]any{"Providers": models,
 			"DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},

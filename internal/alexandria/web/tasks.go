@@ -20,14 +20,18 @@ import (
 // taskSorts are the orders the Tasks page offers, in menu order.
 var taskSorts = []string{"due", "created", "updated", "title"}
 
-// taskView is the list state kept in the URL (?show=deleted&sort=updated&dir=desc).
+// taskView is the list state kept in the URL (?show=deleted&sort=updated&dir=desc,
+// done=show to list finished tasks, edit=<id> for the task being edited).
 type taskView struct {
-	Trash     bool
-	Sort, Dir string
+	Trash, ShowDone bool
+	Sort, Dir, Edit string
 }
 
 func parseTaskView(q url.Values) taskView {
-	v := taskView{Trash: q.Get("show") == "deleted", Sort: q.Get("sort"), Dir: q.Get("dir")}
+	v := taskView{Trash: q.Get("show") == "deleted", ShowDone: q.Get("done") == "show", Sort: q.Get("sort"), Dir: q.Get("dir"), Edit: q.Get("edit")}
+	if len(v.Edit) > 200 {
+		v.Edit = ""
+	}
 	if !slices.Contains(taskSorts, v.Sort) {
 		v.Sort = "due"
 	}
@@ -49,6 +53,12 @@ func (v taskView) Query() string {
 	if v.Dir != "asc" {
 		q.Set("dir", v.Dir)
 	}
+	if v.ShowDone && !v.Trash {
+		q.Set("done", "show")
+	}
+	if v.Edit != "" {
+		q.Set("edit", v.Edit)
+	}
 	if len(q) == 0 {
 		return ""
 	}
@@ -59,7 +69,30 @@ func (v taskView) Query() string {
 func (v taskView) URL() string { return "/" + v.Query() }
 
 // Toggle is this view with the trash shown or hidden.
-func (v taskView) Toggle() string { v.Trash = !v.Trash; return v.URL() }
+func (v taskView) Toggle() string { v.Trash, v.Edit = !v.Trash, ""; return v.URL() }
+
+// List is this view with no task being edited: where forms return to.
+func (v taskView) List() string { v.Edit = ""; return v.URL() }
+
+// Editing is this view with the task id's editor open.
+func (v taskView) Editing(id string) string { v.Edit = id; return v.URL() + "#task-" + id }
+
+// Flip is this view sorted the other way.
+func (v taskView) Flip() string {
+	v.Edit = ""
+	if v.Dir == "desc" {
+		v.Dir = "asc"
+	} else {
+		v.Dir = "desc"
+	}
+	return v.URL()
+}
+
+// DoneToggle is this view with finished tasks shown or hidden.
+func (v taskView) DoneToggle() string { v.ShowDone, v.Edit = !v.ShowDone, ""; return v.URL() + "#done" }
+
+// Direction names the current order in the sort field's words.
+func (v taskView) Direction() string { return directionLabel(v.Sort, v.Dir) }
 
 // sortTasks orders tasks for a view. Tasks without a due date sort after dated
 // ones in either direction; ties fall back to creation order.
@@ -97,21 +130,20 @@ var taskActions = []string{"complete", "reopen", "delete", "restore", "purge"}
 func (d Deps) taskRoutes(mux *http.ServeMux) {
 	svc := func() tasksvc.TaskService { return tasksvc.NewTaskService(taskdb.NewStore(d.DB), nil) }
 	list := func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		v := parseTaskView(r.URL.Query())
-		var all []tasksvc.Task
-		var err error
-		if v.Trash {
-			all, err = svc().ListIncludingDeleted(r.Context())
-		} else {
-			all, err = svc().List(r.Context())
-		}
+		all, err := svc().ListIncludingDeleted(ctx)
 		if err != nil {
 			d.fail(w, err)
 			return
 		}
 		var open, done []tasksvc.Task
+		deleted := 0
 		for _, t := range all {
-			if v.Trash && !t.Deleted {
+			if t.Deleted {
+				deleted++
+			}
+			if v.Trash != t.Deleted {
 				continue
 			}
 			if t.Status == tasksvc.StatusCompleted || t.Status == tasksvc.StatusCancelled {
@@ -122,12 +154,34 @@ func (d Deps) taskRoutes(mux *http.ServeMux) {
 		}
 		sortTasks(open, v)
 		sortTasks(done, v)
-		ids := make([]string, 0, len(open)+len(done))
-		for _, t := range append(append([]tasksvc.Task{}, open...), done...) {
-			ids = append(ids, t.ID)
+		loc, now, l := settings.Zone(ctx, d.DB), time.Now(), d.Localizer(r)
+		sources := d.taskSources(ctx, append(append([]tasksvc.Task{}, open...), done...))
+		rows := func(list []tasksvc.Task) []todayTask {
+			out := make([]todayTask, 0, len(list))
+			for _, t := range list {
+				row := todayTask{Task: t, Source: sources[t.ID], Editing: v.Edit == t.ID && !t.Deleted}
+				if t.DueAt != nil {
+					row.Due, row.Urgent = dueLabel(l, *t.DueAt, now, loc)
+					row.DueInput = t.DueAt.In(loc).Format("2006-01-02")
+					if t.Status == tasksvc.StatusCompleted || t.Status == tasksvc.StatusCancelled {
+						row.Urgent = false
+					}
+				}
+				out = append(out, row)
+			}
+			return out
 		}
-		d.render(w, r, "tasks", "Tasks", "tasks", map[string]any{"Open": open, "Done": done, "Trash": v.Trash, "View": v, "Sorts": taskSorts,
-			"Sources": d.noteSources(r.Context(), "task", ids)})
+		data := map[string]any{"Open": rows(open), "Done": rows(done), "DoneCount": len(done), "Deleted": deleted, "Trash": v.Trash, "View": v, "Sorts": taskSorts,
+			"Date": dateWords{l}.long(now.In(loc)), "NeedsRestore": d.needsRestore(ctx)}
+		if !v.Trash {
+			events, incomplete, hidden, err := d.nextEvents(ctx, r, loc, now)
+			if err != nil {
+				d.fail(w, err)
+				return
+			}
+			data["Events"], data["EventsIncomplete"], data["HiddenCalendars"] = events, incomplete, hidden
+		}
+		d.render(w, r, "tasks", "Today", "tasks", data)
 	}
 	mux.HandleFunc("GET /{$}", list)
 	mux.HandleFunc("GET /tasks", list)
@@ -163,26 +217,21 @@ func (d Deps) taskRoutes(mux *http.ServeMux) {
 		}
 		back(w, r, returnTo(r), "Task deleted.")
 	})
+	// The editor is inline on Today; older links (note actions, bookmarks) land there.
 	mux.HandleFunc("GET /tasks/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
-		t, err := svc().Get(r.Context(), r.PathValue("id"))
-		if taskstore.IsNotFound(err) {
-			http.NotFound(w, r)
-			return
-		} else if err != nil {
-			d.fail(w, err)
-			return
-		}
-		due := ""
-		if t.DueAt != nil {
-			due = t.DueAt.In(settings.Zone(r.Context(), d.DB)).Format("2006-01-02")
-		}
-		d.render(w, r, "task-edit", "Edit Task", "tasks", map[string]any{"Task": t, "Due": due, "Return": returnTo(r)})
+		ret, _ := url.Parse(returnTo(r))
+		v := parseTaskView(ret.Query())
+		v.Edit = r.PathValue("id")
+		http.Redirect(w, r, v.Editing(v.Edit), http.StatusSeeOther)
 	})
 	mux.HandleFunc("POST /tasks/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
 		title := strings.TrimSpace(r.FormValue("title"))
 		ret := returnTo(r)
 		if title == "" {
-			back(w, r, "/tasks/"+url.PathEscape(r.PathValue("id"))+"/edit", "A task needs a title.")
+			u, _ := url.Parse(ret)
+			v := parseTaskView(u.Query())
+			v.Edit = r.PathValue("id")
+			back(w, r, v.URL(), "A task needs a title.")
 			return
 		}
 		detail := strings.TrimSpace(r.FormValue("detail"))
@@ -216,7 +265,7 @@ func (d Deps) taskRoutes(mux *http.ServeMux) {
 			return
 		}
 		if action == "purge" && r.PostForm.Get("confirm") != "yes" {
-			d.confirmPurge(w, r, svc(), ids, ret)
+			back(w, r, ret, "Tick the box to confirm permanent deletion.")
 			return
 		}
 		s, ctx := svc(), r.Context()
@@ -268,30 +317,6 @@ func (d Deps) taskRoutes(mux *http.ServeMux) {
 		}
 		back(w, r, returnTo(r), "Completed tasks cleared.")
 	})
-}
-
-// confirmPurge asks before deleting tasks permanently, listing what will go.
-func (d Deps) confirmPurge(w http.ResponseWriter, r *http.Request, s tasksvc.TaskService, ids []string, ret string) {
-	all, err := s.ListIncludingDeleted(r.Context())
-	if err != nil {
-		d.fail(w, err)
-		return
-	}
-	want := map[string]bool{}
-	for _, id := range ids {
-		want[id] = true
-	}
-	var chosen []tasksvc.Task
-	for _, t := range all {
-		if t.Deleted && want[t.ID] {
-			chosen = append(chosen, t)
-		}
-	}
-	if len(chosen) == 0 {
-		back(w, r, ret, "Select one or more tasks first.")
-		return
-	}
-	d.render(w, r, "task-purge", "Delete Permanently", "tasks", map[string]any{"Tasks": chosen, "Return": ret})
 }
 
 // returnTo is the Tasks view a form came from (a same-site path), or the home page.
