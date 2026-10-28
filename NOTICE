@@ -49,3 +49,11 @@ Ported behavioral surfaces:
 - BOOX protobuf schema, pressure-point parser and ink/geometry rendering
   (internal/booxpage, selectively ported and hardened from UltraBridge
   internal/booxnote and internal/booxrender under Apache-2.0)
+
+Bundled third-party assets:
+- Source Serif 4 web fonts (internal/alexandria/web/static/fonts), Copyright
+  Adobe, licensed under the SIL Open Font License 1.1 (fonts/OFL.txt), from
+  the @fontsource/source-serif-4 5.3.0 package (Latin and Latin Extended
+  subsets, 400 and 600, roman and italic)
+- Phosphor Icons duotone SVGs (internal/alexandria/web/icons), Copyright 2023
+  Phosphor Icons, MIT License (icons/LICENSE), from @phosphor-icons/core 2.1.1

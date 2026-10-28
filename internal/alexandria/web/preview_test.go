@@ -172,15 +172,21 @@ func TestWritePreviews(t *testing.T) {
 
 func writePreviewStatic(t *testing.T, dir string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(dir, "static"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	entries, _ := fs.ReadDir(assets, "static")
-	for _, e := range entries {
-		b, _ := fs.ReadFile(assets, "static/"+e.Name())
-		if err := os.WriteFile(filepath.Join(dir, "static", e.Name()), b, 0o644); err != nil {
-			t.Fatal(err)
+	err := fs.WalkDir(assets, "static", func(path string, e fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
+		if e.IsDir() {
+			return os.MkdirAll(filepath.Join(dir, path), 0o755)
+		}
+		b, err := fs.ReadFile(assets, path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(dir, path), b, 0o644)
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

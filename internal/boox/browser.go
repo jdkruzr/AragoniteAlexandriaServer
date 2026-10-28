@@ -18,16 +18,15 @@ var devicesTemplate = template.Must(template.New("devices.html").Funcs(web.Funcs
 
 func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *template.Template, title string, data any) {
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
-	if r.URL.Path == "/boox/books/upload" {
-		w.Header().Set("Content-Security-Policy", w.Header().Get("Content-Security-Policy")+"; script-src 'self'; connect-src 'self'")
-	}
+	// The shared shell's fonts and scripts (live updates, settings, the book
+	// importer) come from this server; nothing else is allowed.
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	if r.URL.Path == "/boox/notebook" {
 		// Typed text sizes and colours (booxpage.RichHTML generates them from
 		// validated numbers; no resource markup reaches the page).
 		w.Header().Set("Content-Security-Policy", w.Header().Get("Content-Security-Policy")+"; style-src-attr 'unsafe-inline'")
 	}
-	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}}.RenderContent(w, r, content, title, "boox", data)
+	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}, DB: s.DB, Logger: s.Logger}.RenderContent(w, r, content, title, "boox", data)
 }
 
 // renderPageStatus renders with a non-200 status. Writing the status first

@@ -851,6 +851,7 @@
   "Search looks through Alexandria Client page text and book annotations.": "Search looks through Alexandria Client page text and book annotations.",
   "Search notebook titles": "Search notebook titles",
   "Search notes, books and annotations": "Search notes, books and annotations",
+  "Search notes, books and highlights": "Search notes, books and highlights",
   "Search query": "Search query",
   "Search your library": "Search your library",
   "Searchable": "Searchable",
@@ -1090,6 +1091,8 @@
   "Use at least 12 characters (up to 72 bytes). Your browser may ask you to sign in again. Enrolled devices and API tokens keep working.": "Use at least 12 characters (up to 72 bytes). Your browser may ask you to sign in again. Enrolled devices and API tokens keep working.",
   "Use entered key, otherwise keep saved key": "Use entered key, otherwise keep saved key",
   "Use it": "Use it",
+  "Use the dark theme": "Use the dark theme",
+  "Use the light theme": "Use the light theme",
   "Use this address with your Alexandria account in any CalDAV task app. <strong>Date only</strong> drops the time of day from due dates for apps that handle times poorly.": "Use this address with your Alexandria account in any CalDAV task app. <strong>Date only</strong> drops the time of day from due dates for apps that handle times poorly.",
   "Used for task due dates and event times written or typed without a time zone, including note actions.": "Used for task due dates and event times written or typed without a time zone, including note actions.",
   "Version": "Version",
@@ -1161,7 +1164,6 @@
   "skipped": "skipped",
   "under a minute": "under a minute",
   "vLLM only: disable thinking (OpenAI format)": "vLLM only: disable thinking (OpenAI format)",
-  "via PowerSync": "via PowerSync",
   "{{.Count}} BOOX pages have no recognized text yet, so they can't be searched by meaning.": {
     "one": "{{.Count}} BOOX page has no recognized text yet, so it can't be searched by meaning.",
     "other": "{{.Count}} BOOX pages have no recognized text yet, so they can't be searched by meaning."
@@ -1221,6 +1223,10 @@
   "{{.Count}} pages in progress": {
     "one": "{{.Count}} page in progress",
     "other": "{{.Count}} pages in progress"
+  },
+  "{{.Count}} pages need attention": {
+    "one": "{{.Count}} page needs attention",
+    "other": "{{.Count}} pages need attention"
   },
   "{{.Count}} pages queued. Already active or paused pages were left with their existing jobs.": {
     "one": "{{.Count}} page queued. Already active or paused pages were left with their existing jobs.",

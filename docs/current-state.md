@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-10-27. Work continues on `main`. The Server port resumed on
+Updated 2026-10-28. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -12,7 +12,21 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-27): **`reader-copy-0c463e54b153`**, app-only on
+Latest recorded deployment (2026-10-28): **`shell-4ef30f068197`**, with migration 0040
+(schema **40**), image `sha256:09ffdfab5fb01e4f6f59ce122578e880438049d5b518f78d568b340e08378bd6`.
+Phase 1 of the web redesign ([handoff](design/redesign-2a/README.md)): every page uses the
+Broadsheet look (vendored Source Serif 4 and Phosphor icons) in light and dark, with a
+header theme toggle kept in a cookie. The Sources sidebar is gone: the header has Today ·
+Calendar · Library · Recognition · Settings, a search box and Help, and Library pages
+switch between BOOX and Alexandria Client with a source tab bar. Recognition shows a
+count of failed and blocked pages (partial index 0040). BOOX pages now allow this
+server's fonts and scripts, so `live.js` and `settings.js` run there. Checked live:
+theme carried from an Alexandria page to BOOX pages, fonts and `settings.js` load with no
+CSP errors, header search, both source tabs; the attention count was 0, as on `/jobs`.
+Rollback: `private/shell-4ef30f068197/rollback-schema.sh`, then `rollback.sh`, returns to
+`reader-copy-0c463e54b153`.
+
+Previous deployment (2026-10-27): **`reader-copy-0c463e54b153`**, app-only on
 schema **39**, image `sha256:6270368d851249142b32406c09e3ec584291ea07a9be12e865ae19643ba3487f`.
 The Refresh Reading Data page lists a stored book's earlier copies (cloud-account
 records with its fingerprint that have a reading position) and moves the book to one

@@ -233,6 +233,7 @@
   "Removed book": "Libro eliminado",
   "Restore selected…": "Restaurar selección…",
   "Restore to": "Restaurar en",
+  "Search notes, books and highlights": "Buscar en notas, libros y subrayados",
   "Set an embedding endpoint under Search by Meaning in Settings → AI Tools and Recognition. The optional local Ollama service must be installed before it can be used.": "Configura un endpoint de embeddings en Búsqueda por significado, en Ajustes → Herramientas de IA y reconocimiento. El servicio local opcional de Ollama debe estar instalado antes de poder usarse.",
   "Choose a time zone from the list.": "Elige una zona horaria de la lista.",
   "Choose pages…": "Elegir páginas…",
@@ -1112,6 +1113,8 @@
   "Use at least 12 characters (up to 72 bytes). Your browser may ask you to sign in again. Enrolled devices and API tokens keep working.": "Usa al menos 12 caracteres (hasta 72 bytes). Puede que tu navegador te pida iniciar sesión de nuevo. Los dispositivos registrados y los tokens de API siguen funcionando.",
   "Use entered key, otherwise keep saved key": "Usar la clave introducida o, si no, conservar la guardada",
   "Use it": "Usarla",
+  "Use the dark theme": "Usar el tema oscuro",
+  "Use the light theme": "Usar el tema claro",
   "Use this address with your Alexandria account in any CalDAV task app. <strong>Date only</strong> drops the time of day from due dates for apps that handle times poorly.": "Usa esta dirección con tu cuenta de Alexandria en cualquier app de tareas CalDAV. <strong>Solo fecha</strong> quita la hora de las fechas de vencimiento para las apps que manejan mal las horas.",
   "Used for task due dates and event times written or typed without a time zone, including note actions.": "Se usa para las fechas de vencimiento de tareas y las horas de eventos escritas sin zona horaria, incluidas las acciones de notas.",
   "Version": "Versión",
@@ -1186,7 +1189,6 @@
   "skipped": "omitido",
   "under a minute": "menos de un minuto",
   "vLLM only: disable thinking (OpenAI format)": "Solo vLLM: desactivar el razonamiento (formato OpenAI)",
-  "via PowerSync": "mediante PowerSync",
   "{{.Count}} BOOX pages have no recognized text yet, so they can't be searched by meaning.": {
     "many": "{{.Count}} páginas de BOOX aún no tienen texto reconocido, así que no se pueden buscar por significado.",
     "one": "{{.Count}} página de BOOX aún no tiene texto reconocido, así que no se puede buscar por significado.",
@@ -1261,6 +1263,11 @@
     "many": "{{.Count}} páginas en curso",
     "one": "{{.Count}} página en curso",
     "other": "{{.Count}} páginas en curso"
+  },
+  "{{.Count}} pages need attention": {
+    "one": "{{.Count}} página necesita atención",
+    "many": "{{.Count}} páginas necesitan atención",
+    "other": "{{.Count}} páginas necesitan atención"
   },
   "{{.Count}} pages queued. Already active or paused pages were left with their existing jobs.": {
     "many": "{{.Count}} páginas en cola. Las páginas ya activas o en pausa conservan sus trabajos.",

@@ -364,6 +364,27 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 		http.SetCookie(w, c)
 		back(w, r, "/settings?section=language#language", i18n.M("Language saved."))
 	})
+	// The header's light/dark toggle; "auto" goes back to the browser's choice.
+	mux.HandleFunc("POST /settings/theme", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		if r.ParseForm() != nil {
+			http.Error(w, "Invalid theme form.", 400)
+			return
+		}
+		choice := r.Form.Get("theme")
+		c := &http.Cookie{Name: ThemeCookie, Path: "/", HttpOnly: true, Secure: r.TLS != nil || strings.HasPrefix(d.PublicURL, "https://"), SameSite: http.SameSiteLaxMode}
+		switch choice {
+		case "light", "dark":
+			c.Value, c.MaxAge = choice, 400*24*3600
+		case "auto":
+			c.MaxAge = -1
+		default:
+			http.Error(w, "Unknown theme.", 400)
+			return
+		}
+		http.SetCookie(w, c)
+		back(w, r, r.Form.Get("back"), "")
+	})
 	for _, tab := range []string{"account", "search", "recognition", "integrations"} {
 		path := "/settings/" + tab
 		if tab == "account" {

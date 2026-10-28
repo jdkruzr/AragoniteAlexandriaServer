@@ -41,7 +41,8 @@ var assets embed.FS
 // funcs are declared with the English number/time formats merged in, so the
 // layout (parsed during package initialization) sees every name.
 var funcs = withFormats(template.FuncMap{
-	"tip": tip,
+	"tip":  tip,
+	"icon": icon,
 	// t translates owner-facing text; renderTemplate binds it to the
 	// request's language. This English default lets every template parse.
 	"t": i18n.English.T,
@@ -194,6 +195,24 @@ type page struct {
 	// live.js refreshes its data-live-region elements in place; without
 	// JavaScript a <noscript> meta refresh reloads the whole page.
 	Live int
+	// Theme is "light" or "dark" when chosen in the header; "" follows the
+	// browser.
+	Theme string
+	// Attention counts recognition pages that need the owner, for the
+	// header badge; 0 hides it.
+	Attention int
+	Query     string // the header search box's text on the Search page
+	Back      string // this page's path and query, for header forms
+}
+
+// InLibrary reports whether the page belongs under the Library nav item:
+// the overview and both sources' pages.
+func (p page) InLibrary() bool {
+	switch p.Section {
+	case "overview", "boox", "sources", "notebooks", "books", "devices", "client-settings":
+		return true
+	}
+	return false
 }
 
 func (d Deps) render(w http.ResponseWriter, r *http.Request, name, title, section string, data any) {
@@ -226,8 +245,12 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc)}).Funcs(formatFuncs(loc))
 		w.Header().Set("Content-Language", loc.Lang())
 		w.Header().Add("Vary", "Accept-Language")
-		err = t.ExecuteTemplate(&buf, "layout.html", page{SettingsSection: settingsSection(r), Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
-			Notice: notice(loc, r)})
+		p := page{SettingsSection: settingsSection(r), Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
+			Notice: notice(loc, r), Theme: Theme(r), Attention: d.attention(r.Context()), Back: returnPath(r)}
+		if section == "search" {
+			p.Query = r.URL.Query().Get("q")
+		}
+		err = t.ExecuteTemplate(&buf, "layout.html", p)
 	}
 	if err != nil {
 		d.fail(w, err)
@@ -264,6 +287,50 @@ func htmlT(l i18n.Localizer) func(string, ...any) template.HTML {
 
 // LanguageCookie holds the language chosen in Settings, per browser.
 const LanguageCookie = "alexandria_lang"
+
+// ThemeCookie holds the colour theme chosen in the header, per browser.
+const ThemeCookie = "alexandria_theme"
+
+// Theme is the request's chosen theme, "" when it follows the browser.
+func Theme(r *http.Request) string {
+	if c, err := r.Cookie(ThemeCookie); err == nil && (c.Value == "light" || c.Value == "dark") {
+		return c.Value
+	}
+	return ""
+}
+
+// returnPath is where a header form (the theme toggle) sends the browser
+// back to: this page without its one-time notice. A page rendered for a POST
+// can't be fetched again, so it returns home.
+func returnPath(r *http.Request) string {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		return "/"
+	}
+	u := *r.URL
+	q := u.Query()
+	q.Del("notice")
+	q.Del("notice_n")
+	u.RawQuery = q.Encode()
+	return u.RequestURI()
+}
+
+// attention is the header badge's count. It never fails a page: without a
+// database, or when the count is slow or fails, the badge is left off.
+func (d Deps) attention(ctx context.Context) int {
+	if d.DB == nil {
+		return 0
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	n, err := (recognition.Store{DB: d.DB}).Attention(ctx)
+	if err != nil {
+		if d.Logger != nil {
+			d.Logger.Warn("recognition attention count unavailable", "code", diagnostics.Code(err))
+		}
+		return 0
+	}
+	return n
+}
 
 // Localizer picks the language for owner-facing text: the one chosen in
 // Settings, then the browser's preference, then English.
@@ -326,7 +393,8 @@ func sameOrigin(public string, r *http.Request) bool {
 // back redirects to a same-site path after a form post. notice is English
 // message text (see i18n.M); an optional count is its plural count.
 func back(w http.ResponseWriter, r *http.Request, path, notice string, count ...int) {
-	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+	// Browsers read "/\\host" as "//host", another site.
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") || strings.HasPrefix(path, "/\\") {
 		path = "/"
 	}
 	if notice != "" {
