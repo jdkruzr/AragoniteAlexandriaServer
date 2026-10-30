@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-10-28. Work continues on `main`. The Server port resumed on
+Updated 2026-10-30. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -12,7 +12,33 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-28): **`minutes-wait-0a8804fb6a4f`**, app-only on schema
+Latest recorded deployment (2026-10-30): **`library-ed33cc396d24`**, app-only on schema **41**,
+image `sha256:8d7789897a7deea9a0eb89c0302ab925373a24a9c1a0a1476774d7c5523dcdb6`, on top of
+**`library-cc1b8e4d21f2`** (migration 0041, image `sha256:4f449decb74bf8191d3bd74d49e7fce52f7e0611f811c2188f6802472cadc298`).
+Phase 3a of the redesign: the Library's Notebooks tab for both sources. `/library` opens the
+source last shown (cookie `alexandria_library_source`; BOOX by default); the old overview is at
+`/library/overview`, linked from the Library's More menu with each source's devices, settings and
+maintenance pages. Notebooks are a list with a preview of the selected one (`?selected=`): its
+first eight pages as thumbnails, folder, recognition coverage, server holdings, queued changes,
+tags and minutes. BOOX rename, move, Trash, restore and permanent removal run in place
+(`/boox/manage` with `inline=1`, back to the list with `queued=<batch>`); ticking rows gives a
+selection bar. The Client gets a flat "All notebooks" list and Open / Download PDF / Delete.
+Thumbnails: BOOX pages are drawn in their own one-at-a-time slot and kept in
+`alexandria_page_thumb` per notebook version; after an edit the earlier image is shown uncached
+while the page is redrawn in the background; unused rows go after 60 days (with asset GC). Client
+thumbnails are drawn small on demand. Books and Tags keep their old pages until phase 3b.
+Checked live on the disposable "Sync Test" notebook: rename, bulk move (to Samples), Trash and
+restore all published; restore returned it to Samples. Not exercised live: permanent removal
+(covered by tests). Found while checking: **migration kits must run `bootstrap-runtime` after
+`migrate`** so the runtime role gets grants on new tables (0041's table was unreadable,
+`postgres_42501`, until it was run by hand); the kit template now does. Renaming or moving a
+notebook requeues its pages for recognition (older behavior): the jobs reuse the stored text
+without a model call, but each page is out of search until its job finishes. Rollback:
+`private/library-ed33cc396d24/rollback.sh` returns to `library-cc1b8e4d21f2`; to go further,
+`private/library-cc1b8e4d21f2/rollback-schema.sh` then its `rollback.sh` returns to
+`minutes-wait-0a8804fb6a4f`.
+
+Previous deployment (2026-10-28): **`minutes-wait-0a8804fb6a4f`**, app-only on schema
 **40**, image `sha256:7eb69084eabba59c6e0e12584518bdaf951d13cc11197b0540d2b884d09e9e64`. The wait
 before automatic Audio Note Minutes is a setting (Settings → AI Tools and Recognition →
 Automatic Processing → **Wait before summarizing**, 0–120 minutes, default 10 when unset),

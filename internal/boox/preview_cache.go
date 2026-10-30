@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"image"
 	"image/png"
 	"slices"
 	"strconv"
@@ -99,30 +100,41 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 	default:
 		return previewResult{}, errPreviewBusy
 	}
+	v, _, e := s.drawPage(ctx, n, num)
+	// A transient object/index read failure must not pin a partial page (or a
+	// metadata-only page number) after the immutable resources become readable.
+	if e == nil && len(v.Warnings) == 0 {
+		storePreview(key, v)
+	}
+	return v, e
+}
+
+// drawPage renders one page at full size. Callers hold a render slot.
+func (s Service) drawPage(ctx context.Context, n notebookSnapshot, num int) (previewResult, image.Image, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	ids := booxpage.PageIDs(n.Meta.PageNameList)
 	if num < 1 || num > len(ids) {
-		return previewResult{}, errors.New("page unavailable")
+		return previewResult{}, nil, errors.New("page unavailable")
 	}
 	load := s.snapshotLoader(ctx, n)
 	p, w, e := booxpage.ShapePage(n.Meta, ids[num-1], n.Keys, load)
 	if e != nil {
-		return previewResult{}, e
+		return previewResult{}, nil, e
 	}
 	if n.IndexWarning != "" {
 		w = append(w, n.IndexWarning)
 	}
 	img, tw, e := booxpage.Preview(p, load)
 	if e != nil {
-		return previewResult{}, e
+		return previewResult{}, nil, e
 	}
 	if e = ctx.Err(); e != nil {
-		return previewResult{}, e
+		return previewResult{}, nil, e
 	}
 	var b bytes.Buffer
 	if e = png.Encode(&b, img); e != nil {
-		return previewResult{}, e
+		return previewResult{}, nil, e
 	}
 	// With no shape files and no template, an empty page and one still
 	// syncing look the same; say so rather than blame the template.
@@ -130,12 +142,7 @@ func (s Service) renderPreview(ctx context.Context, n notebookSnapshot, num int)
 		tw = []string{NoPageFilesWarning}
 	}
 	v := previewResult{PNG: b.Bytes(), Warnings: append(w, tw...), Texts: p.Texts, Notices: p.Notices, Blank: len(p.Shapes) == 0 && !p.Background.IsDocument(), Ink: inkSummary(p)}
-	// A transient object/index read failure must not pin a partial page (or a
-	// metadata-only page number) after the immutable resources become readable.
-	if len(v.Warnings) == 0 {
-		storePreview(key, v)
-	}
-	return v, nil
+	return v, img, nil
 }
 
 func previewSize(v previewResult) int {

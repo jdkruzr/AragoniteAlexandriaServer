@@ -673,13 +673,19 @@ func (r *Runtime) ProcessIndex(ctx context.Context, max int) (int, error) {
 // exceed any plausible gap between a chunk PUT and its row commit.
 const AssetGrace = 7 * 24 * time.Hour
 
-// CollectAssets removes up to limit orphaned asset chunk objects.
+// CollectAssets removes up to limit orphaned asset chunk objects, and
+// Library thumbnails unused for 60 days.
 func (r *Runtime) CollectAssets(ctx context.Context, limit int) (int, error) {
 	conn, done, err := r.admit(ctx, Process)
 	if err != nil {
 		return 0, err
 	}
 	defer done()
+	// Library page thumbnails nobody has looked at for a while are drawn
+	// again if they're ever wanted.
+	if _, err := conn.ExecContext(ctx, `DELETE FROM alexandria_page_thumb WHERE accessed_at < now()-interval '60 days'`); err != nil {
+		return 0, err
+	}
 	return host.Assets(host.Library{DB: conn, Objects: r.objects}).CollectGarbage(ctx, AssetGrace, limit)
 }
 

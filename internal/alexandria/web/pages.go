@@ -51,16 +51,12 @@ func (d Deps) notebookRoutes(mux *http.ServeMux) {
 			d.render(w, r, "notebook", Verbatim(name), "notebooks", notebookReader(id, name, pages, crumbs, q))
 			return
 		}
-		state := listing.Parse(q)
-		sortField, order := state.Sort, state.Order
-		crumbs, entries, err := notes.Folder(r.Context(), d.DB, q.Get("folder"), sortField, order)
+		v, err := d.clientNotebooks(r.Context(), q)
 		if err != nil {
 			d.fail(w, err)
 			return
 		}
-		state.Finish(q, "/files/forestnote", len(entries))
-		entries = entries[min(state.Offset, len(entries)):min(state.Offset+listing.Size, len(entries))]
-		d.render(w, r, "notebooks", "Notebooks", "notebooks", map[string]any{"Listing": state, "Crumbs": crumbs, "Entries": entries, "Folder": q.Get("folder"), "Sort": sortField, "Order": order})
+		d.render(w, r, "notebooks", "Notebooks", "notebooks", v)
 	})
 	mux.HandleFunc("GET /files/forestnote/render", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")
@@ -78,6 +74,22 @@ func (d Deps) notebookRoutes(mux *http.ServeMux) {
 			return
 		}
 		w.Header().Set("Content-Type", "image/jpeg")
+		w.Header().Set("Cache-Control", "private, max-age=300")
+		_, _ = w.Write(image)
+	})
+	// A small page image for the Library preview, drawn small (cheap: pages
+	// are vector ink), so nothing is kept.
+	mux.HandleFunc("GET /files/forestnote/thumb", func(w http.ResponseWriter, r *http.Request) {
+		image, err := notes.PageThumb(r.Context(), d.DB, r.URL.Query().Get("page"), thumbWidth)
+		if errors.Is(err, notes.ErrNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Cache-Control", "private, max-age=300")
 		_, _ = w.Write(image)
 	})
@@ -103,7 +115,7 @@ func (d Deps) notebookRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/files/forestnote", "Notebook deleted. Devices remove it on their next sync.")
+		back(w, r, clientListReturn(r.FormValue("return")), "Notebook deleted. Devices remove it on their next sync.")
 	})
 	mux.HandleFunc("POST /files/forestnote/reprocess", func(w http.ResponseWriter, r *http.Request) {
 		id := r.FormValue("notebook")

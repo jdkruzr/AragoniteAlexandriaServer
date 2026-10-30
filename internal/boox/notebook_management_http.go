@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
@@ -141,10 +142,35 @@ func (s Service) notebookManagementHTTP(w http.ResponseWriter, r *http.Request) 
 	if len(choices) == 0 && r.Form.Get("id") != "" {
 		choices = append(choices, notebookChoice{ID: r.Form.Get("id")})
 	}
-	if r.Method == "POST" && r.PostForm.Get("step") == "queue" {
-		if r.PostForm.Get("confirm") != "on" {
+	// The Library's selection bar queues most changes in place (inline=1)
+	// and sends renaming and permanent removal here for review instead.
+	review := r.PostForm.Get("review")
+	if review != "" {
+		d.Action = review
+	}
+	inline := r.PostForm.Get("inline") == "1"
+	if r.Method == "POST" && review == "" && (r.PostForm.Get("step") == "queue" || inline) {
+		// In the Library, moving, renaming and restoring need no ticked box;
+		// Trash and permanent removal always do.
+		if r.PostForm.Get("confirm") != "on" && !(inline && (d.Action == "move" || d.Action == "rename" || d.Action == "restore")) {
 			fail(errNotebookSelection)
 			return
+		}
+		// A restore returns each notebook to its folder as it stands now,
+		// or to the root when that folder is gone.
+		if inline && d.Action == "restore" {
+			items, e := s.managementItems(r.Context(), choices, false)
+			if e != nil {
+				fail(e)
+				return
+			}
+			for i, v := range items {
+				if !v.Deleted {
+					fail(errNotebookSelection)
+					return
+				}
+				choices[i] = v.notebookChoice
+			}
 		}
 		if d.Action == "rename" {
 			titles := r.PostForm["title"]
@@ -170,6 +196,14 @@ func (s Service) notebookManagementHTTP(w http.ResponseWriter, r *http.Request) 
 		e := s.queueNotebookManagement(r.Context(), notebookIntent{Token: r.PostForm.Get("token"), Action: d.Action, Return: d.Return, Choices: choices})
 		if e != nil {
 			fail(e)
+			return
+		}
+		if inline {
+			to := d.Return + "?"
+			if strings.Contains(d.Return, "?") {
+				to = d.Return + "&"
+			}
+			http.Redirect(w, r, to+"queued="+url.QueryEscape(r.PostForm.Get("token")), 303)
 			return
 		}
 		http.Redirect(w, r, "/boox/manage?batch="+url.QueryEscape(r.PostForm.Get("token")), 303)
@@ -202,7 +236,7 @@ func (s Service) notebookManagementHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var e error
-	d.Items, e = s.managementItems(r.Context(), choices)
+	d.Items, e = s.managementItems(r.Context(), choices, d.Action == "purge")
 	if e != nil {
 		fail(e)
 		return
@@ -220,55 +254,9 @@ func (s Service) notebookManagementHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if d.Action == "move" {
-		d.Folders = append(d.Folders, notebookFolder{Title: "Notebook root", Choice: `{"ID":"","Revision":""}`})
-		rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,revision,body FROM boox_projection WHERE domain='notebook' AND body->>'type'='0' AND body->>'status'='1' ORDER BY lower(body->>'title'),document_id`)
-		if e != nil {
+		if d.Folders, e = s.moveFolders(r.Context()); e != nil {
 			fail(e)
 			return
-		}
-		for rows.Next() {
-			var f notebookFolder
-			var raw []byte
-			if e = rows.Scan(&f.ID, &f.Revision, &raw); e != nil {
-				break
-			}
-			var b map[string]any
-			if nativeJSON(raw, &b) != nil || !folderMetadata(b, s.uid()) {
-				continue
-			}
-			f.Title, _ = b["title"].(string)
-			f.Parent, _ = b["parentUniqueId"].(string)
-			raw, _ = json.Marshal(f)
-			f.Choice = string(raw)
-			d.Folders = append(d.Folders, f)
-		}
-		re := rows.Err()
-		rows.Close()
-		if e != nil {
-			fail(e)
-			return
-		}
-		if re != nil {
-			fail(re)
-			return
-		}
-	}
-	folders := map[string]notebookFolder{}
-	for _, f := range d.Folders {
-		folders[f.ID] = f
-	}
-	for i := range d.Folders {
-		f := &d.Folders[i]
-		parent := f.Parent
-		seen := map[string]bool{f.ID: true}
-		for parent != "" && !seen[parent] && len(seen) < 64 {
-			p, ok := folders[parent]
-			if !ok {
-				break
-			}
-			seen[parent] = true
-			f.Title = p.Title + " / " + f.Title
-			parent = p.Parent
 		}
 	}
 	s.renderPage(w, r, notebookManagementTemplate, "Manage notebooks", d)

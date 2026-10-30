@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"html"
 	"net/http/httptest"
 	"net/url"
@@ -66,7 +67,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/files/forestnote/books":                               "No books yet",
 		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, page 1",
 		"/tasks":                                                "Nothing to do",
-		"/library":                                              "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
+		"/library/overview":                                     "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
 		"/files/forestnote/devices":                             "<h2>Connect a Device</h2>",
 		"/settings/integrations":                                "/caldav/user/calendars/tasks/",
 		"/settings/integrations?events":                         "/caldav/user/calendars/events/",
@@ -89,7 +90,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 			t.Fatalf("%s: double-escaped link", path)
 		}
 	}
-	if got := b.do("GET", "/library", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Your Library") || !strings.Contains(got.Body.String(), "Alexandria Client") {
+	if got := b.do("GET", "/library/overview", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Your Library") || !strings.Contains(got.Body.String(), "Alexandria Client") {
 		t.Fatalf("home: %d", got.Code)
 	}
 	if got := b.do("GET", "/files/forestnote/render?path=forestnote://00000000000000000000000NB1/00000000000000000000000PG1", "", nil, true); got.Code != 200 || got.Header().Get("Content-Type") != "image/jpeg" {
@@ -165,6 +166,65 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 	}
 	if got := b.do("GET", "/files/forestnote", "", nil, true); strings.Contains(got.Body.String(), "Seed &lt;Catalogue&gt;") {
 		t.Fatal("deleted notebook still listed")
+	}
+}
+
+func TestClientLibraryNotebooks(t *testing.T) {
+	r, db, _ := fixture(t)
+	b := browser{t, r}
+	ctx := context.Background()
+	nb := func(id, name string, folder any, created float64) relay.Op {
+		return relay.Op{Table: "notebook", PK: id, Cols: map[string]any{"name": name, "sort_order": float64(0), "created_at": created, "deleted_at": nil, "folder_id": folder, "aspect_long_axis": nil, "page_width": float64(1000), "page_height": float64(1200)}}
+	}
+	ops := []relay.Op{
+		{Table: "folder", PK: "00000000000000000000000FD1", Cols: map[string]any{"name": "Synthetic <Garden>", "parent_folder_id": nil, "sort_order": float64(0), "created_at": float64(1), "deleted_at": nil}},
+		nb("00000000000000000000000NB1", "Synthetic seed list", "00000000000000000000000FD1", 2),
+		nb("00000000000000000000000NB2", "Synthetic root note", nil, 1),
+	}
+	for i := 1; i <= 10; i++ {
+		ops = append(ops, relay.Op{Table: "page", PK: fmt.Sprintf("0000000000000000000000PG%02d", i), Cols: map[string]any{"notebook_id": "00000000000000000000000NB1", "sort_order": float64(i), "created_at": float64(1), "deleted_at": nil, "template": nil, "template_pitch_mm": nil}})
+	}
+	if _, err := (relay.Store{DB: db}).AuthorOps(ctx, ops); err != nil {
+		t.Fatal(err)
+	}
+	// Every notebook at once, each with its folder; or one folder at a time.
+	all := html.UnescapeString(b.do("GET", "/files/forestnote?sort=created&order=asc", "", nil, true).Body.String())
+	if a, c := strings.Index(all, "Synthetic root note"), strings.Index(all, "Synthetic seed list"); a < 0 || c < a || !strings.Contains(all, "Synthetic <Garden> · Partly searchable") || !strings.Contains(all, "Notebook root · ") {
+		t.Fatalf("flat list:\n%s", all)
+	}
+	if folders := b.do("GET", "/files/forestnote?view=folders", "", nil, true).Body.String(); !strings.Contains(folders, "Synthetic &lt;Garden&gt;") || strings.Contains(folders, "Synthetic seed list") {
+		t.Fatal("folder view")
+	}
+	sel := html.UnescapeString(b.do("GET", "/files/forestnote?selected=00000000000000000000000NB1", "", nil, true).Body.String())
+	if !strings.Contains(sel, `id="preview"`) || strings.Count(sel, "/files/forestnote/thumb?page=") != 8 || !strings.Contains(sel, "All 10 pages") || !strings.Contains(sel, "0 of 10 pages searchable") {
+		t.Fatalf("preview:\n%s", sel)
+	}
+	thumb := b.do("GET", "/files/forestnote/thumb?page=0000000000000000000000PG01", "", nil, true)
+	if thumb.Code != 200 || thumb.Header().Get("Content-Type") != "image/png" {
+		t.Fatalf("thumb: %d", thumb.Code)
+	}
+	if got := b.do("GET", "/files/forestnote/thumb?page=missing", "", nil, true); got.Code != 404 {
+		t.Fatalf("missing thumb: %d", got.Code)
+	}
+	// Deleting from the preview returns to the same list, without the selection.
+	got := b.do("POST", "/files/forestnote/delete", "notebook=00000000000000000000000NB1&return="+url.QueryEscape("/files/forestnote?sort=name&selected=00000000000000000000000NB1"), sameSite, true)
+	if loc := got.Header().Get("Location"); got.Code != 303 || !strings.HasPrefix(loc, "/files/forestnote?sort=name&notice=") {
+		t.Fatalf("delete: %d %s", got.Code, loc)
+	}
+	if got := b.do("POST", "/files/forestnote/delete", "notebook=00000000000000000000000NB2&return="+url.QueryEscape("https://evil.example/files/forestnote"), sameSite, true); !strings.HasPrefix(got.Header().Get("Location"), "/files/forestnote?notice=") {
+		t.Fatalf("unsafe return: %s", got.Header().Get("Location"))
+	}
+	// The Library opens on the source last shown; without BOOX, the Client.
+	if got := b.do("GET", "/library", "", nil, true); got.Code != 303 || got.Header().Get("Location") != "/files/forestnote" {
+		t.Fatalf("library home: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	page := b.do("GET", "/files/forestnote", "", nil, true)
+	var remembered bool
+	for _, c := range page.Result().Cookies() {
+		remembered = remembered || c.Name == "alexandria_library_source" && c.Value == "client"
+	}
+	if !remembered || strings.Contains(page.Body.String(), `class="source-switch"`) {
+		t.Fatal("source not remembered, or a switch with no BOOX source")
 	}
 }
 

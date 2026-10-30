@@ -54,6 +54,13 @@ func TestBOOXViewsRender(t *testing.T) {
 		{"boox-notebooks", "/boox", "BOOX notebooks", libraryTemplate, libraryPage{All: true, Category: "all", Listing: listing, Entries: []notebookEntry{
 			{ID: "a", Title: "20261008 Synthetic sync", Kind: "Handwritten note", Pages: 2, CreatedAt: 1, ModifiedAt: 2},
 			{ID: "b", Title: "Synthetic meeting", Kind: "Meeting note", Pages: 4, CreatedAt: 1, ModifiedAt: 2}}}},
+		{"boox-notebooks-selected", "/boox", "BOOX notebooks", libraryTemplate, libraryPage{All: true, Category: "all", Listing: listing, Token: "t", Queued: "00000000-0000-4000-8000-000000000001", DeletedCount: 3,
+			Folders:  []notebookFolder{{Title: "Notebook root", Choice: "{}"}, {ID: "f", Title: "Work", Choice: "{}"}},
+			Entries:  []notebookEntry{{ID: "a", Title: "20261008 Synthetic sync", Kind: "Handwritten note", Pages: 2, ModifiedAt: 1793000000000, FolderTitle: "Work"}, {ID: "b", Title: "Synthetic meeting", Kind: "Meeting note", Pages: 4, ModifiedAt: 1792000000000}},
+			Selected: syntheticPreview(false)}},
+		{"boox-notebooks-deleted", "/boox", "BOOX notebooks", libraryTemplate, libraryPage{All: true, Deleted: true, Category: "all", Listing: listing, Token: "t",
+			Entries:  []notebookEntry{{ID: "a", Title: "20261008 Synthetic sync", Kind: "Handwritten note", Pages: 2, ModifiedAt: 1793000000000, FolderTitle: "Work"}},
+			Selected: syntheticPreview(true)}},
 		{"boox-folders", "/boox", "BOOX notebooks", libraryTemplate, libraryPage{Category: "handwritten", Listing: listing, Folder: "f", Crumbs: []notebookEntry{{ID: "f", Title: "Work"}},
 			Entries: []notebookEntry{{ID: "g", Title: "Projects", Folder: true, Kind: "Folder"}}}},
 		{"boox-notebook", "/boox/notebook", "Synthetic sync", notebookTemplate, notebookView{ID: "a", Title: "20261008 Synthetic sync", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", RecognitionEnabled: true}},
@@ -102,4 +109,16 @@ func TestBOOXViewsRender(t *testing.T) {
 			}
 		}
 	}
+}
+
+// syntheticPreview is the Library preview of a made-up notebook.
+func syntheticPreview(deleted bool) *notebookPreview {
+	p := &notebookPreview{Entry: notebookEntry{ID: "a", Title: "20261008 Synthetic sync", Kind: "Handwritten note", Pages: 12, ModifiedAt: time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC).UnixMilli()},
+		FolderTitle: "Work", Count: 12, More: 4, Recognized: 9, Tags: []string{"q4", "work"}, Recordings: 1, Minutes: "ready", Open: "/boox/notebook?id=a",
+		Pending: []pendingOp{{Action: "rename", State: "queued"}}}
+	p.ID, p.Choice, p.Assets, p.Bytes, p.Revisions, p.Jobs, p.Deleted = "a", "{}", 26, 9_400_000, 14, 4, deleted
+	for i := 1; i <= 8; i++ {
+		p.Thumbs = append(p.Thumbs, thumbLink{Number: i, Image: "static/apple-touch-icon.png", Href: "#"})
+	}
+	return p
 }

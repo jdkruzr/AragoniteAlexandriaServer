@@ -13,7 +13,7 @@ Alexandria Server can stand in for the Onyx cloud. A companion app called **Powe
 - **Things sent to the tablet**: [Audio Note Minutes](minutes.md) and text notes arrive as ordinary BOOX text notebooks.
 - **Handwriting recognition, search and note actions** on BOOX pages. See [Recognize Handwriting](recognition.md), [Search and Tags](search-and-tags.md) and [Note Actions](note-actions.md).
 
-Browsing never changes your tablets. Only a handful of actions write back (deleting numbered notebooks, uploading a book, refreshing reading data, sending a text note or minutes, and audio recovery), and each one tells you so before you confirm. Changes made through the [WebDAV book folder](#manage-books-from-a-file-manager-webdav) also write back, as a file manager's changes do.
+Browsing never changes your tablets. Only a handful of actions write back (renaming, moving or trashing notebooks, deleting numbered notebooks, uploading a book, refreshing reading data, sending a text note or minutes, and audio recovery), and each one tells you so before you confirm. Changes made through the [WebDAV book folder](#manage-books-from-a-file-manager-webdav) also write back, as a file manager's changes do.
 
 ## What You Need First
 
@@ -127,7 +127,7 @@ These are two different things:
 
 | Tab | What it's for |
 |---|---|
-| **Notebooks** | Every notebook and folder. Switch between **All notebooks** and **Folders**, filter by **Type** (handwritten, text, reading or other notes), sort, and find by title. The **More** menu has **Clean up numbered notebooks…**, **Deleted notebooks** and **Connect a device**. **Recognize this library…** starts a whole-library recognition review. |
+| **Notebooks** | Every notebook and folder. Switch between **All notebooks** and **Folders**, filter by **Type** (handwritten, text, reading or other notes), sort, and find by title. Click a notebook to preview it beside the list; double-click it, or choose **Open**, to read it. **Deleted (n)** lists notebooks in the tablets' Trash. The Library's **More** menu has **Recognize this library…**, **Clean up numbered notebooks…**, **Notebook operations**, **Devices** and **BOOX settings**. |
 | **Reading** | A bookshelf with **Stored Here**, **All Books**, **Metadata Only**, and **Your Reading** views. Open a book for its highlights and bookmarks; page and progress values remain as recorded by the tablet. |
 | **Tags** | Every lasso tag, with how many pages and notebooks use it. Open a tag to list its pages, or choose **Search for it**. |
 | **Devices** | Connected tablets: **Authorized** or **Revoked**, and **Last Upload Received**. *Authorized* means the tablet may connect, not that everything has finished uploading. |
@@ -150,7 +150,18 @@ The side panel shows, when they apply:
 - **Audio Note Minutes**: **Summarize this note…** or **Open minutes**. See [Audio Note Minutes](minutes.md).
 - **Source and History**: **Recover audio…** (repairs recordings hit by a known BOOX audio defect) and **Observed native versions**.
 
-Deleted notebooks stay viewable under **Deleted notebooks**. Viewing one doesn't restore it.
+### The Notebook Preview
+
+Select a notebook in **Library → Notebooks** to see, beside the list:
+
+- Its first eight pages as small images. Choose one to open that page. The images are drawn once and kept; after you edit a notebook, the earlier images show while new ones are drawn.
+- **Open**, plus **Rename…**, **Move…** and **Move to Trash…**, each opening a short form in place. Moving to Trash asks you to tick a box first.
+- Its folder, how many pages are recognized, what the server holds for it (files, size, metadata versions, recognition jobs), and any change still queued for it.
+- Its tags, and its Audio Note Minutes or recordings.
+
+Changes are queued and sent to every tablet through native sync. The page says so and links to **View progress**. To change several notebooks at once, tick them: a bar appears with **Rename…**, **Move…** and **Move to Trash…**.
+
+Deleted notebooks stay viewable under **Deleted (n)**. Viewing one doesn't restore it. Their preview offers **Restore** (to the original folder, or the notebook root if that folder is gone) and **Remove permanently…**, which deletes the notebook and everything the server holds for it once you tick the box. Tasks, events and minutes notes made from it stay.
 
 ### Browse and Upload Books
 

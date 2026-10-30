@@ -60,7 +60,11 @@ func folderMetadata(b map[string]any, uid string) bool {
 	id, _ := b["_id"].(string)
 	return id != "" && b["uniqueId"] == id && b["user"] == uid && b["dbId"] == uid+"-NOTE_TREE" && fmt.Sprint(b["type"]) == "0" && fmt.Sprint(b["status"]) == "1" && b["commitType"] == nil
 }
-func (s Service) managementItems(ctx context.Context, choices []notebookChoice) ([]notebookManagementItem, error) {
+
+// managementItems describes the chosen notebooks as they stand now. The
+// bytes only they hold (what permanent removal frees) are slow to count and
+// are left at zero unless withPurge.
+func (s Service) managementItems(ctx context.Context, choices []notebookChoice, withPurge bool) ([]notebookManagementItem, error) {
 	if len(choices) == 0 || len(choices) > cleanupLimit {
 		return nil, errNotebookSelection
 	}
@@ -109,9 +113,11 @@ func (s Service) managementItems(ctx context.Context, choices []notebookChoice) 
 		if e != nil {
 			return nil, e
 		}
-		e = s.DB.QueryRowContext(ctx, `SELECT count(*),coalesce(sum(bytes),0) FROM (SELECT v.sha256,max(v.bytes) bytes FROM boox_blob_version v WHERE (starts_with(v.native_key,$1) OR v.native_key=rtrim($1,'/')||'.png') AND v.sha256 IS NOT NULL AND NOT EXISTS(SELECT 1 FROM boox_blob_version other WHERE other.sha256=v.sha256 AND NOT (starts_with(other.native_key,$1) OR other.native_key=rtrim($1,'/')||'.png')) GROUP BY v.sha256) exclusive`, prefix).Scan(&v.PurgeFiles, &v.PurgeBytes)
-		if e != nil {
-			return nil, e
+		if withPurge {
+			e = s.DB.QueryRowContext(ctx, `SELECT count(*),coalesce(sum(bytes),0) FROM (SELECT v.sha256,max(v.bytes) bytes FROM boox_blob_version v WHERE (starts_with(v.native_key,$1) OR v.native_key=rtrim($1,'/')||'.png') AND v.sha256 IS NOT NULL AND NOT EXISTS(SELECT 1 FROM boox_blob_version other WHERE other.sha256=v.sha256 AND NOT (starts_with(other.native_key,$1) OR other.native_key=rtrim($1,'/')||'.png')) GROUP BY v.sha256) exclusive`, prefix).Scan(&v.PurgeFiles, &v.PurgeBytes)
+			if e != nil {
+				return nil, e
+			}
 		}
 		raw, _ = json.Marshal(v.notebookChoice)
 		v.Choice = string(raw)

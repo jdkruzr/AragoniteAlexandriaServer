@@ -32,52 +32,32 @@ From left to right:
 
 | Link | Goes to |
 |---|---|
-| **Tasks** | Your task list (also the home page). See [Tasks and Calendar](tasks-and-calendar.md). |
-| **Calendar** | Upcoming and recent events. |
-| **Library** | The overview of all your sources. |
-| **Search** | Search across the library. See [Search Your Library](search-and-tags.md). |
-| **Recognition** | Handwriting recognition jobs. See [Recognize Handwriting](recognition.md). |
+| **Today** | Your tasks and the next seven days of events (also the home page). See [Tasks and Calendar](tasks-and-calendar.md). |
+| **Library** | Your notebooks, books and tags, one source at a time. |
+| **Recognition** | Handwriting recognition jobs, with a count when pages need attention. See [Recognize Handwriting](recognition.md). |
 | **Settings** | Account, search, AI models and integrations. |
 
-**Help**, on the right, opens the built-in guide.
+The search box searches notes, books and highlights (see [Search Your Library](search-and-tags.md)). The moon and sun switch between the dark and light themes, and **?** opens the built-in guide.
 
-### Sources Sidebar
+## The Library
 
-The left sidebar lists your **Sources**: **Alexandria Client**, and **BOOX**
-(via PowerSync) when the BOOX source is enabled. **+ Add source** explains each
-kind and links to connecting a device. Each source keeps its own notebooks and
-devices because each syncs in its own way; search, tasks and recognition work
-across all of them.
-
-Inside a source, a row of tabs appears above the page:
+**Library** opens on the source you looked at last. Each source keeps its own notebooks and devices because each syncs in its own way; search, tasks and recognition work across all of them. When BOOX is set up, the switch beside the tabs moves between **BOOX** and **Alexandria Client**:
 
 | Source | Tabs |
 |---|---|
-| Alexandria Client | **Notebooks**, **Books**, **Devices**, **Settings** |
-| BOOX | **Notebooks**, **Reading**, **Tags**, **Devices**, **Settings** |
+| BOOX | **Notebooks**, **Books**, **Tags** |
+| Alexandria Client | **Notebooks**, **Books** |
 
-## The Library Overview
-
-**Library** (the **Your Library** page) shows:
-
-- A search box for notes, books and annotations.
-- A **Needs attention** strip, only when something does: failed or blocked
-  recognition jobs, or Client devices that need a restore.
-- **Sources**: a card per source with its notebook, book and device counts and
-  when it last synced, plus links to its tabs.
-- **Across Your Library**: whether **Handwriting Recognition** is on and how
-  many pages are in progress, whether **Search by Meaning** is on, and a
-  shortcut to **Tasks**.
+The **More** menu holds each source's devices, settings and maintenance pages, **Recognize this library…**, the **Library overview** (counts per source, last sync, and whether recognition and search by meaning are on) and **+ Add source**.
 
 ## Browsing Notebooks
 
-![BOOX notebooks, listed by folder](../images/boox-notebooks.png)
+Notebooks are listed on the left, newest first; sort by name, pages, or created or modified date, and flip the order. **All notebooks** lists every notebook with its folder; **Folders** goes one folder at a time. Dates are in your time zone (**Settings → Tasks & Integrations**). BOOX lists also have a title search and a **Type** filter (handwritten, text, reading and other note types).
 
-Notebook lists can be sorted by name, pages, created or modified date. Dates in
-lists are in UTC. The BOOX list also has **All notebooks** and **Folders**
-views, a title search, and a **Type** filter (handwritten, text, reading and
-other note types). **Recognize this library…** starts a recognition run for
-that source.
+Click a notebook to preview it on the right: its first eight pages, its folder and how many pages have recognized text. Double-click it, or choose **Open**, to read it.
+
+- **BOOX** notebooks can be renamed, moved, sent to the tablets' Trash, restored or removed permanently from the preview. See [Connect BOOX Tablets](boox.md#the-notebook-preview).
+- **Alexandria Client** notebooks offer **Open**, **Download PDF** and **Delete…**. Deleting removes the notebook from every Client device on its next sync. There's no trash, and a later edit on a device brings it back.
 
 ### Reading a Notebook
 

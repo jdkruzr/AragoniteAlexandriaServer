@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
 	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
@@ -32,6 +33,10 @@ type notebookEntry struct {
 	Folder                      bool
 	PagesTruncated              bool
 	Pages                       int
+	// FolderTitle names the folder a notebook is in, in flat lists.
+	FolderTitle string
+	// Notebooks counts a folder's live notebooks.
+	Notebooks int
 }
 type libraryPage struct {
 	Listing                       listview.State
@@ -42,6 +47,14 @@ type libraryPage struct {
 	Category                      string
 	Return                        string
 	Deleted                       bool
+	// DeletedCount counts notebooks in the device Trash.
+	DeletedCount int
+	// Token makes a change queued from this page idempotent; Queued is the
+	// batch just queued from it, whose progress the page links to.
+	Token, Queued string
+	// Folders are the destinations for Move.
+	Folders  []notebookFolder
+	Selected *notebookPreview
 }
 
 var libraryTemplate = template.Must(template.New("library.html").Funcs(listFuncs()).ParseFS(templateFS, "templates/library.html"))
@@ -53,9 +66,66 @@ func browserOffset(r *http.Request) int {
 	}
 	return n
 }
+
+// parseNotebookEntry reads a notebook or folder's native metadata.
+func parseNotebookEntry(id, revision string, raw []byte) (notebookEntry, error) {
+	v := notebookEntry{ID: id, Revision: revision}
+	var m struct {
+		CreatedAt, UpdatedAt  int64
+		Title, ParentUniqueID string
+		Type                  int
+		ActiveScene           int
+		AssociationType       int
+		Association           *struct{ AssociationType int }
+		PageNameList          json.RawMessage
+	}
+	if e := json.Unmarshal(raw, &m); e != nil {
+		return v, e
+	}
+	v.CreatedAt, v.ModifiedAt = m.CreatedAt, m.UpdatedAt
+	v.Title = m.Title
+	if v.Title == "" {
+		v.Title = "Untitled"
+	}
+	v.Parent = m.ParentUniqueID
+	v.Folder = m.Type == 0
+	choice, _ := json.Marshal(notebookChoice{ID: v.ID, Revision: v.Revision})
+	v.Choice = string(choice)
+	association := m.AssociationType
+	if m.Association != nil {
+		association = m.Association.AssociationType
+	}
+	v.Kind = "Handwritten note"
+	switch {
+	case v.Folder:
+		v.Kind = "Folder"
+	case association == 1:
+		v.Kind = "Reading note"
+	case association != 0:
+		v.Kind = "Associated note"
+	case m.ActiveScene == 1:
+		v.Kind = "Text note"
+	case m.ActiveScene == 2:
+		v.Kind = "Meeting note"
+	case m.ActiveScene == 4:
+		v.Kind = "Draft note"
+	case m.ActiveScene != 0 && m.ActiveScene != 3:
+		v.Kind = "Other note"
+	}
+	v.Pages = len(booxpage.PageIDs(m.PageNameList))
+	v.PagesTruncated = v.Pages >= 500
+	return v, nil
+}
+
 func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
-	d := libraryPage{Folder: r.URL.Query().Get("folder"), Query: strings.TrimSpace(r.URL.Query().Get("q")), Deleted: r.URL.Query().Get("show") == "deleted"}
-	d.Return = notebookReturn(r.URL.RequestURI())
+	q := r.URL.Query()
+	d := libraryPage{Folder: q.Get("folder"), Query: strings.TrimSpace(q.Get("q")), Deleted: q.Get("show") == "deleted", Token: uuid.NewString()}
+	if _, e := uuid.Parse(q.Get("queued")); e == nil {
+		d.Queued = q.Get("queued")
+	}
+	// Forms return here without the one-time queued notice.
+	q.Del("queued")
+	d.Return = notebookReturn("/boox?" + q.Encode())
 	status := "1"
 	if d.Deleted {
 		status = "0"
@@ -76,61 +146,26 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	offset := d.Listing.Offset
-	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,revision,body,count(*) OVER() FROM boox_projection p WHERE `+notebookPredicate+` AND native_uid=$1 AND body->>'status'=$2 AND (NOT $7 OR body->>'type'='1') AND (body->>'type'='0' OR $8='all' OR $8='handwritten' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') IN ('0','3') OR $8='text' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND body->>'activeScene'='1' OR $8='reading' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='1' OR $8='other' AND (coalesce(body#>>'{association,associationType}',body->>'associationType','0') NOT IN ('0','1') OR coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') NOT IN ('0','1','3'))) AND ($3<>'' AND strpos(lower(coalesce(body->>'title','')),lower($3))>0 OR $3='' AND ($7 OR $5 OR coalesce(body->>'parentUniqueId','')=$4)) ORDER BY `+d.Listing.NativeOrder()+` LIMIT 60 OFFSET $6`, s.uid(), status, d.Query, d.Folder, d.Deleted, offset, d.All, d.Category)
+	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,revision,body,
+ coalesce((SELECT f.body->>'title' FROM boox_projection f WHERE f.document_id=p.body->>'parentUniqueId' AND f.native_uid=p.native_uid),''),
+ CASE WHEN body->>'type'='0' THEN (SELECT count(*) FROM boox_projection c WHERE c.native_uid=p.native_uid AND c.domain='notebook' AND c.body->>'parentUniqueId'=p.document_id AND c.body->>'type'='1' AND c.body->>'status'='1') ELSE 0 END,
+ count(*) OVER() FROM boox_projection p WHERE `+notebookPredicate+` AND native_uid=$1 AND body->>'status'=$2 AND (NOT $7 OR body->>'type'='1') AND (body->>'type'='0' OR $8='all' OR $8='handwritten' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') IN ('0','3') OR $8='text' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND body->>'activeScene'='1' OR $8='reading' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='1' OR $8='other' AND (coalesce(body#>>'{association,associationType}',body->>'associationType','0') NOT IN ('0','1') OR coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') NOT IN ('0','1','3'))) AND ($3<>'' AND strpos(lower(coalesce(body->>'title','')),lower($3))>0 OR $3='' AND ($7 OR $5 OR coalesce(body->>'parentUniqueId','')=$4)) ORDER BY `+d.Listing.NativeOrder()+` LIMIT 60 OFFSET $6`, s.uid(), status, d.Query, d.Folder, d.Deleted, offset, d.All, d.Category)
 	if e != nil {
 		s.failure(w, "notebooks", e)
 		return
 	}
 	for rows.Next() {
 		var v notebookEntry
+		var id, revision, folderTitle string
+		var children int
 		var raw []byte
-		if e = rows.Scan(&v.ID, &v.Revision, &raw, &d.Listing.Total); e != nil {
+		if e = rows.Scan(&id, &revision, &raw, &folderTitle, &children, &d.Listing.Total); e != nil {
 			break
 		}
-		var m struct {
-			CreatedAt, UpdatedAt  int64
-			Title, ParentUniqueID string
-			Type                  int
-			ActiveScene           int
-			AssociationType       int
-			Association           *struct{ AssociationType int }
-			PageNameList          json.RawMessage
-		}
-		if e = json.Unmarshal(raw, &m); e != nil {
+		if v, e = parseNotebookEntry(id, revision, raw); e != nil {
 			break
 		}
-		v.CreatedAt, v.ModifiedAt = m.CreatedAt, m.UpdatedAt
-		v.Title = m.Title
-		if v.Title == "" {
-			v.Title = "Untitled"
-		}
-		v.Parent = m.ParentUniqueID
-		v.Folder = m.Type == 0
-		choice, _ := json.Marshal(notebookChoice{ID: v.ID, Revision: v.Revision})
-		v.Choice = string(choice)
-		association := m.AssociationType
-		if m.Association != nil {
-			association = m.Association.AssociationType
-		}
-		v.Kind = "Handwritten note"
-		switch {
-		case v.Folder:
-			v.Kind = "Folder"
-		case association == 1:
-			v.Kind = "Reading note"
-		case association != 0:
-			v.Kind = "Associated note"
-		case m.ActiveScene == 1:
-			v.Kind = "Text note"
-		case m.ActiveScene == 2:
-			v.Kind = "Meeting note"
-		case m.ActiveScene == 4:
-			v.Kind = "Draft note"
-		case m.ActiveScene != 0 && m.ActiveScene != 3:
-			v.Kind = "Other note"
-		}
-		v.Pages = len(booxpage.PageIDs(m.PageNameList))
-		v.PagesTruncated = v.Pages >= 500
+		v.FolderTitle, v.Notebooks = folderTitle, children
 		d.Entries = append(d.Entries, v)
 	}
 	re := rows.Err()
@@ -145,7 +180,7 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/boox?"+q.Encode(), http.StatusSeeOther)
 		return
 	}
-	d.Listing.Finish(r.URL.Query(), "/boox", d.Listing.Total)
+	d.Listing.Finish(q, "/boox", d.Listing.Total)
 	d.Next, d.Previous = d.Listing.Next, d.Listing.Previous
 	seen := map[string]bool{}
 	parent := d.Folder
@@ -163,6 +198,23 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		}
 		d.Crumbs = append([]notebookEntry{c}, d.Crumbs...)
 		parent = c.Parent
+	}
+	ctx := r.Context()
+	if e = s.DB.QueryRowContext(ctx, `SELECT count(*) FROM boox_projection WHERE `+notebookPredicate+` AND native_uid=$1 AND body->>'status'='0' AND body->>'type'='1'`, s.uid()).Scan(&d.DeletedCount); e != nil {
+		s.failure(w, "notebooks", e)
+		return
+	}
+	if !d.Deleted && len(d.Entries) > 0 {
+		if d.Folders, e = s.moveFolders(ctx); e != nil {
+			s.failure(w, "notebooks", e)
+			return
+		}
+	}
+	if id := q.Get("selected"); id != "" {
+		if d.Selected, e = s.notebookPreview(ctx, id); e != nil {
+			s.failure(w, "notebooks", e)
+			return
+		}
 	}
 	s.renderPage(w, r, libraryTemplate, "BOOX Notebooks", d)
 }

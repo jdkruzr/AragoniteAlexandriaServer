@@ -114,6 +114,26 @@ func (s State) SortURL(field string) string {
 	q.Set("order", order)
 	return s.path + "?" + q.Encode()
 }
+
+// Link is this listing's URL with the named parameters set, given as
+// key, value pairs; an empty value removes one. Other parameters, the page
+// offset included, are kept.
+func (s State) Link(pairs ...string) string {
+	q := url.Values{}
+	for k, v := range s.query {
+		q[k] = append([]string{}, v...)
+	}
+	q.Set("sort", s.Sort)
+	q.Set("order", s.Order)
+	for i := 0; i+1 < len(pairs); i += 2 {
+		if pairs[i+1] == "" {
+			q.Del(pairs[i])
+		} else {
+			q.Set(pairs[i], pairs[i+1])
+		}
+	}
+	return s.path + "?" + q.Encode()
+}
 func (s State) Indicator(field string) string {
 	if s.Sort != field {
 		return ""

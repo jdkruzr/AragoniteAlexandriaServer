@@ -60,7 +60,7 @@
 </aside>
 {{end}}
 </div>
-<script src="/static/tasks.js?v={{version}}" defer></script>
+<script src="/static/forms.js?v={{version}}" defer></script><script src="/static/tasks.js?v={{version}}" defer></script>
 {{end}}
 
 {{define "task"}}{{$t := .Task}}{{$done := or (eq $t.Status "completed") (eq $t.Status "cancelled")}}

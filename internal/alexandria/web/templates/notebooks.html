@@ -1,23 +1,32 @@
-{{define "content"}}{{$d := .Data}}
-<div class="page-head"><h1>{{t "Notebooks"}}</h1><a class="button secondary" href="/jobs/library?source=client">{{t "Recognize this library…"}}</a></div>
-{{if $d.Crumbs}}<p class="crumbs"><a href="/files/forestnote">{{t "All notebooks"}}</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}}</p>{{end}}
-{{if not $d.Entries}}<div class="card"><p class="empty">{{t "Nothing here yet. Notebooks appear after a device syncs."}}</p><p>{{th "<a class=\"button\" href=\"/files/forestnote/devices\">Connect a device</a>"}}</p></div>{{else}}
-{{template "pagination" $d.Listing}}<div class="table-scroll"><table class="dated-list"><thead><tr>
-<th><a href="{{$d.Listing.SortURL "name"}}">{{t "Name"}}{{$d.Listing.Indicator "name"}}</a></th><th><a href="{{$d.Listing.SortURL "pages"}}">{{t "Pages"}}{{$d.Listing.Indicator "pages"}}</a></th><th><a href="{{$d.Listing.SortURL "created"}}">{{t "Created (UTC)"}}{{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">{{t "Modified (UTC)"}}{{$d.Listing.Indicator "modified"}}</a></th><th>{{t "Search"}}</th>
-</tr></thead>
-<tbody>
-{{range $d.Entries}}
-<tr>
-  {{if .IsFolder}}
-  <td><a href="/files/forestnote?folder={{.ID}}">📁 {{.Name}}</a></td><td></td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td><td></td>
-  {{else}}
-  <td><a href="/files/forestnote?notebook={{.ID}}">{{if .Name}}{{.Name}}{{else}}{{t "Untitled notebook"}}{{end}}</a></td>
-  <td>{{.PageCount}}</td><td>{{ms .CreatedAt}}</td><td>{{ms .ModifiedAt}}</td>
-  <td><span class="badge {{.Status}}">{{if eq .Status "indexed"}}{{t "Searchable"}}{{else if eq .Status "partial"}}{{t "Partly searchable"}}{{else}}{{t "Empty"}}{{end}}</span></td>
-  {{end}}
-</tr>
-{{end}}
-</tbody>
-</table></div>{{template "pagination" $d.Listing}}
-{{end}}
+{{define "content"}}{{$d := .Data}}{{$l := $d.Listing}}
+{{template "library-head" .}}
+<div class="library{{if $d.Selected}} has-preview{{end}}">
+<section class="lib-list" aria-label="{{t "Notebooks"}}">
+<form class="lib-toolbar" method="get" action="/files/forestnote">{{if $d.Folder}}<input type="hidden" name="folder" value="{{$d.Folder}}">{{end}}{{if not $d.All}}<input type="hidden" name="view" value="folders">{{end}}
+<nav class="seg" aria-label="{{t "View"}}"><a class="seg-opt" href="/files/forestnote" {{if $d.All}}aria-current="page"{{end}}>{{t "All notebooks"}}</a><a class="seg-opt" href="/files/forestnote?view=folders" {{if not $d.All}}aria-current="page"{{end}}>{{t "Folders"}}</a></nav>
+<select class="input" name="sort" aria-label="{{t "Sort"}}" data-autosubmit><option value="modified" {{if eq $l.Sort "modified"}}selected{{end}}>{{t "Recently modified"}}</option><option value="name" {{if eq $l.Sort "name"}}selected{{end}}>{{t "Name"}}</option><option value="pages" {{if eq $l.Sort "pages"}}selected{{end}}>{{t "Most pages"}}</option><option value="created" {{if eq $l.Sort "created"}}selected{{end}}>{{t "Recently created"}}</option></select><button class="btn btn-secondary" data-sort-submit>{{t "Sort"}}</button>
+<a class="btn btn-ghost" href="{{if eq $l.Order "asc"}}{{$l.Link "order" "desc" "offset" ""}}{{else}}{{$l.Link "order" "asc" "offset" ""}}{{end}}">{{if eq $l.Order "desc"}}{{icon "sort-descending"}}{{else}}{{icon "sort-ascending"}}{{end}} {{t (direction $l.Sort $l.Order)}}</a>
+</form>
+{{if not $d.All}}<p class="crumbs"><a href="/files/forestnote?view=folders">{{t "All folders"}}</a>{{range $d.Crumbs}} / <a href="/files/forestnote?folder={{.ID}}">{{.Name}}</a>{{end}}</p>{{end}}
+<ul class="lib-rows">{{range $d.Entries}}{{if .IsFolder}}<li class="lib-row folder-row"><a class="lib-main" href="/files/forestnote?folder={{.ID}}">{{icon "folder-simple"}} <span class="lib-title">{{if .Name}}{{.Name}}{{else}}{{t "Untitled folder"}}{{end}}</span></a><span class="lib-meta">{{t "{{.Count}} notebooks" .Notebooks}}</span></li>
+{{else}}<li class="lib-row" data-select="{{$l.Link "selected" .ID}}" data-open="/files/forestnote?notebook={{.ID}}"{{if $d.Selected}}{{if eq $d.Selected.ID .ID}} aria-current="true"{{end}}{{end}}>
+<span class="lib-main"><a class="lib-title" href="{{$l.Link "selected" .ID}}" data-select-link>{{if .Name}}{{.Name}}{{else}}{{t "Untitled notebook"}}{{end}}</a><span class="lib-sub">{{if $d.All}}{{if .FolderName}}{{.FolderName}}{{else}}{{t "Notebook root"}}{{end}} · {{end}}{{if eq .Status "indexed"}}{{t "Searchable"}}{{else if eq .Status "partial"}}{{t "Partly searchable"}}{{else}}{{t "Empty"}}{{end}}</span></span>
+<span class="lib-meta">{{t "{{.Count}} pp" .PageCount}}{{with day .ModifiedAt}} · {{.}}{{end}}</span></li>{{end}}
+{{else}}<li class="empty">{{t "Nothing here yet. Notebooks appear after a device syncs."}} <a href="/files/forestnote/devices">{{t "Connect a device"}}</a></li>{{end}}</ul>
+{{if $d.Entries}}{{template "pagination" $l}}{{end}}
+</section>
+{{with $d.Selected}}<aside class="lib-preview" id="preview" aria-label="{{t "Preview"}}">
+<span class="tag tag-neutral">{{t "Alexandria Client"}}</span>
+<h2>{{if .Name}}{{.Name}}{{else}}{{t "Untitled notebook"}}{{end}}</h2>
+<p class="lib-sub">{{t "{{.Count}} pages" .PageCount}}{{with day .ModifiedAt}} · {{t "modified {{.Date}}" "Date" .}}{{end}}</p>
+{{if .Thumbs}}<ol class="thumbs">{{range .Thumbs}}<li><a href="{{.Href}}"><img src="{{.Image}}" alt="{{t "Page {{.Number}}" "Number" .Number}}" width="240" height="320" loading="lazy"></a><span>{{.Number}}</span></li>{{end}}</ol>{{if .More}}<p class="small"><a href="{{.Open}}&amp;view=grid">{{t "All {{.Count}} pages" .PageCount}}</a></p>{{end}}{{end}}
+<div class="lib-actions"><a class="btn btn-primary" href="{{.Open}}">{{icon "book-open"}} {{t "Open"}}</a><a class="btn btn-ghost" href="{{.PDF}}">{{icon "file-pdf"}} {{t "Download PDF"}}</a>
+<details class="inline-action"><summary class="btn btn-ghost danger-text">{{t "Delete…"}}</summary><form class="inline-form" method="post" action="/files/forestnote/delete"><input type="hidden" name="notebook" value="{{.ID}}"><input type="hidden" name="return" value="{{$d.Return}}">
+<p>{{t "Removes it from every Alexandria Client device on their next sync. There's no trash, and a later edit on a device brings it back."}}</p>
+<label class="confirm"><input type="checkbox" name="confirm" required data-arm> {{t "Delete this notebook"}}</label><button class="btn btn-danger" data-armed>{{t "Delete"}}</button></form></details></div>
+<ul class="lib-facts"><li>{{t "Folder"}} · {{if .FolderName}}{{.FolderName}}{{else}}{{t "Notebook root"}}{{end}}</li>
+<li>{{t "{{.Done}} of {{.Count}} pages searchable" "Done" .Indexed "Count" .PageCount}}</li></ul>
+</aside>{{else}}<aside class="lib-preview lib-preview-empty"><p class="empty">{{t "Select a notebook to preview it."}}</p></aside>{{end}}
+</div>
+<script src="/static/forms.js?v={{version}}" defer></script><script src="/static/library.js?v={{version}}" defer></script>
 {{end}}

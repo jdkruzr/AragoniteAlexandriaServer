@@ -6,7 +6,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"image"
 	"image/jpeg"
+	"image/png"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
@@ -112,6 +114,32 @@ func EditTextBox(ctx context.Context, db pg.DB, boxID, text string) (pageID stri
 
 // PageImage renders a live page (ink and text boxes) as JPEG for viewing.
 func PageImage(ctx context.Context, db pg.Querier, pageID string) ([]byte, error) {
+	img, err := drawPage(ctx, db, pageID, 0)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// PageThumb renders a live page width pixels wide, as PNG, for the Library.
+func PageThumb(ctx context.Context, db pg.Querier, pageID string, width int) ([]byte, error) {
+	img, err := drawPage(ctx, db, pageID, width)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// drawPage renders a live page at full size, or width pixels wide.
+func drawPage(ctx context.Context, db pg.Querier, pageID string, width int) (image.Image, error) {
 	s, err := load(ctx, db, pageID)
 	if err != nil {
 		return nil, err
@@ -138,13 +166,8 @@ func PageImage(ctx context.Context, db pg.Querier, pageID string) ([]byte, error
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	img, err := render.RenderPageSized(s.strokes, boxes, s.width, s.height)
-	if err != nil {
-		return nil, err
+	if width > 0 {
+		return render.RenderPageWidth(s.strokes, boxes, s.width, s.height, width)
 	}
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return render.RenderPageSized(s.strokes, boxes, s.width, s.height)
 }

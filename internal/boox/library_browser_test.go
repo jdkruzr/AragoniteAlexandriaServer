@@ -128,7 +128,7 @@ func TestNativeListingNewestPaginationAndScope(t *testing.T) {
 		return w.Body.String()
 	}
 	first := get("/boox")
-	if !strings.Contains(first, "1–60 of 65") || strings.Count(first, ">Next</a>") != 2 || !strings.Contains(first, "Created (UTC)") || !strings.Contains(first, "Modified (UTC)") {
+	if !strings.Contains(first, "1–60 of 65") || strings.Count(first, ">Next</a>") != 1 || !strings.Contains(first, "Jun 15, 2025") {
 		t.Fatal("missing dates or visible pagination")
 	}
 	a, b := strings.Index(first, "id=note-64"), strings.Index(first, "id=note-63")

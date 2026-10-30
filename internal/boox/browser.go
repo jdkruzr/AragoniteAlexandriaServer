@@ -65,6 +65,9 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		case "/boox/page.png":
 			s.pageImage(w, r)
 			return
+		case "/boox/thumb.png":
+			s.thumbImage(w, r)
+			return
 		case "/boox/resource":
 			s.typedResource(w, r)
 			return

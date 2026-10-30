@@ -33,6 +33,12 @@ type Entry struct {
 	PageCount             int
 	CreatedAt, ModifiedAt int64
 	Status                string // notebooks: blank, partial or indexed
+	// Indexed counts a notebook's pages with recognized text.
+	Indexed int
+	// FolderName is a notebook's folder ("" at the root), in flat lists.
+	FolderName string
+	// Notebooks counts a folder's live notebooks.
+	Notebooks int
 }
 
 // notebookModified includes content edits and deletions, not recognition jobs.
@@ -50,14 +56,15 @@ func Folder(ctx context.Context, db pg.Querier, folderID, sortField, order strin
 		return nil, nil, err
 	}
 	var folders, notebooks []Entry
-	rows, err := db.QueryContext(ctx, `SELECT id, COALESCE(name,''), COALESCE(created_at,0), lww_wall_ts FROM fn_folder
-		WHERE deleted_at IS NULL AND COALESCE(parent_folder_id,'') = $1`, folderID)
+	rows, err := db.QueryContext(ctx, `SELECT f.id, COALESCE(f.name,''), COALESCE(f.created_at,0), f.lww_wall_ts,
+		(SELECT count(*) FROM fn_notebook n WHERE n.folder_id = f.id AND n.deleted_at IS NULL) FROM fn_folder f
+		WHERE f.deleted_at IS NULL AND COALESCE(f.parent_folder_id,'') = $1`, folderID)
 	if err != nil {
 		return nil, nil, err
 	}
 	for rows.Next() {
 		e := Entry{IsFolder: true}
-		if err := rows.Scan(&e.ID, &e.Name, &e.CreatedAt, &e.ModifiedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.Name, &e.CreatedAt, &e.ModifiedAt, &e.Notebooks); err != nil {
 			rows.Close()
 			return nil, nil, err
 		}
@@ -67,38 +74,67 @@ func Folder(ctx context.Context, db pg.Querier, folderID, sortField, order strin
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
-	rows, err = db.QueryContext(ctx, `SELECT n.id, COALESCE(n.name,''), COALESCE(n.created_at,0), `+notebookModified+`,
-		(SELECT count(*) FROM fn_page p WHERE p.notebook_id = n.id AND p.deleted_at IS NULL),
-		(SELECT count(*) FROM fn_page p JOIN alexandria_note_content c ON c.note_key = 'forestnote://' || p.notebook_id || '/' || p.id
-			WHERE p.notebook_id = n.id AND p.deleted_at IS NULL AND btrim(c.body_text) <> '')
-		FROM fn_notebook n WHERE n.deleted_at IS NULL AND COALESCE(n.folder_id,'') = $1`, folderID)
+	notebooks, err = notebookEntries(ctx, db, `COALESCE(n.folder_id,'') = $1`, folderID)
 	if err != nil {
-		return nil, nil, err
-	}
-	for rows.Next() {
-		var e Entry
-		var indexed int
-		if err := rows.Scan(&e.ID, &e.Name, &e.CreatedAt, &e.ModifiedAt, &e.PageCount, &indexed); err != nil {
-			rows.Close()
-			return nil, nil, err
-		}
-		switch {
-		case e.PageCount == 0:
-			e.Status = "blank"
-		case indexed >= e.PageCount:
-			e.Status = "indexed"
-		default:
-			e.Status = "partial"
-		}
-		notebooks = append(notebooks, e)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
 	entries := append(folders, notebooks...)
 	sortEntries(entries, sortField, order)
 	return crumbs, entries, nil
+}
+
+// AllNotebooks lists every live notebook, whatever its folder, sorted by
+// sortField (name, created, modified, pages).
+func AllNotebooks(ctx context.Context, db pg.Querier, sortField, order string) ([]Entry, error) {
+	entries, err := notebookEntries(ctx, db, `true`)
+	if err != nil {
+		return nil, err
+	}
+	sortEntries(entries, sortField, order)
+	return entries, nil
+}
+
+// NotebookEntry describes one live notebook as a listing would.
+func NotebookEntry(ctx context.Context, db pg.Querier, id string) (Entry, error) {
+	entries, err := notebookEntries(ctx, db, `n.id = $1`, id)
+	if err != nil {
+		return Entry{}, err
+	}
+	if len(entries) == 0 {
+		return Entry{}, ErrNotFound
+	}
+	return entries[0], nil
+}
+
+// notebookEntries reads live notebooks matching where (over fn_notebook n).
+func notebookEntries(ctx context.Context, db pg.Querier, where string, args ...any) ([]Entry, error) {
+	rows, err := db.QueryContext(ctx, `SELECT n.id, COALESCE(n.name,''), COALESCE(n.created_at,0), `+notebookModified+`,
+		(SELECT count(*) FROM fn_page p WHERE p.notebook_id = n.id AND p.deleted_at IS NULL),
+		(SELECT count(*) FROM fn_page p JOIN alexandria_note_content c ON c.note_key = 'forestnote://' || p.notebook_id || '/' || p.id
+			WHERE p.notebook_id = n.id AND p.deleted_at IS NULL AND btrim(c.body_text) <> ''),
+		COALESCE((SELECT f.name FROM fn_folder f WHERE f.id = n.folder_id AND f.deleted_at IS NULL),'')
+		FROM fn_notebook n WHERE n.deleted_at IS NULL AND `+where, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Entry
+	for rows.Next() {
+		var e Entry
+		if err := rows.Scan(&e.ID, &e.Name, &e.CreatedAt, &e.ModifiedAt, &e.PageCount, &e.Indexed, &e.FolderName); err != nil {
+			return nil, err
+		}
+		switch {
+		case e.PageCount == 0:
+			e.Status = "blank"
+		case e.Indexed >= e.PageCount:
+			e.Status = "indexed"
+		default:
+			e.Status = "partial"
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
 }
 
 func sortEntries(entries []Entry, field, order string) {

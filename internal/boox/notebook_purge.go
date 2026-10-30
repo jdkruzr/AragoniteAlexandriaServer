@@ -283,6 +283,9 @@ func (s Service) purgeServerRows(ctx context.Context, tx *sql.Tx, op, doc string
 	if _, e = tx.ExecContext(ctx, `DELETE FROM boox_blob_version WHERE (starts_with(native_key,$1) OR native_key=rtrim($1,'/')||'.png')`, prefix); e != nil {
 		return e
 	}
+	if _, e = tx.ExecContext(ctx, `DELETE FROM alexandria_page_thumb WHERE source='boox' AND notebook_id=$1`, doc); e != nil {
+		return e
+	}
 	s.forgetNotebookPreviews(doc)
 	return nil
 }

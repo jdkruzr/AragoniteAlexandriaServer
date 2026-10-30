@@ -134,6 +134,16 @@ func RenderPageSized(strokes []Stroke, boxes []TextBox, pageWidth, pageHeight in
 	return renderPage(strokes, boxes, pageWidth, pageHeight, renderScale)
 }
 
+// RenderPageWidth draws the page rectangle scaled to width pixels across,
+// for small previews: drawing small is far cheaper than drawing full size and
+// shrinking.
+func RenderPageWidth(strokes []Stroke, boxes []TextBox, pageWidth, pageHeight int64, width int) (image.Image, error) {
+	if pageWidth <= 0 || pageHeight <= 0 || width <= 0 {
+		return nil, fmt.Errorf("invalid page %dx%d at width %d", pageWidth, pageHeight, width)
+	}
+	return renderPage(strokes, boxes, pageWidth, pageHeight, float64(width)/float64(pageWidth))
+}
+
 // RenderRegionAtScale renders an exact virtual-unit rectangle (for example an
 // Alexandria reader annotation canvas) at an explicit output scale, so a caller
 // can bound the output size for display instead of using the OCR render scale.

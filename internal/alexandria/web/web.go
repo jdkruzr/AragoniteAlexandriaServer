@@ -55,6 +55,10 @@ var funcs = withFormats(template.FuncMap{
 	// languages lists the available languages by their own names.
 	"languages": i18n.Choices,
 	"version":   func() string { return Version },
+	// direction names a list's order in its sort field's words ("A–Z").
+	"direction": directionLabel,
+	// day is a list date in the owner's zone (see dayIn); bound per request.
+	"day": func(any) string { return "" },
 	"listJobStates": func() []string {
 		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled", "skipped"}
 	},
@@ -199,6 +203,9 @@ type page struct {
 	AttentionURL string
 	Query        string // the header search box's text on the Search page
 	Back         string // this page's path and query, for header forms
+	// LibraryTab is notebooks, books or tags on a redesigned Library page,
+	// whose LibrarySource is boox or client; "" elsewhere.
+	LibraryTab, LibrarySource string
 }
 
 // InLibrary reports whether the page belongs under the Library nav item:
@@ -238,12 +245,15 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		live, _ := strconv.Atoi(w.Header().Get("Refresh"))
 		w.Header().Del("Refresh")
 		loc := d.Localizer(r)
-		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc)}).Funcs(formatFuncs(loc))
+		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc), "day": d.dayIn(r, loc)}).Funcs(formatFuncs(loc))
 		w.Header().Set("Content-Language", loc.Lang())
 		w.Header().Add("Vary", "Accept-Language")
 		p := page{SettingsSection: settingsSection(r), Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
 			Notice: notice(loc, r), Theme: Theme(r), Back: returnPath(r)}
 		p.Attention, p.AttentionURL = d.attention(r.Context())
+		if p.LibraryTab, p.LibrarySource = libraryTab(r); p.LibrarySource != "" {
+			rememberLibrarySource(w, p.LibrarySource)
+		}
 		if section == "search" {
 			p.Query = r.URL.Query().Get("q")
 		}
@@ -419,7 +429,8 @@ func back(w http.ResponseWriter, r *http.Request, path, notice string, count ...
 // Handler serves the UI for one admitted, authenticated request.
 func Handler(d Deps) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /library", d.overview)
+	mux.HandleFunc("GET /library", d.libraryHome)
+	mux.HandleFunc("GET /library/overview", d.overview)
 	mux.Handle("GET /static/", http.FileServerFS(assets))
 	mux.HandleFunc("GET /help", func(w http.ResponseWriter, r *http.Request) {
 		d.render(w, r, "help", "Help", "help", map[string]any{"NativeBOOX": d.Status.NativeBOOX})
@@ -460,7 +471,7 @@ func Owns(path string) bool {
 			return true
 		}
 	}
-	return path == "/" || path == "/library"
+	return path == "/" || path == "/library" || path == "/library/overview"
 }
 
 func sourceTab(path, section string) string {

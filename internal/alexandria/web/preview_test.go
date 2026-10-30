@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 	"io/fs"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -79,10 +81,12 @@ func previewPages() []previewPage {
 		{"jobs-library-start", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Source": "boox", "NativeBOOX": true, "Enabled": true}},
 		{"jobs-library-review", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Run": run, "Source": "boox", "NativeBOOX": true, "Enabled": true, "Model": "synthetic-vision"}},
 		{"jobs-library-progress", "jobs-library", "Recognize a library", "jobs", "/jobs/library", map[string]any{"Run": &progress, "Source": "boox", "NativeBOOX": true, "Enabled": true, "Model": "synthetic-vision"}},
-		{"client-notebooks", "notebooks", "Notebooks", "notebooks", "/files/forestnote", map[string]any{"Listing": listing.State{}, "Entries": []notes.Entry{{IsFolder: true, ID: "f", Name: "Synthetic folder"}, {ID: "n", Name: "Synthetic notebook", Status: "partial", PageCount: 3, CreatedAt: 1, ModifiedAt: 2}}}},
+		{"client-notebooks", "notebooks", "Notebooks", "notebooks", "/files/forestnote", clientListPreview(true, false)},
+		{"client-notebooks-selected", "notebooks", "Notebooks", "notebooks", "/files/forestnote", clientListPreview(true, true)},
+		{"client-notebooks-folders", "notebooks", "Notebooks", "notebooks", "/files/forestnote", clientListPreview(false, false)},
 		{"client-notebook", "notebook", "Synthetic notebook", "notebooks", "/files/forestnote", notebookReader("n", "Synthetic notebook", clientPages, nil, url.Values{"page": {"p2"}})},
 		{"client-notebook-grid", "notebook", "Synthetic notebook", "notebooks", "/files/forestnote", notebookReader("n", "Synthetic notebook", clientPages, nil, url.Values{"view": {"grid"}})},
-		{"client-notebooks-empty", "notebooks", "Notebooks", "notebooks", "/files/forestnote", map[string]any{"Listing": listing.State{}}},
+		{"client-notebooks-empty", "notebooks", "Notebooks", "notebooks", "/files/forestnote", clientList{All: true}},
 		{"client-books", "books", "Books", "books", "/files/forestnote/books", map[string]any{"Listing": listing.State{}, "Entries": []books.LibraryBook{{ID: "b", Title: "Synthetic book", Authors: "A. Author", Format: "EPUB", FileState: "ready", ByteLength: 2 << 20}}}},
 		{"client-devices", "devices", "Client devices", "devices", "/settings/devices", map[string]any{"Devices": []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.UnixMilli(), FirstSeenMs: 1}}}},
 		{"tasks", "tasks", "Today", "tasks", "/", todayPreview(openTasks, doneTasks, taskView{Sort: "due", Dir: "asc"}, now, map[string]any{
@@ -97,6 +101,31 @@ func previewPages() []previewPage {
 	}
 }
 
+// clientListPreview is the Client's Notebooks tab with synthetic notebooks:
+// all of them or the root folder, optionally with one selected.
+func clientListPreview(all, selected bool) clientList {
+	day := time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC).UnixMilli()
+	nb := notes.Entry{ID: "n", Name: "Synthetic notebook", Status: "partial", PageCount: 12, Indexed: 9, CreatedAt: day, ModifiedAt: day, FolderName: "Synthetic folder"}
+	v := clientList{All: all, Listing: listing.Parse(url.Values{})}
+	v.Entries = []notes.Entry{nb, {ID: "n2", Name: "Second synthetic notebook", Status: "indexed", PageCount: 1, Indexed: 1, ModifiedAt: day - 86400000}}
+	q := url.Values{}
+	if !all {
+		v.Entries = append([]notes.Entry{{IsFolder: true, ID: "f", Name: "Synthetic folder", Notebooks: 1}}, v.Entries[1:]...)
+		q.Set("view", "folders")
+	}
+	if selected {
+		q.Set("selected", "n")
+		p := &clientPreview{Entry: nb, Open: "/files/forestnote?notebook=n", PDF: "/files/forestnote/export?notebook=n", More: 4}
+		for i := 1; i <= 8; i++ {
+			p.Thumbs = append(p.Thumbs, pageThumb{Number: i, Image: "/files/forestnote/thumb?page=p" + strconv.Itoa(i), Href: "/files/forestnote?notebook=n&n=" + strconv.Itoa(i)})
+		}
+		v.Selected = p
+	}
+	v.Listing.Finish(q, "/files/forestnote", len(v.Entries))
+	v.Return = "/files/forestnote?" + q.Encode()
+	return v
+}
+
 // renderPreview executes a page exactly as the server would, minus HTTP.
 func renderPreview(t *testing.T, p previewPage) []byte {
 	t.Helper()
@@ -106,9 +135,10 @@ func renderPreview(t *testing.T, p previewPage) []byte {
 	}
 	var buf bytes.Buffer
 	if err == nil {
+		tab, source := libraryTab(httptest.NewRequest("GET", p.path, nil))
 		err = clone.ExecuteTemplate(&buf, "layout.html", page{Title: p.title, Section: p.section, SourceTab: sourceTab(p.path, p.section),
 			ClientSource: p.section == "notebooks" || p.section == "books" || p.section == "devices" || p.section == "client-settings",
-			NativeBOOX:   true, Base: "https://library.example", Data: p.data})
+			NativeBOOX:   true, Base: "https://library.example", Data: p.data, LibraryTab: tab, LibrarySource: source})
 	}
 	if err != nil {
 		t.Fatalf("%s: %v", p.file, err)

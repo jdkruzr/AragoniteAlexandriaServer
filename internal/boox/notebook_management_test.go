@@ -133,7 +133,7 @@ func TestNotebookManagementLifecycle(t *testing.T) {
 	g.docs["n"] = cleanupFixture(t, s, "n", "Original", nil)
 	g.docs["f"] = cleanupFixture(t, s, "f", "Folder", map[string]any{"type": 0})
 	for _, action := range []string{"rename", "move", "trash", "restore"} {
-		items, e := s.managementItems(ctx, []notebookChoice{{ID: "n"}})
+		items, e := s.managementItems(ctx, []notebookChoice{{ID: "n"}}, true)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -173,7 +173,7 @@ func TestNotebookManagementLifecycle(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	items, e := s.managementItems(ctx, []notebookChoice{{ID: "n"}})
+	items, e := s.managementItems(ctx, []notebookChoice{{ID: "n"}}, true)
 	if e != nil || !items[0].RootFallback || items[0].Parent != "" {
 		t.Fatal(items, e)
 	}
@@ -242,6 +242,9 @@ func TestNotebookPermanentRemovalAndLateArrivals(t *testing.T) {
 	if _, e := s.DB.ExecContext(ctx, `INSERT INTO alexandria_recognition_allow_large(source,notebook_id) VALUES('boox','gone')`); e != nil {
 		t.Fatal(e)
 	}
+	if _, e := s.DB.ExecContext(ctx, `INSERT INTO alexandria_page_thumb(source,notebook_id,page,version,png) VALUES('boox','gone',1,'v','synthetic')`); e != nil {
+		t.Fatal(e)
+	}
 	shared := []byte("shared synthetic attachment")
 	unique := []byte("exclusive synthetic attachment")
 	for key, body := range map[string][]byte{s.uid() + "/note/gone/resource/a": shared, s.uid() + "/note/keep/resource/a": shared, s.uid() + "/note/gone/resource/b": unique, s.uid() + "/note/gone.png": []byte("synthetic thumbnail")} {
@@ -268,7 +271,7 @@ func TestNotebookPermanentRemovalAndLateArrivals(t *testing.T) {
 		t.Fatal("purge incomplete")
 	}
 	var refs int
-	if e := s.DB.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM boox_projection WHERE document_id IN ('gone','tag','commit'))+(SELECT count(*) FROM boox_revision WHERE document_id IN ('gone','tag','commit'))+(SELECT count(*) FROM boox_blob_version WHERE starts_with(native_key,$1) OR native_key=rtrim($1,'/')||'.png')+(SELECT count(*) FROM alexandria_recognition_job WHERE notebook_id='gone')+(SELECT count(*) FROM alexandria_note_action_item WHERE notebook_id='gone')+(SELECT count(*) FROM alexandria_recognition_allow_large WHERE notebook_id='gone')`, s.uid()+"/note/gone/").Scan(&refs); e != nil || refs != 0 {
+	if e := s.DB.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM boox_projection WHERE document_id IN ('gone','tag','commit'))+(SELECT count(*) FROM boox_revision WHERE document_id IN ('gone','tag','commit'))+(SELECT count(*) FROM boox_blob_version WHERE starts_with(native_key,$1) OR native_key=rtrim($1,'/')||'.png')+(SELECT count(*) FROM alexandria_recognition_job WHERE notebook_id='gone')+(SELECT count(*) FROM alexandria_note_action_item WHERE notebook_id='gone')+(SELECT count(*) FROM alexandria_recognition_allow_large WHERE notebook_id='gone')+(SELECT count(*) FROM alexandria_page_thumb WHERE notebook_id='gone')`, s.uid()+"/note/gone/").Scan(&refs); e != nil || refs != 0 {
 		t.Fatal(refs, e)
 	}
 	if _, e := s.Objects.Stat(ctx, "boox/bodies/"+hash(unique)); e == nil {
@@ -454,7 +457,7 @@ func TestNotebookPurgeAdmissionAndSingleConnection(t *testing.T) {
 	s, g := managementFixture(t)
 	ctx := context.Background()
 	g.docs["n"] = cleanupFixture(t, s, "n", "Gone", map[string]any{"status": 0})
-	items, e := s.managementItems(ctx, []notebookChoice{{ID: "n"}})
+	items, e := s.managementItems(ctx, []notebookChoice{{ID: "n"}}, true)
 	if e != nil {
 		t.Fatal(e)
 	}

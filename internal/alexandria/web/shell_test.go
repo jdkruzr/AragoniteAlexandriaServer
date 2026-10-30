@@ -132,3 +132,31 @@ func TestTemplateIconsExist(t *testing.T) {
 		t.Error("unknown icon accepted")
 	}
 }
+
+func TestLibraryOpensTheLastSource(t *testing.T) {
+	for _, c := range []struct {
+		boox   bool
+		cookie string
+		want   string
+	}{{true, "", "/boox"}, {true, "client", "/files/forestnote"}, {true, "boox", "/boox"}, {false, "boox", "/files/forestnote"}} {
+		r := httptest.NewRequest("GET", shellOrigin+"/library", nil)
+		if c.cookie != "" {
+			r.AddCookie(&http.Cookie{Name: LibrarySourceCookie, Value: c.cookie})
+		}
+		w := httptest.NewRecorder()
+		Handler(Deps{Status: Status{NativeBOOX: c.boox}}).ServeHTTP(w, r)
+		if w.Code != http.StatusSeeOther || w.Header().Get("Location") != c.want {
+			t.Errorf("%+v: %d %s", c, w.Code, w.Header().Get("Location"))
+		}
+	}
+	for path, want := range map[string]string{"/boox?selected=x": "boox", "/files/forestnote?view=folders": "client", "/files/forestnote?notebook=n": "", "/boox/notebook": "", "/library": ""} {
+		if _, got := libraryTab(httptest.NewRequest("GET", path, nil)); got != want {
+			t.Errorf("%s: source %q", path, got)
+		}
+	}
+	for in, want := range map[string]string{"/files/forestnote?sort=name&selected=x": "/files/forestnote?sort=name", "//evil.example/files/forestnote": "/files/forestnote", "/files/forestnote?selected=x": "/files/forestnote", "/boox": "/files/forestnote"} {
+		if got := clientListReturn(in); got != want {
+			t.Errorf("return %s: %s", in, got)
+		}
+	}
+}

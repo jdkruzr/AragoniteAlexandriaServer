@@ -89,11 +89,16 @@ func directionLabel(sort, dir string) string {
 			return i18n.M("Latest first")
 		}
 		return i18n.M("Soonest first")
-	case "title":
+	case "title", "name":
 		if dir == "desc" {
 			return i18n.M("Z–A")
 		}
 		return i18n.M("A–Z")
+	case "pages":
+		if dir == "desc" {
+			return i18n.M("Most first")
+		}
+		return i18n.M("Fewest first")
 	}
 	if dir == "desc" {
 		return i18n.M("Newest first")
