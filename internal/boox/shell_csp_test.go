@@ -12,7 +12,7 @@ import (
 func TestBOOXPagesAllowTheShellOnly(t *testing.T) {
 	s := Service{Config: Config{PublicURL: "https://boox.example"}}
 	content := template.Must(template.New("synthetic").Parse(`{{define "content"}}<p>Synthetic page</p>{{end}}`))
-	for path, inline := range map[string]bool{"/boox/tags": false, "/boox/cleanup": false, "/boox/books/upload": false, "/boox/notebook": true} {
+	for path, inline := range map[string]bool{"/boox/devices": false, "/boox/cleanup": false, "/boox/books/upload": false, "/boox/notebook": true} {
 		w := httptest.NewRecorder()
 		s.renderPage(w, httptest.NewRequest("GET", path, nil), content, "Synthetic", nil)
 		csp := w.Header().Get("Content-Security-Policy")

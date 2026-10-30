@@ -59,6 +59,10 @@ Click a notebook to preview it on the right: its first eight pages, its folder a
 - **BOOX** notebooks can be renamed, moved, sent to the tablets' Trash, restored or removed permanently from the preview. See [Connect BOOX Tablets](boox.md#the-notebook-preview).
 - **Alexandria Client** notebooks offer **Open**, **Download PDF** and **Delete…**. Deleting removes the notebook from every Client device on its next sync. There's no trash, and a later edit on a device brings it back.
 
+## Books and Tags
+
+**Books** lists each source's books; click one to see its highlights and notes beside the list. BOOX books can be uploaded, downloaded, renamed, moved between shelves and sent to Book Trash (see [Connect BOOX Tablets](boox.md#manage-stored-books)); Alexandria Client books can be downloaded, and their handwritten annotations show with the text recognized from them. **Tags** (BOOX) lists every lasso tag; click one for the pages that carry it.
+
 ### Reading a Notebook
 
 Open a notebook to see one page at a time:

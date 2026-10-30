@@ -195,25 +195,31 @@ func safeName(name, fallback string) string {
 func (d Deps) bookRoutes(mux *http.ServeMux) {
 	library := func() books.LibraryService { return books.NewLibraryService(d.DB, d.Objects) }
 	mux.HandleFunc("GET /files/forestnote/books", func(w http.ResponseWriter, r *http.Request) {
-		if id := r.URL.Query().Get("book"); id != "" {
+		q := r.URL.Query()
+		// A book opened by its old address is shown selected in the list.
+		if id := q.Get("book"); id != "" {
+			q.Del("book")
+			q.Set("selected", id)
+			http.Redirect(w, r, "/files/forestnote/books?"+q.Encode(), http.StatusSeeOther)
+			return
+		}
+		var selected *books.LibraryBookDetail
+		if id := q.Get("selected"); id != "" {
 			detail, err := library().GetBook(r.Context(), id)
-			if errors.Is(err, books.ErrLibraryBookNotFound) {
-				http.NotFound(w, r)
-				return
-			}
-			if err != nil {
+			if err != nil && !errors.Is(err, books.ErrLibraryBookNotFound) {
 				d.fail(w, err)
 				return
 			}
-			d.render(w, r, "book", Verbatim(detail.Book.Title), "books", detail)
-			return
+			if err == nil {
+				selected = &detail
+			}
 		}
 		list, err := library().ListBooks(r.Context())
 		if err != nil {
 			d.fail(w, err)
 			return
 		}
-		state := listing.Parse(r.URL.Query())
+		state := listing.Parse(q)
 		sort.Slice(list, func(i, j int) bool {
 			a, b := list[i], list[j]
 			cmp := 0
@@ -235,9 +241,9 @@ func (d Deps) bookRoutes(mux *http.ServeMux) {
 			}
 			return cmp < 0
 		})
-		state.Finish(r.URL.Query(), "/files/forestnote/books", len(list))
+		state.Finish(q, "/files/forestnote/books", len(list))
 		list = list[min(state.Offset, len(list)):min(state.Offset+listing.Size, len(list))]
-		d.render(w, r, "books", "Books", "books", map[string]any{"Entries": list, "Listing": state})
+		d.render(w, r, "books", "Books", "books", clientBooks{Entries: list, Listing: state, Selected: selected})
 	})
 	mux.HandleFunc("GET /files/forestnote/books/ink", func(w http.ResponseWriter, r *http.Request) {
 		png, err := library().RenderAnnotationInk(r.Context(), r.URL.Query().Get("annotation"))

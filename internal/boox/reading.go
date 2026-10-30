@@ -2,7 +2,9 @@ package boox
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"html/template"
 	"io"
@@ -12,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility"
 	listview "github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
@@ -22,6 +25,11 @@ type readingItem struct {
 	Stored                                                                         bool
 	Highlights, Bookmarks                                                          int
 	Children                                                                       []readingItem
+	// Shelf is the shelf a book is on ("" at the top level), ShelfPath its
+	// path; Percent is native "page/pages" progress as a whole percentage.
+	Shelf, ShelfPath, Percent string
+	// FileName is a stored book's file name, which Rename changes.
+	FileName string
 }
 type readingFolder struct {
 	ID, Parent, Name, Path, Revision string
@@ -35,6 +43,16 @@ type readingView struct {
 	Return                                      string
 	Folders, Crumbs                             []readingFolder
 	Counts                                      readingCounts
+	// Selected is the book previewed beside the list, with its highlights
+	// and bookmarks.
+	Selected *readingItem
+	// Shelves are the native shelves a stored book can be moved to.
+	Shelves []readingFolder
+	// TrashCount counts stored books in Book Trash.
+	TrashCount int
+	// Token makes a change queued from this page idempotent; Queued is the
+	// batch just queued from it.
+	Token, Queued string
 }
 
 func (v readingView) Link(key, value string) string {
@@ -81,6 +99,13 @@ func readingFromBody(id string, raw []byte) readingItem {
 	}
 	v.Kind = map[string]string{"1": "Annotation", "2": "Bookmark", "4": "Book"}[nativeString(m, "modeType")]
 	v.Status = map[string]string{"0": "New", "1": "In Progress", "2": "Finished"}[nativeString(m, "readingStatus")]
+	if done, total, ok := strings.Cut(v.Progress, "/"); ok {
+		d, e1 := strconv.ParseFloat(done, 64)
+		t, e2 := strconv.ParseFloat(total, 64)
+		if e1 == nil && e2 == nil && t > 0 && d >= 0 && d <= t {
+			v.Percent = strconv.Itoa(int(d/t*100+0.5)) + "%"
+		}
+	}
 	v.CreatedAt, _ = strconv.ParseInt(nativeString(m, "createdAt"), 10, 64)
 	v.ModifiedAt, _ = strconv.ParseInt(nativeString(m, "updatedAt"), 10, 64)
 	v.LastAccess, _ = strconv.ParseInt(nativeString(m, "lastAccess"), 10, 64)
@@ -190,7 +215,6 @@ const readingAssets = `WITH assets AS MATERIALIZED (
 func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	v := readingView{View: readingPreference(w, r, "view", "stored", "stored", "all", "metadata", "stats"), Layout: readingPreference(w, r, "layout", "shelf", "shelf", "list"), Query: q.Get("q"), Folder: q.Get("folder"), Status: q.Get("status"), Record: q.Get("record"), Listing: listview.Parse(q)}
-	v.Return = bookReturn(r.URL.RequestURI())
 	if len(v.Query) > 200 {
 		v.Query = v.Query[:200]
 	}
@@ -201,6 +225,53 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	v.Folders, e = s.readingFolders(r.Context())
 	if e != nil {
 		s.failure(w, "readingFolders", e)
+		return
+	}
+	paths := map[string]string{}
+	for _, f := range v.Folders {
+		paths[f.ID] = f.Path
+		if f.Writable {
+			v.Shelves = append(v.Shelves, f)
+		}
+	}
+	ctx := r.Context()
+	// A book opened by its record is shown selected in the list instead.
+	if v.Record != "" {
+		if b, e := s.readingBook(ctx, v.Record, paths); e != nil {
+			s.failure(w, "reading", e)
+			return
+		} else if b != nil {
+			q.Del("record")
+			q.Set("selected", v.Record)
+			http.Redirect(w, r, "/boox/reading?"+q.Encode(), http.StatusSeeOther)
+			return
+		}
+	}
+	v.Token = uuid.NewString()
+	if _, e := uuid.Parse(q.Get("queued")); e == nil {
+		v.Queued = q.Get("queued")
+	}
+	q.Del("queued")
+	v.Return = bookReturn("/boox/reading?" + q.Encode())
+	if id := q.Get("selected"); id != "" {
+		if v.Selected, e = s.readingBook(ctx, id, paths); e != nil {
+			s.failure(w, "reading", e)
+			return
+		}
+	}
+	if lib, e := s.librarySnapshot(ctx, s.DB); e == nil {
+		for _, b := range lib.Books {
+			if !b.Live {
+				v.TrashCount++
+			}
+		}
+		if v.Selected != nil {
+			if b := lib.Books[v.Selected.NativeID]; b != nil {
+				v.Selected.FileName = bookFileName(b)
+			}
+		}
+	} else {
+		s.failure(w, "reading", e)
 		return
 	}
 	// Stored books only live on native shelves; cloud-account and smart shelves
@@ -246,30 +317,29 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		v.Listing.Offset = 0
 	}
 	const membership = `EXISTS(SELECT 1 FROM boox_projection m JOIN boox_projection f ON f.document_id=m.native_uid||'#'||(m.body->>'libraryUniqueId') WHERE m.native_uid=p.native_uid AND m.domain='reading' AND m.body->>'modeType'='5' AND coalesce(m.body->>'status','0')='0' AND m.body->>'documentUniqueId'=p.body->>'uniqueId' AND f.domain='reading' AND f.native_uid=p.native_uid AND f.body->>'modeType'='3' AND coalesce(f.body->>'status','0')='0' AND ($4='unfiled' OR m.body->>'libraryUniqueId'=$4))`
-	rows, e := s.DB.QueryContext(r.Context(), readingAssets+`SELECT p.document_id,p.body,coalesce(a.stored,false),coalesce(a.cover,''),count(*) OVER() FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId' WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p")+` AND ($2<>'' AND p.document_id=$2 OR $2='' AND p.body->>'modeType'='4' AND ($3 NOT IN ('stored','metadata') OR $3='stored' AND coalesce(a.stored,false) OR $3='metadata' AND NOT coalesce(a.stored,false)) AND ($4='' OR $4='unfiled' AND NOT `+membership+` OR $4<>'unfiled' AND `+membership+`) AND ($5='' OR strpos(lower(coalesce(p.body->>'title',p.body->>'name','')||' '||coalesce(p.body->>'authors','')),lower($5))>0) AND ($6='' OR p.body->>'readingStatus'=$6) AND ($3<>'stats' OR (p.body->>'lastAccess' ~ '^[0-9]{1,15}$' AND p.body->>'lastAccess'<>'0'))) ORDER BY `+order+` LIMIT $7 OFFSET $8`, s.uid(), v.Record, v.View, v.Folder, v.Query, v.Status, limit, v.Listing.Offset)
+	rows, e := s.DB.QueryContext(r.Context(), readingAssets+`SELECT p.document_id,p.body,coalesce(a.stored,false),coalesce(a.cover,''),'',count(*) OVER() FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId' WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p")+` AND ($2<>'' AND p.document_id=$2 OR $2='' AND p.body->>'modeType'='4' AND ($3 NOT IN ('stored','metadata') OR $3='stored' AND coalesce(a.stored,false) OR $3='metadata' AND NOT coalesce(a.stored,false)) AND ($4='' OR $4='unfiled' AND NOT `+membership+` OR $4<>'unfiled' AND `+membership+`) AND ($5='' OR strpos(lower(coalesce(p.body->>'title',p.body->>'name','')||' '||coalesce(p.body->>'authors','')),lower($5))>0) AND ($6='' OR p.body->>'readingStatus'=$6) AND ($3<>'stats' OR (p.body->>'lastAccess' ~ '^[0-9]{1,15}$' AND p.body->>'lastAccess'<>'0'))) ORDER BY `+order+` LIMIT $7 OFFSET $8`, s.uid(), v.Record, v.View, v.Folder, v.Query, v.Status, limit, v.Listing.Offset)
 	if e != nil {
 		s.failure(w, "reading", e)
 		return
 	}
 	for rows.Next() {
 		var raw []byte
-		var id, cover string
+		var id, cover, shelf string
 		var stored bool
-		if e = rows.Scan(&id, &raw, &stored, &cover, &v.Listing.Total); e != nil {
+		if e = rows.Scan(&id, &raw, &stored, &cover, &shelf, &v.Listing.Total); e != nil {
 			break
 		}
-		item := readingFromBody(id, raw)
-		item.Stored = stored
-		if cover != "" {
-			item.Cover = "/boox/books/cover?record=" + url.QueryEscape(id)
-		}
-		v.Items = append(v.Items, item)
+		v.Items = append(v.Items, readingRow(id, raw, stored, cover, shelf, paths))
 	}
 	if e == nil {
 		e = rows.Err()
 	}
 	rows.Close()
 	if e != nil {
+		s.failure(w, "reading", e)
+		return
+	}
+	if e = s.bookShelves(ctx, v.Items, paths); e != nil {
 		s.failure(w, "reading", e)
 		return
 	}
@@ -306,6 +376,82 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	v.Listing.Finish(q, "/boox/reading", v.Listing.Total)
 	s.renderPage(w, r, readingTemplate, "BOOX Reading", v)
 }
+
+// bookShelf selects the shelf a book is on (BOOX keeps one), "" if none.
+const bookShelf = `coalesce((SELECT m.body->>'libraryUniqueId' FROM boox_projection m WHERE m.native_uid=p.native_uid AND m.domain='reading' AND m.body->>'modeType'='5' AND coalesce(m.body->>'status','0')='0' AND m.body->>'documentUniqueId'=p.body->>'uniqueId' ORDER BY m.document_id LIMIT 1),'')`
+
+// bookShelves fills in the shelves of a page of books with one lookup;
+// asking per row costs a scan of every reading record each.
+func (s Service) bookShelves(ctx context.Context, items []readingItem, paths map[string]string) error {
+	ids := []string{}
+	at := map[string][]int{}
+	for i, it := range items {
+		if it.NativeID != "" {
+			ids = append(ids, it.NativeID)
+			at[it.NativeID] = append(at[it.NativeID], i)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	raw, _ := json.Marshal(ids)
+	rows, e := s.DB.QueryContext(ctx, `SELECT DISTINCT ON (m.body->>'documentUniqueId') m.body->>'documentUniqueId',coalesce(m.body->>'libraryUniqueId','') FROM boox_projection m WHERE m.native_uid=$1 AND m.domain='reading' AND m.body->>'modeType'='5' AND coalesce(m.body->>'status','0')='0' AND m.body->>'documentUniqueId' IN (SELECT jsonb_array_elements_text($2::jsonb)) ORDER BY m.body->>'documentUniqueId',m.document_id`, s.uid(), string(raw))
+	if e != nil {
+		return e
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var book, shelf string
+		if e = rows.Scan(&book, &shelf); e != nil {
+			return e
+		}
+		for _, i := range at[book] {
+			items[i].Shelf, items[i].ShelfPath = shelf, paths[shelf]
+		}
+	}
+	return rows.Err()
+}
+
+func readingRow(id string, raw []byte, stored bool, cover, shelf string, paths map[string]string) readingItem {
+	item := readingFromBody(id, raw)
+	item.Stored = stored
+	if cover != "" {
+		item.Cover = "/boox/books/cover?record=" + url.QueryEscape(id)
+	}
+	item.Shelf, item.ShelfPath = shelf, paths[shelf]
+	return item
+}
+
+// readingBook returns one visible book with its highlights and bookmarks,
+// or nil when id isn't a book.
+func (s Service) readingBook(ctx context.Context, id string, paths map[string]string) (*readingItem, error) {
+	var raw []byte
+	var cover, shelf string
+	var stored bool
+	e := s.DB.QueryRowContext(ctx, readingAssets+`SELECT p.body,coalesce(a.stored,false),coalesce(a.cover,''),`+bookShelf+` FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId' WHERE p.native_uid=$1 AND p.document_id=$2 AND p.body->>'modeType'='4' AND `+booxvisibility.Reading("p"), s.uid(), id).Scan(&raw, &stored, &cover, &shelf)
+	if errors.Is(e, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if e != nil {
+		return nil, e
+	}
+	b := readingRow(id, raw, stored, cover, shelf, paths)
+	rows, e := s.DB.QueryContext(ctx, `SELECT document_id,body FROM boox_projection p WHERE native_uid=$1 AND body->>'documentId'=$2 AND body->>'modeType' IN ('1','2') AND `+booxvisibility.Reading("p")+` ORDER BY `+listview.State{Sort: "created", Order: "asc"}.NativeOrder(), s.uid(), b.NativeID)
+	if e != nil {
+		return nil, e
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid string
+		var craw []byte
+		if e = rows.Scan(&cid, &craw); e != nil {
+			return nil, e
+		}
+		b.Children = append(b.Children, readingFromBody(cid, craw))
+	}
+	return &b, rows.Err()
+}
+
 func (s Service) readingCover(w http.ResponseWriter, r *http.Request) {
 	var key string
 	e := s.DB.QueryRowContext(r.Context(), readingAssets+`SELECT a.cover FROM boox_projection p JOIN assets a ON a.book=p.body->>'uniqueId' WHERE p.document_id=$2 AND p.native_uid=$1 AND p.body->>'modeType'='4' AND a.cover IS NOT NULL AND `+booxvisibility.Reading("p"), s.uid(), r.URL.Query().Get("record")).Scan(&key)

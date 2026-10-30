@@ -83,11 +83,11 @@ func TestReadingBookshelfAvailabilityAndDetails(t *testing.T) {
 		t.Fatal("unfiled filter")
 	}
 	html = get("/boox/reading?view=stats").Body.String()
-	if strings.Contains(html, ">Needle title removed<") || !strings.Contains(html, "Timed reading history has not been imported.") || strings.Count(html, "<strong>1</strong>") != 5 {
+	if strings.Contains(html, ">Needle title removed<") || !strings.Contains(html, "timed reading history has not been imported.") || strings.Count(html, "<strong>1</strong>") != 5 {
 		t.Fatal("stats counts or visibility")
 	}
-	html = get("/boox/reading?record=" + s.uid() + "%23stored").Body.String()
-	if !strings.Contains(html, "Highlights &amp; Bookmarks") || strings.Count(html, "class=\"reading-annotation\"") != 2 {
+	html = get("/boox/reading?view=all&selected=" + s.uid() + "%23stored").Body.String()
+	if !strings.Contains(html, "Highlights &amp; bookmarks") || strings.Count(html, "class=\"note-item\"") != 2 {
 		t.Fatal("book detail children")
 	}
 	html = get("/boox/reading?view=all&q=Synthetic+Author&status=2").Body.String()
@@ -101,7 +101,7 @@ func TestReadingBookshelfAvailabilityAndDetails(t *testing.T) {
 	}
 	w = httptest.NewRecorder()
 	s.Admin(w, req)
-	if !strings.Contains(w.Body.String(), "reading-list") || strings.Contains(w.Body.String(), ">Needle title stored<") {
+	if !strings.Contains(w.Body.String(), `class="lib-rows"`) || strings.Contains(w.Body.String(), "cover-grid") || strings.Contains(w.Body.String(), ">Needle title stored<") {
 		t.Fatal("browser preferences")
 	}
 	// A cover binding and native fileSyncStatus never imply the source is stored.

@@ -214,6 +214,13 @@ func TestClientLibraryNotebooks(t *testing.T) {
 	if got := b.do("POST", "/files/forestnote/delete", "notebook=00000000000000000000000NB2&return="+url.QueryEscape("https://evil.example/files/forestnote"), sameSite, true); !strings.HasPrefix(got.Header().Get("Location"), "/files/forestnote?notice=") {
 		t.Fatalf("unsafe return: %s", got.Header().Get("Location"))
 	}
+	// A book's old address opens it selected; an unknown one shows no preview.
+	if got := b.do("GET", "/files/forestnote/books?book=x&sort=name", "", nil, true); got.Code != 303 || got.Header().Get("Location") != "/files/forestnote/books?selected=x&sort=name" {
+		t.Fatalf("book address: %d %s", got.Code, got.Header().Get("Location"))
+	}
+	if got := b.do("GET", "/files/forestnote/books?selected=x", "", nil, true); got.Code != 200 || strings.Contains(got.Body.String(), `id="preview"`) {
+		t.Fatalf("unknown book: %d", got.Code)
+	}
 	// The Library opens on the source last shown; without BOOX, the Client.
 	if got := b.do("GET", "/library", "", nil, true); got.Code != 303 || got.Header().Get("Location") != "/files/forestnote" {
 		t.Fatalf("library home: %d %s", got.Code, got.Header().Get("Location"))

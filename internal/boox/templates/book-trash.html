@@ -1,9 +1,23 @@
 {{define "content"}}{{$d:=.Data}}
-<p class="crumbs"><a href="/boox/reading">{{t "Reading"}}</a></p>
-<h1>{{t "Book Trash"}}</h1>
-<p>{{t "Stored books removed from your BOOX library. Restoring one puts it back on your tablets."}}</p>
-{{if $d.Items}}<form method="get" action="/boox/books/manage"><input type="hidden" name="action" value="restore"><input type="hidden" name="return" value="{{$d.Return}}">
-<ul>{{range $d.Items}}<li><label><input type="checkbox" name="id" value="{{.ID}}"> {{.Name}}</label> · <a href="/boox/books/download?book={{.ID}}">{{t "Download"}}</a></li>{{end}}</ul>
-<div class="toolbar"><button>{{t "Restore selected…"}}</button></div></form>
-{{else}}<p class="empty">{{t "Book Trash is empty."}}</p>{{end}}
+{{template "library-head" .}}
+{{if $d.Queued}}<p class="notice" role="status">{{t "Changes queued. Tablets apply them on their next reading sync."}} <a href="/boox/books/manage?batch={{$d.Queued}}&amp;return={{$d.Return}}">{{t "View progress"}}</a></p>{{end}}
+<div class="library{{if $d.Selected}} has-preview{{end}}">
+<section class="lib-list" aria-label="{{t "Book Trash"}}">
+<div class="lib-toolbar"><a class="btn btn-ghost" href="/boox/reading">{{icon "arrow-left"}} {{t "Back to books"}}</a></div>
+<p class="lib-intro">{{t "Stored books removed from your BOOX library. Restoring one puts it back on your tablets."}}</p>
+{{if $d.Items}}<form id="trash-bulk" class="selection-bar" method="post" action="/boox/books/manage" data-selection-bar data-count-template="{{t "Selected: {n}"}}"><input type="hidden" name="token" value="{{$d.Token}}"><input type="hidden" name="return" value="{{$d.Return}}"><input type="hidden" name="inline" value="1"><input type="hidden" name="action" value="restore">
+<span class="selection-count" data-selection-count hidden></span>
+<details class="inline-action"><summary class="btn btn-ghost">{{t "Restore…"}}</summary><div class="inline-form"><label>{{t "Restore to"}} <select class="input" name="folder"><option value="">{{t "No shelf (top level)"}}</option>{{range $d.Shelves}}<option value="{{.ID}}">{{.Path}}</option>{{end}}</select></label><button class="btn btn-primary">{{t "Restore"}}</button></div></details>
+<button type="reset" class="btn btn-ghost push" data-selection-clear hidden>{{t "Clear"}}</button></form>{{end}}
+<ul class="lib-rows">{{range $d.Items}}<li class="lib-row" data-select="/boox/books/trash?selected={{.ID}}"{{if $d.Selected}}{{if eq $d.Selected.ID .ID}} aria-current="true"{{end}}{{end}}><input type="checkbox" form="trash-bulk" name="id" value="{{.ID}}" aria-label="{{t "Select {{.Title}}" "Title" .Name}}">
+<span class="lib-main"><a class="lib-title" href="/boox/books/trash?selected={{.ID}}" data-select-link>{{.Name}}</a></span><a class="btn btn-ghost" href="/boox/books/download?book={{.ID}}">{{icon "download-simple"}} {{t "Download"}}</a></li>
+{{else}}<li class="empty">{{t "Book Trash is empty."}}</li>{{end}}</ul>
+</section>
+{{with $d.Selected}}<aside class="lib-preview" id="preview" aria-label="{{t "Preview"}}">
+<span class="tag tag-accent">BOOX</span><h2>{{.Name}}</h2><p class="callout">{{t "In Book Trash"}}</p>
+<div class="lib-actions"><a class="btn btn-secondary" href="/boox/books/download?book={{.ID}}">{{icon "download-simple"}} {{t "Download"}}</a>
+<details class="inline-action"><summary class="btn btn-ghost">{{t "Restore…"}}</summary><form class="inline-form" method="post" action="/boox/books/manage"><input type="hidden" name="token" value="{{$d.Token}}"><input type="hidden" name="return" value="{{$d.Return}}"><input type="hidden" name="inline" value="1"><input type="hidden" name="id" value="{{.ID}}"><input type="hidden" name="action" value="restore"><label>{{t "Restore to"}} <select class="input" name="folder"><option value="">{{t "No shelf (top level)"}}</option>{{range $d.Shelves}}<option value="{{.ID}}">{{.Path}}</option>{{end}}</select></label><button class="btn btn-primary">{{t "Restore"}}</button></form></details></div>
+</aside>{{else}}<aside class="lib-preview lib-preview-empty"><p class="empty">{{t "Select a book to preview it."}}</p></aside>{{end}}
+</div>
+<script src="/static/forms.js?v={{version}}" defer></script><script src="/static/library.js?v={{version}}" defer></script>
 {{end}}

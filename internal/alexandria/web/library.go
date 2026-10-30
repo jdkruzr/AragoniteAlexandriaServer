@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
@@ -34,6 +35,14 @@ func libraryTab(r *http.Request) (tab, source string) {
 	switch r.URL.Path {
 	case "/boox":
 		return "notebooks", "boox"
+	case "/boox/reading", "/boox/books/trash":
+		if r.URL.Query().Get("record") == "" {
+			return "books", "boox"
+		}
+	case "/boox/tags":
+		return "tags", "boox"
+	case "/files/forestnote/books":
+		return "books", "client"
 	case "/files/forestnote":
 		if r.URL.Query().Get("notebook") == "" {
 			return "notebooks", "client"
@@ -150,6 +159,14 @@ func (d Deps) clientNotebooks(ctx context.Context, q url.Values) (clientList, er
 		v.Selected = p
 	}
 	return v, nil
+}
+
+// clientBooks is the Alexandria Client's Books tab, with the selected
+// book's annotations beside the list.
+type clientBooks struct {
+	Listing  listing.State
+	Entries  []books.LibraryBook
+	Selected *books.LibraryBookDetail
 }
 
 // previewThumbs is how many pages a Library preview shows.

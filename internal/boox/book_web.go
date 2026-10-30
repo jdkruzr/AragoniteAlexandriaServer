@@ -135,7 +135,10 @@ func (s Service) bookManageHTTP(w http.ResponseWriter, r *http.Request) {
 		render(http.StatusOK)
 		return
 	}
-	if r.PostForm.Get("confirm") == "" && d.Action != "rename" {
+	// The Library changes books in place (inline=1): there only Trash needs
+	// a ticked box; elsewhere everything but renaming does.
+	inline := r.PostForm.Get("inline") == "1"
+	if r.PostForm.Get("confirm") == "" && d.Action != "rename" && !(inline && d.Action != "trash") {
 		d.Error = i18n.M("Confirm the change to continue.")
 		render(http.StatusBadRequest)
 		return
@@ -184,6 +187,14 @@ func (s Service) bookManageHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if e != nil {
 		s.failure(w, "bookManageHTTP", e)
+		return
+	}
+	if inline {
+		sep := "?"
+		if strings.Contains(d.Return, "?") {
+			sep = "&"
+		}
+		http.Redirect(w, r, d.Return+sep+"queued="+url.QueryEscape(token), http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/boox/books/manage?batch="+url.QueryEscape(token)+"&return="+url.QueryEscape(d.Return), http.StatusSeeOther)
@@ -276,6 +287,14 @@ func bookDetail(code string) string {
 	return i18n.M("The operation needs review.")
 }
 
+type bookTrashPage struct {
+	Items    []bookChoice
+	Selected *bookChoice
+	Shelves  []readingFolder
+	// Token, Queued and Return work as on the Books tab.
+	Token, Queued, Return string
+}
+
 func (s Service) bookTrash(w http.ResponseWriter, r *http.Request) {
 	if e := s.ResolveIdentity(r.Context()); e != nil {
 		s.failure(w, "bookTrash", e)
@@ -286,11 +305,26 @@ func (s Service) bookTrash(w http.ResponseWriter, r *http.Request) {
 		s.failure(w, "bookTrash", e)
 		return
 	}
-	var d struct {
-		Items  []bookChoice
-		Return string
+	q := r.URL.Query()
+	d := bookTrashPage{Token: uuid.NewString()}
+	if _, e := uuid.Parse(q.Get("queued")); e == nil {
+		d.Queued = q.Get("queued")
 	}
-	d.Return = r.URL.RequestURI()
+	q.Del("queued")
+	d.Return = "/boox/books/trash"
+	if len(q) > 0 {
+		d.Return = bookReturn(d.Return + "?" + q.Encode())
+	}
+	folders, e := s.readingFolders(r.Context())
+	if e != nil {
+		s.failure(w, "bookTrash", e)
+		return
+	}
+	for _, f := range folders {
+		if f.Writable {
+			d.Shelves = append(d.Shelves, f)
+		}
+	}
 	for _, b := range v.Books {
 		if !b.Live {
 			d.Items = append(d.Items, bookChoice{ID: b.ID, Name: bookFileName(b), Trashed: true})
@@ -302,6 +336,11 @@ func (s Service) bookTrash(w http.ResponseWriter, r *http.Request) {
 		}
 		return d.Items[i].ID < d.Items[j].ID
 	})
+	for i := range d.Items {
+		if d.Items[i].ID == q.Get("selected") {
+			d.Selected = &d.Items[i]
+		}
+	}
 	s.renderPage(w, r, bookTrashTemplate, "Book Trash", d)
 }
 

@@ -220,7 +220,7 @@ func TestBookUploadOriginAndReadingVisibility(t *testing.T) {
 		}
 	}
 	w = httptest.NewRecorder()
-	s.Admin(w, httptest.NewRequest("GET", "/boox/reading?record="+s.uid()+"%23livebook", nil))
+	s.Admin(w, httptest.NewRequest("GET", "/boox/reading?view=all&selected="+s.uid()+"%23livebook", nil))
 	html := w.Body.String()
 	if w.Code != 200 || !strings.Contains(html, "livebook") || !strings.Contains(html, "livehighlight") || !strings.Contains(html, "livebookmark") || strings.Contains(html, "deletedbook") || strings.Contains(html, "deletedhighlight") || strings.Contains(html, "deletedbookmark") {
 		t.Fatal("reading lifecycle filter", w.Code)

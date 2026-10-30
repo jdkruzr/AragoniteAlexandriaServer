@@ -1,11 +1,20 @@
 {{define "content"}}{{$d:=.Data}}
-{{if not $d.Tag}}<div class="page-head"><h1>{{t "BOOX Tags"}}</h1></div>
-<p class="muted">{{t "Tags you add on your BOOX with the lasso's Tag action. Searching for a tag finds its pages even when the handwriting doesn't say it."}}</p>
-{{if $d.Tags}}<div class="table-scroll"><table class="keep-cols tag-table"><thead><tr><th>{{t "Tag"}}</th><th>{{t "Pages"}}</th><th>{{t "Notebooks"}}</th></tr></thead><tbody>
-{{range $d.Tags}}<tr><td><a class="tag" href="/boox/tags?tag={{.Content}}">{{.Content}}</a></td>{{if .Pages}}<td>{{.Pages}}</td><td>{{.Notebooks}}</td>{{else}}<td class="muted wrap" colspan="2">{{t "Not on any page"}}</td>{{end}}</tr>{{end}}
-</tbody></table></div>{{else}}<div class="card"><p class="empty">{{t "No tags have arrived from your BOOX devices."}}</p></div>{{end}}
-{{else}}<p class="crumbs"><a href="/boox/tags">{{t "BOOX Tags"}}</a> /</p>
-<div class="page-head"><h1><span class="tag">{{$d.Tag}}</span></h1><div class="toolbar"><a class="button secondary" href="/search?q={{$d.Tag}}">{{t "Search for it"}}</a></div></div>
-{{if $d.Pages}}{{range $d.Pages}}<article class="result"><p><a href="/boox/notebook?id={{.NotebookID}}&amp;page_id={{.PageID}}">{{t "{{.Name}}, page {{.Number}}" "Name" .Title "Number" .Number}}</a></p>{{if .Snippet}}<p>{{.Snippet}}</p>{{end}}</article>{{end}}
-{{else}}<div class="card"><p class="empty">{{t "No live notebook page has this tag."}}</p></div>{{end}}{{end}}
+{{template "library-head" .}}
+<div class="library{{if $d.Tag}} has-preview{{end}}">
+<section class="lib-list" aria-label="{{t "Tags"}}">
+<p class="lib-intro">{{t "Tags you add on your BOOX with the lasso's Tag action. Searching for a tag finds its pages even when the handwriting doesn't say it."}}</p>
+<ul class="lib-rows">{{range $d.Tags}}<li class="lib-row" data-select{{if $d.Summary}}{{if eq $d.Summary.Content .Content}} aria-current="true"{{end}}{{end}}>
+<span class="lib-main"><a class="tag tag-accent lib-tag" href="/boox/tags?selected={{.Content}}" data-select-link>#{{.Content}}</a></span>
+<span class="lib-meta">{{if .Pages}}{{t "{{.Count}} pages" .Pages}} · {{t "{{.Count}} notebooks" .Notebooks}}{{else}}{{t "Not on any page"}}{{end}}</span></li>
+{{else}}<li class="empty">{{t "No tags have arrived from your BOOX devices."}}</li>{{end}}</ul>
+</section>
+{{if $d.Tag}}<aside class="lib-preview" id="preview" aria-label="{{t "Preview"}}">
+<p><span class="tag tag-accent lib-tag-big">#{{$d.Tag}}</span></p>
+{{with $d.Summary}}<p class="lib-sub">{{if .Pages}}{{t "{{.Count}} pages" .Pages}} · {{t "{{.Count}} notebooks" .Notebooks}}{{else}}{{t "Not on any page"}}{{end}}</p>{{end}}
+<div class="lib-actions"><a class="btn btn-secondary" href="/search?q={{$d.Tag}}">{{icon "magnifying-glass"}} {{t "Search for it"}}</a></div>
+<ul class="tagged-pages">{{range $d.Pages}}<li><a href="/boox/notebook?id={{.NotebookID}}&amp;page_id={{.PageID}}">{{t "{{.Name}}, page {{.Number}}" "Name" .Title "Number" .Number}}</a>{{if .Snippet}}<span class="snippet">{{.Snippet}}</span>{{end}}</li>
+{{else}}<li class="empty">{{t "No live notebook page has this tag."}}</li>{{end}}</ul>
+</aside>{{else}}<aside class="lib-preview lib-preview-empty"><p class="empty">{{t "Select a tag to see its pages."}}</p></aside>{{end}}
+</div>
+<script src="/static/library.js?v={{version}}" defer></script>
 {{end}}

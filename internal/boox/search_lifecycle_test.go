@@ -46,6 +46,12 @@ func readingHTML(t *testing.T, s Service, doc string) string {
 	t.Helper()
 	w := httptest.NewRecorder()
 	s.Admin(w, httptest.NewRequest("GET", "/boox/reading?view=all&record="+url.QueryEscape(doc), nil))
+	// A book's record opens it selected in the list.
+	if w.Code == 303 {
+		to := w.Header().Get("Location")
+		w = httptest.NewRecorder()
+		s.Admin(w, httptest.NewRequest("GET", to, nil))
+	}
 	if w.Code != 200 {
 		t.Fatalf("reading HTTP %d: %s", w.Code, w.Body.String())
 	}

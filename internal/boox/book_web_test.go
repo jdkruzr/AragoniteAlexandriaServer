@@ -44,15 +44,19 @@ func TestReadingPageBookActions(t *testing.T) {
 	if stored, all := bookWeb(t, s, "GET", "/boox/reading?view=stored", nil).Body.String(), bookWeb(t, s, "GET", "/boox/reading?view=all", nil).Body.String(); strings.Contains(stored, "ultrabridge") || !strings.Contains(stored, "Alpha") || !strings.Contains(all, "ultrabridge") {
 		t.Fatal("Stored Here lists only native shelves; All Books lists every shelf")
 	}
-	page := bookWeb(t, s, "GET", "/boox/reading?view=stored&folder=A", nil).Body.String()
+	page := bookWeb(t, s, "GET", "/boox/reading?view=stored&folder=A&selected="+url.QueryEscape(s.uid()+"#b1"), nil).Body.String()
 	for _, want := range []string{`form="book-bulk"`, "/boox/books/download?book=b1", "/boox/books/trash", "/boox/books/upload?folder=A"} {
 		if !strings.Contains(page, want) {
 			t.Error("reading page lacks", want)
 		}
 	}
-	detail := bookWeb(t, s, "GET", "/boox/reading?record="+url.QueryEscape(s.uid()+"#b1"), nil).Body.String()
-	if !strings.Contains(detail, "action=rename&amp;id=b1") || !strings.Contains(detail, "action=trash&amp;id=b1") {
-		t.Fatal("detail page lacks book actions")
+	// The selected book's preview changes it in place.
+	if strings.Count(page, `<input type="hidden" name="id" value="b1">`) != 3 || !strings.Contains(page, `name="action" value="rename"`) || !strings.Contains(page, `name="action" value="trash"`) || !strings.Contains(page, `value="One.epub"`) {
+		t.Fatal("preview lacks book actions")
+	}
+	// Its old address opens it selected.
+	if w := bookWeb(t, s, "GET", "/boox/reading?record="+url.QueryEscape(s.uid()+"#b1"), nil); w.Code != 303 || !strings.Contains(w.Header().Get("Location"), "selected=") {
+		t.Fatal("record address", w.Code, w.Header().Get("Location"))
 	}
 
 	w := bookWeb(t, s, "GET", "/boox/books/download?book=b1", nil, "Range", "bytes=0-8")
@@ -165,5 +169,59 @@ func TestBookBatchNamesHeldBackBooks(t *testing.T) {
 	status := bookWeb(t, s, "GET", w.Header().Get("Location"), nil).Body.String()
 	if !strings.Contains(status, "Three.epub") || !strings.Contains(status, "Four.epub") || strings.Count(status, "held back") < 2 {
 		t.Fatal(status)
+	}
+}
+
+// The Library changes books in place: no ticked box except for Trash, and
+// back to the same list with the batch to follow.
+func TestLibraryBooksInline(t *testing.T) {
+	s, g := libraryFixture(t)
+	libraryStoredBook(t, s, g, "b1", "One.epub")
+	libraryRecord(s, g, 3, "A", map[string]any{"name": "Alpha"})
+	libraryRecord(s, g, 3, "B", map[string]any{"name": "Beta"})
+	libraryRecord(s, g, 5, "m1", map[string]any{"documentUniqueId": "b1", "libraryUniqueId": "A"})
+	managementObserve(t, s)
+	doc := url.QueryEscape(s.uid() + "#b1")
+	page := bookWeb(t, s, "GET", "/boox/reading?view=stored&selected="+doc, nil).Body.String()
+	if !strings.Contains(page, ">File stored here · Alpha<") || !strings.Contains(page, "Book trash (0)") || !strings.Contains(page, `id="preview"`) {
+		t.Fatal("list shelf, trash count or preview", page)
+	}
+	ret := "/boox/reading?selected=" + doc + "&view=stored"
+	move := url.Values{"action": {"move"}, "id": {"b1"}, "folder": {"B"}, "token": {uuid.NewString()}, "return": {ret}, "inline": {"1"}}
+	if w := bookWeb(t, s, "POST", "/boox/books/manage", move); w.Code != 303 || w.Header().Get("Location") != ret+"&queued="+move.Get("token") {
+		t.Fatal(w.Code, w.Header().Get("Location"), w.Body.String())
+	}
+	libraryDrain(t, s)
+	managementObserve(t, s)
+	if m := g.record(s, "m1"); m["libraryUniqueId"] != "B" {
+		t.Fatal("not moved", m)
+	}
+	trash := url.Values{"action": {"trash"}, "id": {"b1"}, "token": {uuid.NewString()}, "return": {ret}, "inline": {"1"}}
+	if w := bookWeb(t, s, "POST", "/boox/books/manage", trash); w.Code != 400 {
+		t.Fatal("unconfirmed trash", w.Code)
+	}
+	trash.Set("confirm", "on")
+	if w := bookWeb(t, s, "POST", "/boox/books/manage", trash); w.Code != 303 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	libraryDrain(t, s)
+	managementObserve(t, s)
+	if !strings.Contains(bookWeb(t, s, "GET", "/boox/reading?view=all", nil).Body.String(), "Book trash (1)") {
+		t.Fatal("trash count")
+	}
+	bin := bookWeb(t, s, "GET", "/boox/books/trash?selected=b1", nil).Body.String()
+	if !strings.Contains(bin, "In Book Trash") || !strings.Contains(bin, `name="action" value="restore"`) || !strings.Contains(bin, `aria-current="true"`) {
+		t.Fatal("trash preview", bin)
+	}
+	restore := url.Values{"action": {"restore"}, "id": {"b1"}, "folder": {"A"}, "token": {uuid.NewString()}, "return": {"/boox/books/trash"}, "inline": {"1"}}
+	if w := bookWeb(t, s, "POST", "/boox/books/manage", restore); w.Code != 303 || w.Header().Get("Location") != "/boox/books/trash?queued="+restore.Get("token") {
+		t.Fatal(w.Code, w.Header().Get("Location"))
+	}
+	libraryDrain(t, s)
+	managementObserve(t, s)
+	v, e := s.librarySnapshot(t.Context(), s.DB)
+	must(t, e)
+	if m := v.Memberships("b1"); !v.Books["b1"].Live || len(m) != 1 || m[0].Shelf != "A" {
+		t.Fatal("restored onto the chosen shelf", m)
 	}
 }

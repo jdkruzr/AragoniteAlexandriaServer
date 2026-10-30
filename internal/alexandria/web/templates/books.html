@@ -1,17 +1,31 @@
-{{define "content"}}{{$d:=.Data}}
-<h1>{{t "Books"}} {{template "help" "client.books"}}</h1>
-{{if not $d.Entries}}<div class="card"><p class="empty">{{t "No books yet. Books appear after a device imports one and syncs."}}</p></div>{{else}}
-{{template "pagination" $d.Listing}}<div class="table-scroll"><table class="dated-list">
-<thead><tr><th><a href="{{$d.Listing.SortURL "name"}}">{{t "Title"}}{{$d.Listing.Indicator "name"}}</a></th><th>{{t "Author"}}</th><th>{{t "Format"}}</th><th>{{t "Annotations"}}</th><th><a href="{{$d.Listing.SortURL "created"}}">{{t "Created (UTC)"}}{{$d.Listing.Indicator "created"}}</a></th><th><a href="{{$d.Listing.SortURL "modified"}}">{{t "Modified (UTC)"}}{{$d.Listing.Indicator "modified"}}</a></th><th>{{t "File"}}</th></tr></thead>
-<tbody>
-{{range $d.Entries}}
-<tr>
-  <td><a href="/files/forestnote/books?book={{.ID}}">{{.Title}}</a></td>
-  <td>{{.Authors}}</td><td>{{.Format}}</td><td>{{.AnnotationCount}}</td>
-  <td>{{ms .AddedAt}}</td><td>{{ms .ModifiedAt}}</td><td>{{if eq .FileState "ready"}}<a href="/files/forestnote/books/file?book={{.ID}}">{{t "Download"}}</a> ({{bytes .ByteLength}}){{else if eq .FileState "uploading"}}{{t "Uploading"}}{{else if eq .FileState "invalid"}}{{t "Upload failed"}}{{else}}{{t "Not uploaded"}}{{end}}</td>
-</tr>
-{{end}}
-</tbody>
-</table></div>{{template "pagination" $d.Listing}}
-{{end}}
+{{define "content"}}{{$d:=.Data}}{{$l:=$d.Listing}}
+{{template "library-head" .}}
+<div class="library{{if $d.Selected}} has-preview{{end}}">
+<section class="lib-list" aria-label="{{t "Books"}}">
+<form class="lib-toolbar" method="get" action="/files/forestnote/books">
+<select class="input" name="sort" aria-label="{{t "Sort"}}" data-autosubmit><option value="modified" {{if eq $l.Sort "modified"}}selected{{end}}>{{t "Recently modified"}}</option><option value="name" {{if eq $l.Sort "name"}}selected{{end}}>{{t "Title"}}</option><option value="created" {{if eq $l.Sort "created"}}selected{{end}}>{{t "Recently added"}}</option></select><button class="btn btn-secondary" data-sort-submit>{{t "Sort"}}</button>
+<a class="btn btn-ghost" href="{{if eq $l.Order "asc"}}{{$l.Link "order" "desc" "offset" ""}}{{else}}{{$l.Link "order" "asc" "offset" ""}}{{end}}">{{if eq $l.Order "desc"}}{{icon "sort-descending"}}{{else}}{{icon "sort-ascending"}}{{end}} {{t (direction $l.Sort $l.Order)}}</a>
+{{template "help" "client.books"}}
+</form>
+<ul class="lib-rows">{{range $d.Entries}}<li class="lib-row" data-select="{{$l.Link "selected" .ID}}"{{if $d.Selected}}{{if eq $d.Selected.Book.ID .ID}} aria-current="true"{{end}}{{end}}>
+<span class="lib-main"><a class="lib-title" href="{{$l.Link "selected" .ID}}" data-select-link>{{.Title}}</a><span class="lib-sub">{{if .Authors}}{{.Authors}}{{else}}{{t "Unknown author"}}{{end}}{{if .Format}} · {{.Format}}{{end}}</span></span>
+<span class="tag {{if eq .FileState "ready"}}tag-accent{{else}}tag-outline{{end}} lib-badge">{{if eq .FileState "ready"}}{{t "File here"}}{{else if eq .FileState "uploading"}}{{t "Uploading"}}{{else if eq .FileState "invalid"}}{{t "Upload failed"}}{{else}}{{t "Not uploaded"}}{{end}}</span>
+<span class="lib-meta lib-status">{{t "{{.Count}} annotations" .AnnotationCount}}</span></li>
+{{else}}<li class="empty">{{t "No books yet. Books appear after a device imports one and syncs."}}</li>{{end}}</ul>
+{{if $d.Entries}}{{template "pagination" $l}}{{end}}
+</section>
+{{with $d.Selected}}<aside class="lib-preview" id="preview" aria-label="{{t "Preview"}}">
+<span class="tag tag-neutral">{{t "Alexandria Client"}}</span><h2>{{.Book.Title}}</h2>{{if .Book.Authors}}<p class="book-author">{{.Book.Authors}}</p>{{end}}
+<p class="lib-sub">{{.Book.Format}}{{if eq .Book.FileState "ready"}} · {{bytes .Book.ByteLength}}{{end}}{{with day .Book.ModifiedAt}} · {{t "modified {{.Date}}" "Date" .}}{{end}}</p>
+{{if eq .Book.FileState "ready"}}<div class="lib-actions"><a class="btn btn-secondary" href="/files/forestnote/books/file?book={{.Book.ID}}">{{icon "download-simple"}} {{t "Download"}}</a></div>{{end}}
+<h3>{{t "Highlights & annotations"}}</h3>
+{{range .Annotations}}<section class="note-item"><p class="note-label">{{.Location}}{{if .Sticky}} {{t "· Sticky Note"}}{{end}}</p>{{if .Status}}<p class="small muted">{{.Status}}</p>{{end}}
+{{if .Passage}}<p class="quote{{if .Highlighted}} highlighted{{end}}">{{.Passage}}</p>{{end}}
+{{if .InkStrokes}}<figure class="ink-swatch"><img loading="lazy" src="/files/forestnote/books/ink?annotation={{.ID}}" alt="{{t "Handwritten note"}}"></figure>{{end}}
+{{if .RecognizedText}}<p>{{.RecognizedText}}</p><p class="small muted">{{.TextSource}}</p>{{end}}</section>
+{{else}}<p class="empty">{{t "No annotations in this book."}}</p>{{end}}
+{{if .Truncated}}<p class="muted">{{t "Only the first 500 annotations are shown."}}</p>{{end}}
+</aside>{{else}}<aside class="lib-preview lib-preview-empty"><p class="empty">{{t "Select a book to preview it."}}</p></aside>{{end}}
+</div>
+<script src="/static/forms.js?v={{version}}" defer></script><script src="/static/library.js?v={{version}}" defer></script>
 {{end}}

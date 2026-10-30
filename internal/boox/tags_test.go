@@ -96,7 +96,7 @@ func TestBOOXTagsSearchAndPages(t *testing.T) {
 		return w.Body.String()
 	}
 	list := get("/boox/tags")
-	for _, want := range []string{`<a href="/boox/tags" aria-current="page">Tags</a>`, `href="/boox/tags?tag=Marisol%20Vega"`, "Telescope time", "Not on any page", "Orphan"} {
+	for _, want := range []string{`href="/boox/tags" aria-current="page">Tags</a>`, `href="/boox/tags?selected=Marisol%20Vega"`, "Telescope time", "Not on any page", "Orphan"} {
 		if !strings.Contains(list, want) {
 			t.Fatal("tag list lacks", want, list)
 		}

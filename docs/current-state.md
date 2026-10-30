@@ -12,7 +12,25 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-30): **`library-ed33cc396d24`**, app-only on schema **41**,
+Latest recorded deployment (2026-10-30): **`library-2efdc7c42f92`**, app-only on schema **41**,
+image `sha256:7d870cd3722519c5f2eec33260ef37f1e2dba772d68bbcef8132c8aa72b4559d`, on top of
+**`library-e24cba4c4fdd`** (image `sha256:12096daaf7db4276922359b261d2f29522401903885b553735a7c319156b3173`).
+Phase 3b of the redesign: the Library's Books and Tags tabs. BOOX Books keeps every view (All
+books, Stored here, Metadata only, Your reading), status, shelf, title/author search, sort and
+the bookshelf/list layouts; rows show the shelf, File here / Metadata only, and progress as a
+percentage of the native `page/pages`. The selected book (`?selected=`; `?record=` of a book
+redirects there) shows its cover, highlights and bookmarks, Download, and in-place Rename, Move
+and Trash (`/boox/books/manage` with `inline=1`; only Trash needs its box); ticked books get a
+Move / Trash bar. Book trash is a list with Restore onto a chosen shelf. Tags list beside the
+selected tag's pages (`?selected=`, `?tag=` still works). The Client's Books tab is a list with
+the selected book's annotations (`?book=` redirects). Shelves for a page of books are read in
+one query; per-row subqueries had made the Books page take about 0.85 s (now about 0.44 s).
+Checked live: books list and preview with real covers and shelves, Your reading counts, Book
+trash, tags and row selection. Book changes were checked by rendering only (no disposable book).
+Rollback: `private/library-2efdc7c42f92/rollback.sh` returns to `library-e24cba4c4fdd`, whose
+`rollback.sh` returns to `library-ed33cc396d24`.
+
+Previous deployment (2026-10-30): **`library-ed33cc396d24`**, app-only on schema **41**,
 image `sha256:8d7789897a7deea9a0eb89c0302ab925373a24a9c1a0a1476774d7c5523dcdb6`, on top of
 **`library-cc1b8e4d21f2`** (migration 0041, image `sha256:4f449decb74bf8191d3bd74d49e7fce52f7e0611f811c2188f6802472cadc298`).
 Phase 3a of the redesign: the Library's Notebooks tab for both sources. `/library` opens the
@@ -142,7 +160,7 @@ WebDAV: Select/Download on each stored book, bulk **Move selected…** and **Mov
 selected to Trash…**, per-book Rename/Move/Trash, a review step and a batch status
 page that names held-back books, a **Book Trash** page with restore onto a shelf,
 **Upload to this shelf…**, and file/folder drops on the upload box
-([guide](guide/boox.md#manage-stored-books-on-the-reading-page)). Restoring a book
+([guide](guide/boox.md#manage-stored-books)). Restoring a book
 whose membership survived a tablet's All-Books delete moves that membership instead
 of adding one. Error pages rendered through `renderPage` after writing their status
 lost their own CSP and styling (notebook management, reader refresh, books); a shared

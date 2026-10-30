@@ -18,7 +18,9 @@
       if (e.target.closest('input, button, label, select, summary') || (link && !link.hasAttribute('data-select-link'))) return;
       e.preventDefault();
       clearTimeout(timer);
-      timer = setTimeout(() => go(row.dataset.select), row.dataset.open ? 250 : 0);
+      // An empty data-select means: go where the row's own link goes.
+      const href = row.dataset.select || (row.querySelector('a[data-select-link]') || {}).href;
+      timer = setTimeout(() => go(href), row.dataset.open ? 250 : 0);
     });
     if (row.dataset.open) {
       row.addEventListener('dblclick', (e) => {

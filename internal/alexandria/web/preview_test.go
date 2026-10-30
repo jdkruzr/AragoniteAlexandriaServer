@@ -87,7 +87,8 @@ func previewPages() []previewPage {
 		{"client-notebook", "notebook", "Synthetic notebook", "notebooks", "/files/forestnote", notebookReader("n", "Synthetic notebook", clientPages, nil, url.Values{"page": {"p2"}})},
 		{"client-notebook-grid", "notebook", "Synthetic notebook", "notebooks", "/files/forestnote", notebookReader("n", "Synthetic notebook", clientPages, nil, url.Values{"view": {"grid"}})},
 		{"client-notebooks-empty", "notebooks", "Notebooks", "notebooks", "/files/forestnote", clientList{All: true}},
-		{"client-books", "books", "Books", "books", "/files/forestnote/books", map[string]any{"Listing": listing.State{}, "Entries": []books.LibraryBook{{ID: "b", Title: "Synthetic book", Authors: "A. Author", Format: "EPUB", FileState: "ready", ByteLength: 2 << 20}}}},
+		{"client-books", "books", "Books", "books", "/files/forestnote/books", clientBooksPreview(false)},
+		{"client-books-selected", "books", "Books", "books", "/files/forestnote/books", clientBooksPreview(true)},
 		{"client-devices", "devices", "Client devices", "devices", "/settings/devices", map[string]any{"Devices": []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.UnixMilli(), FirstSeenMs: 1}}}},
 		{"tasks", "tasks", "Today", "tasks", "/", todayPreview(openTasks, doneTasks, taskView{Sort: "due", Dir: "asc"}, now, map[string]any{
 			"Events":       []todayEvent{{Day: "Tue 27", Time: "14:00", Title: "Synthetic review", From: "Synthetic notebook", Link: "#"}, {Day: "Thu 29", Time: "All day", Title: "Synthetic holiday", Link: "#"}},
@@ -123,6 +124,21 @@ func clientListPreview(all, selected bool) clientList {
 	}
 	v.Listing.Finish(q, "/files/forestnote", len(v.Entries))
 	v.Return = "/files/forestnote?" + q.Encode()
+	return v
+}
+
+// clientBooksPreview is the Client's Books tab with synthetic books.
+func clientBooksPreview(selected bool) clientBooks {
+	b := books.LibraryBook{ID: "b", Title: "Synthetic book", Authors: "A. Author", Format: "EPUB", FileState: "ready", ByteLength: 2 << 20, AnnotationCount: 2}
+	v := clientBooks{Listing: listing.Parse(url.Values{}), Entries: []books.LibraryBook{b, {ID: "c", Title: "Second synthetic book", Format: "PDF", FileState: "uploading"}}}
+	q := url.Values{}
+	if selected {
+		q.Set("selected", "b")
+		v.Selected = &books.LibraryBookDetail{Book: b, Annotations: []books.LibraryAnnotation{
+			{ID: "a1", Location: "Chapter 2", Passage: "A synthetic passage that was highlighted.", Highlighted: true},
+			{ID: "a2", Location: "Chapter 3", Sticky: true, InkStrokes: 1, RecognizedText: "check this later", TextSource: "Recognized from handwriting · synthetic-model"}}}
+	}
+	v.Listing.Finish(q, "/files/forestnote/books", len(v.Entries))
 	return v
 }
 

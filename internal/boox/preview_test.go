@@ -64,7 +64,15 @@ func TestBOOXViewsRender(t *testing.T) {
 		{"boox-folders", "/boox", "BOOX notebooks", libraryTemplate, libraryPage{Category: "handwritten", Listing: listing, Folder: "f", Crumbs: []notebookEntry{{ID: "f", Title: "Work"}},
 			Entries: []notebookEntry{{ID: "g", Title: "Projects", Folder: true, Kind: "Folder"}}}},
 		{"boox-notebook", "/boox/notebook", "Synthetic sync", notebookTemplate, notebookView{ID: "a", Title: "20261008 Synthetic sync", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", RecognitionEnabled: true}},
-		{"boox-reading", "/boox/reading", "Reading", readingTemplate, readingView{Listing: listing, Items: []readingItem{{ID: "r", Title: "Synthetic book", Kind: "Book", CreatedAt: 1, ModifiedAt: 2}, {ID: "h", Title: "Synthetic book", Kind: "Annotation", Quote: "A quoted passage."}}}},
+		{"boox-reading", "/boox/reading", "Reading", readingTemplate, syntheticReading("list", true)},
+		{"boox-reading-shelf", "/boox/reading", "Reading", readingTemplate, syntheticReading("shelf", false)},
+		{"boox-reading-stats", "/boox/reading", "Reading", readingTemplate, func() readingView {
+			v := syntheticReading("list", false)
+			v.View, v.Counts = "stats", readingCounts{New: 188, Reading: 41, Finished: 12, Highlights: 25, Bookmarks: 19}
+			return v
+		}()},
+		{"boox-reading-record", "/boox/reading", "Reading", readingTemplate, readingView{Record: "h", View: "all", Items: []readingItem{{ID: "h", Title: "Synthetic book", Kind: "Annotation", Quote: "A quoted passage.", Page: "12"}}}},
+		{"boox-book-trash", "/boox/books/trash", "Book Trash", bookTrashTemplate, bookTrashPage{Token: "t", Return: "/boox/books/trash", Items: []bookChoice{{ID: "b1", Name: "Synthetic trashed.epub", Trashed: true}, {ID: "b2", Name: "Another synthetic.pdf", Trashed: true}}, Shelves: []readingFolder{{ID: "s", Path: "Classics", Writable: true}}, Selected: &bookChoice{ID: "b1", Name: "Synthetic trashed.epub", Trashed: true}}},
 		{"boox-devices", "/boox/devices", "BOOX devices", devicesTemplate, []device{{ID: "8bc4cf5c-0000-4000-8000-000000000001", Model: "Synthetic Go 10.3", LastUpload: sql.NullTime{Time: now, Valid: true}}, {ID: "8bc4cf5c-0000-4000-8000-000000000002", Model: "Retired tablet", Revoked: true}}},
 		{"boox-enroll", "/boox/enroll", "Connect a BOOX device", setupTemplate, "ABCD-1234"},
 		{"boox-settings", "/boox/settings", "BOOX settings", booxSettings, nil},
@@ -80,7 +88,7 @@ func TestBOOXViewsRender(t *testing.T) {
 		{"boox-notebook-recordings", "/boox/notebook", "Synthetic meeting", notebookTemplate, notebookView{ID: "b", Title: "Synthetic meeting", Page: "p1", Number: 1, Count: 4, Zoom: "fit", Recordings: 1}},
 		{"boox-minutes", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Has: true, Stored: ready, Recordings: 2, OnPages: map[string][]int{"resource/data/a.mp3": {1, 3}}, Keywords: []minutesKeyword{{"schedule", ""}, {"Friday", ""}, {"testing", "Testing"}, {"release notes", ""}}, TaggedKeywords: 1}},
 		{"boox-tags", "/boox/tags", "BOOX Tags", tagsTemplate, tagsView{Tags: []tagSummary{{"Marisol Vega", 3, 3}, {"compost", 2, 1}, {"Spring Planting Plan", 1, 1}, {"greenhouse", 0, 0}}}},
-		{"boox-tag", "/boox/tags", "BOOX Tags", tagsTemplate, tagsView{Tag: "compost", Pages: []taggedPage{{NotebookID: "a", Title: "20261008 Synthetic sync", PageID: "p1", Number: 1, Snippet: "Turn the compost bins before the first frost."}, {NotebookID: "b", Title: "Synthetic meeting", PageID: "p3", Number: 3}}}},
+		{"boox-tag", "/boox/tags", "BOOX Tags", tagsTemplate, tagsView{Tag: "compost", Tags: []tagSummary{{"Marisol Vega", 3, 3}, {"compost", 2, 1}, {"greenhouse", 0, 0}}, Summary: &tagSummary{"compost", 2, 1}, Pages: []taggedPage{{NotebookID: "a", Title: "20261008 Synthetic sync", PageID: "p1", Number: 1, Snippet: "Turn the compost bins before the first frost."}, {NotebookID: "b", Title: "Synthetic meeting", PageID: "p3", Number: 3}}}},
 		{"boox-tag-empty", "/boox/tags", "BOOX Tags", tagsTemplate, tagsView{Tag: "greenhouse"}},
 		{"boox-notebook-tags", "/boox/notebook", "Synthetic sync", notebookTemplate, notebookView{ID: "a", Title: "20261008 Synthetic sync", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", RecognitionEnabled: true, PageTags: []string{"Marisol Vega", "compost"}, OtherTags: []string{"Irrigation"}}},
 		{"boox-minutes-send", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Has: true, Stored: ready, Recordings: 2, Sendable: true, NoteTitle: "Synthetic meeting_Minutes", Folder: "Work", SendRequest: "r"}},
@@ -121,4 +129,23 @@ func syntheticPreview(deleted bool) *notebookPreview {
 		p.Thumbs = append(p.Thumbs, thumbLink{Number: i, Image: "static/apple-touch-icon.png", Href: "#"})
 	}
 	return p
+}
+
+// syntheticReading is the Books tab with made-up books, one selected.
+func syntheticReading(layout string, selected bool) readingView {
+	day := time.Date(2026, 10, 20, 9, 0, 0, 0, time.UTC).UnixMilli()
+	items := []readingItem{
+		{ID: "r1", NativeID: "n1", Title: "Synthetic Middlemarch", Authors: "A. Author", Kind: "Book", Status: "In Progress", Percent: "62%", Stored: true, ShelfPath: "Classics", LastAccess: day, ModifiedAt: day},
+		{ID: "r2", NativeID: "n2", Title: "A synthetic pattern", Authors: "B. Builder", Kind: "Book", Status: "New", ShelfPath: "", LastAccess: day},
+		{ID: "r3", NativeID: "n3", Title: "Synthetic walden", Kind: "Book", Status: "Finished", Stored: true, ShelfPath: "Classics"},
+	}
+	v := readingView{View: "all", Layout: layout, Listing: listview.State{Sort: "modified", Order: "desc", Total: 3, Start: 1, End: 3, Page: 1, Pages: 1}, Items: items, TrashCount: 1, Token: "t",
+		Shelves: []readingFolder{{ID: "s", Path: "Classics", Writable: true}}, Folders: []readingFolder{{ID: "s", Name: "Classics", Path: "Classics", Writable: true}}}
+	if selected {
+		b := items[0]
+		b.Shelf, b.FileName = "s", "Synthetic Middlemarch.epub"
+		b.Children = []readingItem{{ID: "h1", Kind: "Annotation", Page: "212", Quote: "A synthetic sentence worth keeping."}, {ID: "h2", Kind: "Bookmark", Page: "401"}}
+		v.Selected = &b
+	}
+	return v
 }

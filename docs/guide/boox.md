@@ -128,10 +128,10 @@ These are two different things:
 | Tab | What it's for |
 |---|---|
 | **Notebooks** | Every notebook and folder. Switch between **All notebooks** and **Folders**, filter by **Type** (handwritten, text, reading or other notes), sort, and find by title. Click a notebook to preview it beside the list; double-click it, or choose **Open**, to read it. **Deleted (n)** lists notebooks in the tablets' Trash. The Library's **More** menu has **Recognize this library…**, **Clean up numbered notebooks…**, **Notebook operations**, **Devices** and **BOOX settings**. |
-| **Reading** | A bookshelf with **Stored Here**, **All Books**, **Metadata Only**, and **Your Reading** views. Open a book for its highlights and bookmarks; page and progress values remain as recorded by the tablet. |
-| **Tags** | Every lasso tag, with how many pages and notebooks use it. Open a tag to list its pages, or choose **Search for it**. |
-| **Devices** | Connected tablets: **Authorized** or **Revoked**, and **Last Upload Received**. *Authorized* means the tablet may connect, not that everything has finished uploading. |
-| **Settings** | Your connection address, library maintenance links, and diagnostics. |
+| **Books** | Your NeoReader library: **All books**, **Stored here**, **Metadata only** and **Your reading**, as a list or a bookshelf. Click a book to see its highlights and bookmarks beside the list; page and progress values remain as recorded by the tablet. **Book trash (n)** lists removed stored books. |
+| **Tags** | Every lasso tag, with how many pages and notebooks use it. Click a tag to list its pages beside the list, or choose **Search for it**. |
+
+**Devices** (connected tablets: **Authorized** or **Revoked**, and **Last Upload Received**; *Authorized* means the tablet may connect, not that everything has finished uploading) and **BOOX settings** (your connection address, library maintenance links and diagnostics) are in the Library's **More** menu.
 
 A page count shown as *500+* is a limit of the tablet's metadata. Open the notebook to see every page.
 
@@ -165,14 +165,14 @@ Deleted notebooks stay viewable under **Deleted (n)**. Viewing one doesn't resto
 
 ### Browse and Upload Books
 
-**Stored Here** opens by default and includes books whose source file is present
-in Alexandria's native BOOX storage. **Metadata Only** shows books whose reading
-records arrived without a source file; **All Books** combines them. A cover,
+**Stored here** opens by default and includes books whose source file is present
+in Alexandria's native BOOX storage (tagged **File here**). **Metadata only** shows books whose reading
+records arrived without a source file; **All books** combines them. A cover,
 device path, or sync flag alone does not mean the source file is stored here.
 Your browser remembers the chosen view and bookshelf/list layout. Search, status
 filters, folders, breadcrumbs, and pagination help narrow a larger library.
 
-1. Open **BOOX → Reading → Upload books…**.
+1. Open **Library → Books → Upload books…**.
 2. Choose a destination, then **Choose files…** or **Choose folder…**. Select up
    to 1,000 files, with a maximum of 128 MiB per EPUB, PDF, MOBI or AZW3 book.
 3. Review the preview. The selected top-level folder and its subfolders become
@@ -209,7 +209,7 @@ rename, restore, or automatically attach bytes to a metadata-only book with a
 matching native fingerprint. A destination changed or removed during publication
 blocks that file so it can be reviewed safely.
 
-**Your Reading** shows current New / In Progress / Finished counts, highlights,
+**Your reading** shows current New / In Progress / Finished counts, highlights,
 bookmarks, and recently accessed books across all active books. These come from
 the native reading records already received by Alexandria. BOOX's separate timed
 statistics database/service is not imported, so this view does not invent daily
@@ -224,13 +224,13 @@ book to that copy's page and keeps its own highlights, bookmarks and reader sett
 Open the book on each tablet and accept Sync; the Library shows the new progress after
 that, in the tablet's own page count.
 
-### Manage Stored Books on the Reading Page
+### Manage Stored Books
 
-Books stored here have **Select** and **Download** under them. Select several and
-choose **Move selected…** or **Move selected to Trash…**; a book's own page also
-offers **Rename…**, **Move…** and **Move to Trash…**. Each change is reviewed before
-you apply it, and a status page then shows when it has reached native sync.
-**Book Trash** lists removed stored books, which you can download or restore onto a
+A stored book's preview offers **Download**, **Rename…**, **Move…** and **Move to Trash…**,
+each opening a short form in place; moving to Trash asks you to tick a box first. Tick
+several books for a bar with **Move…** and **Move to Trash…**. Changes are queued for
+native sync, and the page links to **View progress**.
+**Book trash** lists removed stored books, which you can download or restore onto a
 shelf. Inside a shelf, **Upload to this shelf…** opens the upload page with that shelf
 already chosen, and you can drop files or folders onto the upload box. These actions
 follow the same rules as the WebDAV folder below: one shelf per book, names keep
