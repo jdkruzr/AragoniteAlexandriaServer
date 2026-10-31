@@ -57,6 +57,9 @@ var funcs = withFormats(template.FuncMap{
 	"version":   func() string { return Version },
 	// direction names a list's order in its sort field's words ("A–Z").
 	"direction": directionLabel,
+	"runActive": runActive,
+	// kb rounds a byte count to whole kilobytes for display.
+	"kb": func(n int) int { return (n + 512) / 1024 },
 	// day is a list date in the owner's zone (see dayIn); bound per request.
 	"day": func(any) string { return "" },
 	"listJobStates": func() []string {

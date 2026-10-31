@@ -371,6 +371,8 @@ func (s Store) RecentRuns(ctx context.Context) ([]Run, error) {
 		if err = rows.Scan(&r.ID, &r.State, &r.Created, &r.Source, &r.Awaiting, &r.Queued, &r.Skipped, &r.Unavailable, &r.Ready, &r.Pending, &r.Processing, &r.Failed, &r.Blocked, &r.Paused, &r.Cancelled); err != nil {
 			return nil, err
 		}
+		// GetRun also counts skipped and cleared pages; this summary doesn't.
+		r.Finished = r.Ready + r.Failed + r.Blocked + r.Cancelled
 		out = append(out, r)
 	}
 	return out, rows.Err()
@@ -520,6 +522,9 @@ func (r Run) Label() string {
 	return "Complete"
 }
 func (r Run) WorkTotal() int { return r.Queued + r.Awaiting }
+
+// Attention counts the run's pages that failed or are blocked.
+func (r Run) Attention() int { return r.Failed + r.Blocked }
 
 func (r Run) SourceLabel() string {
 	if r.Source == "client" {

@@ -53,10 +53,6 @@ func docsPages() []previewPage {
 			Summary:       providers.SummaryConfig{Enabled: true, Format: "openai", URL: "http://models.home.arpa:8000", Model: "qwen2.5-7b-instruct"},
 			Automatic:     providers.AutomaticConfig{}},
 		Coverage: []providers.Coverage{{Label: "Alexandria Client pages", Texts: 64}, {Label: "BOOX reading records", Texts: 212}, {Label: "BOOX notebook pages", Texts: 1598}}}
-	jobs := recognition.View{Total: 3, Counts: map[string]int{"ready": 2, "processing": 1}, Jobs: []recognition.Job{
-		{ID: "j1", Source: "boox", Notebook: "garden", Title: "Garden Committee", Number: 1, State: "ready", Detail: "Recognized", Model: "qwen2.5-vl-7b-instruct", ImageWidth: 1404, ImageHeight: 1872, ImageBytes: 211000, Created: now.Add(-9 * time.Minute), Updated: now.Add(-8 * time.Minute)},
-		{ID: "j2", Source: "boox", Notebook: "garden", Title: "Garden Committee", Number: 2, State: "processing", Model: "qwen2.5-vl-7b-instruct", Created: now.Add(-time.Minute), Updated: now.Add(-time.Minute)},
-		{ID: "j3", Source: "client", Notebook: "sketch", Title: "Bed layout sketches", Number: 4, State: "ready", Detail: "Recognized", Model: "qwen2.5-vl-7b-instruct", ImageWidth: 1240, ImageHeight: 1754, ImageBytes: 158000, Created: now.Add(-40 * time.Minute), Updated: now.Add(-39 * time.Minute)}}}
 	return []previewPage{
 		{"overview", "overview", "Library", "overview", "/library", overviewData{NativeBOOX: true, OCR: true, Semantic: true, JobsKnown: true, Active: 1,
 			Client: SourceSummary{Notebooks: 12, Books: 9, Devices: 1, LastActivity: now.Add(-2 * time.Hour), ActivityLabel: "Last sync"},
@@ -78,8 +74,9 @@ func docsPages() []previewPage {
 		{"calendar", "calendar", "Calendar", "calendar", "/calendar", map[string]any{"View": calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: at(10, 18, 0, 0), Horizon: 7}, "Days": calendarDays(calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: at(10, 18, 0, 0), Horizon: 7}, upcoming, now), "Upcoming": upcoming, "Past": past, "Trash": false, "Zone": "America/Chicago", "Today": "2026-10-16"}},
 		{"settings-recognition", "settings-recognition", "AI tools and recognition", "settings", "/settings/recognition", map[string]any{"Providers": models,
 			"DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
-		{"jobs", "jobs", "Recognition jobs", "jobs", "/jobs", map[string]any{"View": jobs, "Filter": recognition.Filter{}, "ProgressTotal": 3, "ProgressDone": 2, "Start": 1, "End": 3, "Refresh": "/jobs",
-			"Work": WorkSummary{Actions: WorkGroup{Counts: map[string]int{"ready": 31}}, Minutes: WorkGroup{Counts: map[string]int{"ready": 6}}}}},
+		{"jobs", "jobs", "Recognition", "jobs", "/jobs", recognitionView{Tab: "active", Sources: true, WorkTab: true, Mode: "auto", Model: "qwen2.5-vl-7b-instruct", Return: "/jobs?tab=active",
+			Tally:  recognition.Tally{Active: 1},
+			Groups: []recognition.Group{{Key: "a:boox:2026-10-18:garden", Source: "boox", Notebook: "garden", Title: "Garden Committee", Automatic: true, Total: 2, Done: 1, Ready: 1, Processing: 1}}}},
 	}
 }
 

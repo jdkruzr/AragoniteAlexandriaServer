@@ -17,6 +17,27 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 	store := recognition.Store{DB: d.DB}
 	mux.HandleFunc("GET /jobs", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
+		// The Recognition tabs. Every job page by page (with its filters and
+		// history), batches and runs keep the full list; older links naming a
+		// state open its tab when it has one.
+		state := q.Get("state")
+		if q.Get("view") != "pages" && q.Get("batch") == "" && q.Get("run") == "" && q.Get("history") != "1" {
+			switch state {
+			case "failed", "blocked":
+				q.Set("tab", "attention")
+			case "skipped":
+				q.Set("tab", "skipped")
+			case "":
+			default:
+				state = "pages"
+			}
+			if state != "pages" {
+				q.Del("state")
+				r.URL.RawQuery = q.Encode()
+				d.recognitionPage(w, r, store)
+				return
+			}
+		}
 		offset, _ := strconv.Atoi(q.Get("offset"))
 		f := recognition.Filter{History: q.Get("history") == "1", Source: q.Get("source"), State: q.Get("state"), Batch: q.Get("batch"), Run: q.Get("run"), Offset: offset}
 		v, e := store.List(r.Context(), f)
@@ -30,6 +51,7 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 				copy[k] = append([]string{}, values...)
 			}
 			copy.Set("offset", strconv.Itoa(n))
+			copy.Set("view", "pages")
 			return "/jobs?" + copy.Encode()
 		}
 		previous, next := "", ""
@@ -62,7 +84,7 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 				done += count
 			}
 		}
-		d.render(w, r, "jobs", "Jobs", "jobs", map[string]any{"NativeBOOX": d.Status.NativeBOOX, "Runs": runs, "ProgressTotal": total, "ProgressDone": done, "View": v, "Filter": f, "Previous": previous, "Next": next, "Refresh": r.URL.RequestURI(), "Start": min(offset+1, v.Total), "End": min(offset+50, v.Total), "Work": work})
+		d.render(w, r, "jobs-pages", "Every job", "jobs", map[string]any{"NativeBOOX": d.Status.NativeBOOX, "Runs": runs, "ProgressTotal": total, "ProgressDone": done, "View": v, "Filter": f, "Previous": previous, "Next": next, "Refresh": r.URL.RequestURI(), "Start": min(offset+1, v.Total), "End": min(offset+50, v.Total), "Work": work})
 	})
 	mux.HandleFunc("GET /jobs/cleanup", func(w http.ResponseWriter, r *http.Request) {
 		preview, err := store.PreviewCleanup(r.Context())
@@ -105,6 +127,26 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 		if batch {
 			dest += "?batch=" + url.QueryEscape(r.Form.Get("id"))
 		}
+		if to := jobsReturn(r.Form.Get("return")); to != "" {
+			dest = to
+		}
+		back(w, r, dest, "Updated {{.Count}} jobs. Requests already sent to a provider may still incur charges.", int(n))
+	})
+	mux.HandleFunc("POST /jobs/group", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 4096)
+		if r.ParseForm() != nil {
+			http.Error(w, "Invalid form", 400)
+			return
+		}
+		n, e := store.ControlGroup(r.Context(), r.Form.Get("key"), r.Form.Get("action"))
+		if e != nil {
+			d.fail(w, e)
+			return
+		}
+		dest := jobsReturn(r.Form.Get("return"))
+		if dest == "" {
+			dest = "/jobs"
+		}
 		back(w, r, dest, "Updated {{.Count}} jobs. Requests already sent to a provider may still incur charges.", int(n))
 	})
 	mux.HandleFunc("POST /jobs/retry", func(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +167,9 @@ func (d Deps) jobRoutes(mux *http.ServeMux) {
 			q.Set("history", "1")
 		}
 		dest := "/jobs?" + q.Encode()
+		if to := jobsReturn(r.Form.Get("return")); to != "" {
+			dest = to
+		}
 		action := r.Form.Get("action")
 		if action == "" {
 			action = "retry"

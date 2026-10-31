@@ -73,7 +73,12 @@ func previewPages() []previewPage {
 		{"settings-search-building", "settings-search", "Search by meaning", "settings", "/settings/search", map[string]any{"Providers": building, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
 		{"settings-recognition", "settings-recognition", "AI tools and recognition", "settings", "/settings/recognition", map[string]any{"Providers": provider, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
 		{"settings-integrations", "settings-integrations", "Tasks & integrations", "settings", "/settings/integrations", map[string]any{"Collection": "Tasks", "DueMode": "preserve", "CalDAV": "/caldav/user/calendars/tasks/", "Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", Created: now}}}},
-		{"jobs", "jobs", "Recognition jobs", "jobs", "/jobs", map[string]any{"View": jobs, "Filter": recognition.Filter{}, "ProgressTotal": 2, "ProgressDone": 2, "Start": 1, "End": 2, "Refresh": "/jobs", "Work": WorkSummary{
+		{"jobs-active", "jobs", "Recognition", "jobs", "/jobs", recognitionFixture("active")},
+		{"jobs-attention", "jobs", "Recognition", "jobs", "/jobs", recognitionFixture("attention")},
+		{"jobs-skipped", "jobs", "Recognition", "jobs", "/jobs", recognitionFixture("skipped")},
+		{"jobs-finished", "jobs", "Recognition", "jobs", "/jobs", recognitionFixture("finished")},
+		{"jobs-work", "jobs", "Recognition", "jobs", "/jobs", recognitionFixture("work")},
+		{"jobs-pages", "jobs-pages", "Every job", "jobs", "/jobs", map[string]any{"View": jobs, "Filter": recognition.Filter{}, "ProgressTotal": 2, "ProgressDone": 2, "Start": 1, "End": 2, "Refresh": "/jobs", "Work": WorkSummary{
 			Actions: WorkGroup{Counts: map[string]int{"ready": 14, "failed": 1}, Rows: []WorkRow{{Title: "20261016 Synthetic plans", Link: "#", State: "failed", Detail: "Notebook unavailable.", Color: "blue", Action: "event", Updated: time.Date(2026, 10, 16, 22, 11, 0, 0, time.UTC)}}},
 			Minutes: WorkGroup{Counts: map[string]int{"ready": 2, "processing": 1}, Rows: []WorkRow{{Title: "Synthetic meeting", Link: "#", State: "processing", Detail: "Transcribing recordings.", Updated: time.Date(2026, 10, 17, 1, 5, 0, 0, time.UTC)}}}}}},
 		{"jobs-cleanup", "jobs-cleanup", "Clean up recognition jobs", "jobs", "/jobs/cleanup", recognition.CleanupPreview{Token: strings.Repeat("a", 64), Items: []recognition.CleanupItem{{Title: "Synthetic deleted notebook", Number: 1, Reason: "Notebook deleted"}, {Title: "Synthetic removed page", Number: 4, Reason: "Page removed"}}}},
@@ -274,4 +279,31 @@ func todayPreview(open, done []tasksvc.Task, v taskView, now time.Time, extra ma
 		d[k] = val
 	}
 	return d
+}
+
+// recognitionFixture is the Recognition page on one tab, with synthetic
+// work in every tab's counts.
+func recognitionFixture(tab string) recognitionView {
+	at := time.Date(2026, 10, 26, 22, 41, 0, 0, time.UTC)
+	v := recognitionView{Tab: tab, Sources: true, WorkTab: true, Mode: "auto", Model: "synthetic-vl", Return: "/jobs?tab=" + tab,
+		Tally: recognition.Tally{Active: 2, Attention: 2, Failed: 1, Blocked: 1, Skipped: 1}}
+	v.Runs = []recognition.Run{{ID: "11111111-1111-1111-1111-111111111111", State: "queued", Source: "boox", Created: at, Queued: 120, Ready: 40, Pending: 80, Finished: 40},
+		{ID: "22222222-2222-2222-2222-222222222222", State: "queued", Source: "boox", Created: at.Add(-240 * time.Hour), Queued: 300, Ready: 298, Failed: 2}}
+	switch tab {
+	case "active":
+		v.Groups = []recognition.Group{{Key: "b:x", Source: "boox", Notebook: "a", Title: "Synthetic field journal", Batch: "x", Total: 24, Done: 8, Ready: 8, Processing: 1, Queued: 15},
+			{Key: "a:client:2026-10-26:b", Source: "client", Notebook: "b", Title: "Synthetic sketchbook", Automatic: true, Total: 3, Done: 1, Ready: 1, Paused: 2}}
+	case "finished":
+		v.Groups = []recognition.Group{{Key: "b:y", Source: "boox", Notebook: "c", Title: "Synthetic garden plan 2027", Batch: "y", Total: 12, Done: 12, Ready: 12, Updated: at},
+			{Key: "b:z", Source: "boox", Notebook: "d", Title: "Synthetic budget", Batch: "z", Total: 5, Done: 5, Ready: 3, Cancelled: 1, Attention: 1, Updated: at.Add(-48 * time.Hour)}}
+	case "attention":
+		v.Pages = []recognition.Job{{ID: "j1", Source: "boox", Notebook: "a", Title: "Synthetic field journal", Number: 15, State: "failed", Detail: "Provider timed out after 60 s", Attempts: 3, Model: "synthetic-vl:7b", ImageWidth: 1404, ImageHeight: 1872, ImageBytes: 421888, Updated: at, Batch: "x"},
+			{ID: "j2", Source: "boox", Notebook: "e", Title: "Synthetic sketchbook", Number: 3, State: "blocked", Detail: "Waiting for page files from the tablet", Updated: at}}
+	case "skipped":
+		v.Pages = []recognition.Job{{ID: "j3", Source: "client", Notebook: "b", Title: "Synthetic scratch pad", Number: 2, State: "skipped", Updated: at}}
+	case "work":
+		v.Work = WorkSummary{Actions: WorkGroup{Counts: map[string]int{"ready": 14, "failed": 1}, Rows: []WorkRow{{Title: "20261016 Synthetic plans", Link: "#", State: "failed", Detail: "Notebook unavailable.", Color: "blue", Action: "event", Updated: at}}},
+			Minutes: WorkGroup{Counts: map[string]int{"ready": 2, "processing": 1}, Rows: []WorkRow{{Title: "Synthetic meeting", Link: "#", State: "processing", Detail: "Transcribing recordings.", Updated: at}}}}
+	}
+	return v
 }

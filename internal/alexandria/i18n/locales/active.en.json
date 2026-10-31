@@ -6,7 +6,6 @@
   "<a class=\"button\" href=\"/boox/enroll\">Connect a device</a><a href=\"/boox/devices\">Manage devices</a>": "<a class=\"button\" href=\"/boox/enroll\">Connect a device</a><a href=\"/boox/devices\">Manage devices</a>",
   "<a class=\"button\" href=\"/files/forestnote/devices\">Connect a Client device</a>": "<a class=\"button\" href=\"/files/forestnote/devices\">Connect a Client device</a>",
   "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs\">View recognition jobs</a>": "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs\">View recognition jobs</a>",
-  "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs/new\">Recognize one notebook…</a>": "<a class=\"button\" href=\"/jobs/library\">Recognize a library…</a><a class=\"button secondary\" href=\"/jobs/new\">Recognize one notebook…</a>",
   "<a class=\"button\" href=\"/settings/integrations?section=api#api\">Done</a>": "<a class=\"button\" href=\"/settings/integrations?section=api#api\">Done</a>",
   "<a href=\"#account\">Your account</a>": "<a href=\"#account\">Your account</a>",
   "<a href=\"#api\">API and MCP access</a>": "<a href=\"#api\">API and MCP access</a>",
@@ -30,7 +29,6 @@
   "<a href=\"/files/forestnote/devices\">Manage Client devices</a>": "<a href=\"/files/forestnote/devices\">Manage Client devices</a>",
   "<a href=\"/help#devices\">About devices and sources</a>": "<a href=\"/help#devices\">About devices and sources</a>",
   "<a href=\"/jobs\">Handwriting Recognition</a>": "<a href=\"/jobs\">Handwriting Recognition</a>",
-  "<a href=\"/jobs\">Recognition jobs</a> /": "<a href=\"/jobs\">Recognition jobs</a> /",
   "<a href=\"/jobs/library\">Recognize a library…</a><a href=\"/settings/recognition\">Settings</a>": "<a href=\"/jobs/library\">Recognize a library…</a><a href=\"/settings/recognition\">Settings</a>",
   "<a href=\"/search\">Search</a><a href=\"/settings/search\">Settings</a>": "<a href=\"/search\">Search</a><a href=\"/settings/search\">Settings</a>",
   "<a href=\"/settings/recognition\">Recognition</a><a href=\"/settings/search\">Search by meaning</a>": "<a href=\"/settings/recognition\">Recognition</a><a href=\"/settings/search\">Search by meaning</a>",
@@ -101,6 +99,10 @@
   "Actions": "Actions",
   "Active": "Active",
   "Active or paused pages keep their existing jobs and are not counted as completed in this run.": "Active or paused pages keep their existing jobs and are not counted as completed in this run.",
+  "Active {{.Count}}": {
+    "one": "Active {{.Count}}",
+    "other": "Active {{.Count}}"
+  },
   "Actual size": "Actual size",
   "Add": "Add",
   "Add Source": "Add Source",
@@ -120,6 +122,7 @@
   "Alexandria Client text can sync back to Client devices. BOOX text stays on this server: it becomes searchable here but never changes your BOOX notebooks.": "Alexandria Client text can sync back to Client devices. BOOX text stays on this server: it becomes searchable here but never changes your BOOX notebooks.",
   "Alexandria could not check the saved provider. Check its address and service, then refresh.": "Alexandria could not check the saved provider. Check its address and service, then refresh.",
   "Alexandria keeps one library for one person, gathered from several <strong>sources</strong>. Each source keeps its own notebooks and devices, because each one syncs in its own way. Search, tasks and handwriting recognition work across all of them.": "Alexandria keeps one library for one person, gathered from several <strong>sources</strong>. Each source keeps its own notebooks and devices, because each one syncs in its own way. Search, tasks and handwriting recognition work across all of them.",
+  "All": "All",
   "All books": "All books",
   "All day": "All day",
   "All jobs": "All jobs",
@@ -153,17 +156,20 @@
   "Asks your BOOX tablets to recheck the ink and annotations already received for this book. Open the book on each tablet and accept Sync if prompted.": "Asks your BOOX tablets to recheck the ink and annotations already received for this book. Open the book on each tablet and accept Sync if prompted.",
   "Associated note": "Associated note",
   "At least 12 characters. Devices and API tokens keep working.": "At least 12 characters. Devices and API tokens keep working.",
+  "Attempts": "Attempts",
   "Audio Note Minutes": "Audio Note Minutes",
   "Audio Note Minutes requested. Recordings are transcribed first; this page shows progress.": "Audio Note Minutes requested. Recordings are transcribed first; this page shows progress.",
   "Audio Note Minutes settings saved. Nothing was transcribed or summarized.": "Audio Note Minutes settings saved. Nothing was transcribed or summarized.",
   "Audio Note Minutes summarize a BOOX note from its recordings <em>and</em> its handwriting. Talk Insights on the device only hears the audio; here, what you wrote down counts as much as what was said.": "Audio Note Minutes summarize a BOOX note from its recordings <em>and</em> its handwriting. Talk Insights on the device only hears the audio; here, what you wrote down counts as much as what was said.",
   "Audio note minutes": "Audio note minutes",
   "Authorized": "Authorized",
+  "Automatic": "Automatic",
   "Automatic Processing": "Automatic Processing",
   "Automatic processing is off.": "Automatic processing is off.",
   "Automatic processing saved.": "Automatic processing saved.",
   "Automatic processing saved. It applies to notebooks that change from now on.": "Automatic processing saved. It applies to notebooks that change from now on.",
   "Automatic processing starts once a recognition provider, or transcription and a summary model, is set up.": "Automatic processing starts once a recognition provider, or transcription and a summary model, is set up.",
+  "Automatic recognition is on": "Automatic recognition is on",
   "Availability": "Availability",
   "Available": "Available",
   "Awaiting dispatch": "Awaiting dispatch",
@@ -187,6 +193,7 @@
   "BOOX tablets' built-in Notes and NeoReader, via the PowerSync app. Your notebooks keep their native format.": "BOOX tablets' built-in Notes and NeoReader, via the PowerSync app. Your notebooks keep their native format.",
   "BOOX tags": "BOOX tags",
   "BOOX text stays on this server: it's searchable here but never changes your BOOX notebooks.": "BOOX text stays on this server: it's searchable here but never changes your BOOX notebooks.",
+  "Back to Recognition": "Back to Recognition",
   "Back to calendar": "Back to calendar",
   "Back to tasks": "Back to tasks",
   "Base URL": "Base URL",
@@ -223,6 +230,7 @@
   "Cancellation stops queued operations only. Publication already in progress may complete.": "Cancellation stops queued operations only. Publication already in progress may complete.",
   "Cancelled": "Cancelled",
   "Catalog pending": "Catalog pending",
+  "Change": "Change",
   "Change Password": "Change Password",
   "Change password": "Change password",
   "Change this in Settings → AI Tools and Recognition.": "Change this in Settings → AI Tools and Recognition.",
@@ -236,7 +244,6 @@
   "Choose books from Reading first.": "Choose books from Reading first.",
   "Choose fewer books in one change.": "Choose fewer books in one change.",
   "Choose pages…": "Choose pages…",
-  "Choose source": "Choose source",
   "Choose the AI models Alexandria uses: a vision model for handwriting, plus models for audio note minutes, search by meaning and note actions. Nothing is sent until you queue work, or automatically once you turn on automatic processing below.": "Choose the AI models Alexandria uses: a vision model for handwriting, plus models for audio note minutes, search by meaning and note actions. Nothing is sent until you queue work, or automatically once you turn on automatic processing below.",
   "Claude (approved here)": "Claude (approved here)",
   "Claude on the web connects using this server's MCP address. You approve it on a page here, and it then appears in your token list. Other MCP clients and scripts use an API token from <a href=\"/settings/integrations\">Settings → Tasks &amp; Integrations</a>. A token can search and read your notebooks and books, edit text boxes and manage tasks, so revoke any you no longer use. A token is shown once, when you create it.": "Claude on the web connects using this server's MCP address. You approve it on a page here, and it then appears in your token list. Other MCP clients and scripts use an API token from <a href=\"/settings/integrations\">Settings → Tasks &amp; Integrations</a>. A token can search and read your notebooks and books, edit text boxes and manage tasks, so revoke any you no longer use. A token is shown once, when you create it.",
@@ -402,6 +409,7 @@
   "Events you add here, in CalDAV calendar apps, or from BOOX note actions. Apps that add your Alexandria account see a calendar beside the task list and can add, change and delete events too. Times are shown in the time zone set under Settings → Tasks &amp; Integrations; an event with no time lasts all day. Deleted events wait in Deleted Events until you restore them or delete them permanently.": "Events you add here, in CalDAV calendar apps, or from BOOX note actions. Apps that add your Alexandria account see a calendar beside the task list and can add, change and delete events too. Times are shown in the time zone set under Settings → Tasks &amp; Integrations; an event with no time lasts all day. Deleted events wait in Deleted Events until you restore them or delete them permanently.",
   "Every <span class=\"badge\">?</span> button has a <code>data-help</code> key matching the help registry in <code>internal/alexandria/web/help.go</code>. Popover text is in the page HTML even while closed.": "Every <span class=\"badge\">?</span> button has a <code>data-help</code> key matching the help registry in <code>internal/alexandria/web/help.go</code>. Popover text is in the page HTML even while closed.",
   "Every available notebook is included. Exclude any below.": "Every available notebook is included. Exclude any below.",
+  "Every job": "Every job",
   "Every tablet must use the same BOOX account. In PowerSync 0.3 or later, choose Connect to Alexandria and follow the permission and confirmation steps. Notebook and reading sync are enabled after connection; individually excluded content stays excluded. Earlier versions require enabling both sync checkboxes. Your existing BOOX library is kept, and returning to the previous server does not need this server.": "Every tablet must use the same BOOX account. In PowerSync 0.3 or later, choose Connect to Alexandria and follow the permission and confirmation steps. Notebook and reading sync are enabled after connection; individually excluded content stays excluded. Earlier versions require enabling both sync checkboxes. Your existing BOOX library is kept, and returning to the previous server does not need this server.",
   "Every version of a notebook or reading record the server has seen is kept, along with uploaded files. That supports recovery, but cannot capture changes a device never sent.": "Every version of a notebook or reading record the server has seen is kept, along with uploaded files. That supports recovery, but cannot capture changes a device never sent.",
   "Exact words only": "Exact words only",
@@ -509,11 +517,12 @@
   "Left in Earlier Jobs": "Left in Earlier Jobs",
   "Length": "Length",
   "Library": "Library",
-  "Library Batch Progress": "Library Batch Progress",
   "Library Maintenance": "Library Maintenance",
   "Library Recognition": "Library Recognition",
   "Library batch confirmed. Pages will be queued in the background.": "Library batch confirmed. Pages will be queued in the background.",
   "Library overview": "Library overview",
+  "Library run": "Library run",
+  "Library runs": "Library runs",
   "Link": "Link",
   "Listed Pages": "Listed Pages",
   "Live notebooks": "Live notebooks",
@@ -573,6 +582,10 @@
   "Move to": "Move to",
   "Name": "Name",
   "Needs attention": "Needs attention",
+  "Needs attention {{.Count}}": {
+    "one": "Needs attention {{.Count}}",
+    "other": "Needs attention {{.Count}}"
+  },
   "Needs attention:": "Needs attention:",
   "Needs restore": "Needs restore",
   "Never": "Never",
@@ -584,6 +597,7 @@
   "Newest first": "Newest first",
   "Next": "Next",
   "Next page": "Next page",
+  "Next try": "Next try",
   "No Audio Note Minutes for this notebook yet.": "No Audio Note Minutes for this notebook yet.",
   "No BOOX devices have connected yet.": "No BOOX devices have connected yet.",
   "No annotations in this book.": "No annotations in this book.",
@@ -596,6 +610,7 @@
   "No due date": "No due date",
   "No events.": "No events.",
   "No files for this page have reached the server; it may be empty on the device, or still syncing.": "No files for this page have reached the server; it may be empty on the device, or still syncing.",
+  "No finished recognition yet.": "No finished recognition yet.",
   "No handwriting on this page; nothing was sent for recognition.": "No handwriting on this page; nothing was sent for recognition.",
   "No ink in a note-action color on this page.": "No ink in a note-action color on this page.",
   "No key is saved.": "No key is saved.",
@@ -609,8 +624,10 @@
   "No page text or BOOX reading records match. Pages that haven't been through handwriting recognition can only be found by title.": "No page text or BOOX reading records match. Pages that haven't been through handwriting recognition can only be found by title.",
   "No pages are available for recognition.": "No pages are available for recognition.",
   "No pages available.": "No pages available.",
+  "No recognition provider is set up": "No recognition provider is set up",
   "No runnable work remains in this library batch. Review any failed, blocked, paused or unavailable items below.": "No runnable work remains in this library batch. Review any failed, blocked, paused or unavailable items below.",
   "No shelf (top level)": "No shelf (top level)",
+  "No skipped pages.": "No skipped pages.",
   "No summary key is saved.": "No summary key is saved.",
   "No tags have arrived from your BOOX devices.": "No tags have arrived from your BOOX devices.",
   "No tokens yet.": "No tokens yet.",
@@ -633,6 +650,7 @@
   "Note Action Instructions": "Note Action Instructions",
   "Note Actions": "Note Actions",
   "Note actions": "Note actions",
+  "Note actions & minutes": "Note actions & minutes",
   "Note actions are off.": "Note actions are off.",
   "Note actions are on. They apply to ink written from now on.": "Note actions are on. They apply to ink written from now on.",
   "Note actions need automatic recognition and a summary model; see <a href=\"/settings/recognition?section=note-actions#note-actions\">Settings → AI Tools and Recognition</a>.": "Note actions need automatic recognition and a summary model; see <a href=\"/settings/recognition?section=note-actions#note-actions\">Settings → AI Tools and Recognition</a>.",
@@ -664,6 +682,8 @@
   "Nothing here yet. Records appear after a BOOX device syncs.": "Nothing here yet. Records appear after a BOOX device syncs.",
   "Nothing in the next 7 days.": "Nothing in the next 7 days.",
   "Nothing is running or failed.": "Nothing is running or failed.",
+  "Nothing is waiting or running.": "Nothing is waiting or running.",
+  "Nothing needs attention.": "Nothing needs attention.",
   "Nothing queued.": "Nothing queued.",
   "Nothing to do.": "Nothing to do.",
   "Nothing to summarize: no speech was transcribed and no page has recognized text.": "Nothing to summarize: no speech was transcribed and no page has recognized text.",
@@ -691,6 +711,7 @@
   "Only books whose file is stored here can be downloaded, renamed or moved.": "Only books whose file is stored here can be downloaded, renamed or moved.",
   "Only needed for Anthropic keys that can reach more than one workspace. Find the ID in Claude Console → Settings → Workspaces. Ignored for the OpenAI format.": "Only needed for Anthropic keys that can reach more than one workspace. Find the ID in Claude Console → Settings → Workspaces. Ignored for the OpenAI format.",
   "Only the first 500 annotations are shown.": "Only the first 500 annotations are shown.",
+  "Only when you retry": "Only when you retry",
   "Open": "Open",
   "Open a notebook and choose <strong>Summarize this note…</strong>. You'll see the recordings and how many pages have recognized text before anything is sent. Each recording is transcribed, then a summary model writes the minutes.": "Open a notebook and choose <strong>Summarize this note…</strong>. You'll see the recordings and how many pages have recognized text before anything is sent. Each recording is transcribed, then a summary model writes the minutes.",
   "Open calendar": "Open calendar",
@@ -730,6 +751,7 @@
   "Pages already queued, running or paused keep their existing jobs. BOOX pages without a complete preview wait until they can be drawn.": "Pages already queued, running or paused keep their existing jobs. BOOX pages without a complete preview wait until they can be drawn.",
   "Pages and Reading": "Pages and Reading",
   "Pages are drawn on the server from the ink files received so far. Pen appearance is approximate, and a missing preview does not mean the page is blank — some files may still be on the way.": "Pages are drawn on the server from the ink files received so far. Pen appearance is approximate, and a missing preview does not mean the page is blank — some files may still be on the way.",
+  "Pages are recognized when you ask": "Pages are recognized when you ask",
   "Pages queued for recognition.": "Pages queued for recognition.",
   "Pages that have never been recognized can only be found by title, so if a search misses something, check whether its pages have been through <a href=\"#recognition\">recognition</a>.": "Pages that have never been recognized can only be found by title, so if a search misses something, check whether its pages have been through <a href=\"#recognition\">recognition</a>.",
   "Pages:": "Pages:",
@@ -744,6 +766,7 @@
   "Paused": "Paused",
   "Paused while semantic search is off": "Paused while semantic search is off",
   "Pauses new embedding work and keeps the existing index, so turning it back on resumes quickly. Requests already in flight may finish. It does not stop the Ollama service.": "Pauses new embedding work and keeps the existing index, so turning it back on resumes quickly. Requests already in flight may finish. It does not stop the Ollama service.",
+  "Pausing or cancelling stops new requests, but one already sent may still finish and be billed.": "Pausing or cancelling stops new requests, but one already sent may still finish and be billed.",
   "Pausing or cancelling stops results being published, but a request already sent may still finish and be billed. Resuming may send it again. Retry reuses unchanged successful results. Temporary failures retry automatically up to five times.": "Pausing or cancelling stops results being published, but a request already sent may still finish and be billed. Resuming may send it again. Retry reuses unchanged successful results. Temporary failures retry automatically up to five times.",
   "Pending": "Pending",
   "Permanent removal in progress": "Permanent removal in progress",
@@ -753,10 +776,11 @@
     "other": "Permanently deleted {{.Count}} tasks."
   },
   "Permanently removes this notebook and its server-held files, recognition records, search results and history. Tasks, events and minutes notes made from it stay. This can't be undone.": "Permanently removes this notebook and its server-held files, recognition records, search results and history. Tasks, events and minutes notes made from it stay. This can't be undone.",
+  "Prepare": "Prepare",
   "Prepare library review": "Prepare library review",
   "Preparing notebook page catalogs. No recognition has been requested.": "Preparing notebook page catalogs. No recognition has been requested.",
   "Preparing review": "Preparing review",
-  "Preparing the Review": "Preparing the Review",
+  "Preparing the review": "Preparing the review",
   "Pressing the button sends the included pages to your recognition provider; charges from your provider may apply. Pages already in progress keep their jobs. Pages added after this review need a new review.": "Pressing the button sends the included pages to your recognition provider; charges from your provider may apply. Pages already in progress keep their jobs. Pages added after this review need a new review.",
   "Preview": "Preview",
   "Preview audio repair": "Preview audio repair",
@@ -797,10 +821,10 @@
   "Recently modified": "Recently modified",
   "Recently opened": "Recently opened",
   "Recognition": "Recognition",
-  "Recognition Jobs": "Recognition Jobs",
   "Recognition Prompt": "Recognition Prompt",
   "Recognition Provider": "Recognition Provider",
   "Recognition and Search": "Recognition and Search",
+  "Recognition image": "Recognition image",
   "Recognition image: {{.Width}} × {{.Height}} px · {{.Bytes}} JPEG bytes": "Recognition image: {{.Width}} × {{.Height}} px · {{.Bytes}} JPEG bytes",
   "Recognition is off. You can prepare a review now; turn on recognition in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> before confirming it.": "Recognition is off. You can prepare a review now; turn on recognition in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> before confirming it.",
   "Recognition job details include the encoded image size and model. Batches and library runs keep their history after they finish.": "Recognition job details include the encoded image size and model. Batches and library runs keep their history after they finish.",
@@ -809,13 +833,15 @@
   "Recognition prompt": "Recognition prompt",
   "Recognition provider returned HTTP {{.Status}}.": "Recognition provider returned HTTP {{.Status}}.",
   "Recognition sends page images to a vision model you configure and stores the text it returns, which makes the pages searchable. <strong>It can cost money</strong>, so nothing is sent until you confirm.": "Recognition sends page images to a vision model you configure and stores the text it returns, which makes the pages searchable. <strong>It can cost money</strong>, so nothing is sent until you confirm.",
-  "Recognize Pages": "Recognize Pages",
-  "Recognize a Library": "Recognize a Library",
+  "Recognize a library": "Recognize a library",
+  "Recognize a library…": "Recognize a library…",
   "Recognize again": "Recognize again",
   "Recognize again even if a matching result is cached": "Recognize again even if a matching result is cached",
   "Recognize again…": "Recognize again…",
   "Recognize individual pages from a notebook, or use <a href=\"/jobs/library\">Recognize a library</a>. A library run first checks every notebook's page list. That check is free and doesn't contact your provider. You then review and exclude notebooks before confirming. Pages are sent in chunks of up to 100.": "Recognize individual pages from a notebook, or use <a href=\"/jobs/library\">Recognize a library</a>. A library run first checks every notebook's page list. That check is free and doesn't contact your provider. You then review and exclude notebooks before confirming. Pages are sent in chunks of up to 100.",
   "Recognize new BOOX pages automatically": "Recognize new BOOX pages automatically",
+  "Recognize one notebook": "Recognize one notebook",
+  "Recognize one notebook…": "Recognize one notebook…",
   "Recognize the {{.Count}} pages without text first": {
     "one": "Recognize the {{.Count}} page without text first",
     "other": "Recognize the {{.Count}} pages without text first"
@@ -885,6 +911,14 @@
   "Resume library batch": "Resume library batch",
   "Retry": "Retry",
   "Retry These Jobs": "Retry These Jobs",
+  "Retry all {{.Count}} blocked": {
+    "one": "Retry the blocked page",
+    "other": "Retry all {{.Count}} blocked"
+  },
+  "Retry all {{.Count}} failed": {
+    "one": "Retry the failed page",
+    "other": "Retry all {{.Count}} failed"
+  },
   "Retry failed and blocked pages": "Retry failed and blocked pages",
   "Retry failed index work": "Retry failed index work",
   "Retry failures": "Retry failures",
@@ -895,8 +929,9 @@
   },
   "Retry this job": "Retry this job",
   "Retry unavailable catalogs": "Retry unavailable catalogs",
-  "Review Before Starting": "Review Before Starting",
+  "Review": "Review",
   "Review another recording": "Review another recording",
+  "Review before sending": "Review before sending",
   "Revision": "Revision",
   "Revoke": "Revoke",
   "Revoke Device": "Revoke Device",
@@ -968,6 +1003,7 @@
   "Server request:": "Server request:",
   "Server-recognized text; original native content is unchanged.": "Server-recognized text; original native content is unchanged.",
   "Set an embedding endpoint under Search by Meaning in Settings → AI Tools and Recognition. The optional local Ollama service must be installed before it can be used.": "Set an embedding endpoint under Search by Meaning in Settings → AI Tools and Recognition. The optional local Ollama service must be installed before it can be used.",
+  "Set one up": "Set one up",
   "Set up a provider in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> to recognize handwriting.": "Set up a provider in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> to recognize handwriting.",
   "Set up a summary model in Settings → AI Tools and Recognition, then retry.": "Set up a summary model in Settings → AI Tools and Recognition, then retry.",
   "Set up in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> under Audio Note Minutes. Transcription uses any OpenAI-compatible speech-to-text server, including a self-hosted Whisper. The summary model can be a local OpenAI-compatible server or an Anthropic model. Its instructions are editable there too; Alexandria always adds the response format it needs.": "Set up in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> under Audio Note Minutes. Transcription uses any OpenAI-compatible speech-to-text server, including a self-hosted Whisper. The summary model can be a local OpenAI-compatible server or an Anthropic model. Its instructions are editable there too; Alexandria always adds the response format it needs.",
@@ -988,11 +1024,19 @@
   "Sign in from the Client app's Settings → Sync using this server's address and your account. <em>Waiting</em> counts changes the device has not pulled yet. <em>Clear sync position</em> is safe for a device still in use; it picks up where it left off.": "Sign in from the Client app's Settings → Sync using this server's address and your account. <em>Waiting</em> counts changes the device has not pulled yet. <em>Clear sync position</em> is safe for a device still in use; it picks up where it left off.",
   "Size": "Size",
   "Skip": "Skip",
+  "Skip it": "Skip it",
+  "Skip page": "Skip page",
+  "Skip them": "Skip them",
   "Skip this notebook in recognition": "Skip this notebook in recognition",
   "Skip to content": "Skip to content",
   "Skipped by You": "Skipped by You",
   "Skipped by the owner; it won't be recognized until un-skipped.": "Skipped by the owner; it won't be recognized until un-skipped.",
+  "Skipped by you. Library runs, retries and tablet changes leave these pages alone.": "Skipped by you. Library runs, retries and tablet changes leave these pages alone.",
   "Skipped in recognition.": "Skipped in recognition.",
+  "Skipped {{.Count}}": {
+    "one": "Skipped {{.Count}}",
+    "other": "Skipped {{.Count}}"
+  },
   "Skipped {{.Count}} jobs. They stay out of recognition until you un-skip them.": {
     "one": "Skipped {{.Count}} job. It stays out of recognition until you un-skip it.",
     "other": "Skipped {{.Count}} jobs. They stay out of recognition until you un-skip them."
@@ -1088,6 +1132,7 @@
   "The server was too busy to draw this page; retrying: {{.Reason}}": "The server was too busy to draw this page; retrying: {{.Reason}}",
   "The summary model didn't return minutes in the expected format; retrying.": "The summary model didn't return minutes in the expected format; retrying.",
   "These are the built-in instructions.": "These are the built-in instructions.",
+  "These pages need you. Retry a page, or skip it to keep it out of recognition.": "These pages need you. Retry a page, or skip it to keep it out of recognition.",
   "They stay on this server, appear in search and are available to MCP clients through <code>get_note_minutes</code>. Nothing is written to your BOOX until you choose <strong>Send to BOOX</strong>, which creates a separate text note named <em>title</em><code>_Minutes</code> in the same folder. Your original notebook is never changed. Sending again replaces that note if it's untouched; if you've edited it, a new one is added instead. To send every new set of minutes automatically, turn on <strong>Send them to BOOX automatically</strong> in Settings → AI Tools and Recognition.": "They stay on this server, appear in search and are available to MCP clients through <code>get_note_minutes</code>. Nothing is written to your BOOX until you choose <strong>Send to BOOX</strong>, which creates a separate text note named <em>title</em><code>_Minutes</code> in the same folder. Your original notebook is never changed. Sending again replaces that note if it's untouched; if you've edited it, a new one is added instead. To send every new set of minutes automatically, turn on <strong>Send them to BOOX automatically</strong> in Settings → AI Tools and Recognition.",
   "This BOOX syncs with your Alexandria library instead of the Onyx cloud. The Template Hub is an Onyx cloud service that needs an Onyx sign-in, so it can't open while you're connected to Alexandria.": "This BOOX syncs with your Alexandria library instead of the Onyx cloud. The Template Hub is an Onyx cloud service that needs an Onyx sign-in, so it can't open while you're connected to Alexandria.",
   "This continues if you close the browser. Status updates every five seconds.": "This continues if you close the browser. Status updates every five seconds.",
@@ -1246,6 +1291,7 @@
   "recording and notes": "recording and notes",
   "since {{.When}}": "since {{.When}}",
   "skipped": "skipped",
+  "skipped {{.Date}}": "skipped {{.Date}}",
   "under a minute": "under a minute",
   "vLLM only: disable thinking (OpenAI format)": "vLLM only: disable thinking (OpenAI format)",
   "{{.Count}} BOOX pages have no recognized text yet, so they can't be searched by meaning.": {
@@ -1276,6 +1322,10 @@
     "one": "{{.Count}} calendar hidden by Calendar's event filter",
     "other": "{{.Count}} calendars hidden by Calendar's event filter"
   },
+  "{{.Count}} cancelled": {
+    "one": "{{.Count}} cancelled",
+    "other": "{{.Count}} cancelled"
+  },
   "{{.Count}} changes": {
     "one": "{{.Count}} change",
     "other": "{{.Count}} changes"
@@ -1303,6 +1353,10 @@
   "{{.Count}} minutes ago": {
     "one": "{{.Count}} minute ago",
     "other": "{{.Count}} minutes ago"
+  },
+  "{{.Count}} need attention": {
+    "one": "{{.Count}} needs attention",
+    "other": "{{.Count}} need attention"
   },
   "{{.Count}} notebooks": {
     "one": "{{.Count}} notebook",
@@ -1332,6 +1386,10 @@
     "one": "{{.Count}} page queued. Already active or paused pages were left with their existing jobs.",
     "other": "{{.Count}} pages queued. Already active or paused pages were left with their existing jobs."
   },
+  "{{.Count}} pages to review": {
+    "one": "{{.Count}} page to review",
+    "other": "{{.Count}} pages to review"
+  },
   "{{.Count}} paused": {
     "one": "{{.Count}} paused",
     "other": "{{.Count}} paused"
@@ -1356,6 +1414,10 @@
     "one": "{{.Count}} server-held file · {{.Size}} · {{.Revisions}} metadata versions · {{.Jobs}} recognition jobs",
     "other": "{{.Count}} server-held files · {{.Size}} · {{.Revisions}} metadata versions · {{.Jobs}} recognition jobs"
   },
+  "{{.Count}} skipped": {
+    "one": "{{.Count}} skipped",
+    "other": "{{.Count}} skipped"
+  },
   "{{.Count}} stored bytes": {
     "one": "{{.Count}} stored byte",
     "other": "{{.Count}} stored bytes"
@@ -1367,6 +1429,10 @@
   "{{.Count}}+ pp": {
     "one": "{{.Count}}+ p",
     "other": "{{.Count}}+ pp"
+  },
+  "{{.Done}} of {{.Count}} pages": {
+    "one": "{{.Done}} of {{.Count}} page",
+    "other": "{{.Done}} of {{.Count}} pages"
   },
   "{{.Done}} of {{.Count}} pages have recognized text.": {
     "one": "{{.Done}} of {{.Count}} page has recognized text.",
@@ -1390,6 +1456,7 @@
   "{{.Model}}, from {{.Transcriber}} transcripts": "{{.Model}}, from {{.Transcriber}} transcripts",
   "{{.Month}} {{.Day}}": "{{.Month}} {{.Day}}",
   "{{.Month}} {{.Day}}, {{.Year}}": "{{.Month}} {{.Day}}, {{.Year}}",
+  "{{.Name}}, p. {{.Number}}": "{{.Name}}, p. {{.Number}}",
   "{{.Name}}, page {{.Number}}": "{{.Name}}, page {{.Number}}",
   "{{.Pending}} pending · {{.Blocked}} blocked or superseded · {{.Cancelled}} cancelled · {{.Total}} total": "{{.Pending}} pending · {{.Blocked}} blocked or superseded · {{.Cancelled}} cancelled · {{.Total}} total",
   "{{.Rate}} pages a minute (last 10 minutes)": "{{.Rate}} pages a minute (last 10 minutes)",
@@ -1397,6 +1464,7 @@
   "{{.Ready}} / {{.Queued}} ready · {{.Failed}} failed · {{.Blocked}} blocked": "{{.Ready}} / {{.Queued}} ready · {{.Failed}} failed · {{.Blocked}} blocked",
   "{{.Start}}–{{.End}} of {{.Total}}": "{{.Start}}–{{.End}} of {{.Total}}",
   "{{.Weekday}}, {{.Month}} {{.Day}}": "{{.Weekday}}, {{.Month}} {{.Day}}",
+  "{{.Width}} × {{.Height}} px · {{.KB}} KB JPEG": "{{.Width}} × {{.Height}} px · {{.KB}} KB JPEG",
   "· Matching": "· Matching",
   "· Sticky Note": "· Sticky Note",
   "· Summary:": "· Summary:",
@@ -1464,7 +1532,6 @@
   "Week": "Week",
   "Week starts on": "Week starts on",
   "You can also select and copy these addresses yourself.": "You can also select and copy these addresses yourself.",
-  "Back to jobs": "Back to jobs",
   "Clean up list…": "Clean up list…",
   "Clean up recognition jobs": "Clean up recognition jobs",
   "Clear these jobs from the list": "Clear these jobs from the list",

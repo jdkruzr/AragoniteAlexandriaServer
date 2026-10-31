@@ -20,7 +20,7 @@ guides come from a made-up demo library.
 
 - [Using the Web App](web-app.md): a tour of the screens.
 - [Recognize Handwriting](recognition.md): automatic recognition, single
-  pages, whole libraries, and the Recognition Jobs page.
+  pages, whole libraries, and the Recognition page.
 - [Search Your Library](search-and-tags.md): searching by word or by meaning,
   and BOOX tags.
 - [Tasks and Calendar](tasks-and-calendar.md): both pages, and syncing them

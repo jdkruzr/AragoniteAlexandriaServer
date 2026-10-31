@@ -158,7 +158,7 @@ next sync.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| A BOOX page you know is there doesn't show up | The page hasn't been recognized; only its notebook title is searchable | Open the notebook, check the **Handwriting Recognition** card, and select **Recognize this page** or recognize the library. See [Recognize Handwriting](recognition.md). |
+| A BOOX page you know is there doesn't show up | The page hasn't been recognized; only its notebook title is searchable | Open the notebook, check **Page text** in **Page details**, and select **Recognize this page** or recognize the library. See [Recognize Handwriting](recognition.md). |
 | A tagged page doesn't appear when searching for its tag | The page has no recognized text yet | Recognize the page. It already appears under **BOOX → Tags**. |
 | A new tag hasn't arrived | The note is still open on the tablet, or hasn't synced | Close the note on the device and let PowerSync sync. |
 | No **Words and meaning** menu | Search by meaning is off | Turn it on in **Settings → Search**. |

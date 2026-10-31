@@ -312,6 +312,17 @@ func (s Store) Ensure(ctx context.Context) error {
 	}
 	return tx.Commit()
 }
+
+// LoadConfig reads the saved settings without opening any credential.
+func (s Store) LoadConfig(ctx context.Context) (Config, error) {
+	var c Config
+	var raw []byte
+	if e := s.DB.QueryRowContext(ctx, `SELECT config FROM alexandria_provider_settings WHERE singleton`).Scan(&raw); e != nil {
+		return c, e
+	}
+	return c, json.Unmarshal(raw, &c)
+}
+
 func (s Store) Load(ctx context.Context) (Snapshot, error) {
 	var v Snapshot
 	var raw, b, tb, sb []byte

@@ -12,7 +12,42 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-30): **`library-2efdc7c42f92`**, app-only on schema **41**,
+Latest recorded deployment (2026-10-31): **`recognition-1c3c4ecb3380`**, app-only on schema **41**,
+image `sha256:64d1a9c3aa103e6499feea4836979faf2faa3d22b1a64633d1cd31a5c22414b7`, a wording fix on top of
+**`recognition-354fe00615f9`** (image `sha256:e15bce1e4aa20ae4e7b0e2c1c50abf4858012e4ccecca869f4bd55133452be86`).
+Phase 5 of the redesign: Recognition (`/jobs`) is tabs of current work for All, BOOX or the
+Client: Active (each library run, and each notebook request or day of a notebook's automatic
+recognition, with progress, Pause/Resume and Cancel; `POST /jobs/group`), Needs attention
+(failed and blocked pages with details, Retry, Skip page and retry-all), Skipped (Un-skip),
+Finished (runs, then finished requests) and Note actions & minutes. It opens on Needs attention
+when that has pages. The old page-by-page list is "Every job" (`?view=pages`; `?batch=`, `?run=`
+and `?history=1` still open it, and `?state=` opens the matching tab). Control forms take a
+`return` limited to `/jobs`. The one-notebook, library, size-limit and cleanup pages are
+restyled; the library flow has Prepare / Review / Send steps. Coloured tags had been repainted by
+an older `.tag` rule since phase 3; the colour classes now win. Finished runs no longer show a
+"ready" count that superseded jobs had made zero. Checked live: every tab, Every job and the
+flows against real history (one open 1,677-page review, finished runs, one skipped page).
+Group pause and cancel were checked by tests only (nothing live was running).
+Rollback: `private/recognition-1c3c4ecb3380/rollback.sh` returns to `recognition-354fe00615f9`,
+whose `rollback.sh` returns to `reader-d4bb65d5ebfb`.
+
+Previous deployment (2026-10-31): **`reader-d4bb65d5ebfb`**, app-only on schema **41**,
+image `sha256:5643eec5a07d96769757f4dc17d7d92ac515155ff1e3d881b5244c03ee028b65`, on top of
+**`library-2efdc7c42f92`**. Phase 4 of the redesign. The Reader for both sources has a Library back
+link, a filmstrip of cached thumbnails, an All pages grid (`view=grid`), arrow-key page turns and
+a Page details drawer (`?details=0|1`, cookie `alexandria_reader_details`); the BOOX drawer adds
+recognition date and model, minutes marked out of date, the page's recordings, Rename and, for
+deleted notebooks, Restore. BOOX notebooks gain `GET /boox/notebook.pdf?id&version` (page images,
+up to 200 pages, one export at a time; not offered for text notebooks). Stored PDFs with NeoReader
+handwriting gain `GET /boox/books/annotated.pdf?book=` ("Download with handwriting"): the reader's
+shape records (their own protobuf numbering) are mapped to PDF pages by object reference and drawn
+as a vector form XObject over each page; see `docs/boox-reader-notes.md`. Adds pdfcpu v0.15.0 (the
+last release for Go 1.25) and newer `golang.org/x/*`. Checked live: the Work shelf's PDF with 784
+strokes on 5 pages (0.45 s), the Reader on a 34-page notebook and its PDF (5.1 s). The Client reader
+was checked by previews only (no Client notebooks live); erasing on a reader PDF is untested.
+Rollback: `private/reader-d4bb65d5ebfb/rollback.sh` returns to `library-2efdc7c42f92`.
+
+Previous deployment (2026-10-30): **`library-2efdc7c42f92`**, app-only on schema **41**,
 image `sha256:7d870cd3722519c5f2eec33260ef37f1e2dba772d68bbcef8132c8aa72b4559d`, on top of
 **`library-e24cba4c4fdd`** (image `sha256:12096daaf7db4276922359b261d2f29522401903885b553735a7c319156b3173`).
 Phase 3b of the redesign: the Library's Books and Tags tabs. BOOX Books keeps every view (All

@@ -127,10 +127,11 @@ nav.seg a.seg-opt[aria-current] { color:var(--color-bg); }
 .seg-opt + .seg-opt { border-left:1px solid var(--color-divider); }
 .seg-opt[aria-current], .seg-opt:has(input:checked) { background:var(--color-accent); color:var(--color-bg); }
 .seg-opt:not([aria-current]):hover { background:color-mix(in srgb, var(--color-text) 7%, transparent); }
-.tag-accent { background:var(--color-accent-100); color:var(--color-accent-800); }
-.tag-accent-2 { background:var(--color-accent-2-100); color:var(--color-accent-2-800); }
-.tag-neutral { background:var(--color-neutral-100); color:var(--color-neutral-800); }
-.tag-outline { background:transparent; border:1px solid var(--color-accent); color:var(--color-accent); }
+/* Two classes, so the older plain .tag rule below can't repaint them. */
+.tag.tag-accent, .tag-accent { background:var(--color-accent-100); color:var(--color-accent-800); }
+.tag.tag-accent-2, .tag-accent-2 { background:var(--color-accent-2-100); color:var(--color-accent-2-800); }
+.tag.tag-neutral, .tag-neutral { background:var(--color-neutral-100); color:var(--color-neutral-800); }
+.tag.tag-outline, .tag-outline { background:transparent; border:1px solid var(--color-accent); color:var(--color-accent); }
 
 /* Type */
 h1, h2, h3, h4, h5, h6 { font-family:var(--font-heading); font-weight:600; line-height:1.2; }
@@ -753,3 +754,50 @@ article.sheet { margin-bottom:var(--space-2); }
   .drawer { position:static; max-height:none; padding:20px; }
   .sheet-row { grid-template-columns:1.75rem minmax(0,1fr) 1.75rem; }
 }
+
+/* Recognition: header, tabs and the rows of current work */
+.rec-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:var(--space-3); margin:0 0 var(--space-4); }
+.rec-head h1 { margin:0; }
+.rec-head .lib-sub { margin:var(--space-1) 0 0; }
+.rec-actions { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+.rec-toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:var(--space-3); margin:0 0 var(--space-4); }
+.rec-toolbar nav.seg { max-width:100%; overflow-x:auto; }
+.rec-toolbar .seg-opt, .rec-toolbar .source-switch a { white-space:nowrap; }
+.rec-toolbar .source-switch { flex-wrap:nowrap; }
+.rec-rows { list-style:none; margin:0 0 var(--space-6); padding:0; }
+.rec-row { display:grid; grid-template-columns:minmax(0,1fr) 200px max-content auto; align-items:center; gap:var(--space-2) var(--space-4); padding:var(--space-3) var(--space-1); }
+.rec-row + .rec-row { margin-top:var(--space-1); }
+.rec-page { grid-template-columns:minmax(0,1fr) max-content auto; align-items:start; }
+.rec-row:not(:has(.rec-progress)) { grid-template-columns:minmax(0,1fr) max-content auto; }
+.rec-main { display:grid; gap:2px; min-width:0; }
+.rec-main .lib-title { font-size:17px; }
+.rec-main .lib-sub { overflow-wrap:anywhere; }
+.rec-row > .tag { justify-self:start; white-space:nowrap; }
+.rec-progress progress { width:200px; height:6px; appearance:none; border:0; border-radius:3px; background:var(--color-divider); overflow:hidden; vertical-align:middle; }
+.rec-progress progress::-webkit-progress-bar { background:var(--color-divider); }
+.rec-progress progress::-webkit-progress-value { background:var(--color-accent); }
+.rec-progress progress::-moz-progress-bar { background:var(--color-accent); }
+.rec-actions-row { display:flex; flex-wrap:wrap; gap:var(--space-1); justify-content:flex-end; margin:0; }
+.rec-intro { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:var(--space-3); margin:0 0 var(--space-3); }
+.rec-intro p, .rec-intro-line { margin:0 0 var(--space-3); }
+.rec-bulk { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
+.rec-bulk form { display:flex; gap:var(--space-1); margin:0; }
+.rec-details summary { cursor:pointer; color:var(--color-accent-700); font-size:14px; width:max-content; margin-top:var(--space-1); }
+.rec-facts { display:grid; grid-template-columns:150px 1fr; gap:4px var(--space-3); margin:var(--space-2) 0 0 var(--space-4); font-size:14px; }
+.rec-facts dt { color:var(--muted); }
+.rec-facts dd { margin:0; }
+@media (max-width:55rem) {
+  .rec-row, .rec-page, .rec-row:not(:has(.rec-progress)) { grid-template-columns:minmax(0,1fr) auto; }
+  .rec-progress { grid-column:1 / -1; }
+  .rec-progress progress { width:100%; }
+  .rec-actions-row { grid-column:1 / -1; justify-content:flex-start; }
+  .rec-facts { grid-template-columns:7rem 1fr; margin-left:0; }
+}
+.rec-steps { display:flex; flex-wrap:wrap; gap:var(--space-6); list-style:none; margin:0 0 var(--space-6); padding:0; color:var(--muted); font-size:15px; }
+.rec-steps span { font-family:var(--font-heading, inherit); font-size:22px; font-weight:600; margin-right:4px; }
+.rec-steps [aria-current] { color:var(--color-accent-700); font-weight:600; }
+.rec-source { display:flex; align-items:center; gap:var(--space-2); }
+.rec-range { display:flex; flex-wrap:wrap; gap:var(--space-3); }
+.rec-range input { width:140px; }
+.rec-policy { margin:var(--space-4) 0; }
+#size-policy { padding:var(--space-3) var(--space-4); }

@@ -112,6 +112,10 @@ func (d Deps) libraryJobRoutes(mux *http.ServeMux) {
 		if id != "" {
 			dest += "?id=" + url.QueryEscape(id)
 		}
+		// Pause, resume and cancel from the Recognition list come back to it.
+		if to := jobsReturn(r.PostForm.Get("return")); to != "" && (action == "pause" || action == "resume" || action == "cancel") {
+			dest = to
+		}
 		back(w, r, dest, notice)
 	})
 }

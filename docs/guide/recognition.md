@@ -33,12 +33,12 @@ request size limit.
 | Scope | Where | What it sends |
 | --- | --- | --- |
 | Automatic | **Settings → AI Tools and Recognition → Automatic Processing** | New BOOX pages, as notebooks change |
-| One page | The **Handwriting Recognition** card in the notebook viewer | That page |
+| One page | **Page text** in the notebook's **Page details** | That page |
 | One notebook, or some of its pages | **Recognition → Recognize one notebook…** | The page range you pick |
 | A whole library | **Recognition → Recognize a library…** | Every page in the notebooks you keep in the review |
 
-**Recognition** in the top navigation opens the Recognition Jobs page
-(`/jobs`), where all of this is tracked.
+**Recognition** in the top navigation opens the Recognition page (`/jobs`),
+where all of this is tracked.
 
 Alexandria Client pages are already recognized as they sync, so the automatic
 setting only concerns BOOX.
@@ -68,15 +68,16 @@ re-read when its ink changes, so its text stays current.
 
 ### Recognize One Page
 
-Open a notebook and go to the page. The **Handwriting Recognition** card on the
-right shows the page's status and its recognized text, if any. Choose
-**Recognize this page** to send it, then reload the page later to see the
-result (or follow it on the Recognition Jobs page).
+Open a notebook and go to the page. **Page text** in the **Page details** drawer
+shows the page's recognized text, with when and by which model, or **Not
+recognized yet**. Choose **Recognize this page** (or **Recognize again**) to send
+it, then reload the page later to see the result, or follow it on the
+**Recognition** page.
 
 ### Recognize One Notebook or Chosen Pages
 
 1. Open **Recognition** and choose **Recognize one notebook…** (or use the
-   **Choose pages…** link on a notebook's recognition card to skip straight to
+   **Choose pages…** link in a notebook's **Page details** to skip straight to
    step 3).
 2. Search notebook titles and pick one. Only the first 50 matches are listed,
    so narrow the search if yours isn't there.
@@ -93,17 +94,17 @@ until they can be drawn.
 
 ### Recognize a Whole Library
 
-![The Recognition Jobs page, with job counts by status](../images/jobs.png)
+![The Recognition page, with current work by notebook](../images/jobs.png)
 
 1. Open **Recognition → Recognize a library…** (each source's Notebooks page
    also has **Recognize this library…**).
-2. Pick **Alexandria Client** or **BOOX** under **Source** and choose
-   **Choose source**.
+2. Pick **BOOX** or **Alexandria Client** under **Source**. The steps
+   **Prepare**, **Review** and **Send** run across the top.
 3. Choose **Prepare library review**. Alexandria lists every live notebook from
    that source and counts its pages. **This is free and doesn't contact your
    provider.** It keeps going if you close the browser; come back through
-   **Recognition** under **Recent Library Batches**.
-4. **Review Before Starting** shows **Notebooks Checked**, **Pages Found** and
+   the **Library run** row on the **Recognition** page.
+4. **Review before sending** shows **Notebooks Checked**, **Pages Found** and
    **Notebooks Unavailable**. Every available notebook is included. Open
    **Exclude Notebooks** and tick **Exclude** beside anything you want to leave
    out; the page count on the send button updates as you go. If some
@@ -117,7 +118,7 @@ files or handwriting in NeoReader; Client notebook pages, but not books or
 reading annotations. A review can hold up to 10,000 notebooks. Pages added
 after the review need a new review.
 
-**Library Batch Progress** shows **Done**, **Pace** (pages a minute over the
+**Progress** shows **Done**, **Pace** (pages a minute over the
 last ten minutes) and **Time Left**, plus two count tables:
 
 | Pages | Meaning |
@@ -136,15 +137,32 @@ The notebook table counts **In This Batch**, **Excluded** and **Unavailable**.
 The buttons are **Pause library batch**, **Resume library batch**, **Retry
 failed and blocked pages** and **Cancel unfinished**.
 
-## The Recognition Jobs Page
+## The Recognition Page
 
-Every page request lands here, whichever way it started. While anything is
-queued or processing, the page updates itself every few seconds.
+Every page request shows up here, whichever way it started. The header says
+whether automatic recognition is on and which model reads your pages, with
+**Change** to go to its settings. **All**, **BOOX** and **Alexandria Client**
+switch the source. While anything is waiting or running, the page updates
+itself every few seconds. It opens on **Needs attention** when something does,
+otherwise on **Active**.
 
-**Filters:** **Source** (all, BOOX, Alexandria Client), **Status**, and **Show
-earlier attempts at the same page**. Earlier attempts at a page that has since
-been retried or recognized again are hidden unless you tick that box. Results
-come 50 at a time with **Previous** and **Next**.
+| Tab | What it lists |
+| --- | --- |
+| **Active** | Work still waiting, running or paused: each **Library run**, and each notebook request, with "8 of 24 pages", a progress bar and **Pause**/**Resume** and **Cancel**. Automatic recognition is grouped per notebook per day and marked *Automatic*. |
+| **Needs attention** | Failed and blocked pages, each with the reason, **Details** (attempts, model, the image sent, when it was last tried), **Retry** and **Skip page**. |
+| **Skipped** | Pages you've skipped, with **Un-skip**. |
+| **Finished** | Library runs that are done, then finished notebook requests with how many pages, cancelled or still needing attention; **Pages** opens a request's pages. |
+| **Note actions & minutes** | BOOX ink turning into tasks and events, and audio note minutes, that are running or failed. |
+
+**More** has **Every job**, the full page-by-page list described below, plus
+**Clean up list…**, **Notebook size limits** and **Provider settings**.
+
+### Every Job
+
+**Every job** lists each page request with filters for **Source**, **Status**
+and **Show earlier attempts at the same page**. Earlier attempts at a page that
+has since been retried or recognized again are hidden unless you tick that
+box. Results come 50 at a time with **Previous** and **Next**.
 
 Each row shows the page and source, its status and failed-attempt count,
 details (including the prepared image size and the model that read it), and
@@ -170,9 +188,10 @@ didn't produce text.
 
 ### Retrying
 
-**Retry** on a row queues that page again. Filtering **Status** to failed or
-blocked adds **Retry these N jobs**, which retries the *whole* filtered list,
-not just the 50 on screen. If the list changed since you loaded it, nothing
+**Retry** on a row queues that page again. **Needs attention** has **Retry all
+N failed** and **Retry all N blocked** (and **Every job**, filtered to failed or
+blocked, has **Retry these N jobs**); these retry the *whole* list, not just
+the 50 on screen. If the list changed since you loaded it, nothing
 is retried and you're asked to look again. Retrying sends pages to your
 provider again, so charges may apply; pages that still can't be drawn are
 blocked again before anything is sent. Unchanged successful results are reused.
@@ -182,9 +201,9 @@ blocked again before anything is sent. Unchanged successful results are reused.
 A skipped page stays out of recognition: library runs, retry buttons,
 **Recognize this page** and changes on the device don't queue it.
 
-- Skip a page with **Skip** on its row, or a filtered list with **Skip them**
-  beside the bulk retry.
-- Un-skip it by filtering **Status** to skipped and choosing **Un-skip**.
+- Skip a page with **Skip page** on its row, or every failed or blocked page
+  with **Skip them** beside the bulk retry.
+- Un-skip it from the **Skipped** tab.
 - Skip a whole notebook with **Skip this notebook in recognition** on its
   **Choose pages…** screen. Its unrecognized pages are skipped, and so are
   pages added later. Pages already recognized keep their text and stay
@@ -194,14 +213,15 @@ A skipped page stays out of recognition: library runs, retry buttons,
 
 ### Cleaning up obsolete jobs
 
-**Clean up list…** previews blocked BOOX jobs marked **Page was removed.**
+**Clean up list…** (under **More**) previews blocked BOOX jobs marked **Page was removed.**
 when the server can confirm the notebook is deleted or the page is no longer
 in a valid page list. Choose **Clear these jobs from the list** to hide them
 from the normal list and its counts. The preview checks all BOOX jobs,
 regardless of your filters, in groups of up to 200.
 
-This keeps notebook content, source queues and recognition history. Select
-**Show earlier attempts and cleared jobs** to see cleared entries again.
+This keeps notebook content, source queues and recognition history. In
+**Every job**, select **Show earlier attempts and cleared jobs** to see cleared
+entries again.
 Genuine recognition failures and uncertain source metadata stay on the list.
 The server rechecks the reviewed jobs when you submit; if they changed,
 nothing is cleared and you get a fresh preview. A restored page can still
@@ -209,19 +229,19 @@ create fresh recognition work.
 
 ### Note Actions and Audio Note Minutes
 
-Below the jobs table, two more sections appear when there's something to
-show: **Note Actions** (colored-ink pages being turned into tasks and events,
-with their color and result) and **Audio Note Minutes** (minutes that are
+The **Note actions & minutes** tab shows **Note actions** (colored-ink pages being turned into tasks and events,
+with their color and result) and **Audio note minutes** (minutes that are
 queued, running or failed, or that couldn't be sent to BOOX). Each row links
 to its notebook. See [Turn Ink Into Tasks and Events](note-actions.md) and
 [Audio Note Minutes](minutes.md).
 
 ## Reading Recognized Text
 
-In a BOOX notebook, the **Handwriting Recognition** card beside each page shows
-the status badge and the recognized text. The page preview stays exactly as
-you wrote it; the text is a server-side copy. Typed text and text boxes on a
-page appear in a separate **Page Text** card, which needs no recognition at all.
+In a BOOX notebook, **Page text** in the **Page details** drawer shows the
+recognized text, when it was recognized and by which model, or the page's
+status. The page itself stays exactly as you wrote it; the text is a
+server-side copy. Text boxes on a page appear under the page as **Text boxes**,
+which need no recognition at all.
 Recognized text also shows up in [Search](search-and-tags.md) and is available to
 [assistants](assistants.md).
 
