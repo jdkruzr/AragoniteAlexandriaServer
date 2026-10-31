@@ -38,7 +38,7 @@ func TestDataTemplatesExecute(t *testing.T) {
 	cases := map[string]any{
 		"books": clientBooks{Entries: []books.LibraryBook{{ID: "b", Title: "T", FileState: "uploading"}}, Selected: &books.LibraryBookDetail{Book: books.LibraryBook{ID: "b", Title: "T", Authors: "A", Format: "PDF", FileState: "ready"},
 			Annotations: []books.LibraryAnnotation{{ID: "a", Sticky: true, Location: "Page 2", Passage: "p", Highlighted: true, InkStrokes: 1, RecognizedText: "r", TextSource: "Corrected by hand", Status: "s"}}, Truncated: true}},
-		"notebook":  notebookReader("n", "N", []notes.Page{{ID: "p", Number: 1, Key: "forestnote://n/p", BodyText: "x"}, {ID: "q", Number: 2, Key: "forestnote://n/q"}}, []notes.Crumb{{ID: "f", Name: "F"}}, url.Values{"page": {"q"}}),
+		"notebook":  notebookReader("n", "N", []notes.Page{{ID: "p", Number: 1, Key: "forestnote://n/p", BodyText: "x"}, {ID: "q", Number: 2, Key: "forestnote://n/q"}}, []notes.Crumb{{ID: "f", Name: "F"}}, url.Values{"page": {"q"}}, true),
 		"notebooks": clientListPreview(true, true),
 		"devices":   map[string]any{"Devices": []relay.Device{{SiteID: "S", Name: "Ocean", Enrolled: true, LastSeenMs: 1, FirstSeenMs: 1}, {SiteID: "R", Revoked: true, Enrolled: true}, {SiteID: "N", NeedsAdoption: true, Enrolled: true}}},
 		"authorize": map[string]any{"Request": oauth.Request{ClientName: "Claude", RedirectURI: "https://claude.ai/cb"}, "Query": "a=b"},

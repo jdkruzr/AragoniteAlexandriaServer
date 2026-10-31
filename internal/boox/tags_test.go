@@ -110,7 +110,7 @@ func TestBOOXTagsSearchAndPages(t *testing.T) {
 	if body := get("/boox/tags?tag=Orphan"); !strings.Contains(body, "No live notebook page has this tag.") {
 		t.Fatal("orphan tag pages", body)
 	}
-	if body := get("/boox/notebook?id=note&page=1"); !strings.Contains(body, "On this page") || !strings.Contains(body, `href="/boox/tags?tag=compost"`) {
+	if body := get("/boox/notebook?id=note&page=1"); !strings.Contains(body, `href="/boox/tags?selected=compost">#compost`) {
 		t.Fatal("notebook view tags", body)
 	}
 

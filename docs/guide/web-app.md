@@ -65,26 +65,24 @@ Click a notebook to preview it on the right: its first eight pages, its folder a
 
 ### Reading a Notebook
 
-Open a notebook to see one page at a time:
+Open a notebook to see one page at a time. The header has **← Library**, which goes back to the
+list with the notebook selected, then the page box and **Go**, **Page** / **All pages**, **Fit
+page** or **Actual size**, and **Page details**. A filmstrip of every page runs above the page;
+select one to jump there, or use the arrows beside the page or the ← and → keys. **All pages**
+shows the whole notebook as a grid.
 
-- **← Previous** and **Next →** move between pages; type a number into
-  **Page** and select **Go** to jump.
-- **Actual size** shows the page at full resolution; **Fit page** fits it to
-  the window.
-- Alexandria Client notebooks also have **All pages**, a grid of every page
-  with a **Text** or **No text yet** badge, and **Download PDF**.
+**Page details** opens a drawer beside the page and remembers whether you left it open. What it
+shows depends on the source and what the page has:
 
-Beside the page, a side panel shows cards for that page. Which ones appear
-depends on the source and what the page has:
-
-| Card | Shows |
+| Section | Shows |
 |---|---|
-| **Page Text** (Client) | The page's recognized text and the model that produced it, with **Recognize this page…** or **Recognize again…**. |
-| **Handwriting Recognition** (BOOX) | The page's recognition state and text, and **Recognize this page**. |
-| **Note Actions** (BOOX) | Colored ink found on the page and the tasks or events made from it, with **Find actions**. See [Note Actions](note-actions.md). |
-| **BOOX Tags** | Tags on this page and elsewhere in the notebook. |
-| **Recordings on This Page** | Audio recorded on the page, playable in the browser. |
-| **Audio Note Minutes** | The note's minutes, or **Summarize this note…**. See [Audio Note Minutes](minutes.md). |
+| **Page text** | The page's recognized text, its date and model on BOOX or its model on the Client, with **Recognize this page** or **Recognize again**. |
+| **Note actions** (BOOX) | Each ink color's state and the tasks or events made from it, with **Find actions**. See [Note Actions](note-actions.md). |
+| **Tags** (BOOX) | Tags on this page and elsewhere in the notebook. |
+| **Audio note minutes** (BOOX) | The note's minutes, marked when they're out of date, or **Summarize this note…**, then the recordings on this page. See [Audio Note Minutes](minutes.md). |
+
+At the bottom of the drawer: **Download PDF** for both sources, plus **Rename…** on BOOX or
+**Delete…** on the Client.
 
 BOOX previews are drawn on the server from the ink files received so far.
 They're read-only: nothing you do while browsing changes your tablets.

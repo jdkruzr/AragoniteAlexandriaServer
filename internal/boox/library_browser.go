@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
@@ -229,6 +230,8 @@ type notebookSnapshot struct {
 	Revision, Version string
 	Assets            map[string]assetBinding
 	Keys              []string
+	// Body is the notebook's metadata record as stored.
+	Body []byte
 }
 
 func (s Service) notebookSnapshot(ctx context.Context, id string) (notebookSnapshot, error) {
@@ -247,6 +250,7 @@ func (s Service) notebookSnapshot(ctx context.Context, id string) (notebookSnaps
 	if e = json.Unmarshal(raw, &out.Meta); e != nil {
 		return out, e
 	}
+	out.Body = raw
 	prefix := s.uid() + "/note/" + id + "/"
 	rows, e := tx.QueryContext(ctx, `SELECT v.native_key,v.sha256,v.bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id WHERE l.native_key >= $1 COLLATE "C" AND l.native_key < $2 COLLATE "C" AND NOT v.deleted ORDER BY l.native_key LIMIT 20001`, prefix, directoryUpper(prefix))
 	if e != nil {
@@ -330,6 +334,26 @@ type notebookView struct {
 	PageRecordings []minutes.Source
 	// TypedHTML is a text notebook's typed text, rendered by booxpage.RichHTML.
 	TypedHTML template.HTML
+	// Kind and Modified head the reader; Back returns to the Library.
+	Kind     string
+	Modified int64
+	Back     string
+	// Links keep the reader's zoom; Details shows the page drawer.
+	PageLink, GridLink, ZoomLink, DetailsLink, PDF string
+	Details, Grid                                  bool
+	Strip                                          []stripPage
+	RecognizedAt                                   time.Time
+	Model                                          string
+	MinutesStale                                   bool
+	// Choice, Token and Queued drive rename and restore from the reader.
+	Choice, Token, Queued string
+}
+
+// stripPage is one page in the reader's filmstrip or all-pages grid.
+type stripPage struct {
+	Number      int
+	Image, Href string
+	Current     bool
 }
 
 var notebookTemplate = template.Must(template.New("notebook.html").Funcs(viewFuncs()).ParseFS(templateFS, "templates/notebook.html"))
@@ -368,18 +392,67 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := notebookView{RecognitionEnabled: s.RecognitionEnabled, ID: n.Meta.UniqueID, Title: n.Meta.Title, Parent: n.Meta.ParentUniqueID, Number: num, Count: len(ids), Version: n.Version, Deleted: n.Meta.Status != 1}
-	d.Return = notebookReturn(r.URL.RequestURI())
-	if r.URL.Query().Get("zoom") == "actual" {
+	q := r.URL.Query()
+	if _, e := uuid.Parse(q.Get("queued")); e == nil {
+		d.Queued = q.Get("queued")
+	}
+	// The reader comes back here after a queued change, without the old notice.
+	again := url.Values{}
+	for k, v := range q {
+		if k != "queued" && k != "details" {
+			again[k] = v
+		}
+	}
+	d.Return = notebookReturn("/boox/notebook?" + again.Encode())
+	d.Token = uuid.NewString()
+	choice, _ := json.Marshal(notebookChoice{ID: d.ID, Revision: n.Revision})
+	d.Choice = string(choice)
+	d.Kind = "Handwritten note"
+	if entry, e := parseNotebookEntry(d.ID, n.Revision, n.Body); e == nil {
+		d.Kind, d.Modified = entry.Kind, entry.ModifiedAt
+	}
+	d.Back = "/boox?selected=" + url.QueryEscape(d.ID)
+	if d.Deleted {
+		d.Back = "/boox?show=deleted&selected=" + url.QueryEscape(d.ID)
+	}
+	// A text notebook's typed text isn't part of its page drawing, so its PDF
+	// would be blank.
+	if n.Meta.ActiveScene != 1 {
+		d.PDF = "/boox/notebook.pdf?id=" + url.QueryEscape(d.ID) + "&version=" + n.Version
+	}
+	if q.Get("zoom") == "actual" {
 		d.Zoom = "actual"
 	}
-	link := func(p int) string { return "/boox/notebook?id=" + url.QueryEscape(d.ID) + "&page=" + strconv.Itoa(p) }
+	d.Grid = q.Get("view") == "grid"
+	d.Details = web.ReaderDetails(w, r)
+	base := "/boox/notebook?id=" + url.QueryEscape(d.ID)
+	link := func(p int) string {
+		u := base + "&page=" + strconv.Itoa(p)
+		if d.Zoom == "actual" {
+			u += "&zoom=actual"
+		}
+		return u
+	}
 	if num > 1 {
 		d.Previous = link(num - 1)
 	}
 	if num < len(ids) {
 		d.Next = link(num + 1)
 	}
-	if len(ids) > 0 {
+	d.PageLink, d.GridLink = link(num), base+"&view=grid"
+	d.ZoomLink = base + "&page=" + strconv.Itoa(num)
+	if d.Zoom != "actual" {
+		d.ZoomLink += "&zoom=actual"
+	}
+	d.DetailsLink = link(num) + "&details=1"
+	if d.Details {
+		d.DetailsLink = link(num) + "&details=0"
+	}
+	for i := range ids {
+		d.Strip = append(d.Strip, stripPage{Number: i + 1, Current: i+1 == num, Href: link(i + 1),
+			Image: "/boox/thumb.png?id=" + url.QueryEscape(d.ID) + "&page=" + strconv.Itoa(i+1) + "&version=" + n.Version})
+	}
+	if len(ids) > 0 && !d.Grid {
 		d.Page = ids[num-1]
 		if on := s.recordingPages(r.Context(), n); len(on) > 0 {
 			for _, rec := range s.recordings(r.Context(), n) {
@@ -435,7 +508,7 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if d.Page != "" {
-		err := s.DB.QueryRowContext(r.Context(), `SELECT state,detail,text FROM boox_page_index WHERE notebook_id=$1 AND page_id=$2`, d.ID, d.Page).Scan(&d.RecognitionState, &d.RecognitionDetail, &d.RecognizedText)
+		err := s.DB.QueryRowContext(r.Context(), `SELECT state,detail,text,model,updated_at FROM boox_page_index WHERE notebook_id=$1 AND page_id=$2`, d.ID, d.Page).Scan(&d.RecognitionState, &d.RecognitionDetail, &d.RecognizedText, &d.Model, &d.RecognizedAt)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			s.failure(w, "notebook", err)
 			return
@@ -443,6 +516,12 @@ func (s Service) notebook(w http.ResponseWriter, r *http.Request) {
 	}
 	if d.Page != "" {
 		if d.Actions, d.ActionItems, err = s.pageActions(r.Context(), d.ID, d.Page); err != nil {
+			s.failure(w, "notebook", err)
+			return
+		}
+	}
+	if d.MinutesState == "ready" {
+		if d.MinutesStale, err = s.minutesStale(r.Context(), n, all); err != nil {
 			s.failure(w, "notebook", err)
 			return
 		}

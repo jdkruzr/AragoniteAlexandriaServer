@@ -203,7 +203,7 @@ type page struct {
 	AttentionURL string
 	Query        string // the header search box's text on the Search page
 	Back         string // this page's path and query, for header forms
-	// LibraryTab is notebooks, books or tags on a redesigned Library page,
+	// LibraryTab is notebooks, books, tags or reader on a redesigned Library page,
 	// whose LibrarySource is boox or client; "" elsewhere.
 	LibraryTab, LibrarySource string
 }

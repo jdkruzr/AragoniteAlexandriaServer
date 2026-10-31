@@ -48,7 +48,7 @@ func (d Deps) notebookRoutes(mux *http.ServeMux) {
 				d.fail(w, err)
 				return
 			}
-			d.render(w, r, "notebook", Verbatim(name), "notebooks", notebookReader(id, name, pages, crumbs, q))
+			d.render(w, r, "notebook", Verbatim(name), "notebooks", notebookReader(id, name, pages, crumbs, q, ReaderDetails(w, r)))
 			return
 		}
 		v, err := d.clientNotebooks(r.Context(), q)
@@ -138,11 +138,28 @@ type clientReader struct {
 	Count                int
 	Grid                 bool
 	Previous, Next, Base string
+	// Back returns to the Library with this notebook selected; Folder is
+	// the folder it's in.
+	Back, Folder                              string
+	PageLink, GridLink, ZoomLink, DetailsLink string
+	Details                                   bool
+	Strip                                     []readerPage
 }
 
-func notebookReader(id, name string, pages []notes.Page, crumbs []notes.Crumb, q url.Values) clientReader {
+// readerPage is one page in the filmstrip or all-pages grid.
+type readerPage struct {
+	Number        int
+	Image, Href   string
+	Current, Text bool
+}
+
+func notebookReader(id, name string, pages []notes.Page, crumbs []notes.Crumb, q url.Values, details bool) clientReader {
 	v := clientReader{ID: id, Name: name, Pages: pages, Crumbs: crumbs, Count: len(pages), Grid: q.Get("view") == "grid", Zoom: "fit",
-		Base: "/files/forestnote?notebook=" + url.QueryEscape(id)}
+		Base: "/files/forestnote?notebook=" + url.QueryEscape(id), Details: details}
+	v.Back = "/files/forestnote?selected=" + url.QueryEscape(id)
+	if len(crumbs) > 0 {
+		v.Folder = crumbs[len(crumbs)-1].Name
+	}
 	if q.Get("zoom") == "actual" {
 		v.Zoom = "actual"
 	}
@@ -173,6 +190,19 @@ func notebookReader(id, name string, pages []notes.Page, crumbs []notes.Crumb, q
 	}
 	if at+1 < len(pages) {
 		v.Next = link(at + 1)
+	}
+	v.PageLink, v.GridLink = link(at), v.Base+"&view=grid"
+	v.ZoomLink = v.Base + "&page=" + url.QueryEscape(v.Page.ID)
+	if v.Zoom != "actual" {
+		v.ZoomLink += "&zoom=actual"
+	}
+	v.DetailsLink = link(at) + "&details=1"
+	if v.Details {
+		v.DetailsLink = link(at) + "&details=0"
+	}
+	for i, p := range pages {
+		v.Strip = append(v.Strip, readerPage{Number: p.Number, Href: link(i), Current: i == at, Text: p.BodyText != "",
+			Image: "/files/forestnote/thumb?page=" + url.QueryEscape(p.ID)})
 	}
 	return v
 }

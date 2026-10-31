@@ -143,7 +143,7 @@ func TestTypedTextUsesOnlyTheCurrentSave(t *testing.T) {
 	w := httptest.NewRecorder()
 	s.browser(w, httptest.NewRequest("GET", "/boox/notebook?id=note&page=1", nil))
 	page := w.Body.String()
-	if w.Code != 200 || strings.Count(page, "launch the zeppelin") != 1 || !strings.Contains(page, `<article class="typed-text"`) || !strings.Contains(page, "<h2>Synthetic plan</h2>") {
+	if w.Code != 200 || strings.Count(page, "launch the zeppelin") != 1 || !strings.Contains(page, `<article class="sheet typed-text"`) || strings.Contains(page, "/boox/notebook.pdf") || !strings.Contains(page, "<h2>Synthetic plan</h2>") {
 		t.Fatalf("%d\n%s", w.Code, page)
 	}
 	// The handwriting page is blank, so no page image; the typed text needs

@@ -139,16 +139,30 @@ A page count shown as *500+* is a limit of the tablet's metadata. Open the noteb
 
 ![A BOOX notebook page in the viewer](../images/boox-notebook.png)
 
-Step through pages with **← Previous** and **Next →**, or type a page number and choose **Go**. Toggle between **Fit page** and **Actual size**. The preview is drawn on the server, so pen textures are approximate. Text notebooks also show their typed **Page Text**.
+The header has **← Library** (back to the list with this notebook selected), a page box with
+**Go**, **Page** / **All pages**, **Fit page** or **Actual size**, and **Page details**, which
+opens or closes the drawer beside the page and remembers your choice. A filmstrip of every page
+runs above the page; select one to jump there, or use the arrows beside the page or the ← and →
+keys. **All pages** shows the whole notebook as a grid. The page is drawn on the server, so pen
+textures are approximate. Text notebooks show their typed text in a substitute font.
 
-The side panel shows, when they apply:
+The **Page details** drawer shows, when they apply:
 
-- **Handwriting Recognition**: the page's recognition state and text, **Recognize this page**, **Choose pages…** and a link to **Jobs**. Recognized BOOX text stays on the server and never changes your notebooks.
-- **Note Actions**: tasks and events found in colored ink, with **Find actions**. See [Note Actions](note-actions.md).
-- **BOOX Tags** on this page and elsewhere in the notebook.
-- **Recordings on This Page**, playable in the browser.
-- **Audio Note Minutes**: **Summarize this note…** or **Open minutes**. See [Audio Note Minutes](minutes.md).
-- **Source and History**: **Recover audio…** (repairs recordings hit by a known BOOX audio defect) and **Observed native versions**.
+- **Page text**: the recognized text with its date and model, **Recognize again** or
+  **Recognize this page**, **Choose pages…** and a link to **Jobs**. Recognized BOOX text stays on
+  the server and never changes your notebooks.
+- **Note actions**: each ink color's state, the tasks and events made from the page, and
+  **Find actions**. See [Note Actions](note-actions.md).
+- **Tags** on this page and elsewhere in the notebook.
+- **Audio note minutes**: **Summarize this note…** or **Open minutes**, with a note when the
+  recordings, page text or tags changed after the minutes were written, then **Recordings on this
+  page**, playable in the browser. See [Audio Note Minutes](minutes.md).
+- **Download PDF** (every page as drawn here, up to 200 pages), **Rename…** and
+  **Availability and actions**.
+- **Source and History**: **Recover audio…** (repairs recordings hit by a known BOOX audio defect)
+  and **Observed native versions**.
+
+A deleted notebook shows a notice with **Restore**.
 
 ### The Notebook Preview
 
@@ -235,6 +249,27 @@ shelf. Inside a shelf, **Upload to this shelf…** opens the upload page with th
 already chosen, and you can drop files or folders onto the upload box. These actions
 follow the same rules as the WebDAV folder below: one shelf per book, names keep
 their extension, and a tablet edit made in the meantime wins.
+
+### Download a PDF with Your Handwriting
+
+When you write on a stored PDF in NeoReader, its preview shows **Download with
+handwriting** and how many pages carry ink. The download is a copy of the PDF with your
+pen and highlighter strokes drawn on top as vector ink. The original pages are untouched,
+so their text stays selectable and searchable.
+
+The tablet can't do this itself for these books. NeoReader refuses "embed and export" for
+any file in its sync folder ("this document does not support embedding and exporting"),
+and every book that arrives through library sync lives there, including the ones you
+upload to Alexandria. The server holds the same PDF and the same ink, so it draws them
+together instead.
+
+What's left out for now:
+- Notes written in NeoReader's side panel, which have no place on the page.
+- Typed text and drawn shapes such as lines and boxes. Only pen and highlighter strokes
+  are drawn.
+
+If the PDF was changed after you wrote on it, the ink names pages the new copy doesn't
+have, and the download says so instead of guessing where it goes.
 
 ### Manage Books from a File Manager (WebDAV)
 

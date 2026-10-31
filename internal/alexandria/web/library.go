@@ -47,6 +47,9 @@ func libraryTab(r *http.Request) (tab, source string) {
 		if r.URL.Query().Get("notebook") == "" {
 			return "notebooks", "client"
 		}
+		return "reader", "client"
+	case "/boox/notebook":
+		return "reader", "boox"
 	}
 	return "", ""
 }
@@ -63,6 +66,18 @@ func (d Deps) libraryHome(w http.ResponseWriter, r *http.Request) {
 
 func rememberLibrarySource(w http.ResponseWriter, source string) {
 	http.SetCookie(w, &http.Cookie{Name: LibrarySourceCookie, Value: source, Path: "/", MaxAge: 400 * 24 * 60 * 60, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+}
+
+// ReaderDetails reports whether a reader shows its page drawer: open unless
+// the reader last closed it. ?details=0 or 1 changes and remembers it.
+func ReaderDetails(w http.ResponseWriter, r *http.Request) bool {
+	const cookie = "alexandria_reader_details"
+	if v := r.URL.Query().Get("details"); v == "0" || v == "1" {
+		http.SetCookie(w, &http.Cookie{Name: cookie, Value: v, Path: "/", MaxAge: 400 * 24 * 60 * 60, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+		return v == "1"
+	}
+	c, err := r.Cookie(cookie)
+	return err != nil || c.Value != "0"
 }
 
 // dayIn formats a date for lists in the owner's time zone: "Oct 26", with

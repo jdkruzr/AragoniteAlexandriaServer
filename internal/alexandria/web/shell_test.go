@@ -149,7 +149,7 @@ func TestLibraryOpensTheLastSource(t *testing.T) {
 			t.Errorf("%+v: %d %s", c, w.Code, w.Header().Get("Location"))
 		}
 	}
-	for path, want := range map[string]string{"/boox?selected=x": "boox", "/files/forestnote?view=folders": "client", "/files/forestnote?notebook=n": "", "/boox/notebook": "", "/library": ""} {
+	for path, want := range map[string]string{"/boox?selected=x": "boox", "/files/forestnote?view=folders": "client", "/files/forestnote?notebook=n": "client", "/boox/notebook": "boox", "/library": ""} {
 		if _, got := libraryTab(httptest.NewRequest("GET", path, nil)); got != want {
 			t.Errorf("%s: source %q", path, got)
 		}

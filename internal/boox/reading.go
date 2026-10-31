@@ -30,6 +30,8 @@ type readingItem struct {
 	Shelf, ShelfPath, Percent string
 	// FileName is a stored book's file name, which Rename changes.
 	FileName string
+	// InkPages counts a stored PDF's pages with handwriting.
+	InkPages int
 }
 type readingFolder struct {
 	ID, Parent, Name, Path, Revision string
@@ -268,6 +270,12 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		if v.Selected != nil {
 			if b := lib.Books[v.Selected.NativeID]; b != nil {
 				v.Selected.FileName = bookFileName(b)
+				if isPDFBook(b) {
+					if v.Selected.InkPages, e = s.readerInkPages(ctx, b.ID); e != nil {
+						s.failure(w, "reading", e)
+						return
+					}
+				}
 			}
 		}
 	} else {

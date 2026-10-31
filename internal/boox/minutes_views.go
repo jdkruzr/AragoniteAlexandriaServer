@@ -2,6 +2,7 @@ package boox
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"html/template"
@@ -70,17 +71,15 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if has && stored.State == "ready" {
-		pages, e := s.pageTexts(r.Context(), n)
-		if e != nil {
-			s.failure(w, "minutesPage", e)
-			return
-		}
 		_, tags, e := s.notebookTags(r.Context(), id)
 		if e != nil {
 			s.failure(w, "minutesPage", e)
 			return
 		}
-		d.Stale = minutesInputHash(recordingIDs(n), pages, tags, s.Minutes.Instructions) != stored.InputHash
+		if d.Stale, e = s.minutesStale(r.Context(), n, tags); e != nil {
+			s.failure(w, "minutesPage", e)
+			return
+		}
 	}
 	if has && len(stored.Keywords) > 0 {
 		known, e := s.libraryTags(r.Context(), 100000)
@@ -228,4 +227,18 @@ func (s Service) minutesAudio(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("ETag", `"`+q.Get("sha")+`"`)
 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(audio))
+}
+
+// minutesStale reports whether ready minutes no longer match the notebook's
+// recordings, page text and tags.
+func (s Service) minutesStale(ctx context.Context, n notebookSnapshot, tags []string) (bool, error) {
+	stored, has, e := minutes.Load(ctx, s.DB, "boox", n.Meta.UniqueID)
+	if e != nil || !has || stored.State != "ready" {
+		return false, e
+	}
+	pages, e := s.pageTexts(ctx, n)
+	if e != nil {
+		return false, e
+	}
+	return minutesInputHash(recordingIDs(n), pages, tags, s.Minutes.Instructions) != stored.InputHash, nil
 }

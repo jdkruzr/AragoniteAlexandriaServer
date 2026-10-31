@@ -60,7 +60,7 @@ func TestWriteDocsScreens(t *testing.T) {
 			{ID: "g6", Title: "Sketches", Kind: "Handwritten note", Pages: 18, CreatedAt: ms(3000 * time.Hour), ModifiedAt: ms(150 * time.Hour)},
 			{ID: "g7", Title: "Recipes from the plot", Kind: "Handwritten note", Pages: 7, CreatedAt: ms(2500 * time.Hour), ModifiedAt: ms(200 * time.Hour)},
 			{ID: "g8", Title: "Spring planting plan", Kind: "Handwritten note", Pages: 4, CreatedAt: ms(4000 * time.Hour), ModifiedAt: ms(260 * time.Hour)}}}},
-		{"boox-notebook", "/boox/notebook", "Garden Committee", notebookTemplate, notebookView{ID: "garden", Title: "Garden Committee", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "demo-page.png",
+		{"boox-notebook", "/boox/notebook", "Garden Committee", notebookTemplate, notebookView{Details: true, Kind: "Handwritten note", Back: "#", Strip: stripFixture(2), ID: "garden", Title: "Garden Committee", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "demo-page.png",
 			RecognitionEnabled: true, RecognitionState: "ready",
 			RecognizedText: "Garden committee · Oct 14\n- Compost bins: turn before first frost\n- North beds → garlic + fava beans\n- Water shut-off moved to Nov 1\n- Need 2 volunteers for the tool shed\nOrder seed garlic + straw mulch\nEmail Priya the bed map\nOct 28, 6:30pm: seed swap at the library\nNext meeting: bring the rain barrel quote",
 			ActionsEnabled: true,

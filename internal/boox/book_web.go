@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"html/template"
-	"io"
 	"mime"
 	"net/http"
 	"net/url"
@@ -360,25 +359,13 @@ func (s Service) bookDownload(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	body, _, e := s.Objects.Get(r.Context(), "boox/bodies/"+b.SHA)
+	raw, e := s.storedBook(r.Context(), b)
 	if e != nil {
 		http.Error(w, "The book is temporarily unavailable.", http.StatusServiceUnavailable)
 		return
 	}
-	defer body.Close()
-	raw, e := io.ReadAll(io.LimitReader(body, maxBook+1))
-	if e != nil || int64(len(raw)) != b.Size || hash(raw) != b.SHA {
-		http.Error(w, "The book is temporarily unavailable.", http.StatusServiceUnavailable)
-		return
-	}
 	name := bookFileName(b)
-	ascii := strings.Map(func(c rune) rune {
-		if c < 0x20 || c > 0x7e || c == '"' || c == '\\' {
-			return '_'
-		}
-		return c
-	}, name)
-	w.Header().Set("Content-Disposition", `attachment; filename="`+ascii+`"; filename*=UTF-8''`+url.PathEscape(name))
+	attachment(w, name)
 	ct := b.ContentType
 	if ct == "" {
 		if ct = mime.TypeByExtension(path.Ext(name)); ct == "" {

@@ -63,7 +63,7 @@ func TestBOOXViewsRender(t *testing.T) {
 			Selected: syntheticPreview(true)}},
 		{"boox-folders", "/boox", "BOOX notebooks", libraryTemplate, libraryPage{Category: "handwritten", Listing: listing, Folder: "f", Crumbs: []notebookEntry{{ID: "f", Title: "Work"}},
 			Entries: []notebookEntry{{ID: "g", Title: "Projects", Folder: true, Kind: "Folder"}}}},
-		{"boox-notebook", "/boox/notebook", "Synthetic sync", notebookTemplate, notebookView{ID: "a", Title: "20261008 Synthetic sync", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", RecognitionEnabled: true}},
+		{"boox-notebook", "/boox/notebook", "Synthetic sync", notebookTemplate, notebookView{Details: true, Kind: "Handwritten note", Modified: 1793000000000, Back: "#", Strip: stripFixture(2), ID: "a", Title: "20261008 Synthetic sync", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", RecognitionEnabled: true}},
 		{"boox-reading", "/boox/reading", "Reading", readingTemplate, syntheticReading("list", true)},
 		{"boox-reading-shelf", "/boox/reading", "Reading", readingTemplate, syntheticReading("shelf", false)},
 		{"boox-reading-stats", "/boox/reading", "Reading", readingTemplate, func() readingView {
@@ -84,13 +84,13 @@ func TestBOOXViewsRender(t *testing.T) {
 		}{Items: []diag{{ID: "n1", Revision: "3-abc", Domain: "notebook", Title: "Synthetic sync", Supported: true}, {ID: "m1", Revision: "1-def", Domain: "message", Title: "m1"}}, Domains: []string{"message", "notebook"}, Start: 1, End: 2, Total: 2}},
 		{"boox-cleanup", "/boox/cleanup", "Clean up BOOX notebooks", cleanupTemplate, cleanupPage{Token: "t", Total: 2, Items: []cleanupItem{{ID: "a", Title: "Notebook-1", Choice: "a", Pages: 1, Created: 1, Modified: 2}, {ID: "b", Title: "Notebook-23", Choice: "b", Pages: 3}}}},
 		{"boox-upload", "/boox/books/upload", "Upload a book", uploadBookTemplate, uploadBookView{}},
-		{"boox-notebook-minutes", "/boox/notebook", "Synthetic meeting", notebookTemplate, notebookView{ID: "b", Title: "Synthetic meeting", Page: "p1", Number: 1, Count: 4, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", Recordings: 2, MinutesState: "ready", MinutesTopic: ready.Topic, PageRecordings: []minutes.Source{recs[0].Source}}},
-		{"boox-notebook-recordings", "/boox/notebook", "Synthetic meeting", notebookTemplate, notebookView{ID: "b", Title: "Synthetic meeting", Page: "p1", Number: 1, Count: 4, Zoom: "fit", Recordings: 1}},
+		{"boox-notebook-minutes", "/boox/notebook", "Synthetic meeting", notebookTemplate, notebookView{Details: true, Kind: "Handwritten note", Modified: 1793000000000, Back: "#", Strip: stripFixture(4), ID: "b", Title: "Synthetic meeting", Page: "p1", Number: 1, Count: 4, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", Recordings: 2, MinutesState: "ready", MinutesTopic: ready.Topic, PageRecordings: []minutes.Source{recs[0].Source}}},
+		{"boox-notebook-recordings", "/boox/notebook", "Synthetic meeting", notebookTemplate, notebookView{Details: true, Kind: "Handwritten note", Modified: 1793000000000, Back: "#", Strip: stripFixture(4), ID: "b", Title: "Synthetic meeting", Page: "p1", Number: 1, Count: 4, Zoom: "fit", Recordings: 1}},
 		{"boox-minutes", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Has: true, Stored: ready, Recordings: 2, OnPages: map[string][]int{"resource/data/a.mp3": {1, 3}}, Keywords: []minutesKeyword{{"schedule", ""}, {"Friday", ""}, {"testing", "Testing"}, {"release notes", ""}}, TaggedKeywords: 1}},
 		{"boox-tags", "/boox/tags", "BOOX Tags", tagsTemplate, tagsView{Tags: []tagSummary{{"Marisol Vega", 3, 3}, {"compost", 2, 1}, {"Spring Planting Plan", 1, 1}, {"greenhouse", 0, 0}}}},
 		{"boox-tag", "/boox/tags", "BOOX Tags", tagsTemplate, tagsView{Tag: "compost", Tags: []tagSummary{{"Marisol Vega", 3, 3}, {"compost", 2, 1}, {"greenhouse", 0, 0}}, Summary: &tagSummary{"compost", 2, 1}, Pages: []taggedPage{{NotebookID: "a", Title: "20261008 Synthetic sync", PageID: "p1", Number: 1, Snippet: "Turn the compost bins before the first frost."}, {NotebookID: "b", Title: "Synthetic meeting", PageID: "p3", Number: 3}}}},
 		{"boox-tag-empty", "/boox/tags", "BOOX Tags", tagsTemplate, tagsView{Tag: "greenhouse"}},
-		{"boox-notebook-tags", "/boox/notebook", "Synthetic sync", notebookTemplate, notebookView{ID: "a", Title: "20261008 Synthetic sync", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", RecognitionEnabled: true, PageTags: []string{"Marisol Vega", "compost"}, OtherTags: []string{"Irrigation"}}},
+		{"boox-notebook-tags", "/boox/notebook", "Synthetic sync", notebookTemplate, notebookView{Details: true, Kind: "Handwritten note", Modified: 1793000000000, Back: "#", Strip: stripFixture(2), ID: "a", Title: "20261008 Synthetic sync", Page: "p1", Number: 1, Count: 2, Next: "#", Zoom: "fit", Image: "static/apple-touch-icon.png", RecognitionEnabled: true, PageTags: []string{"Marisol Vega", "compost"}, OtherTags: []string{"Irrigation"}}},
 		{"boox-minutes-send", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Has: true, Stored: ready, Recordings: 2, Sendable: true, NoteTitle: "Synthetic meeting_Minutes", Folder: "Work", SendRequest: "r"}},
 		{"boox-minutes-sent", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Has: true, Stored: ready, Recordings: 2, Sendable: true, NoteTitle: "Synthetic meeting_Minutes", SendRequest: "r", Sent: &sentNote{Title: "Synthetic meeting_Minutes", At: start.Add(2 * time.Hour), Status: "untouched"}}},
 		{"boox-minutes-sent-changed", "/boox/minutes", "Minutes", minutesTemplate, minutesView{ID: "b", Title: "Synthetic meeting", Has: true, Stored: ready, Recordings: 2, Sendable: true, NoteTitle: "Synthetic meeting_Minutes", Folder: "Work", SendRequest: "r", Sent: &sentNote{Title: "Synthetic meeting_Minutes", Status: "changed"}}},
@@ -148,4 +148,13 @@ func syntheticReading(layout string, selected bool) readingView {
 		v.Selected = &b
 	}
 	return v
+}
+
+// stripFixture is a filmstrip of n pages with the first one current.
+func stripFixture(n int) []stripPage {
+	var out []stripPage
+	for i := 1; i <= n; i++ {
+		out = append(out, stripPage{Number: i, Current: i == 1, Image: "static/apple-touch-icon.png", Href: "#"})
+	}
+	return out
 }

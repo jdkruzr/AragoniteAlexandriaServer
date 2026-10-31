@@ -83,6 +83,12 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		case "/boox/books/download":
 			s.bookDownload(w, r)
 			return
+		case "/boox/notebook.pdf":
+			s.notebookPDF(w, r)
+			return
+		case "/boox/books/annotated.pdf":
+			s.bookAnnotated(w, r)
+			return
 		case "/boox/books/trash":
 			s.bookTrash(w, r)
 			return
