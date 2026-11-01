@@ -224,7 +224,7 @@ func TestCalendarRoutes(t *testing.T) {
 	if err := store.DeleteOrdinary(context.Background(), original); err != events.ErrChanged {
 		t.Fatal("delete race", err)
 	}
-	for _, path := range []string{"/tasks", "/calendar", "/settings/integrations"} {
+	for _, path := range []string{"/tasks", "/calendar", "/settings/calendar"} {
 		w := call("GET", path, nil)
 		if w.Code != 200 || !strings.Contains(w.Body.String(), d.PublicURL+"/caldav/") {
 			t.Fatal(path, w.Code)

@@ -20,7 +20,7 @@ and it's done in the web app too.
 
 ## Set Your Time Zone
 
-1. Go to **Settings → Tasks & Integrations**.
+1. Go to **Settings → Calendar & tasks**.
 2. Pick your zone from **Time zone**. **Server default** uses the server's own
    zone. If your browser reports a different zone, a hint offers **Use it**.
 3. Select **Save**.
@@ -170,7 +170,7 @@ Alexandria serves two CalDAV collections under one account:
 | Calendar | Events (VEVENT) | `https://alexandria.example.com/caldav/user/calendars/events/` |
 
 Open **Connect a CalDAV app** near the heading on Tasks or Calendar, or in
-**Settings → Tasks & Integrations**. It shows your server's discovery address
+**Settings → Calendar & tasks**. It shows your server's discovery address
 and the relevant collection address, with Copy buttons. If copying is blocked,
 the address is selected so you can copy it manually. The address fields also
 work without JavaScript.
@@ -185,7 +185,7 @@ Alexandria supports incremental sync, so apps fetch only what changed.
 
 ### Names Apps Show
 
-In **Settings → Tasks & Integrations**, **Task list name** and **Calendar
+In **Settings → Calendar & tasks**, **Task list name** and **Calendar
 name** set what your apps display for the two collections.
 
 ### Example Setups
@@ -204,7 +204,7 @@ The menu names below belong to each app and may differ between versions.
 
 1. Add a CalDAV account: in the system's account settings choose
    **Other**, then a CalDAV account (on macOS, also from Calendar's
-   Settings → Accounts).
+   Settings → Account).
 2. Server: `alexandria.example.com`, plus your username and password.
 3. The task list appears in Reminders and the calendar in Calendar.
 
@@ -221,7 +221,7 @@ BOOX Calendar Memo can also use the calendar with the same address and account.
 ### Due Dates
 
 Some apps handle due times badly (a task due "today" ends up due yesterday at
-11 p.m.). **Due dates** in **Settings → Tasks & Integrations** fixes that:
+11 p.m.). **Due dates** in **Settings → Calendar & tasks** fixes that:
 
 | Setting | Effect |
 |---|---|
@@ -244,11 +244,11 @@ their next sync.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | The app says the login failed | Wrong username or password, or you used an API token | Use the account you sign in to the web app with. |
-| The app can't find any calendars | Discovery isn't reaching Alexandria, often because a reverse proxy doesn't pass `/.well-known/caldav` | Enter the full collection address from **Settings → Tasks & Integrations** instead, or fix the proxy (see [Put Alexandria Behind HTTPS](https-proxy.md)). |
+| The app can't find any calendars | Discovery isn't reaching Alexandria, often because a reverse proxy doesn't pass `/.well-known/caldav` | Enter the full collection address from **Settings → Calendar & tasks** instead, or fix the proxy (see [Put Alexandria Behind HTTPS](https-proxy.md)). |
 | Tasks show up in a calendar app but not events (or the other way round) | Only one collection was added | Add both addresses, or turn on both collections in the app. |
 | Due dates are a day off | Time zone not set, or the app mishandles due times | Set **Time zone**; if it persists, choose **Date only** under **Due dates**. |
 | A deleted task is missing from Deleted Tasks | It was deleted permanently | Permanent deletion can't be undone. |
-| Events show at the wrong hour | Time zone not set | Set it in **Settings → Tasks & Integrations**. |
+| Events show at the wrong hour | Time zone not set | Set it in **Settings → Calendar & tasks**. |
 
 ## Subscribe to a public calendar
 

@@ -105,5 +105,5 @@ func (s Service) textNoteHTTP(w http.ResponseWriter, r *http.Request) {
 		s.failure(w, "textNoteHTTP", e)
 		return
 	}
-	s.renderPage(w, r, textNoteTemplate, "Create a Test Text Note", d)
+	s.renderSettingsPage(w, r, textNoteTemplate, "Create a test text note", d)
 }

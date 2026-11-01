@@ -301,7 +301,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return true
 	}
 	ownerAuthenticated := false
-	if strings.HasPrefix(req.URL.Path, "/jobs") || r.cfg.ProviderSettings != nil && (req.URL.Path == "/settings" || req.URL.Path == "/settings/search" || req.URL.Path == "/settings/recognition" || req.URL.Path == "/settings/integrations" || strings.HasPrefix(req.URL.Path, "/settings/providers") || strings.HasPrefix(req.URL.Path, "/settings/semantic") || strings.HasPrefix(req.URL.Path, "/settings/minutes")) {
+	if strings.HasPrefix(req.URL.Path, "/jobs") || r.cfg.ProviderSettings != nil && (accountSettingsPage(req.URL.Path) || strings.HasPrefix(req.URL.Path, "/settings/providers") || strings.HasPrefix(req.URL.Path, "/settings/semantic") || strings.HasPrefix(req.URL.Path, "/settings/minutes")) {
 		if e := r.account(conn)(req); e != nil {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
 			http.Error(w, "unauthorized", 401)
@@ -315,6 +315,8 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	var booxSummary func(context.Context) (web.SourceSummary, error)
 	var booxWork web.BOOXWorkFunc
+	var booxDevices func(context.Context) (web.BOOXDevices, error)
+	var booxOperator func(context.Context) (web.BOOXOperator, error)
 	if r.cfg.NativeBOOX != nil {
 		native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil}
 		if err := native.ResolveIdentity(req.Context()); err != nil {
@@ -323,6 +325,8 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		booxSummary = native.Summary
 		booxWork = native.Work
+		booxDevices = native.Devices
+		booxOperator = native.OperatorFacts
 		if native.Owns(req) {
 			ctx, cancel := context.WithCancel(req.Context())
 			stop := context.AfterFunc(r.nativeContext, cancel)
@@ -406,7 +410,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		status.Embedding = searcher.Embedder.Model()
 	}
 	mux.Handle("/", admittedHandler(func() http.Handler {
-		return web.Handler(web.Deps{Logger: r.cfg.Logger, LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: r.recognitionCatalog(conn), Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status, BOOXSummary: booxSummary, BOOXWork: booxWork})
+		return web.Handler(web.Deps{Logger: r.cfg.Logger, LocalPasswords: r.cfg.Authenticate == nil, RecognitionCatalog: r.recognitionCatalog(conn), Providers: providerStore, DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Status: status, BOOXSummary: booxSummary, BOOXWork: booxWork, BOOXDevices: booxDevices, BOOXOperator: booxOperator})
 	}))
 	api.Tasks{Store: tasks.NewStore(conn)}.Register(mux)
 	api.Jobs{Service: jobs.Service{Store: jobs.NewStore(conn), Launcher: r.cfg.Launcher}}.Register(mux)
@@ -774,4 +778,16 @@ func (r *Runtime) recognitionCatalog(db pg.DB) recognition.Catalog {
 // to it. The factory belongs to one admission; it is never cached or shared.
 func admittedHandler(factory func() http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { factory().ServeHTTP(w, r) })
+}
+
+// accountSettingsPage reports a Settings page that shows provider settings,
+// which needs the account itself rather than an API token when providers are
+// configured by the deployment. The old addresses only redirect now.
+func accountSettingsPage(path string) bool {
+	switch path {
+	case "/settings", "/settings/search", "/settings/models", "/settings/automatic", "/settings/actions", "/settings/operator",
+		"/settings/devices", "/settings/calendar", "/settings/api", "/settings/recognition", "/settings/integrations":
+		return true
+	}
+	return false
 }

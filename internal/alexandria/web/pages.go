@@ -13,14 +13,10 @@ import (
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/noteactions"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath"
@@ -330,19 +326,6 @@ var ulid = func(s string) bool { return wire.IsULID(s) }
 
 func (d Deps) deviceRoutes(mux *http.ServeMux) {
 	store := func() relay.Store { return relay.Store{DB: d.DB} }
-	// Client devices live with their source. The old /settings/devices paths stay
-	// as aliases so bookmarks and forms rendered before an upgrade keep working.
-	mux.HandleFunc("GET /settings/devices", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/files/forestnote/devices", http.StatusMovedPermanently)
-	})
-	mux.HandleFunc("GET /files/forestnote/devices", func(w http.ResponseWriter, r *http.Request) {
-		devices, err := store().ListDevices(r.Context())
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		d.render(w, r, "devices", "Devices", "devices", map[string]any{"Devices": devices})
-	})
 	deviceAction := func(w http.ResponseWriter, r *http.Request) {
 		site := r.FormValue("site_id")
 		if !ulid(site) {
@@ -376,7 +359,11 @@ func (d Deps) deviceRoutes(mux *http.ServeMux) {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/files/forestnote/devices", notice)
+		to := settingsTo("/settings/devices", "client")
+		if r.FormValue("return") == "operator" {
+			to = settingsTo("/settings/operator", "sync")
+		}
+		back(w, r, to, notice)
 	}
 	mux.HandleFunc("POST /files/forestnote/devices/{action}", deviceAction)
 	mux.HandleFunc("POST /settings/devices/{action}", deviceAction)
@@ -410,7 +397,7 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 			c.MaxAge = -1 // browser default
 		}
 		http.SetCookie(w, c)
-		back(w, r, "/settings?section=language#language", i18n.M("Language saved."))
+		back(w, r, settingsBack("/settings", "language"), i18n.M("Language saved."))
 	})
 	// The header's light/dark toggle; "auto" goes back to the browser's choice.
 	mux.HandleFunc("POST /settings/theme", func(w http.ResponseWriter, r *http.Request) {
@@ -433,13 +420,6 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 		http.SetCookie(w, c)
 		back(w, r, r.Form.Get("back"), "")
 	})
-	for _, tab := range []string{"account", "search", "recognition", "integrations"} {
-		path := "/settings/" + tab
-		if tab == "account" {
-			path = "/settings"
-		}
-		mux.HandleFunc("GET "+path, func(w http.ResponseWriter, r *http.Request) { d.settingsPage(w, r, tab, nil) })
-	}
 	mux.HandleFunc("POST /settings/caldav", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimSpace(r.FormValue("collection"))
 		mode := r.FormValue("due_mode")
@@ -468,14 +448,14 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 		// Blank is the server's zone; a saved zone outside the list is kept as is.
 		zone := r.FormValue("time_zone")
 		if saved, _ := settings.Get(r.Context(), d.DB, settings.TimeZone, ""); zone != "" && zone != saved && !settings.KnownZone(zone) {
-			back(w, r, "/settings/integrations?section=caldav#caldav", "Choose a time zone from the list.")
+			back(w, r, settingsTo("/settings/calendar", "caldav"), "Choose a time zone from the list.")
 			return
 		}
 		if err := settings.Set(r.Context(), d.DB, settings.TimeZone, zone, false); err != nil {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/settings/integrations?section=caldav#caldav", "CalDAV settings saved.")
+		back(w, r, settingsBack("/settings/calendar", "caldav"), "CalDAV settings saved.")
 	})
 	mux.HandleFunc("POST /settings/tokens/create", func(w http.ResponseWriter, r *http.Request) {
 		label := strings.TrimSpace(r.FormValue("label"))
@@ -488,15 +468,14 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 			return
 		}
 		// Shown exactly once, never stored in plain text or put in a URL.
-		w.Header().Set("Cache-Control", "no-store")
-		d.render(w, r, "token", "New API Token", "settings", map[string]any{"Token": token, "Label": label})
+		d.settingsPage(w, r, "api", nil, map[string]any{"NewToken": token, "NewLabel": label})
 	})
 	mux.HandleFunc("POST /settings/tokens/revoke", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := d.DB.ExecContext(r.Context(), `UPDATE alexandria_api_tokens SET revoked_at=now() WHERE token_hash=$1 AND revoked_at IS NULL`, r.FormValue("token_hash")); err != nil {
 			d.fail(w, err)
 			return
 		}
-		back(w, r, "/settings/integrations?section=api#api", "Token revoked.")
+		back(w, r, settingsBack("/settings/api", "api"), "Token revoked.")
 	})
 }
 
@@ -555,131 +534,4 @@ func compareTime(a, b int64, order string) int {
 		cmp = -cmp
 	}
 	return cmp
-}
-
-// settingsPage renders one Settings tab. Each tab loads only what it shows;
-// the provider tabs share one View so a failed connection test can re-render
-// the submitted (unsaved) values.
-func (d Deps) settingsPage(w http.ResponseWriter, r *http.Request, tab string, override *providers.View) {
-	ctx := r.Context()
-	data := map[string]any{"LocalPasswords": d.LocalPasswords, "Status": d.Status, "Languages": i18n.Choices()}
-	if c, err := r.Cookie(LanguageCookie); err == nil && i18n.Supported(c.Value) {
-		data["Language"] = c.Value
-	}
-	switch tab {
-	case "integrations":
-		collection, err := settings.Get(ctx, d.DB, settings.CalDAVCollectionName, "Tasks")
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		due, err := settings.Get(ctx, d.DB, settings.DueTimeMode, "preserve")
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		rows, err := d.DB.QueryContext(ctx, `SELECT token_hash, label, created_at, last_used_at FROM alexandria_api_tokens WHERE revoked_at IS NULL ORDER BY created_at DESC`)
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		var tokens []apiToken
-		for rows.Next() {
-			var t apiToken
-			if err := rows.Scan(&t.Hash, &t.Label, &t.Created, &t.LastUsed); err != nil {
-				rows.Close()
-				d.fail(w, err)
-				return
-			}
-			tokens = append(tokens, t)
-		}
-		rows.Close()
-		eventsName, err := settings.Get(ctx, d.DB, settings.CalDAVEventsName, "Calendar")
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		data["Collection"], data["DueMode"], data["Tokens"] = collection, due, tokens
-		data["EventsCollection"] = eventsName
-		zone, err := settings.Get(ctx, d.DB, settings.TimeZone, "")
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		data["TimeZone"], data["ServerZone"], data["ZoneGroups"] = zone, settings.ZoneName(time.Local), settings.Zones(time.Now())
-		if zone != "" && !settings.KnownZone(zone) {
-			data["LegacyZone"] = zone
-		}
-		data["OAuthLabel"] = oauth.TokenLabel
-	case "search", "recognition":
-		var pageLimit int
-		if err := d.DB.QueryRowContext(ctx, `SELECT alexandria_recognition_page_limit()`).Scan(&pageLimit); err != nil {
-			d.fail(w, err)
-			return
-		}
-		data["RecognitionPageLimit"] = pageLimit
-		var providerView *providers.View
-		if d.Providers != nil {
-			if override != nil {
-				providerView = override
-			} else {
-				v, e := d.Providers.View(ctx)
-				if e != nil {
-					d.fail(w, e)
-					return
-				}
-				providerView = &v
-			}
-			if tab == "search" {
-				// A bounded model-list request; never inference.
-				providerView.Availability = providers.EmbeddingAvailability(ctx, providerView.SavedEmbedding)
-			}
-		}
-		data["Providers"], data["DefaultOCRPrompt"] = providerView, notes.DefaultPrompt
-		data["DefaultMinutesInstructions"], data["MinutesFormat"] = minutes.DefaultInstructions, minutes.ResponseFormat
-		data["DefaultTaskInstructions"], data["DefaultEventInstructions"] = noteactions.DefaultTaskInstructions, noteactions.DefaultEventInstructions
-		data["TaskFormat"], data["EventFormat"] = noteactions.Format("task"), noteactions.Format("event")
-		if providerView != nil {
-			a := providerView.Config.Actions
-			data["ActionColors"] = []struct{ Name, Action string }{{"red", a.For("red")}, {"blue", a.For("blue")}}
-			if _, why := providerView.Config.ActionsReady(); why != "" {
-				data["ActionsWhy"] = why
-			} else if since, err := settings.Get(ctx, d.DB, settings.NoteActionsSince, ""); err == nil && since != "" {
-				data["ActionsSince"] = strings.Replace(strings.TrimSuffix(since, "Z"), "T", " ", 1) + " UTC"
-			} else {
-				data["ActionsSince"] = "the next recognized page"
-			}
-			c := providerView.Config
-			switch {
-			case c.AutoRecognize() || c.AutoSummarize():
-				if since, err := settings.Get(ctx, d.DB, settings.AutomaticSince, ""); err == nil && since != "" {
-					data["AutoSince"] = strings.Replace(strings.TrimSuffix(since, "Z"), "T", " ", 1) + " UTC"
-				} else {
-					data["AutoNew"] = true
-				}
-			case c.Automatic.Chosen():
-				data["AutoWhy"] = "Automatic processing starts once a recognition provider, or transcription and a summary model, is set up."
-			}
-		}
-	}
-	name, title := "settings", i18n.M("Account")
-	switch tab {
-	case "search":
-		name, title = "settings-search", i18n.M("Search by Meaning")
-	case "recognition":
-		name, title = "settings-recognition", i18n.M("AI Tools and Recognition")
-	case "integrations":
-		name, title = "settings-integrations", i18n.M("Tasks & Integrations")
-		all, err := (subscriptions.Store{DB: d.DB}).List(ctx)
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		data["Subscriptions"], data["SubscriptionColors"] = all, subscriptions.Colors
-	}
-	w.Header().Set("Cache-Control", "no-store")
-	if pv, ok := data["Providers"].(*providers.View); ok && tab == "search" && pv != nil && pv.IndexState != "" && pv.SavedEmbedding.Enabled {
-		w.Header().Set("Refresh", "15")
-	}
-	d.render(w, r, name, title, "settings", data)
 }

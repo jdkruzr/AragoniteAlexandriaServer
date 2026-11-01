@@ -9,8 +9,8 @@ assistant can actually answer.
 
 ## What You Need First
 
-- Your server's MCP address: **Settings → Tasks & Integrations → API and MCP
-  Access** shows it as **MCP address**, for example
+- Your server's MCP address: **Settings → API & MCP** shows it as **MCP
+  address**, for example
   `https://alexandria.example.com/mcp`.
 - An assistant that supports remote MCP servers over HTTP.
 - For Claude on the web (and the Claude apps): your server must be reachable
@@ -48,7 +48,7 @@ approval made through this page shows under that name, whichever app asked.
 
 ### Create a Token
 
-1. Go to **Settings → Tasks & Integrations**.
+1. Go to **Settings → API & MCP**.
 2. Under **API and MCP Access**, type what the token is for into **What is
    this token for?** (for example "Claude Code on laptop").
 3. Select **Create token**.
@@ -136,7 +136,7 @@ policy, and only connect it to a library you're comfortable sharing with it.
 
 ## Revoking Access
 
-1. Go to **Settings → Tasks & Integrations**.
+1. Go to **Settings → API & MCP**.
 2. In the token table, find the token (**Last Used** helps) or **Claude
    (approved here)**.
 3. Select **Revoke**.
@@ -153,4 +153,4 @@ approve it again. Changing your account password does not revoke tokens.
 | "unauthorized" with a token | The token was mistyped, revoked, or sent without `Bearer ` | Check the header is exactly `Authorization: Bearer alexandria_…`; create a new token if it was revoked. |
 | The assistant can't open a BOOX page image | Page and image tools only work on Alexandria Client notebooks | Ask it to use `search_notes` or `get_note_minutes` for BOOX content. |
 | Search returns nothing for handwriting you know is there | The page hasn't been recognized | See [Search Your Library](search-and-tags.md). |
-| A created task shows the wrong day | Time zone not set | Set it in **Settings → Tasks & Integrations**. |
+| A created task shows the wrong day | Time zone not set | Set it in **Settings → Calendar & tasks**. |

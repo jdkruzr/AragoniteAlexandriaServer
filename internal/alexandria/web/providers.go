@@ -23,14 +23,14 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			return
 		}
 		if snap.Revision != rev {
-			back(w, r, "/settings/search?section=semantic-search#semantic-search", providers.ErrStale.Error())
+			back(w, r, settingsTo("/settings/search", "semantic-search"), providers.ErrStale.Error())
 			return
 		}
 		action := r.PostForm.Get("action")
 		if action == "enable_build" || action == "enable" || action == "build" || action == "test" {
 			// Explicit actions may run a synthetic inference; viewing Settings never does.
 			if err = snap.TestConnection(r.Context(), "embedding"); err != nil {
-				back(w, r, "/settings/search?section=semantic-search#semantic-search", err.Error())
+				back(w, r, settingsTo("/settings/search", "semantic-search"), err.Error())
 				return
 			}
 		}
@@ -62,7 +62,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		} else if err != nil {
 			notice = "Semantic search settings were not changed. Reload and check the saved provider and deployment settings."
 		}
-		back(w, r, "/settings/search?section=semantic-search#semantic-search", notice)
+		back(w, r, settingsTo("/settings/search", "semantic-search"), notice)
 	})
 	mux.HandleFunc("POST /settings/automatic", func(w http.ResponseWriter, r *http.Request) {
 		rev, e := d.providerForm(w, r, 4096, false, "Provider settings are unavailable in this deployment.")
@@ -84,7 +84,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			e = d.Providers.Save(r.Context(), candidate)
 		}
 		if e != nil {
-			back(w, r, "/settings/recognition?section=automatic#automatic", e.Error())
+			back(w, r, settingsTo("/settings/automatic", "automatic"), e.Error())
 			return
 		}
 		// Turning it off, or back on from off, restarts the clock, so notebooks
@@ -98,7 +98,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		case now:
 			notice = "Automatic processing saved."
 		}
-		back(w, r, "/settings/recognition?section=automatic#automatic", notice)
+		back(w, r, settingsBack("/settings/automatic", "automatic"), notice)
 	})
 	mux.HandleFunc("POST /settings/actions", func(w http.ResponseWriter, r *http.Request) {
 		rev, e := d.providerForm(w, r, 256<<10, false, "Provider settings are unavailable in this deployment.")
@@ -116,7 +116,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			e = d.Providers.Save(r.Context(), candidate)
 		}
 		if e != nil {
-			back(w, r, "/settings/recognition?section=note-actions#note-actions", e.Error())
+			back(w, r, settingsTo("/settings/actions", "note-actions"), e.Error())
 			return
 		}
 
@@ -127,7 +127,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 		case !a.Off:
 			notice = "Note actions saved."
 		}
-		back(w, r, "/settings/recognition?section=note-actions#note-actions", notice)
+		back(w, r, settingsBack("/settings/actions", "note-actions"), notice)
 	})
 	mux.HandleFunc("POST /settings/minutes", func(w http.ResponseWriter, r *http.Request) {
 		rev, e := d.providerForm(w, r, 256<<10, false, "Provider settings are unavailable in this deployment.")
@@ -142,7 +142,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			switch f("action") {
 			case "save":
 				if e = d.Providers.Save(r.Context(), candidate); e == nil {
-					back(w, r, "/settings/recognition?section=minutes#minutes", "Audio Note Minutes settings saved. Nothing was transcribed or summarized.")
+					back(w, r, settingsBack("/settings/models", "minutes"), "Audio Note Minutes settings saved. Nothing was transcribed or summarized.")
 					return
 				}
 			case "test_transcription":
@@ -166,7 +166,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			notice = e.Error()
 		}
 		r.URL.RawQuery = url.Values{"notice": {notice}}.Encode()
-		d.settingsPage(w, r, "recognition", &view)
+		d.settingsPage(w, r, "models", &view, nil)
 	})
 	mux.HandleFunc("POST /settings/providers", func(w http.ResponseWriter, r *http.Request) {
 		rev, e := d.providerForm(w, r, 32768, false, "Provider settings are unavailable in this deployment.")
@@ -174,11 +174,17 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			return
 		}
 		action := r.Form.Get("action")
-		// Every provider form is on the Recognition tab; the embedding card
-		// returns to its own section.
-		tab := "recognition"
-		section := settingsSection(r)
-		to := "/settings/recognition?section=" + section + "#" + section
+		// The model forms are in AI models; reprocessing is an operator tool,
+		// and index actions belong to Search by meaning.
+		tab, section := "models", settingsSection(r)
+		path := "/settings/models"
+		switch {
+		case action == "reprocess":
+			tab, path = "operator", "/settings/operator"
+		case action == "build" || action == "retry":
+			tab, path, section = "search", "/settings/search", "semantic-search"
+		}
+		to := settingsTo(path, section)
 		if action == "build" || action == "retry" || action == "reprocess" {
 			if action == "reprocess" {
 				if r.Form.Get("confirm") != "on" {
@@ -209,7 +215,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			case "save":
 				e = d.Providers.Save(r.Context(), candidate)
 				if e == nil {
-					back(w, r, to, "Provider settings saved. New requests and jobs use them immediately. Existing pages were not queued for recognition.")
+					back(w, r, settingsBack(path, section), "Provider settings saved. New requests and jobs use them immediately. Existing pages were not queued for recognition.")
 					return
 				}
 			case "test_ocr":
@@ -233,7 +239,7 @@ func (d Deps) providerRoutes(mux *http.ServeMux) {
 			notice = e.Error()
 		}
 		r.URL.RawQuery = url.Values{"notice": {notice}}.Encode()
-		d.settingsPage(w, r, tab, &view)
+		d.settingsPage(w, r, tab, &view, nil)
 	})
 }
 

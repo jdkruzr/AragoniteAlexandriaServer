@@ -12,28 +12,42 @@ templates in `internal/boox/*.go`, grafted into the same layout by
 
 - **Global nav:** Library · Search · Tasks · Recognition (`/jobs`) · Settings,
   plus Help at the right.
-- **Sources sidebar:** Alexandria Client, BOOX, + Add source. Each source has
-  its own tabs. The Client uses Notebooks · Books · Devices
-  (`/files/forestnote/devices`; the old `/settings/devices` URLs redirect or
-  alias) · Settings. BOOX uses Notebooks · Reading · Devices · Settings.
+- **Sources:** the Library, Recognition and Search pages switch between BOOX
+  and Alexandria Client with a pill switch. Devices and adding a source live in
+  Settings → Devices (`/settings/devices`); `/files/forestnote/devices`,
+  `/boox/devices`, `/boox/settings`, `/sources` and `/sources/client` redirect
+  there, and `/library/overview` redirects to `/library`.
 - **Notebook viewers** for both sources show one page with previous/next, a
   page-number jump, fit/actual zoom and a side panel for page text and
   recognition. Client pages are addressed by stable page ID (`?page=<id>`, used
   by search, tasks and MCP links); `n=<number>` jumps by number; `view=grid`
   shows all pages.
-  Diagnostics (`/boox/activity`) is linked from BOOX Settings rather than tabbed.
+  The BOOX record browser (`/boox/activity`) is in Settings → Operator tools.
 - **BOOX minutes** (`/boox/minutes?id=`, review at `/boox/minutes/new`, audio at
   `/boox/minutes/audio`, sending at POST `/boox/minutes/send`) open from the Audio Note Minutes card in the notebook reader's side
   panel. BOOX pages allow `media-src 'self'` for the recording player. See
   [Audio Note Minutes](note-minutes.md).
-- **Settings tabs:** Account (`/settings`), Search (`/settings/search`: index status and actions; the embedding endpoint is on AI Tools and Recognition, `/settings/recognition#embedding`),
-  Recognition (`/settings/recognition`), Tasks & integrations
-  (`/settings/integrations`). All four require an account (Basic) login, like the
-  former single page; bearer tokens cannot open them (`library/runtime.go`).
+- **Settings** is one page per section, with a sticky nav (`settings-nav` in
+  `layout.html`): Account (`/settings`), Devices (`/settings/devices`), AI
+  models (`/settings/models`), Automatic processing (`/settings/automatic`),
+  Note actions (`/settings/actions`), Search by meaning (`/settings/search`),
+  Calendar & tasks (`/settings/calendar`), API & MCP (`/settings/api`) and
+  Operator tools (`/settings/operator`). `/settings/recognition` and
+  `/settings/integrations` redirect by `section`. These pages require an
+  account (Basic) login; bearer tokens cannot open them
+  (`accountSettingsPage` in `library/runtime.go`).
+- A form result names its group with `?section=`; a successful save adds
+  `saved=1`, and the group shows "✓ <notice>" beside its button
+  (`{{template "saved" ($.Group "id")}}`); other notices head the group
+  (`group-notice`). A new API token renders once on the API page.
+- BOOX data reaches Settings through `web.Deps` hooks (`BOOXDevices`,
+  `BOOXOperator`). Pairing stays at `/boox/enroll`, behind the BOOX account
+  check, rendered in the Settings shell; it refreshes while an unused code is
+  waiting.
 - The provider form saves recognition and embedding settings in one POST. Each
-  provider tab carries the other tab's saved values as hidden fields; the
+  provider group carries the other's saved values as hidden fields; the
   settings revision rejects stale submissions. A hidden `page` field returns the
-  user to the submitting tab.
+  user to the submitting group.
 
 ### Live progress
 

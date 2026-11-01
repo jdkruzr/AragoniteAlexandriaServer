@@ -17,7 +17,7 @@ Note actions run whenever all of these are set up, with no separate switch to
 find:
 
 1. **A vision model** with **Enable recognition** ticked, under
-   **Settings → AI Tools and Recognition → Provider**.
+   **Settings → AI models → Handwriting recognition**.
 2. **A summary model** with **Enable summaries** ticked, in the **Audio Note
    Minutes** section of the same page. See [Set Up AI Models](ai-models.md).
 3. **Automatic recognition**, which is on by default: **Recognize new BOOX
@@ -29,7 +29,7 @@ colored ink cost nothing extra.
 
 ## Turning It On, Off or Remapping Colors
 
-Open **Settings → AI Tools and Recognition → Note Actions**.
+Open **Settings → Note actions**.
 
 - The card says whether note actions are running: either "On. Ink written
   since *date* is read when its page is recognized." or what's missing, such
@@ -83,7 +83,7 @@ becomes **at most one item**. Up to 20 items can come from one page.
 the ink, not from when the server got around to reading it.
 
 **Time zone.** Times you write are read in the time zone set under
-**Settings → Tasks & Integrations → Time zone**. Until you set it, the server's
+**Settings → Calendar & tasks → Time zone**. Until you set it, the server's
 default is used, which on many installs is UTC, so "3pm" would land at 3pm UTC.
 Set the time zone *before* writing your first timed event.
 
@@ -126,11 +126,11 @@ something to ask that person", or "Ignore anything inside a box".
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| The page has no **Note Actions** card, or it says note actions need something | A prerequisite is missing | Check the message in **Settings → AI Tools and Recognition → Note Actions** and set up what it names. |
+| The page has no **Note Actions** card, or it says note actions need something | A prerequisite is missing | Check the message in **Settings → Note actions** and set up what it names. |
 | Nothing was made from fresh ink | The page hasn't been recognized yet, or the ink isn't exactly the palette color | Wait five quiet minutes, check the page's recognition card, and check the pen color. "No ink in this color on the page." means the color didn't match. |
 | Nothing was made from older ink | Ink written before note actions started isn't read automatically | Use **Find actions** on that page. |
 | "Made 0 tasks." | The model decided the passage wasn't something to do | Open **Recognized ink** to check what was read; reword, or adjust the instructions. |
 | "The colored ink had no readable text." | The vision model couldn't read the colored ink | Write a little larger, or check the recognition model. |
 | An event was skipped | No recognizable date | Write a date the model can work out, on a new line, and choose **Find actions**. |
-| An event is at the wrong time | The time zone wasn't set, or was wrong, when it was read | Fix the event in Calendar; set **Time zone** under Settings → Tasks & Integrations for the future. |
+| An event is at the wrong time | The time zone wasn't set, or was wrong, when it was read | Fix the event in Calendar; set **Time zone** under Settings → Calendar & tasks for the future. |
 | "The summary model's answer didn't follow the note action format." | The summary model returned something unusable | It retries by itself; if it persists, try a more capable summary model. |

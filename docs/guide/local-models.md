@@ -137,7 +137,7 @@ On a machine with several GPUs, give each service its own card. That way they do
 
 ## Enter the Endpoints
 
-Open **Settings → AI Tools and Recognition** ([Set Up AI Models](ai-models.md) explains every field):
+Open **Settings → AI models** ([Set Up AI Models](ai-models.md) explains every field):
 
 | Card | API format | Base URL | Model |
 |---|---|---|---|
@@ -146,7 +146,7 @@ Open **Settings → AI Tools and Recognition** ([Set Up AI Models](ai-models.md)
 | **Audio Note Minutes** → Summary Model | **OpenAI Chat Completions** | as for vision | your text model's name |
 | **Search by Meaning** | (Ollama) | `http://ollama:11434` (bundled) or `http://gpu-host:11434` | `nomic-embed-text:v1.5` |
 
-Never include `/v1` in a base URL. Test each card before saving it. For search, then go to **Settings → Search** and choose **Enable and build index**, or **Build replacement index** if you've switched from another embedding endpoint. The old index keeps working until the new one is ready.
+Never include `/v1` in a base URL. Test each card before saving it. For search, then go to **Settings → Search by meaning** and choose **Enable and build index**, or **Build replacement index** if you've switched from another embedding endpoint. The old index keeps working until the new one is ready.
 
 ## Troubleshooting
 
@@ -157,8 +157,8 @@ Never include `/v1` in a base URL. Test each card before saving it. For search, 
 | Whisper says the model *is not served here* | The **Model** in Settings doesn't match `WHISPER_SERVED_NAME`. | Use `whisper-large-v3-turbo`, or whatever you set. |
 | Whisper fails to start with a cuBLAS or cuDNN error | `LD_LIBRARY_PATH` doesn't point at the virtual environment's NVIDIA libraries. | Fix the path (check the Python version), or run on the CPU. |
 | Whisper fails after a package upgrade | A newer PyAV broke faster-whisper. | Reinstall the pinned `requirements.txt`. |
-| Settings → Search shows **Model missing** | The embedding model isn't pulled on that Ollama. | Run `ollama pull nomic-embed-text:v1.5` there (or `./setup-ollama.sh` for the bundled one). |
-| **Provider** shows **Not configured** | No embedding URL and model are saved. | Save them on Settings → AI Tools and Recognition → **Search by Meaning**. |
+| Settings → Search by meaning shows **Model missing** | The embedding model isn't pulled on that Ollama. | Run `ollama pull nomic-embed-text:v1.5` there (or `./setup-ollama.sh` for the bundled one). |
+| **Provider** shows **Not configured** | No embedding URL and model are saved. | Save them on Settings → AI models → **Search by meaning**. |
 | **Provider** shows **Unavailable** with the bundled service | The Ollama container isn't running. | Run `./setup-ollama.sh`, and set `ALEXANDRIA_OLLAMA_ENABLED=true` so it starts with everything else. |
 | The index build crawls | Embeddings are running on a small CPU. | Expected. Move embedding to a GPU and build a replacement index. |
 | A service lands on the wrong GPU, or runs out of memory | Pinned by index instead of UUID, Ollama is using Vulkan, or vLLM took the whole card. | Pin by UUID, keep `OLLAMA_VULKAN=false`, and lower vLLM's memory share. |

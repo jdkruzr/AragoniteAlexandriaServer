@@ -12,7 +12,28 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-10-31): **`recognition-1c3c4ecb3380`**, app-only on schema **41**,
+Latest recorded deployment (2026-11-01): **`settings-57db268103d9`**, app-only on schema **41**,
+image `sha256:c3cd7fdcd9729238425772c097210363851137a7fc58209c228a3a6b16576c9e`, on top of
+**`recognition-1c3c4ecb3380`**. Phase 6 of the redesign: Settings is one page per section with a
+sticky nav (Account, Devices, AI models, Automatic processing, Note actions, Search by meaning,
+Calendar & tasks, API & MCP) plus Operator tools (`/settings/operator`). A save shows "✓ <notice>"
+beside its button (`saved=1`). Devices lists BOOX tablets (revoked ones folded away) and Client
+devices with each source's counts, and Add a source; Connect a BOOX stays at `/boox/enroll`
+behind the BOOX account check, rendered in the Settings shell, and refreshes while an unused code
+waits. A new API token shows once on the API page. Account gains a theme choice (match this
+device / light / dark) and shows a Sign-in note instead of the password form when the host manages
+sign-in. Operator tools gathers sync position, the record browser, numbered-notebook cleanup,
+notebook operations, deleted notebooks, Book Trash, job-list cleanup, notebook size limits (the
+global page limit moved onto `/jobs/size`), reprocessing, the index and this server's version,
+PostgreSQL version, database size and file storage. The old Settings tabs and source rows are gone;
+`/settings/recognition`, `/settings/integrations`, `/boox/settings`, `/boox/devices`, `/sources`,
+`/sources/client` and `/files/forestnote/devices` redirect to their sections, and the Library
+overview (`/library/overview`) redirects to `/library`. Checked live: every section, the
+redirects, device counts and operator figures against read-only SQL, a pairing code (left to
+expire) and a throwaway API token (created and revoked).
+Rollback: `private/settings-57db268103d9/rollback.sh` returns to `recognition-1c3c4ecb3380`.
+
+Previous deployment (2026-10-31): **`recognition-1c3c4ecb3380`**, app-only on schema **41**,
 image `sha256:64d1a9c3aa103e6499feea4836979faf2faa3d22b1a64633d1cd31a5c22414b7`, a wording fix on top of
 **`recognition-354fe00615f9`** (image `sha256:e15bce1e4aa20ae4e7b0e2c1c50abf4858012e4ccecca869f4bd55133452be86`).
 Phase 5 of the redesign: Recognition (`/jobs`) is tabs of current work for All, BOOX or the

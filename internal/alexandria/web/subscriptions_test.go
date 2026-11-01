@@ -123,7 +123,7 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 				t.Fatal("imported mutation form")
 			}
 		}
-		get("/settings/integrations?section=subscriptions", lang, nil)
+		get("/settings/calendar?section=subscriptions", lang, nil)
 	}
 	if _, err := d.DB.ExecContext(context.Background(), `UPDATE alexandria_calendar_import SET ical_blob=replace(ical_blob,'SUMMARY:Subscribed event 4','SUMMARY:') WHERE subscription_id=$1`, id); err != nil {
 		t.Fatal(err)
@@ -133,9 +133,9 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 			t.Fatal("missing localized untitled event", lang)
 		}
 	}
-	body := get("/settings/integrations", "en", nil)
-	if strings.Contains(body, `id="subscriptions" open`) {
-		t.Fatal("tile should start collapsed")
+	body := get("/settings/calendar", "en", nil)
+	if !strings.Contains(body, "Community calendar") || strings.Contains(body, `id="subscribe" open`) {
+		t.Fatal("subscriptions listed, with the subscribe form folded away")
 	}
 	loc, _ := time.LoadLocation("America/Chicago")
 	detail := "/calendar/subscriptions/" + id + "/events/" + key + "?on=" + time.Now().In(loc).Format("2006-01-02") + "&return=" + url.QueryEscape("/calendar?view=week&order=calendar")

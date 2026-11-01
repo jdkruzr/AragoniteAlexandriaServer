@@ -73,10 +73,10 @@ unreachable when you search, you quietly get word results instead of an error.
 Search by meaning needs an index: every searchable page's text is sent to the
 embedding model once, and the results are stored on your server.
 
-1. Set the embedding endpoint and model under **Settings → AI Tools and
-   Recognition**, in the **Search by Meaning** section. The details are in
+1. Set the embedding endpoint and model under **Settings → AI models**, in
+   the **Search by meaning** group. The details are in
    [Set Up AI Models](ai-models.md).
-2. Go to **Settings → Search**. The **Status** panel shows three separate
+2. Go to **Settings → Search by meaning**. The **Status** panel shows three separate
    things:
    - **Provider**: whether the saved embedding service answers.
    - **Semantic Search**: whether you turned the feature on.
@@ -161,8 +161,8 @@ next sync.
 | A BOOX page you know is there doesn't show up | The page hasn't been recognized; only its notebook title is searchable | Open the notebook, check **Page text** in **Page details**, and select **Recognize this page** or recognize the library. See [Recognize Handwriting](recognition.md). |
 | A tagged page doesn't appear when searching for its tag | The page has no recognized text yet | Recognize the page. It already appears under **BOOX → Tags**. |
 | A new tag hasn't arrived | The note is still open on the tablet, or hasn't synced | Close the note on the device and let PowerSync sync. |
-| No **Words and meaning** menu | Search by meaning is off | Turn it on in **Settings → Search**. |
-| Index stuck on **Not built**, buttons greyed out | The provider isn't ready | Check the endpoint in **Settings → AI Tools and Recognition**, then **Test connection** in **Settings → Search**. |
+| No **Words and meaning** menu | Search by meaning is off | Turn it on in **Settings → Search by meaning**. |
+| Index stuck on **Not built**, buttons greyed out | The provider isn't ready | Check the endpoint in **Settings → AI models**, then **Test connection** in **Settings → Search by meaning**. |
 | "The existing index was built with different provider settings" | You changed the embedding model or endpoint | Select **Build replacement index**. The old index keeps working meanwhile. |
 | **Index** shows **Needs attention** | Some records failed to embed | Select **Retry failed index work**; if failures persist, check the embedding server's logs. |
 | Searching "gardens" misses "garden" | Word matching is exact | Try the other form, or turn on search by meaning. |

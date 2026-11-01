@@ -1,0 +1,70 @@
+{{define "content"}}{{$d := .Data}}{{$c := connection .Base "both"}}
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main">
+<section class="set-group" id="caldav">
+<h2>{{t "Tasks and events over CalDAV"}} {{template "help" "tasks.caldav"}}</h2>
+<p class="set-desc">{{t "Subscribe from any calendar app to see and edit your tasks and events. Sign in with the same account name and password you use for Alexandria."}}</p>
+{{template "group-notice" ($.Group "caldav")}}
+<dl class="set-facts"><div><dt>{{t "Discovery address"}}</dt><dd>{{template "copy" $c.Discovery}}</dd></div></dl>
+<details class="more"><summary>{{t "If your app asks for a collection address"}}</summary>
+<dl class="set-facts"><div><dt>{{t "Tasks collection address"}}</dt><dd>{{template "copy" $c.Tasks}}</dd></div><div><dt>{{t "Calendar collection address"}}</dt><dd>{{template "copy" $c.Calendar}}</dd></div></dl>
+</details>
+<form method="post" action="/settings/caldav" class="stack set-form">
+<div class="set-grid">
+<label>{{t "Task list name"}} <input class="input" name="collection" value="{{$d.Collection}}" maxlength="200"></label>
+<label>{{t "Calendar name"}} <input class="input" name="events_collection" value="{{$d.EventsCollection}}" maxlength="200"></label>
+<label>{{t "Time zone"}} <select class="input" name="time_zone" id="time-zone">
+<option value="" {{if not $d.TimeZone}}selected{{end}}>{{t "Server default ({{.Zone}})" "Zone" $d.ServerZone}}</option>
+{{with $d.LegacyZone}}<option value="{{.}}" selected>{{.}}</option>{{end}}
+{{range $d.ZoneGroups}}<optgroup label="{{.Region}}">{{range .Zones}}<option value="{{.Name}}" {{if eq .Name $d.TimeZone}}selected{{end}}>{{.Label}}</option>{{end}}</optgroup>{{end}}
+</select></label>
+<label>{{t "Due dates"}}
+<select class="input" name="due_mode">
+<option value="preserve" {{if eq $d.DueMode "preserve"}}selected{{end}}>{{t "Keep the time of day"}}</option>
+<option value="date_only" {{if eq $d.DueMode "date_only"}}selected{{end}}>{{t "Date only"}}</option>
+</select></label>
+</div>
+<p class="hint" id="tz-hint" hidden>{{t "Your browser is set to"}} <strong data-tz></strong>. <button type="button" class="btn btn-ghost btn-sm" data-tz-use>{{t "Use it"}}</button></p>
+<p class="hint">{{t "Used for task due dates and event times written or typed without a time zone, including note actions."}}</p>
+<div class="set-actions"><button class="btn btn-primary">{{t "Save"}}</button>{{template "saved" ($.Group "caldav")}}</div>
+</form>
+</section>
+<section class="set-group" id="subscriptions">
+<h2>{{t "Calendar subscriptions"}}</h2>
+<p class="set-desc">{{t "Show public calendars alongside your events. Subscriptions are read-only and refresh every 30 minutes, up to 20 calendars."}}</p>
+{{template "group-notice" ($.Group "subscriptions")}}
+<ul class="set-rows">{{range $d.Subscriptions}}{{$s := .}}
+<li class="set-row">
+<div class="set-row-main"><span class="set-row-title"><span class="sub-swatch calendar-source-{{.Color}}" aria-hidden="true"></span>{{.Name}}</span>
+<span class="set-row-sub" role="status">{{t .Status}}{{if .LastSuccess}} · {{t "Last successful refresh"}}: {{utc .LastSuccess}}{{end}}</span>
+{{if .ErrorCode}}<span class="set-row-sub set-warn">{{if .LastSuccess}}{{t "Showing the last successful calendar refresh."}}{{else}}{{t "No calendar snapshot is available yet."}}{{end}}</span>{{end}}</div>
+<span class="tag {{if .Enabled}}tag-accent{{else}}tag-neutral{{end}}">{{if .Enabled}}{{t "Enabled"}}{{else}}{{t "Off"}}{{end}}</span>
+<div class="set-row-actions">
+{{if .Enabled}}<form method="post" action="/calendar/subscriptions/{{.ID}}/refresh"><button class="btn btn-ghost btn-sm">{{t "Refresh now"}}</button></form>{{end}}
+<details class="inline-action"><summary class="btn btn-ghost btn-sm">{{t "Edit…"}}</summary>
+<form method="post" action="/calendar/subscriptions/{{.ID}}/update" class="stack">
+<input type="hidden" name="revision" value="{{.Revision}}">
+<label>{{t "Calendar name"}} <input class="input" name="name" value="{{.Name}}" required maxlength="120"></label>
+<label>{{t "Calendar color"}} <select class="input" name="color">{{range $d.SubscriptionColors}}<option value="{{.}}" {{if eq . $s.Color}}selected{{end}}>{{t .}}</option>{{end}}</select></label>
+<label><input type="checkbox" name="enabled" value="yes" {{if .Enabled}}checked{{end}}> {{t "Enable calendar and automatic refresh"}}</label>
+<div><button class="btn btn-primary">{{t "Save"}}</button></div>
+</form></details>
+<details class="inline-action"><summary class="btn btn-ghost btn-sm">{{t "Unsubscribe…"}}</summary>
+<form method="post" action="/calendar/subscriptions/{{.ID}}/remove" class="stack"><input type="hidden" name="revision" value="{{.Revision}}"><label><input type="checkbox" name="confirm" value="yes" required> {{t "Remove this subscription and its cached events"}}</label><div><button class="btn btn-danger">{{t "Unsubscribe"}}</button></div></form>
+</details>
+</div>
+</li>{{else}}<li class="empty">{{t "No calendar subscriptions yet."}}</li>{{end}}</ul>
+<details class="more" id="subscribe" {{if not $d.Subscriptions}}open{{end}}><summary>{{t "Subscribe to a calendar…"}}</summary>
+<p class="set-desc">{{t "Paste a public ICS URL, a Google Calendar share link, or a webpage with one calendar. We find and check the feed before subscribing."}}</p>
+<form method="post" action="/calendar/subscriptions" class="stack set-form">
+<div class="set-grid">
+<label>{{t "Calendar name"}} <input class="input" name="name" required maxlength="120"></label>
+<label>{{t "Calendar color"}} <select class="input" name="color">{{range $d.SubscriptionColors}}<option value="{{.}}">{{t .}}</option>{{end}}</select></label>
+<label class="set-wide">{{t "Calendar link"}} <input class="input" name="feed_url" type="url" required maxlength="4096" placeholder="https://example.org/calendar.ics" autocomplete="off"></label>
+</div>
+<div class="set-actions"><button class="btn btn-primary">{{t "Subscribe to calendar"}}</button></div>
+</form></details>
+</section>
+<script src="/static/timezone.js?v={{version}}" defer></script>
+</div></div>
+{{end}}

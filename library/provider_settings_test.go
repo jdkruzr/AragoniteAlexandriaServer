@@ -22,7 +22,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 		t.Fatal(e)
 	}
 	b := browser{t, r}
-	get := b.do("GET", "/settings/recognition", "", nil, true)
+	get := b.do("GET", "/settings/models", "", nil, true)
 	if get.Code != 200 || !strings.Contains(get.Body.String(), `value="test_ocr"`) {
 		t.Fatal(get.Code, get.Body.String())
 	}
@@ -30,7 +30,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	for _, path := range []string{"/settings", "/settings/search", "/settings/recognition", "/settings/integrations"} {
+	for _, path := range []string{"/settings", "/settings/search", "/settings/models", "/settings/automatic", "/settings/actions", "/settings/operator", "/settings/devices", "/settings/calendar", "/settings/api", "/settings/recognition", "/settings/integrations"} {
 		if got := b.do("GET", path, "", map[string]string{"Authorization": "Bearer " + token}, false); got.Code != 401 {
 			t.Fatal("bearer token admitted owner settings", path, got.Code)
 		}
@@ -45,7 +45,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if got := b.do("POST", "/settings/providers", form.Encode(), sameSite, true); got.Code != 303 {
 		t.Fatal(got.Code, got.Body.String())
 	}
-	get = b.do("GET", "/settings/recognition", "", nil, true)
+	get = b.do("GET", "/settings/models", "", nil, true)
 	if get.Code != 200 || strings.Contains(get.Body.String(), "private-secret-value") || !strings.Contains(get.Body.String(), "A key is saved") || !strings.Contains(get.Body.String(), "wrkspc_test123") {
 		t.Fatal("secret view", get.Code)
 	}
@@ -62,7 +62,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	// The embedding card (Recognition tab) saves both providers at once:
 	// posting its form exactly as rendered (hidden recognition fields included)
 	// must leave recognition and the saved key untouched.
-	search := b.do("GET", "/settings/recognition", "", nil, true).Body.String()
+	search := b.do("GET", "/settings/models", "", nil, true).Body.String()
 	if strings.Contains(search, "private-secret-value") {
 		t.Fatal("recognition tab exposed the key")
 	}
@@ -76,14 +76,14 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if embedForm.Get("ocr_model") != "synthetic-vision" || embedForm.Get("anthropic_workspace") != "wrkspc_test123" || embedForm.Get("page") != "embedding" {
 		t.Fatal("search tab does not carry recognition settings", embedForm)
 	}
-	if got := b.do("POST", "/settings/providers", embedForm.Encode(), sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/settings/recognition?section=embedding&notice=") || !strings.HasSuffix(got.Header().Get("Location"), "#embedding") {
+	if got := b.do("POST", "/settings/providers", embedForm.Encode(), sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/settings/models?saved=1&section=embedding&notice=") || !strings.HasSuffix(got.Header().Get("Location"), "#embedding") {
 		t.Fatal("embedding card save", got.Code, got.Header().Get("Location"))
 	}
 	p, _, snap, e = r.pageConfiguration(ctx, db)
 	if e != nil || p.OCR == nil || p.OCR.Model() != "synthetic-vision" || snap.Config.OCR.AnthropicWorkspace != "wrkspc_test123" || snap.Config.Embedding.Model != "synthetic-2" || snap.Revision != 3 {
 		t.Fatal("search tab changed recognition settings", e, snap.Revision)
 	}
-	if !strings.Contains(b.do("GET", "/settings/recognition", "", nil, true).Body.String(), "A key is saved") {
+	if !strings.Contains(b.do("GET", "/settings/models", "", nil, true).Body.String(), "A key is saved") {
 		t.Fatal("search tab cleared the key")
 	}
 	form.Set("embed_model", "synthetic-2")
@@ -109,7 +109,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if e != nil || snap.Revision != 5 || snap.Config.OCR.Model != "synthetic-vision" || snap.Config.Embedding.Model != "synthetic-2" || snap.Config.Summary.Model != "synthetic-llm" || snap.SummaryKey != "private-summary-key" || snap.APIKey != "private-secret-value" {
 		t.Fatal("minutes save changed other providers", e, snap.Revision)
 	}
-	if page := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); strings.Contains(page, "private-summary-key") || !strings.Contains(page, "A summary key is saved") || !strings.Contains(page, `value="synthetic-whisper"`) {
+	if page := b.do("GET", "/settings/models", "", nil, true).Body.String(); strings.Contains(page, "private-summary-key") || !strings.Contains(page, "A summary key is saved") || !strings.Contains(page, `value="synthetic-whisper"`) {
 		t.Fatal("minutes settings view")
 	}
 	if got := b.do("POST", "/settings/minutes", minutesForm.Encode(), sameSite, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Settings changed in another session") {
@@ -128,7 +128,7 @@ func TestProviderSettingsOwnerOnlySecretsAndImmediateRefresh(t *testing.T) {
 	if e != nil || snap.Config.Automatic.RecognizeOff || snap.Config.Automatic.SummarizeOff || snap.Config.Summary.Model != "synthetic-llm" || snap.SummaryKey != "private-summary-key" {
 		t.Fatal("automatic save", e, snap.Config.Automatic)
 	}
-	if page := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(page, `name="a_recognize" checked`) || !strings.Contains(page, "On. It applies to notebooks that change from now on.") || !strings.Contains(page, `name="a_summarize_wait" min="0" max="120" step="1" required value="10"`) {
+	if page := b.do("GET", "/settings/automatic", "", nil, true).Body.String(); !strings.Contains(page, `name="a_recognize" checked`) || !strings.Contains(page, "On. It applies to notebooks that change from now on.") || !strings.Contains(page, `name="a_summarize_wait" min="0" max="120" step="1" required value="10"`) {
 		t.Fatal("automatic settings view")
 	}
 	// The wait before automatic minutes goes down to zero; out of range is refused.

@@ -9,12 +9,12 @@ import (
 	"testing"
 )
 
-func legacySources(d Deps, w http.ResponseWriter, r *http.Request) {
+func legacyHelp(d Deps, w http.ResponseWriter, r *http.Request) {
 	base, err := layout.Clone()
 	if err == nil {
-		_, err = base.ParseFS(assets, "templates/sources.html")
+		_, err = base.ParseFS(assets, "templates/help.html")
 	}
-	d.renderTemplate(w, r, base, err, "<unsafe>", "sources", nil)
+	d.renderTemplate(w, r, base, err, "<unsafe>", "help", map[string]any{"NativeBOOX": d.Status.NativeBOOX})
 }
 func TestCachedTemplatesPreserveLocalizedOutput(t *testing.T) {
 	for i := 0; i < 24; i++ {
@@ -25,13 +25,13 @@ func TestCachedTemplatesPreserveLocalizedOutput(t *testing.T) {
 				lang = "es"
 			}
 			d := Deps{PublicURL: fmt.Sprintf("https://library-%d.example.test", i), Status: Status{NativeBOOX: i%3 == 0}}
-			r := httptest.NewRequest("GET", "/sources", nil)
+			r := httptest.NewRequest("GET", "/help", nil)
 			r.Header.Set("Accept-Language", lang)
 			expected, actual := httptest.NewRecorder(), httptest.NewRecorder()
 			expected.Header().Set("Refresh", "7")
 			actual.Header().Set("Refresh", "7")
-			legacySources(d, expected, r)
-			d.render(actual, r, "sources", "<unsafe>", "sources", nil)
+			legacyHelp(d, expected, r)
+			d.render(actual, r, "help", "<unsafe>", "help", map[string]any{"NativeBOOX": d.Status.NativeBOOX})
 			if actual.Code != 200 || actual.Body.String() != expected.Body.String() || actual.Header().Get("Content-Language") != lang {
 				t.Fatal("localized render changed", actual.Code)
 			}
@@ -43,7 +43,7 @@ func TestCachedTemplatesPreserveLocalizedOutput(t *testing.T) {
 }
 func BenchmarkPageRendering(b *testing.B) {
 	d := Deps{}
-	r := httptest.NewRequest("GET", "/sources", nil)
+	r := httptest.NewRequest("GET", "/help", nil)
 	for _, cached := range []bool{false, true} {
 		name := "parse-each-request"
 		if cached {
@@ -54,9 +54,9 @@ func BenchmarkPageRendering(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				w := httptest.NewRecorder()
 				if cached {
-					d.render(w, r, "sources", "<unsafe>", "sources", nil)
+					d.render(w, r, "help", "<unsafe>", "help", map[string]any{})
 				} else {
-					legacySources(d, w, r)
+					legacyHelp(d, w, r)
 				}
 				if w.Code != 200 {
 					b.Fatal(w.Code)

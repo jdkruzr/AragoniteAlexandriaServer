@@ -96,8 +96,16 @@ func TestReadOnlyNotebookBrowserSnapshotAndSearch(t *testing.T) {
 	if w.Code != 200 || strings.Contains(w.Body.String(), "Synthetic Browser Note") {
 		t.Fatal("client filter leaks native data")
 	}
-	for _, path := range []string{"/boox/reading", "/boox/settings", "/boox/devices", "/boox/activity"} {
+	for _, path := range []string{"/boox/reading", "/boox/activity", "/boox/enroll"} {
 		get(path)
+	}
+	// The BOOX settings and device pages moved into Settings.
+	for _, path := range []string{"/boox/settings", "/boox/devices"} {
+		w := httptest.NewRecorder()
+		s.Admin(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 301 || w.Header().Get("Location") != "/settings/devices#boox" {
+			t.Fatalf("%s: %d %s", path, w.Code, w.Header().Get("Location"))
+		}
 	}
 }
 func TestPreviewCacheLibraryIsolation(t *testing.T) {

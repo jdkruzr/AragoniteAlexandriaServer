@@ -41,7 +41,7 @@ Recognize one page, a notebook or a whole library, or let automatic
 recognition pick up each page once you stop writing. The prompts are editable
 in Settings, and the Jobs page shows how every page is getting on.
 
-<p align="center"><img src="docs/images/settings-recognition.png" width="760" alt="AI Tools and Recognition settings with a self-hosted vision model"></p>
+<p align="center"><img src="docs/images/settings-models.png" width="760" alt="Settings → AI models with a self-hosted vision model"></p>
 
 ### Searches Everything, by Word or by Meaning
 
@@ -89,7 +89,7 @@ API token you can revoke.
 - **One overview** of every source, device and job.
 - **Translations:** English and Spanish.
 
-<p align="center"><img src="docs/images/overview.png" width="760" alt="The library overview"></p>
+<p align="center"><img src="docs/images/settings-devices.png" width="760" alt="Settings → Devices: BOOX tablets and Alexandria Client devices"></p>
 
 ## Your Data
 

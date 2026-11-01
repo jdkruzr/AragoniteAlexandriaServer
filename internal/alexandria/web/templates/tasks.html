@@ -17,7 +17,7 @@
     <a class="btn btn-ghost" href="{{$v.Toggle}}">{{if $d.Trash}}{{t "Back to tasks"}}{{else}}{{t "Deleted tasks ({{.Count}})" $d.Deleted}}{{end}}</a>
   </div>
 </div>
-{{if and (not $d.Trash) (or .Attention $d.NeedsRestore)}}<p class="notice notice-attention"><strong>{{t "Needs attention:"}}</strong> {{if .Attention}}<a href="{{.AttentionURL}}">{{t "{{.Count}} pages need attention in Recognition" .Attention}}</a>{{end}}{{if and .Attention $d.NeedsRestore}} <span aria-hidden="true">·</span> {{end}}{{if $d.NeedsRestore}}<a href="/files/forestnote/devices">{{t "{{.Count}} Client devices need a restore" $d.NeedsRestore}}</a>{{end}}</p>{{end}}
+{{if and (not $d.Trash) (or .Attention $d.NeedsRestore)}}<p class="notice notice-attention"><strong>{{t "Needs attention:"}}</strong> {{if .Attention}}<a href="{{.AttentionURL}}">{{t "{{.Count}} pages need attention in Recognition" .Attention}}</a>{{end}}{{if and .Attention $d.NeedsRestore}} <span aria-hidden="true">·</span> {{end}}{{if $d.NeedsRestore}}<a href="/settings/devices#client">{{t "{{.Count}} Client devices need a restore" $d.NeedsRestore}}</a>{{end}}</p>{{end}}
 {{if not $d.Trash}}
 <form class="task-add" method="post" action="/tasks">
   <input type="hidden" name="return" value="{{$v.List}}">

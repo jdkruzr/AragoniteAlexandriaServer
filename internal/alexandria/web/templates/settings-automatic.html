@@ -1,0 +1,21 @@
+{{define "content"}}{{$d := .Data}}
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main">
+{{if $d.Providers}}{{$p := $d.Providers}}
+<section class="set-group" id="automatic">
+<h2>{{t "Automatic processing"}} {{template "help" "recognition.automatic"}}</h2>
+<p class="set-desc">{{t "On by default once its models are set up. It applies to notebooks that change after it starts, once they've been quiet for a few minutes. Pages are sent to your recognition provider; charges may apply."}}{{with $d.AutoSince}} {{t "On since {{.When}}." "When" .}}{{else}}{{if $d.AutoNew}} {{t "On. It applies to notebooks that change from now on."}}{{end}}{{end}}{{with $d.AutoWhy}} {{t .}}{{end}}</p>
+{{template "group-notice" ($.Group "automatic")}}
+<form method="post" action="/settings/automatic" class="stack set-form"><input type="hidden" name="revision" value="{{$p.Revision}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}>
+<label><input type="checkbox" name="a_recognize" {{if not $p.Config.Automatic.RecognizeOff}}checked{{end}}> {{t "Recognize new BOOX pages automatically"}}</label>
+<label><input type="checkbox" name="a_summarize" {{if not $p.Config.Automatic.SummarizeOff}}checked{{end}}> {{t "Summarize notes with new recordings automatically"}}</label>
+<label class="set-narrow">{{t "Wait before summarizing (minutes)"}} <input class="input" type="number" name="a_summarize_wait" min="0" max="120" step="1" required value="{{$p.Config.Automatic.SummarizeWaitMinutes}}"></label>
+<p class="hint">{{t "How long a note must go without changes before its minutes start. With 0 they start as soon as a new recording reaches the server, so a note you're still recording in may be summarized again after each recording."}}</p>
+</fieldset>
+<div class="set-actions"><button class="btn btn-primary" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button>{{template "saved" ($.Group "automatic")}}</div>
+</form>
+</section>
+{{else}}<p class="set-lede">{{t "AI tools and recognition are configured by this deployment."}}</p>{{end}}
+</div></div>
+{{end}}

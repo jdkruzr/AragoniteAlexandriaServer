@@ -101,8 +101,8 @@ Neither Couchbase nor Sync Gateway gets a public port. Tablets only ever talk to
 
 1. On the tablet, sign in to the BOOX account whose library you want on the server. The first tablet decides which account this library belongs to.
 2. Install **PowerSync** on the tablet.
-3. In the web app, open **BOOX → Devices** and choose **Connect a device**. The **Connect a BOOX Device** page shows your server's address.
-4. Choose **Create enrollment code**. The code is eight letters and digits, works **once**, and expires after **ten minutes**. Lowercase is fine. If it expires, choose **Create another code**.
+3. In the web app, open **Settings → Devices** and choose **Connect a BOOX**. The **Connect a BOOX** page shows your server's address and a pairing code.
+4. The code is eight letters and digits, works **once**, and expires after **ten minutes**. Lowercase is fine. If it expires, choose **Create another code**. While the code is waiting the page checks for the tablet, and says when it has connected.
 5. In PowerSync, enter the server address exactly as the page shows it, type the code, and follow PowerSync's prompts to connect.
 6. In PowerSync, turn on notebook and reading sync to send content to the server.
 
@@ -118,7 +118,7 @@ A tablet that has drifted from the others (for example one that kept syncing to 
 
 These are two different things:
 
-- **Revoke** (BOOX → Devices → **Manage** → **Revoke device**) cuts the tablet off from this server almost immediately. Its notes stay in your library. The tablet isn't switched back to Onyx; it just can't sync anymore. To let it back in, connect it again with a new code.
+- **Revoke** (Settings → Devices → **Manage…** → **Revoke device**) cuts the tablet off from this server almost immediately. Its notes stay in your library. The tablet isn't switched back to Onyx; it just can't sync anymore. To let it back in, connect it again with a new code.
 - **Return to Onyx**: use **Restore** in PowerSync on the tablet. That switches its sync back to the Onyx cloud and doesn't need this server. Revoke it here afterward if you're done with it.
 
 ## Everyday Use
@@ -127,11 +127,11 @@ These are two different things:
 
 | Tab | What it's for |
 |---|---|
-| **Notebooks** | Every notebook and folder. Switch between **All notebooks** and **Folders**, filter by **Type** (handwritten, text, reading or other notes), sort, and find by title. Click a notebook to preview it beside the list; double-click it, or choose **Open**, to read it. **Deleted (n)** lists notebooks in the tablets' Trash. The Library's **More** menu has **Recognize this library…**, **Clean up numbered notebooks…**, **Notebook operations**, **Devices** and **BOOX settings**. |
+| **Notebooks** | Every notebook and folder. Switch between **All notebooks** and **Folders**, filter by **Type** (handwritten, text, reading or other notes), sort, and find by title. Click a notebook to preview it beside the list; double-click it, or choose **Open**, to read it. **Deleted (n)** lists notebooks in the tablets' Trash. The Library's **More** menu has **Recognize this library…**, **Clean up numbered notebooks…**, **Notebook operations**, **Devices** and **+ Add source**. |
 | **Books** | Your NeoReader library: **All books**, **Stored here**, **Metadata only** and **Your reading**, as a list or a bookshelf. Click a book to see its highlights and bookmarks beside the list; page and progress values remain as recorded by the tablet. **Book trash (n)** lists removed stored books. |
 | **Tags** | Every lasso tag, with how many pages and notebooks use it. Click a tag to list its pages beside the list, or choose **Search for it**. |
 
-**Devices** (connected tablets: **Authorized** or **Revoked**, and **Last Upload Received**; *Authorized* means the tablet may connect, not that everything has finished uploading) and **BOOX settings** (your connection address, library maintenance links and diagnostics) are in the Library's **More** menu.
+Tablets are listed in **Settings → Devices** with their last upload; *Authorized* means the tablet may connect, not that everything has finished uploading. Revoked tablets are kept under **Revoked devices**. Maintenance and diagnostics are in **Settings → Operator tools**.
 
 A page count shown as *500+* is a limit of the tablet's metadata. Open the notebook to see every page.
 
@@ -307,7 +307,7 @@ the tablets' native library, the same way the Library app would make it.
 
 ### Clean Up Numbered Notebooks
 
-BOOX names new notebooks *Notebook-1*, *Notebook-2* and so on, and they pile up. **Notebooks → More → Clean up numbered notebooks…** lists notebooks named exactly `Notebook-` plus digits, from every folder. A name with anything extra is left alone.
+BOOX names new notebooks *Notebook-1*, *Notebook-2* and so on, and they pile up. **Notebooks → More → Clean up numbered notebooks…** (also in **Settings → Operator tools**) lists notebooks named exactly `Notebook-` plus digits, from every folder. A name with anything extra is left alone.
 
 1. Review the list. It matches **names only** and never looks at the pages, so open anything you're unsure about. Everything starts checked; uncheck what you want to keep.
 2. Tick **Delete the selected notebooks from this library and its synced BOOX devices.**
@@ -326,7 +326,7 @@ The server keeps history, so cleanup doesn't free storage.
 
 ### Text Notes
 
-[Audio Note Minutes](minutes.md) can be sent to your tablets as a text note named after the notebook with `_Minutes` on the end. To check that server-created notes reach your tablets, **BOOX → Settings → Create a test text note** makes one in the folder you choose. Start a line with `# ` for a heading, or `- ` or `* ` for a bullet; `**Label:** text` starts a line in bold. Nothing existing is changed. Delete the test note on a tablet when you're done.
+[Audio Note Minutes](minutes.md) can be sent to your tablets as a text note named after the notebook with `_Minutes` on the end. To check that server-created notes reach your tablets, **Settings → Operator tools → Create a test text note** makes one in the folder you choose. Start a line with `# ` for a heading, or `- ` or `* ` for a bullet; `**Label:** text` starts a line in bold. Nothing existing is changed. Delete the test note on a tablet when you're done.
 
 ### The Notes App's Sync Button
 
@@ -334,15 +334,14 @@ With AutoSync on, the tablets sync on their own as you open and close notebooks.
 
 It's worth a tap when a notebook seems stuck, when another tablet's new notebooks haven't shown up, or when a server-created text note appears but is empty.
 
-## Reference: BOOX Settings
+## Reference: BOOX in Settings
 
-| Card | What's there |
+| Where | What's there |
 |---|---|
-| **Connection** | The address tablets use, **Connect a device** and **Manage devices**. |
-| **Library Maintenance** | **Clean up numbered notebooks…**, **Deleted notebooks**, **Recognize this library…** |
-| **Diagnostics** | **Open diagnostics** (raw records with native IDs, revisions and history, filterable by **Record type**), **Create a test text note**, **How BOOX sync works**. |
+| **Settings → Devices** | The address tablets use, **Connect a BOOX**, each tablet's last upload, **Manage… → Revoke device**, and revoked tablets. |
+| **Settings → Operator tools** | **Clean up numbered notebooks**, **Notebook operations**, **Deleted notebooks**, **Book trash**, the **BOOX record browser** (raw records with native IDs, revisions and history, filterable by **Record type**) and **Create a test text note**. |
 
-Diagnostics are for investigating sync problems. You don't need them day to day.
+The record browser is for investigating sync problems. You don't need it day to day.
 
 ## Troubleshooting
 

@@ -1,0 +1,58 @@
+{{define "content"}}{{$d := .Data}}{{$v := $d.Devices}}
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main">
+{{if .NativeBOOX}}<section class="set-group" id="boox">
+<div class="set-head"><h2>BOOX <span class="set-via">{{t "via PowerSync"}}</span> {{template "help" "boox.devices"}}</h2>
+<form method="post" action="/boox/enroll"><button class="btn btn-primary">{{icon "plus"}} {{t "Connect a BOOX"}}</button></form></div>
+<p class="set-desc">{{th "Tablets connect with PowerSync using <code>{{.URL}}</code>. To return a tablet to Onyx, use Restore in PowerSync; revoking here only removes its access." "URL" .Base}}</p>
+{{template "group-notice" ($.Group "boox")}}
+{{with $v.BOOX}}
+<p class="set-status">{{t "{{.Count}} notebooks" .Summary.Notebooks}} · {{t "{{.Count}} books" .Summary.Books}} · {{t "last upload {{.When}}" "When" (ago .Summary.LastActivity)}}</p>
+<div id="boox-devices" data-live-region data-live-key="boox">
+{{if .Waiting}}<p class="set-panel">{{t "Waiting for the tablet… it appears below once it connects."}} <a href="/boox/enroll">{{t "Show the pairing steps"}}</a></p>{{end}}
+<ul class="set-rows">{{range .Live}}
+<li class="set-row"><div class="set-row-main"><span class="set-row-title">{{.Model}}</span><span class="set-row-sub"><code>{{.ID}}</code></span></div>
+<span class="set-row-when">{{if .LastUpload.IsZero}}{{t "No upload yet"}}{{else}}{{t "Upload {{.When}}" "When" (ago .LastUpload)}}{{end}}</span>
+<span class="tag {{if .New}}tag-accent{{else}}tag-outline{{end}}">{{if .New}}{{t "Just connected"}}{{else}}{{t "Authorized"}}{{end}}</span>
+<details class="inline-action"><summary class="btn btn-ghost btn-sm">{{t "Manage…"}}</summary>
+<form method="post" action="/boox/revoke" class="stack"><input type="hidden" name="deviceId" value="{{.ID}}"><p class="set-desc">{{t "Removes this device's access to the server. It does not switch the tablet back to Onyx."}}</p><div><button class="btn btn-danger">{{t "Revoke device"}}</button></div></form>
+</details></li>
+{{else}}<li class="empty">{{t "No BOOX devices have connected yet."}}</li>{{end}}</ul>
+{{with .Revoked}}<details class="more"><summary>{{t "Revoked devices ({{.Count}})" (len .)}}</summary>
+<ul class="set-rows">{{range .}}<li class="set-row"><div class="set-row-main"><span class="set-row-title">{{.Model}}</span><span class="set-row-sub"><code>{{.ID}}</code></span></div><span class="set-row-when">{{if .LastUpload.IsZero}}{{t "No upload yet"}}{{else}}{{t "Upload {{.When}}" "When" (ago .LastUpload)}}{{end}}</span><span class="tag tag-neutral">{{t "Revoked"}}</span></li>{{end}}</ul>
+</details>{{end}}
+</div>
+{{else}}{{if $v.BOOXUnavailable}}<p class="notice">{{t "The BOOX device list is unavailable right now."}}</p>{{end}}{{end}}
+</section>{{end}}
+
+<section class="set-group" id="client">
+<h2>Alexandria Client {{template "help" "client.devices"}}</h2>
+<p class="set-desc">{{th "To add a device, open Settings → Sync in the Client app, enter <code>{{.URL}}</code> and sign in with this account." "URL" .Base}}</p>
+{{template "group-notice" ($.Group "client")}}
+{{with $v.Client}}{{if ge .Notebooks 0}}<p class="set-status">{{t "{{.Count}} notebooks" .Notebooks}} · {{t "{{.Count}} books" .Books}} · {{t "last sync {{.When}}" "When" (ago .LastActivity)}}</p>{{end}}{{end}}
+<ul class="set-rows">{{range $v.ClientDevices}}
+<li class="set-row"><div class="set-row-main"><span class="set-row-title">{{.DisplayName}}</span>
+<span class="set-row-sub">{{.SiteID}}{{if .FirstSeenMs}}{{with day (msTime .FirstSeenMs)}} · {{t "since {{.When}}" "When" .}}{{end}}{{end}} · {{t "{{.Count}} changes waiting" .PendingOps}}</span>
+{{if and .NeedsAdoption (not .Revoked)}}<span class="set-row-sub set-warn">{{t "This device's library is from before the last whole-library restore. Open the Client app on it and choose Restore to adopt the current library."}}</span>{{end}}</div>
+<span class="set-row-when">{{if .LastSeenMs}}{{t "Synced {{.When}}" "When" (ago (msTime .LastSeenMs))}}{{else}}{{t "Never synced"}}{{end}}</span>
+{{if .Revoked}}<span class="tag tag-neutral">{{t "Revoked"}}</span>{{else if .NeedsAdoption}}<span class="tag tag-accent-2">{{t "Needs restore"}}</span>{{else if .Enrolled}}<span class="tag tag-outline">{{t "Active"}}</span>{{else}}<span class="tag tag-neutral">{{t "Not enrolled"}}</span>{{end}}
+<details class="inline-action"><summary class="btn btn-ghost btn-sm">{{t "Manage…"}}</summary>
+<div class="stack">
+<form method="post" action="/files/forestnote/devices/rename" class="set-inline"><input type="hidden" name="site_id" value="{{.SiteID}}"><label class="field-col">{{t "Device name"}} <input class="input" name="label" value="{{.Label}}" placeholder="{{.Name}}" maxlength="128"></label><button class="btn btn-secondary">{{t "Rename"}}</button></form>
+{{if .LastSeenMs}}<form method="post" action="/files/forestnote/devices/prune" class="stack"><input type="hidden" name="site_id" value="{{.SiteID}}"><p class="set-desc">{{t "Clears the sync position. A device still in use picks up where it left off."}}</p><div><button class="btn btn-secondary">{{t "Clear sync position"}}</button></div></form>{{end}}
+{{if and .Enrolled (not .Revoked)}}<form method="post" action="/files/forestnote/devices/revoke" class="stack"><input type="hidden" name="site_id" value="{{.SiteID}}"><p class="set-desc">{{t "Revoking stops this device syncing. Its notes stay in the library."}}</p><div><button class="btn btn-danger">{{t "Revoke device"}}</button></div></form>{{end}}
+</div></details></li>
+{{else}}<li class="empty">{{t "No Client devices have connected yet."}}</li>{{end}}</ul>
+</section>
+
+<section class="set-group" id="add">
+<h2>{{t "Add a source"}}</h2>
+<p class="set-desc">{{t "Each source keeps its own notebooks and devices because each syncs in its own way. Search, tasks and recognition work across all of them."}}</p>
+<div class="set-columns">
+{{if .NativeBOOX}}<div><h3>{{t "BOOX via PowerSync"}}</h3><p>{{t "Native BOOX notebooks, books and reading data, synced by the PowerSync companion app."}}</p><form method="post" action="/boox/enroll"><button class="btn btn-secondary">{{t "Connect a BOOX"}}</button></form></div>{{end}}
+<div><h3>Alexandria Client</h3><p>{{t "The Alexandria reader and writer app on Android tablets. Sign in from Settings → Sync in the app."}}</p><p class="set-desc">{{t "Server address:"}} {{template "copy" .Base}}</p></div>
+</div>
+<p class="set-desc">{{th "<a href=\"/help#devices\">About devices and sources</a>"}}</p>
+</section>
+</div></div>
+{{end}}

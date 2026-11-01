@@ -15,7 +15,7 @@ they change English text.
 
 The choice is saved in this browser. Text that Alexandria writes onto your
 tablets is set separately: **Language of headings in minutes notes**, under
-**Settings → AI Tools and Recognition**, sets the headings and labels around
+**Settings → AI models**, sets the headings and labels around
 Audio Note Minutes (the minutes themselves follow the recordings' language).
 
 A language you add appears in the menu automatically, under its own name (for
@@ -60,7 +60,7 @@ You may move them to wherever your grammar needs them:
 ```
 
 **Markup.** Some entries contain HTML tags such as `<strong>`, `<em>`,
-`<code>` or links (`<a href="/settings/integrations">`). Keep every tag
+`<code>` or links (`<a href="/settings/calendar">`). Keep every tag
 exactly as in the English, including the link address; translate only the
 words between the tags. Leave whatever is inside `<code>…</code>` alone; it's
 usually an address or a command.

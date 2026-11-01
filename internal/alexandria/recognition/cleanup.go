@@ -104,3 +104,10 @@ func (s Store) CleanObsolete(ctx context.Context, token string) (int, error) {
 	}
 	return len(preview.Items), tx.Commit()
 }
+
+// CountObsolete counts the jobs the cleanup list would offer to hide.
+func (s Store) CountObsolete(ctx context.Context) (int, error) {
+	var n int
+	err := s.DB.QueryRowContext(ctx, `SELECT count(*)`+obsoleteJobs).Scan(&n)
+	return n, err
+}

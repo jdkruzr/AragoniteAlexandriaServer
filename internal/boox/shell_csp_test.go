@@ -8,12 +8,12 @@ import (
 )
 
 // BOOX pages share the site shell, so they allow its fonts and scripts from
-// this server; inline styles stay limited to the notebook's typed text. The
-// reader has its own Library header, so it doesn't repeat the source switch.
+// this server; inline styles stay limited to the notebook's typed text. Pages
+// outside the Library tabs carry no source switch; they have their own crumbs.
 func TestBOOXPagesAllowTheShellOnly(t *testing.T) {
 	s := Service{Config: Config{PublicURL: "https://boox.example"}}
 	content := template.Must(template.New("synthetic").Parse(`{{define "content"}}<p>Synthetic page</p>{{end}}`))
-	for path, inline := range map[string]bool{"/boox/devices": false, "/boox/cleanup": false, "/boox/books/upload": false, "/boox/notebook": true} {
+	for path, inline := range map[string]bool{"/boox/manage": false, "/boox/cleanup": false, "/boox/books/upload": false, "/boox/notebook": true} {
 		w := httptest.NewRecorder()
 		s.renderPage(w, httptest.NewRequest("GET", path, nil), content, "Synthetic", nil)
 		csp := w.Header().Get("Content-Security-Policy")
@@ -25,8 +25,8 @@ func TestBOOXPagesAllowTheShellOnly(t *testing.T) {
 		if strings.Contains(csp, "style-src-attr") != inline {
 			t.Errorf("%s: inline styles allowed=%v: %s", path, !inline, csp)
 		}
-		if body := w.Body.String(); w.Code != 200 || !strings.Contains(body, "Synthetic page") || strings.Contains(body, `class="source-switch"`) != (path != "/boox/notebook") {
-			t.Errorf("%s: %d, shell or source switch missing", path, w.Code)
+		if body := w.Body.String(); w.Code != 200 || !strings.Contains(body, "Synthetic page") || strings.Contains(body, `class="source-switch"`) {
+			t.Errorf("%s: %d, shell missing or a stray source switch", path, w.Code)
 		}
 	}
 }

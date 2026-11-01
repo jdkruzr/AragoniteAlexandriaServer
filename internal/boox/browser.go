@@ -2,8 +2,6 @@ package boox
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
 	"html/template"
@@ -11,12 +9,12 @@ import (
 	"strings"
 )
 
-var setupTemplate = template.Must(template.New("setup.html").Funcs(web.Funcs()).ParseFS(templateFS, "templates/setup.html"))
-
 // Views are grafted into the shared layout, so they may only use its functions.
-var devicesTemplate = template.Must(template.New("devices.html").Funcs(web.Funcs()).ParseFS(templateFS, "templates/devices.html"))
-
 func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *template.Template, title string, data any) {
+	s.renderIn(w, r, content, title, "boox", data)
+}
+
+func (s Service) renderIn(w http.ResponseWriter, r *http.Request, content *template.Template, title, section string, data any) {
 	w.Header().Set("Cache-Control", "no-store")
 	// The shared shell's fonts and scripts (live updates, settings, the book
 	// importer) come from this server; nothing else is allowed.
@@ -26,7 +24,7 @@ func (s Service) renderPage(w http.ResponseWriter, r *http.Request, content *tem
 		// validated numbers; no resource markup reaches the page).
 		w.Header().Set("Content-Security-Policy", w.Header().Get("Content-Security-Policy")+"; style-src-attr 'unsafe-inline'")
 	}
-	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}, DB: s.DB, Logger: s.Logger}.RenderContent(w, r, content, title, "boox", data)
+	web.Deps{PublicURL: s.Config.PublicURL, Status: web.Status{NativeBOOX: true}, DB: s.DB, Logger: s.Logger}.RenderContent(w, r, content, title, section, data)
 }
 
 // renderPageStatus renders with a non-200 status. Writing the status first
@@ -72,7 +70,7 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			s.typedResource(w, r)
 			return
 		case "/boox/settings":
-			s.renderPage(w, r, booxSettings, "BOOX Settings", nil)
+			settingsRedirect(w, r)
 			return
 		case "/boox/reading":
 			s.reading(w, r)
@@ -144,48 +142,13 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 	case "/boox/actions":
 		s.findActionsHTTP(w, r)
 	case "/boox/enroll":
-		if r.Method == "POST" {
-			code, e := s.IssueCode(r.Context())
-			if e != nil {
-				s.failure(w, "browser", e)
-				return
-			}
-			s.renderPage(w, r, setupTemplate, "Connect a BOOX Device", code)
-		} else if r.Method == "GET" {
-			s.renderPage(w, r, setupTemplate, "Connect a BOOX Device", "")
-		} else {
-			http.NotFound(w, r)
-		}
+		s.pairing(w, r)
 	case "/boox/devices":
 		if r.Method != "GET" {
 			http.NotFound(w, r)
 			return
 		}
-		rows, e := s.DB.QueryContext(r.Context(), `SELECT id::text,model,revoked,(SELECT max(v.created_at) FROM boox_blob_version v WHERE v.device_id=d.id) FROM boox_device d ORDER BY revoked,created_at`)
-		if e != nil {
-			s.failure(w, "browser", e)
-			return
-		}
-		defer rows.Close()
-		type item struct {
-			ID, Model  string
-			Revoked    bool
-			LastUpload sql.NullTime
-		}
-		out := []item{}
-		for rows.Next() {
-			var v item
-			if rows.Scan(&v.ID, &v.Model, &v.Revoked, &v.LastUpload) != nil {
-				s.failure(w, "browser", errors.New("device read failed"))
-				return
-			}
-			out = append(out, v)
-		}
-		if rows.Err() != nil {
-			s.failure(w, "browser", rows.Err())
-			return
-		}
-		s.renderPage(w, r, devicesTemplate, "BOOX Devices", out)
+		settingsRedirect(w, r)
 	case "/boox/revoke":
 		if r.Method != "POST" {
 			http.NotFound(w, r)
@@ -205,7 +168,7 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 			s.failure(w, "browser", e)
 			return
 		}
-		http.Redirect(w, r, "/boox/devices", 303)
+		http.Redirect(w, r, revokedNotice(), 303)
 	default:
 		http.NotFound(w, r)
 	}

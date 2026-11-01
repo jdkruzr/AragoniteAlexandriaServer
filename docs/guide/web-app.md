@@ -5,7 +5,7 @@ events, run handwriting recognition and change settings. It runs in any modern
 browser, desktop or phone, at your server's address. This guide is a tour of
 the screens so you know where things live; the feature guides go deeper.
 
-![The Library overview](../images/overview.png)
+![Settings → Devices](../images/settings-devices.png)
 
 ## What You Need First
 
@@ -20,7 +20,7 @@ Open the server's address. Your browser asks for a username and password;
 enter your Alexandria account. The browser remembers them for the session, so
 you won't be asked on every page.
 
-To change your password, go to **Settings → Account → Change Password**. Use
+To change your password, go to **Settings → Account → Change password**. Use
 at least 12 characters (up to 72 bytes). Your browser may ask you to sign in
 again; enrolled devices and API tokens keep working.
 
@@ -48,7 +48,7 @@ The search box searches notes, books and highlights (see [Search Your Library](s
 | BOOX | **Notebooks**, **Books**, **Tags** |
 | Alexandria Client | **Notebooks**, **Books** |
 
-The **More** menu holds each source's devices, settings and maintenance pages, **Recognize this library…**, the **Library overview** (counts per source, last sync, and whether recognition and search by meaning are on) and **+ Add source**.
+The **More** menu holds **Recognize this library…**, the BOOX maintenance pages, **Devices** and **+ Add source** (both in Settings).
 
 ## Browsing Notebooks
 
@@ -87,17 +87,11 @@ At the bottom of the drawer: **Download PDF** for both sources, plus **Rename…
 BOOX previews are drawn on the server from the ink files received so far.
 They're read-only: nothing you do while browsing changes your tablets.
 
-### Alexandria Client Books and Devices
+### Alexandria Client Books
 
-- **Books** lists books the Client has imported, with author, format,
-  annotation count and a **Download** link. Open a book to read its
-  annotations.
-- **Devices** lists Client devices with **Last Sync**, **Waiting** (changes
-  the device hasn't pulled yet) and **State**. Under **Manage** you can rename
-  a device, **Clear Sync Position** (safe for a device still in use), or
-  **Revoke Device** (it stops syncing; its notes stay in the library). To add
-  a device, open Settings → Sync in the Alexandria Client app and sign in with
-  this server's address and your account.
+**Books** lists books the Client has imported, with author, format,
+annotation count and a **Download** link. Open a book to read its
+annotations. Client devices are in **Settings → Devices** (below).
 
 BOOX tablets are covered in [Connect BOOX Tablets](boox.md).
 
@@ -111,17 +105,28 @@ BOOX tablets are covered in [Connect BOOX Tablets](boox.md).
 
 ## Settings
 
-**Settings** has four tabs:
+**Settings** has one page per section, listed down the left (across the top on
+a phone). A successful save shows **✓** and what changed beside its button.
 
-| Tab | What's there |
+| Section | What's there |
 |---|---|
-| **Account** | **Change Password**, **Language**, and **About This Server** (the address and version). |
-| **Search** | **Search by Meaning**: status, index building and coverage. See [Search Your Library](search-and-tags.md). |
-| **AI Tools and Recognition** | Recognition provider, Audio Note Minutes models, the embedding model, **Automatic Processing**, **Note Actions** and reprocessing. See [Set Up AI Models](ai-models.md). |
-| **Tasks & Integrations** | CalDAV addresses, collection names, time zone, due-date handling, and API tokens and MCP access. See [Tasks and Calendar](tasks-and-calendar.md) and [Connect an AI Assistant](assistants.md). |
+| **Account** | **Change password**, **Language**, **Theme** (match this device, light or dark), and **About this server** (the address and version). |
+| **Devices** | BOOX tablets with their last upload, **Connect a BOOX** (a one-time pairing code), and revoking; Alexandria Client devices with their last sync, changes waiting and **Needs restore**, plus rename, **Clear sync position** and revoke; and **Add a source**. Each source shows its notebook and book counts. |
+| **AI models** | The handwriting recognition provider, the Audio note minutes models and their instructions, and the search-by-meaning model. See [Set Up AI Models](ai-models.md). |
+| **Automatic processing** | Whether changed notebooks are recognized and summarized automatically, and how long to wait first. |
+| **Note actions** | Which pen colors make tasks or events, and their instructions. See [Note Actions](note-actions.md). |
+| **Search by meaning** | Status, index building and coverage. See [Search Your Library](search-and-tags.md). |
+| **Calendar & tasks** | CalDAV addresses, collection names, time zone, due-date handling and calendar subscriptions. See [Tasks and Calendar](tasks-and-calendar.md). |
+| **API & MCP** | The MCP address and API tokens. A new token is shown once, on this page. See [Connect an AI Assistant](assistants.md). |
 
-Each source also has its own **Settings** tab: the BOOX one covers the device
-connection, library maintenance and diagnostics.
+**Operator tools**, at the foot of the list, gathers maintenance you won't need
+day to day: clearing a Client device's sync position, the BOOX record browser
+and observed versions, cleaning up numbered notebooks, notebook operations,
+deleted notebooks and Book Trash, cleaning up the recognition job list,
+notebook size limits (the recognition page limit and per-notebook overrides),
+reprocessing recognized pages, and this server's version, PostgreSQL version
+and storage. Recovering audio and refreshing a book's reading data work on one
+item at a time, so they stay on the notebook's and the book's pages.
 
 ## Choosing a Language
 
@@ -132,7 +137,7 @@ connection, library maintenance and diagnostics.
 
 The choice is saved in this browser only, so set it on each browser you use.
 Text that Alexandria writes onto your tablets, such as headings in minutes
-notes, is set separately under **Settings → AI Tools and Recognition**. Want
+notes, is set separately under **Settings → AI models**. Want
 Alexandria in your language? See [Translate Alexandria](translating.md).
 
 ## Pages That Update Themselves
@@ -142,7 +147,7 @@ leave them open:
 
 - **Recognition** (every few seconds while jobs are queued or running).
 - A whole-library recognition run in progress.
-- **Settings → Search** while the index builds (every 15 seconds).
+- **Settings → Search by meaning** while the index builds (every 15 seconds).
 
 Without JavaScript, these pages reload themselves instead.
 

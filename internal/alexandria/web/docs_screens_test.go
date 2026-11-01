@@ -10,6 +10,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 )
 
@@ -54,9 +55,12 @@ func docsPages() []previewPage {
 			Automatic:     providers.AutomaticConfig{}},
 		Coverage: []providers.Coverage{{Label: "Alexandria Client pages", Texts: 64}, {Label: "BOOX reading records", Texts: 212}, {Label: "BOOX notebook pages", Texts: 1598}}}
 	return []previewPage{
-		{"overview", "overview", "Library", "overview", "/library", overviewData{NativeBOOX: true, OCR: true, Semantic: true, JobsKnown: true, Active: 1,
-			Client: SourceSummary{Notebooks: 12, Books: 9, Devices: 1, LastActivity: now.Add(-2 * time.Hour), ActivityLabel: "Last sync"},
-			BOOX:   &SourceSummary{Notebooks: 214, Books: 47, Devices: 2, LastActivity: now.Add(-6 * time.Minute), ActivityLabel: "Last upload"}}},
+		{"settings-devices", "settings-devices", "Devices", "settings", "/settings/devices", map[string]any{"Devices": devicesView{
+			BOOX: &BOOXDevices{Summary: SourceSummary{Notebooks: 214, Books: 47, Devices: 2, LastActivity: now.Add(-6 * time.Minute)}, Devices: []BOOXDevice{
+				{ID: "8bc4cf5c-0000-4000-8000-000000000001", Model: "NoteAir4C", LastUpload: now.Add(-6 * time.Minute)},
+				{ID: "8bc4cf5c-0000-4000-8000-000000000002", Model: "Go7", LastUpload: now.Add(-50 * time.Hour)}}},
+			Client:        SourceSummary{Notebooks: 12, Books: 9, Devices: 1, LastActivity: now.Add(-2 * time.Hour)},
+			ClientDevices: []relay.Device{{SiteID: "01JB2Q6V0000000000000000", Name: "Garden tablet", Enrolled: true, LastSeenMs: now.Add(-2 * time.Hour).UnixMilli(), FirstSeenMs: now.Add(-35 * 24 * time.Hour).UnixMilli()}}}}},
 		{"search", "search", "Search", "search", "/search", map[string]any{"Query": "garlic", "Semantic": true, "BOOX": true, "Results": []notes.Result{
 			{Source: "boox", Kind: "Notebook page", NotebookName: "Garden Committee", PageNumber: 1, Snippet: "…North beds → garlic + fava beans. Order seed garlic + straw mulch…", URL: "#", Tags: []string{"garden", "fall planting"}},
 			{Source: "boox", Kind: "Highlight", NotebookName: "The Market Gardener", Snippet: "…plant garlic in the fall, a few weeks before the ground freezes…", URL: "#"},
@@ -72,7 +76,7 @@ func docsPages() []previewPage {
 			return d
 		}()},
 		{"calendar", "calendar", "Calendar", "calendar", "/calendar", map[string]any{"View": calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: at(10, 18, 0, 0), Horizon: 7}, "Days": calendarDays(calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: at(10, 18, 0, 0), Horizon: 7}, upcoming, now), "Upcoming": upcoming, "Past": past, "Trash": false, "Zone": "America/Chicago", "Today": "2026-10-16"}},
-		{"settings-recognition", "settings-recognition", "AI tools and recognition", "settings", "/settings/recognition", map[string]any{"Providers": models,
+		{"settings-models", "settings-models", "AI models", "settings", "/settings/models", map[string]any{"Providers": models,
 			"DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
 		{"jobs", "jobs", "Recognition", "jobs", "/jobs", recognitionView{Tab: "active", Sources: true, WorkTab: true, Mode: "auto", Model: "qwen2.5-vl-7b-instruct", Return: "/jobs?tab=active",
 			Tally:  recognition.Tally{Active: 1},

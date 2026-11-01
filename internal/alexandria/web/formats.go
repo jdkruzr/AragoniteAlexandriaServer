@@ -39,6 +39,8 @@ func formatFuncs(l i18n.Localizer) template.FuncMap {
 		"decimal": func(v float64, places int) string { return l.Number(v, places) },
 		"bytes": func(n int64) string {
 			switch {
+			case n >= 1<<30:
+				return l.Number(float64(n)/(1<<30), 1) + " GB"
 			case n >= 1<<20:
 				return l.Number(float64(n)/(1<<20), 1) + " MB"
 			case n >= 1<<10:

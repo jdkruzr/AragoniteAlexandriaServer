@@ -20,7 +20,7 @@
 
 <section id="start"><h2>{{t "Getting Started"}}</h2>
 <p>{{th "Alexandria keeps one library for one person, gathered from several <strong>sources</strong>. Each source keeps its own notebooks and devices, because each one syncs in its own way. Search, tasks and handwriting recognition work across all of them."}}</p>
-<p>{{th "To add content, connect a device from <a href=\"/sources\">Add source</a>. Notebooks appear after the device's first sync."}}</p>
+<p>{{th "To add content, connect a device from <a href=\"/settings/devices#add\">Settings → Devices</a>. Notebooks appear after the device's first sync."}}</p>
 </section>
 
 <section id="client"><h2>Alexandria Client</h2>
@@ -79,7 +79,7 @@
 <dt>{{t "What You Get"}}</dt><dd>{{t "The overall topic, 4–6 keywords, up to five key points (each marked as coming from the recording, your notes or both) and a conclusion. Each note also lists its recordings with start time and length, and the full timestamped transcripts."}}</dd>
 <dt>{{t "How It Works"}}</dt><dd>{{th "Open a notebook and choose <strong>Summarize this note…</strong>. You'll see the recordings and how many pages have recognized text before anything is sent. Each recording is transcribed, then a summary model writes the minutes."}}</dd>
 <dt>{{t "Pages Without Text"}}</dt><dd>{{t "You can include unrecognized pages; they're sent to your recognition provider first (charges may apply) and the minutes wait for them. Otherwise they're left out and listed."}}</dd>
-<dt>{{t "Providers"}}</dt><dd>{{th "Set up in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> under Audio Note Minutes. Transcription uses any OpenAI-compatible speech-to-text server, including a self-hosted Whisper. The summary model can be a local OpenAI-compatible server or an Anthropic model. Its instructions are editable there too; Alexandria always adds the response format it needs."}}</dd>
+<dt>{{t "Providers"}}</dt><dd>{{th "Set up in <a href=\"/settings/models?section=minutes#minutes\">Settings → AI models</a> under Audio note minutes. Transcription uses any OpenAI-compatible speech-to-text server, including a self-hosted Whisper. The summary model can be a local OpenAI-compatible server or an Anthropic model. Its instructions are editable there too; Alexandria always adds the response format it needs."}}</dd>
 <dt>{{t "Keeping Up to Date"}}</dt><dd>{{t "Minutes are marked out of date when a recording, a recognized page or the summary instructions change. Updating is always your choice; unchanged recordings aren't transcribed again."}}</dd>
 <dt>{{t "Where Results Go"}}</dt><dd>{{th "They stay on this server, appear in search and are available to MCP clients through <code>get_note_minutes</code>. Nothing is written to your BOOX until you choose <strong>Send to BOOX</strong>, which creates a separate text note named <em>title</em><code>_Minutes</code> in the same folder. Your original notebook is never changed. Sending again replaces that note if it's untouched; if you've edited it, a new one is added instead. To send every new set of minutes automatically, turn on <strong>Send them to BOOX automatically</strong> in Settings → AI Tools and Recognition."}}</dd>
 </dl>
@@ -95,12 +95,12 @@
 </section>
 
 <section id="tasks"><h2>{{t "Tasks, Calendar and CalDAV"}}</h2>
-<p>{{th "<a href=\"/tasks\">Tasks</a> is one list across your library, and <a href=\"/calendar\">Calendar</a> holds your events. Tasks made from Alexandria Client pages link back to their page."}}{{if $d.NativeBOOX}} {{th "On BOOX, red ink can become tasks and sky blue ink calendar events; see <a href=\"/settings/recognition?section=note-actions#note-actions\">Note Actions</a>."}}{{end}}</p>
-<p>{{th "Any CalDAV app can sync tasks and events using the addresses in <a href=\"/settings/integrations\">Settings → Tasks &amp; Integrations</a> and your account. Choose <em>Date only</em> if your app mishandles due times."}}</p>
+<p>{{th "<a href=\"/tasks\">Tasks</a> is one list across your library, and <a href=\"/calendar\">Calendar</a> holds your events. Tasks made from Alexandria Client pages link back to their page."}}{{if $d.NativeBOOX}} {{th "On BOOX, red ink can become tasks and sky blue ink calendar events; see <a href=\"/settings/actions\">Note actions</a>."}}{{end}}</p>
+<p>{{th "Any CalDAV app can sync tasks and events using the addresses in <a href=\"/settings/calendar\">Settings → Calendar &amp; tasks</a> and your account. Choose <em>Date only</em> if your app mishandles due times."}}</p>
 </section>
 
 <section id="api"><h2>{{t "API and MCP Access"}}</h2>
-<p>{{th "Claude on the web connects using this server's MCP address. You approve it on a page here, and it then appears in your token list. Other MCP clients and scripts use an API token from <a href=\"/settings/integrations\">Settings → Tasks &amp; Integrations</a>. A token can search and read your notebooks and books, edit text boxes and manage tasks, so revoke any you no longer use. A token is shown once, when you create it."}}</p>
+<p>{{th "Claude on the web connects using this server's MCP address. You approve it on a page here, and it then appears in your token list. Other MCP clients and scripts use an API token from <a href=\"/settings/api\">Settings → API &amp; MCP</a>. A token can search and read your notebooks and books, edit text boxes and manage tasks, so revoke any you no longer use. A token is shown once, when you create it."}}</p>
 </section>
 
 <section id="account"><h2>{{t "Your Account"}}</h2>

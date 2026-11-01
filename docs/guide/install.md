@@ -70,7 +70,7 @@ Open your public address in a browser. The browser asks for a username and passw
 
 You land on **Your Library**. On a new install the **Alexandria Client** card says **No devices connected yet.** with a **Connect a device** link, and under **Across Your Library**, **Handwriting Recognition** and **Search by Meaning** show **Off** — keyword search works regardless. A **BOOX** card appears only when BOOX is enabled.
 
-![Your Library overview, shown with a demo library](../images/overview.png)
+![Settings → Devices, shown with a demo library](../images/settings-devices.png)
 
 Next steps:
 

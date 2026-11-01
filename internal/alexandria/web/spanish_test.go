@@ -34,9 +34,9 @@ func TestPreviewPagesRenderInSpanish(t *testing.T) {
 		var buf bytes.Buffer
 		if err == nil {
 			clone.Funcs(template.FuncMap{"t": es.T, "th": htmlT(es), "td": detailIn(es), "tip": tipIn(es)})
-			err = clone.ExecuteTemplate(&buf, "layout.html", page{Lang: es.Lang(), Title: pageTitle(es, p.title), Section: p.section, SourceTab: sourceTab(p.path, p.section),
-				ClientSource: p.section == "notebooks" || p.section == "books" || p.section == "devices" || p.section == "client-settings",
-				NativeBOOX:   true, Base: "https://library.example", Data: p.data})
+			path, _, _ := strings.Cut(p.path, "?")
+			err = clone.ExecuteTemplate(&buf, "layout.html", page{Lang: es.Lang(), Title: pageTitle(es, p.title), Section: p.section, SourceTab: sourceTab(path, p.section),
+				NativeBOOX: true, Base: "https://library.example", Data: p.data})
 		}
 		if err != nil {
 			t.Fatalf("%s: %v", p.file, err)

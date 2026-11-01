@@ -1,0 +1,53 @@
+{{define "content"}}{{$d := .Data}}{{$o := $d.Operator}}
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main operator">
+<p class="crumbs"><a href="/settings">{{t "Settings"}}</a> /</p>
+<h1 class="operator-title">{{icon "wrench"}} {{t "Operator tools"}}</h1>
+<p class="set-lede">{{t "For maintaining this server. You don't need any of these day to day."}}</p>
+
+<section class="op-group" id="sync">
+<h6>{{t "Sync & devices"}}</h6>
+{{template "group-notice" ($.Group "sync")}}
+<ul class="op-rows">
+{{range $o.SyncDevices}}<li class="op-row"><div><span class="op-title">{{t "Clear sync position · {{.Name}}" "Name" .DisplayName}}</span><span class="op-desc">{{t "Safe for a device still in use; it picks up where it left off."}}</span></div>
+<details class="inline-action"><summary class="btn btn-secondary btn-sm">{{t "Clear…"}}</summary><form method="post" action="/files/forestnote/devices/prune" class="stack"><input type="hidden" name="site_id" value="{{.SiteID}}"><input type="hidden" name="return" value="operator"><p class="set-desc">{{t "Clears the sync position. A device still in use picks up where it left off."}}</p><div><button class="btn btn-secondary">{{t "Clear sync position"}}</button></div></form></details></li>{{end}}
+{{if .NativeBOOX}}<li class="op-row"><div><span class="op-title">{{t "BOOX record browser"}}</span><span class="op-desc">{{t "Raw records with native IDs and revisions."}}</span></div><a class="btn btn-secondary btn-sm" href="/boox/activity">{{t "Open"}}</a></li>
+<li class="op-row"><div><span class="op-title">{{t "Observed native versions"}}</span><span class="op-desc">{{t "Retained history per BOOX document, from the record browser's History column."}}</span></div><a class="btn btn-secondary btn-sm" href="/boox/activity">{{t "Open"}}</a></li>{{end}}
+{{if and (not $o.SyncDevices) (not .NativeBOOX)}}<li class="empty">{{t "No device has synced yet."}}</li>{{end}}
+</ul>
+</section>
+
+{{if .NativeBOOX}}<section class="op-group" id="library">
+<h6>{{t "Library maintenance"}}</h6>
+<ul class="op-rows">
+<li class="op-row"><div><span class="op-title">{{t "Clean up numbered notebooks"}}</span><span class="op-desc">{{with $o.BOOX}}{{if .Numbered}}{{t "{{.Count}} notebooks still named Notebook-1, Notebook-2…" .Numbered}}{{else}}{{t "No notebooks are still named Notebook-1, Notebook-2…"}}{{end}}{{else}}{{t "Delete notebooks still named Notebook-1, Notebook-2…"}}{{end}}</span></div><a class="btn btn-secondary btn-sm" href="/boox/cleanup">{{t "Review…"}}</a></li>
+<li class="op-row"><div><span class="op-title">{{t "Notebook operations"}}</span><span class="op-desc">{{t "Renames, moves and deletions queued for your tablets, and their progress."}}</span></div><a class="btn btn-secondary btn-sm" href="/boox/manage">{{t "Open"}}</a></li>
+<li class="op-row"><div><span class="op-title">{{t "Deleted notebooks"}}</span><span class="op-desc">{{with $o.BOOX}}{{t "{{.Count}} notebooks in the tablets' trash" .Deleted}}{{else}}{{t "Notebooks in the tablets' trash"}}{{end}}</span></div><a class="btn btn-secondary btn-sm" href="/boox?show=deleted">{{t "Open"}}</a></li>
+<li class="op-row"><div><span class="op-title">{{t "Book trash"}}</span><span class="op-desc">{{t "Books moved to Book Trash, with Restore."}}</span></div><a class="btn btn-secondary btn-sm" href="/boox/books/trash">{{t "Open"}}</a></li>
+<li class="op-row"><div><span class="op-title">{{t "Recover audio"}}</span><span class="op-desc">{{t "Repairs a recording hit by a known BOOX audio defect. Open the notebook in the Reader, then Source and History → Recover audio."}}</span></div><a class="btn btn-secondary btn-sm" href="/boox">{{t "Library"}}</a></li>
+<li class="op-row"><div><span class="op-title">{{t "Refresh received reading data"}}</span><span class="op-desc">{{t "Asks your tablets to recheck a book's ink and annotations. Select the book in Library → Books, then Reading Details → Refresh received reading data."}}</span></div><a class="btn btn-secondary btn-sm" href="/boox/reading">{{t "Books"}}</a></li>
+</ul>
+</section>{{end}}
+
+<section class="op-group" id="recognition">
+<h6>{{t "Recognition jobs"}}</h6>
+{{template "group-notice" ($.Group "reprocess")}}
+<ul class="op-rows">
+{{if .NativeBOOX}}<li class="op-row"><div><span class="op-title">{{t "Clean up the job list"}}</span><span class="op-desc">{{if $o.Obsolete}}{{t "{{.Count}} blocked jobs for pages since removed from BOOX notebooks" $o.Obsolete}}{{else}}{{t "No obsolete jobs to hide."}}{{end}}</span></div><a class="btn btn-secondary btn-sm" href="/jobs/cleanup">{{t "Review…"}}</a></li>{{end}}
+<li class="op-row"><div><span class="op-title">{{t "Notebook size limits"}}</span><span class="op-desc">{{t "The page limit for recognition, and notebooks allowed past it."}}</span></div><a class="btn btn-secondary btn-sm" href="/jobs/size">{{t "Edit"}}</a></li>
+{{with $d.Providers}}<li class="op-row"><div><span class="op-title">{{t "Reprocess recognized pages"}} {{template "help" "recognition.reprocess"}}</span><span class="op-desc">{{t "Re-run pages that were already recognized or requested, using the saved settings. It doesn't add new pages."}}</span></div>
+<details class="inline-action"><summary class="btn btn-secondary btn-sm">{{t "Reprocess…"}}</summary><form method="post" action="/settings/providers" class="stack"><input type="hidden" name="revision" value="{{.Revision}}"><input type="hidden" name="page" value="recognition"><label><input type="checkbox" name="confirm" required> {{t "I want these pages reprocessed, including any provider charges."}}</label><div><button class="btn btn-primary" name="action" value="reprocess" {{if not .CanSave}}disabled{{end}}>{{t "Reprocess previously requested pages"}}</button></div></form></details></li>{{end}}
+<li class="op-row"><div><span class="op-title">{{t "Rebuild search index"}}</span><span class="op-desc">{{t "Re-embed every searchable record for search by meaning."}}</span></div><a class="btn btn-secondary btn-sm" href="/settings/search">{{t "Open"}}</a></li>
+<li class="op-row"><div><span class="op-title">{{t "Every job"}}</span><span class="op-desc">{{t "The full per-page job list, with any state and history."}}</span></div><a class="btn btn-secondary btn-sm" href="/jobs?view=pages">{{t "Open"}}</a></li>
+</ul>
+</section>
+
+<section class="op-group" id="server">
+<h6>{{t "This server"}}</h6>
+<ul class="op-rows">
+<li class="op-row"><div><span class="op-title"><code>{{.Base}}</code></span><span class="op-desc">{{t "Version {{.Version}} · PostgreSQL {{.Postgres}} · {{.Database}} database · {{.Files}} of files" "Version" version "Postgres" $o.Server.Postgres "Database" (bytes $o.Server.Database) "Files" (bytes $o.Server.Files)}}</span></div><button type="button" class="btn btn-secondary btn-sm" data-copy="{{.Base}}" data-copied="{{t "Copied"}}" hidden>{{t "Copy"}}</button></li>
+{{if .NativeBOOX}}<li class="op-row"><div><span class="op-title">{{t "Create a test text note"}}</span><span class="op-desc">{{t "Writes a note to your BOOX tablets to check that sync works."}}</span></div><a class="btn btn-secondary btn-sm" href="/boox/text-notes/new">{{t "Create…"}}</a></li>{{end}}
+</ul>
+</section>
+</div></div>
+{{end}}

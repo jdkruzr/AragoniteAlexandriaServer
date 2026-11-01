@@ -21,6 +21,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
 
@@ -61,18 +62,33 @@ func previewPages() []previewPage {
 	trashTasks := []tasksvc.Task{{ID: "t4", Title: "Synthetic duplicate reminder", Status: tasksvc.StatusNeedsAction, Deleted: true, CreatedAt: now.Add(-72 * time.Hour), UpdatedAt: now.Add(-time.Hour)}}
 	clientPages := []notes.Page{{ID: "p1", Number: 1, Key: "forestnote://n/p1", BodyText: "Agenda\n- storage pilot\n- budget review", Model: "vision-model"}, {ID: "p2", Number: 2, Key: "forestnote://n/p2"}, {ID: "p3", Number: 3, Key: "forestnote://n/p3", BodyText: "Follow-ups"}}
 	return []previewPage{
-		{"overview", "overview", "Library", "overview", "/library", overviewData{NativeBOOX: true, OCR: true, JobsKnown: true, Active: 3, Failed: 1,
-			Client: SourceSummary{Notebooks: 4, Books: 2, Devices: 1, LastActivity: now.Add(-3 * time.Hour), ActivityLabel: "Last sync"},
-			BOOX:   &SourceSummary{Notebooks: 1038, Books: 130, Devices: 3, LastActivity: now.Add(-20 * time.Minute), ActivityLabel: "Last upload"}}},
-		{"overview-empty", "overview", "Library", "overview", "/library", overviewData{Client: SourceSummary{Notebooks: 0, Books: 0, Devices: 0, ActivityLabel: "Last sync"}}},
 		{"search", "search", "Search", "search", "/search", map[string]any{"Query": "trellis", "Semantic": true, "BOOX": true,
 			"Results": []notes.Result{{Source: "boox", Kind: "Notebook page", NotebookName: "Synthetic garden plan", PageNumber: 2, Snippet: "…build the bean trellis before May…", URL: "#", Tags: []string{"Bean Trellis", "garden"}}},
 			"Native":  []sourceMatch{{Title: "Synthetic trellis notes", Kind: "Notebook", URL: "#"}}}},
-		{"settings-account", "settings", "Account", "settings", "/settings", map[string]any{"LocalPasswords": true}},
-		{"settings-search", "settings-search", "Search by meaning", "settings", "/settings/search", map[string]any{"Providers": provider, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
-		{"settings-search-building", "settings-search", "Search by meaning", "settings", "/settings/search", map[string]any{"Providers": building, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
-		{"settings-recognition", "settings-recognition", "AI tools and recognition", "settings", "/settings/recognition", map[string]any{"Providers": provider, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
-		{"settings-integrations", "settings-integrations", "Tasks & integrations", "settings", "/settings/integrations", map[string]any{"Collection": "Tasks", "DueMode": "preserve", "CalDAV": "/caldav/user/calendars/tasks/", "Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", Created: now}}}},
+		{"settings-account", "settings", "Account", "settings", "/settings?section=language&saved=1&notice=Language+saved.", map[string]any{"LocalPasswords": true}},
+		{"settings-devices", "settings-devices", "Devices", "settings", "/settings/devices", map[string]any{"Devices": devicesView{
+			BOOX: &BOOXDevices{Summary: SourceSummary{Notebooks: 1038, Books: 130, Devices: 2, LastActivity: now.Add(-4 * time.Minute)}, Waiting: true, Devices: []BOOXDevice{
+				{ID: "8bc4cf5c-0000-4000-8000-000000000001", Model: "Synthetic Air4 C", LastUpload: now.Add(-4 * time.Minute)},
+				{ID: "8bc4cf5c-0000-4000-8000-000000000002", Model: "Synthetic Go 7", New: true},
+				{ID: "8bc4cf5c-0000-4000-8000-000000000003", Model: "Retired tablet", Revoked: true}}},
+			Client: SourceSummary{Notebooks: 4, Books: 2, Devices: 2, LastActivity: now.Add(-time.Hour)},
+			ClientDevices: []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.Add(-time.Hour).UnixMilli(), FirstSeenMs: now.Add(-30 * 24 * time.Hour).UnixMilli()},
+				{SiteID: "01SYNTHETIC2", Name: "Synthetic phone", Enrolled: true, NeedsAdoption: true, PendingOps: 14, LastSeenMs: now.Add(-6 * 24 * time.Hour).UnixMilli(), FirstSeenMs: now.Add(-40 * 24 * time.Hour).UnixMilli()}}}}},
+		{"settings-models", "settings-models", "AI models", "settings", "/settings/models?section=provider&saved=1&notice=Provider+settings+saved.", providerPreview(provider)},
+		{"settings-automatic", "settings-automatic", "Automatic processing", "settings", "/settings/automatic", providerPreview(provider)},
+		{"settings-actions", "settings-actions", "Note actions", "settings", "/settings/actions", providerPreview(provider)},
+		{"settings-search", "settings-search", "Search by meaning", "settings", "/settings/search", providerPreview(provider)},
+		{"settings-search-building", "settings-search", "Search by meaning", "settings", "/settings/search", providerPreview(building)},
+		{"settings-calendar", "settings-calendar", "Calendar & tasks", "settings", "/settings/calendar", map[string]any{"Collection": "Tasks", "EventsCollection": "Calendar", "DueMode": "preserve", "ServerZone": "America/Chicago",
+			"Subscriptions": []subscriptions.Subscription{{ID: "s1", Name: "Synthetic holidays", Color: "blue", Enabled: true, LastSuccess: &now}}, "SubscriptionColors": subscriptions.Colors}},
+		{"settings-api", "settings-api", "API & MCP", "settings", "/settings/api", map[string]any{"NewToken": "alx_synthetic_token_value", "NewLabel": "Synthetic script", "Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", Created: now}}}},
+		{"settings-operator", "settings-operator", "Operator tools", "settings", "/settings/operator", func() map[string]any {
+			m := providerPreview(provider)
+			m["Operator"] = operatorView{SyncDevices: []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.UnixMilli()}},
+				BOOX: &BOOXOperator{Numbered: 3, Deleted: 12}, Obsolete: 4, Server: serverFacts{Database: 245 << 20, Files: 1869 << 20, Postgres: "17.11"}}
+			return m
+		}()},
+		{"jobs-size", "jobs-size", "Notebook size limits", "jobs", "/jobs/size", map[string]any{"Limit": 100, "Rows": []recognition.SizeChoice{{Choice: recognition.Choice{Source: "boox", ID: "n", Title: "Synthetic archive"}, Pages: 240}}}},
 		{"jobs-active", "jobs", "Recognition", "jobs", "/jobs", recognitionFixture("active")},
 		{"jobs-attention", "jobs", "Recognition", "jobs", "/jobs", recognitionFixture("attention")},
 		{"jobs-skipped", "jobs", "Recognition", "jobs", "/jobs", recognitionFixture("skipped")},
@@ -94,7 +110,6 @@ func previewPages() []previewPage {
 		{"client-notebooks-empty", "notebooks", "Notebooks", "notebooks", "/files/forestnote", clientList{All: true}},
 		{"client-books", "books", "Books", "books", "/files/forestnote/books", clientBooksPreview(false)},
 		{"client-books-selected", "books", "Books", "books", "/files/forestnote/books", clientBooksPreview(true)},
-		{"client-devices", "devices", "Client devices", "devices", "/settings/devices", map[string]any{"Devices": []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.UnixMilli(), FirstSeenMs: 1}}}},
 		{"tasks", "tasks", "Today", "tasks", "/", todayPreview(openTasks, doneTasks, taskView{Sort: "due", Dir: "asc"}, now, map[string]any{
 			"Events":       []todayEvent{{Day: "Tue 27", Time: "14:00", Title: "Synthetic review", From: "Synthetic notebook", Link: "#"}, {Day: "Thu 29", Time: "All day", Title: "Synthetic holiday", Link: "#"}},
 			"NeedsRestore": 1})},
@@ -102,7 +117,6 @@ func previewPages() []previewPage {
 		{"tasks-edit", "tasks", "Today", "tasks", "/?edit=t1", todayPreview(openTasks, doneTasks, taskView{Sort: "updated", Dir: "desc", Edit: "t1"}, now, nil)},
 		{"tasks-empty", "tasks", "Today", "tasks", "/", todayPreview(nil, nil, taskView{Sort: "due", Dir: "asc"}, now, nil)},
 		{"tasks-trash", "tasks", "Deleted tasks", "tasks", "/?show=deleted", todayPreview(trashTasks, nil, taskView{Trash: true, Sort: "updated", Dir: "desc"}, now, nil)},
-		{"sources", "sources", "Add source", "sources", "/sources", nil},
 		{"help", "help", "Help", "help", "/help", map[string]any{"NativeBOOX": true}},
 	}
 }
@@ -147,6 +161,14 @@ func clientBooksPreview(selected bool) clientBooks {
 	return v
 }
 
+// providerPreview is the data the AI model sections render with.
+func providerPreview(v *providers.View) map[string]any {
+	a := v.Config.Actions
+	return map[string]any{"Providers": v, "DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat,
+		"DefaultTaskInstructions": "Synthetic task instructions.", "DefaultEventInstructions": "Synthetic event instructions.",
+		"ActionColors": []struct{ Name, Action string }{{"red", a.For("red")}, {"blue", a.For("blue")}}, "ActionsSince": "2026-10-06 12:00 UTC", "AutoSince": "2026-10-06 12:00 UTC"}
+}
+
 // renderPreview executes a page exactly as the server would, minus HTTP.
 func renderPreview(t *testing.T, p previewPage) []byte {
 	t.Helper()
@@ -156,10 +178,12 @@ func renderPreview(t *testing.T, p previewPage) []byte {
 	}
 	var buf bytes.Buffer
 	if err == nil {
-		tab, source := libraryTab(httptest.NewRequest("GET", p.path, nil))
-		err = clone.ExecuteTemplate(&buf, "layout.html", page{Title: p.title, Section: p.section, SourceTab: sourceTab(p.path, p.section),
-			ClientSource: p.section == "notebooks" || p.section == "books" || p.section == "devices" || p.section == "client-settings",
-			NativeBOOX:   true, Base: "https://library.example", Data: p.data, LibraryTab: tab, LibrarySource: source})
+		r := httptest.NewRequest("GET", p.path, nil)
+		tab, source := libraryTab(r)
+		q := r.URL.Query()
+		err = clone.ExecuteTemplate(&buf, "layout.html", page{Title: p.title, Section: p.section, SourceTab: sourceTab(r.URL.Path, p.section),
+			NativeBOOX: true, Base: "https://library.example", Data: p.data, LibraryTab: tab, LibrarySource: source,
+			SettingsSection: settingsSection(r), Notice: q.Get("notice"), Saved: q.Get("saved") == "1"})
 	}
 	if err != nil {
 		t.Fatalf("%s: %v", p.file, err)

@@ -20,13 +20,13 @@ var (
 	templateT  = regexp.MustCompile(`\{\{-?\s*th? (` + quoted + `)((?:` + quoted + `|[^"}]|\}[^}])*)\}\}`)
 	goPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`i18n\.M\((` + quoted + `)\)`),
-		regexp.MustCompile(`\b(?:render|renderPage)\(w, r, [^,]+, (` + quoted + `)`),
+		regexp.MustCompile(`\b(?:render|renderPage|renderSettingsPage)\(w, r, [^,]+, (` + quoted + `)`),
 		regexp.MustCompile(`(?m)^\s*notice\w* *:?= *(` + quoted + `)`),
 		regexp.MustCompile(`notice="\+url\.QueryEscape\((` + quoted + `)\)`),
 	}
 	// T("ID", args…) in Go: plural when the only argument is a count or a "Count" pair is given.
 	goT        = regexp.MustCompile(`\bT\((?:r, )?(` + quoted + `)(?:, ([^)]*))?\)`)
-	backNotice = regexp.MustCompile(`\bback\(w, r, [^,]+, (` + quoted + `)(, [^)]+)?\)`)
+	backNotice = regexp.MustCompile(`\bback\(w, r, [^,(]+(?:\([^)]*\)[^,(]*)*, (` + quoted + `)(, [^)]+)?\)`)
 )
 
 type usedMessages map[string]bool // ID → plural

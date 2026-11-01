@@ -52,13 +52,37 @@ func TestShellHeaderAndTheme(t *testing.T) {
 	}
 }
 
-func TestShellLibrarySourceSwitch(t *testing.T) {
-	boox := shellGet(t, Deps{PublicURL: shellOrigin, Status: Status{NativeBOOX: true}}, "/sources")
-	if !strings.Contains(boox, `class="source-switch"`) || !strings.Contains(boox, `href="/library" aria-current="page"`) {
-		t.Error("Library pages need the source switch and the Library nav item")
+// Settings is one page per section with its own nav; the old addresses
+// redirect to the section that replaced them.
+func TestShellSettingsNav(t *testing.T) {
+	d := Deps{PublicURL: shellOrigin, Status: Status{NativeBOOX: true}}
+	page := shellGet(t, d, "/settings")
+	for _, want := range []string{`class="settings-nav"`, `href="/settings" aria-current="page">Account`, `href="/settings/operator"`, `href="/settings" aria-current="page">Settings`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("Settings lacks %q", want)
+		}
 	}
-	if client := shellGet(t, Deps{PublicURL: shellOrigin}, "/sources"); strings.Contains(client, `class="source-switch"`) {
-		t.Error("with only the Client source there is nothing to switch")
+	if strings.Contains(page, "source-switch") || strings.Contains(page, "source-tabs") {
+		t.Error("Settings shows a source switch or the old tab row")
+	}
+	h := Handler(d)
+	for from, to := range map[string]string{
+		"/settings/recognition?section=minutes":    "/settings/models?section=minutes#minutes",
+		"/settings/recognition?section=automatic":  "/settings/automatic",
+		"/settings/recognition?section=page-limit": "/jobs/size",
+		"/settings/recognition":                    "/settings/models",
+		"/settings/integrations?section=api":       "/settings/api",
+		"/settings/integrations":                   "/settings/calendar",
+		"/sources":                                 "/settings/devices#add",
+		"/sources/client":                          "/settings/devices#add",
+		"/files/forestnote/devices":                "/settings/devices#client",
+		"/library/overview":                        "/library",
+	} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", shellOrigin+from, nil))
+		if w.Code != http.StatusMovedPermanently || w.Header().Get("Location") != to {
+			t.Errorf("GET %s: %d → %q, want %q", from, w.Code, w.Header().Get("Location"), to)
+		}
 	}
 }
 

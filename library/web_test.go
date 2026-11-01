@@ -67,10 +67,10 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/files/forestnote/books":                               "No books yet",
 		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, page 1",
 		"/tasks":                                                "Nothing to do",
-		"/library/overview":                                     "<span class=\"stat\">1</span><br><span class=\"stat-label\">notebooks</span>",
-		"/files/forestnote/devices":                             "<h2>Connect a Device</h2>",
-		"/settings/integrations":                                "/caldav/user/calendars/tasks/",
-		"/settings/integrations?events":                         "/caldav/user/calendars/events/",
+		"/settings/devices":                                     "No Client devices have connected yet.",
+		"/settings/devices?counts":                              "1 notebook · ",
+		"/settings/calendar":                                    "/caldav/user/calendars/tasks/",
+		"/settings/calendar?events":                             "/caldav/user/calendars/events/",
 		"/calendar":                                             "No events.",
 		"/calendar?show=deleted":                                "Deleted Events",
 		"/help":                                                 "Handwriting recognition",
@@ -90,8 +90,8 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 			t.Fatalf("%s: double-escaped link", path)
 		}
 	}
-	if got := b.do("GET", "/library/overview", "", nil, true); got.Code != 200 || !strings.Contains(got.Body.String(), "Your Library") || !strings.Contains(got.Body.String(), "Alexandria Client") {
-		t.Fatalf("home: %d", got.Code)
+	if got := b.do("GET", "/library/overview", "", nil, true); got.Code != 301 || got.Header().Get("Location") != "/library" {
+		t.Fatalf("old overview: %d", got.Code)
 	}
 	if got := b.do("GET", "/files/forestnote/render?path=forestnote://00000000000000000000000NB1/00000000000000000000000PG1", "", nil, true); got.Code != 200 || got.Header().Get("Content-Type") != "image/jpeg" {
 		t.Fatalf("render: %d", got.Code)
@@ -114,7 +114,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 	if got := b.do("POST", "/settings/caldav", "collection=Tasks&due_mode=preserve&events_collection=Calendar&time_zone=America%2FChicago", sameSite, true); got.Code != 303 {
 		t.Fatalf("save time zone: %d", got.Code)
 	}
-	if page := b.do("GET", "/settings/integrations", "", nil, true).Body.String(); !strings.Contains(page, `<option value="America/Chicago" selected>Chicago (UTC`) || !strings.Contains(page, `<optgroup label="Europe">`) {
+	if page := b.do("GET", "/settings/calendar", "", nil, true).Body.String(); !strings.Contains(page, `<option value="America/Chicago" selected>Chicago (UTC`) || !strings.Contains(page, `<optgroup label="Europe">`) {
 		t.Fatalf("time zone menu:\n%s", page)
 	}
 	if got := b.do("POST", "/settings/caldav", "collection=Tasks&due_mode=preserve&time_zone=Mars%2FOlympus", sameSite, true); got.Code != 303 || !strings.Contains(got.Header().Get("Location"), "Choose+a+time+zone") {
@@ -313,21 +313,21 @@ func TestDevicesPageListsAndRevokes(t *testing.T) {
 	if got := enroll(r, `{"site_id":"`+site+`","token_hash":"`+hash+`"}`, nil); got.Code != 204 {
 		t.Fatal(got.Code)
 	}
-	if old := b.do("GET", "/settings/devices", "", nil, true); old.Code != 301 || old.Header().Get("Location") != "/files/forestnote/devices" {
+	if old := b.do("GET", "/files/forestnote/devices", "", nil, true); old.Code != 301 || old.Header().Get("Location") != "/settings/devices#client" {
 		t.Fatalf("old devices path: %d %s", old.Code, old.Header().Get("Location"))
 	}
-	got := b.do("GET", "/files/forestnote/devices", "", nil, true)
+	got := b.do("GET", "/settings/devices", "", nil, true)
 	if got.Code != 200 || !strings.Contains(got.Body.String(), site) || !strings.Contains(got.Body.String(), "Active") {
 		t.Fatalf("devices: %d %s", got.Code, got.Body)
 	}
-	if got := b.do("POST", "/settings/devices/revoke", "site_id="+site, sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/files/forestnote/devices") {
+	if got := b.do("POST", "/settings/devices/revoke", "site_id="+site, sameSite, true); got.Code != 303 || !strings.HasPrefix(got.Header().Get("Location"), "/settings/devices?section=client") {
 		t.Fatalf("revoke: %d", got.Code)
 	}
 	var revoked bool
 	if err := db.QueryRow(`SELECT revoked FROM sync_device_identity WHERE site_id=$1`, site).Scan(&revoked); err != nil || !revoked {
 		t.Fatal("not revoked", err)
 	}
-	if got := b.do("GET", "/files/forestnote/devices", "", nil, true); !strings.Contains(got.Body.String(), "Revoked") {
+	if got := b.do("GET", "/settings/devices", "", nil, true); !strings.Contains(got.Body.String(), "Revoked") {
 		t.Fatal("revoked state not shown")
 	}
 }

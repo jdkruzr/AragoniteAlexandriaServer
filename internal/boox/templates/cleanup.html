@@ -1,5 +1,6 @@
-{{define "content"}}{{$d:=.Data}}
-<p class="crumbs">{{th "<a href=\"/boox\">Notebooks</a> /"}}</p><h1>{{t "Clean Up Numbered Notebooks"}} {{template "help" "boox.cleanup"}}</h1>
+{{define "content"}}<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main op-page">{{$d:=.Data}}
+<p class="crumbs"><a href="/settings">{{t "Settings"}}</a> / <a href="/settings/operator">{{t "Operator tools"}}</a> /</p><h1>{{t "Clean Up Numbered Notebooks"}} {{template "help" "boox.cleanup"}}</h1>
 {{if $d.Batch}}
 <h2>{{t "Cleanup Progress"}}</h2><p><strong>{{t "{{.Count}} published" $d.Published}}</strong> · {{t "{{.Pending}} pending · {{.Blocked}} blocked or superseded · {{.Cancelled}} cancelled · {{.Total}} total" "Pending" $d.Pending "Blocked" $d.Blocked "Cancelled" $d.Cancelled "Total" $d.Total}}</p>
 <p class="small muted">{{th "<strong>Published</strong> means the deletion reached the sync server; each tablet applies it on its next sync. Pending items retry automatically, and this page refreshes while work remains. <strong>Blocked</strong> notebooks changed after your review; <strong>superseded</strong> ones were edited on a device after publication. <a href=\"/boox/cleanup\">Review current matches</a> before trying again."}}</p>
@@ -17,4 +18,5 @@
 <button name="action" value="queue" class="destructive">{{t "Delete selected notebooks"}}</button></form>
 {{else}}<p class="empty">{{t "No numbered notebooks to clean up."}}</p>{{end}}
 {{if $d.Recent}}<h2>{{t "Recent Cleanups"}}</h2><ul>{{range $d.Recent}}<li><a href="/boox/cleanup?batch={{.ID}}">{{.Created.UTC.Format "2006-01-02 15:04:05"}} UTC · {{t "{{.Count}} notebooks" .Total}}</a></li>{{end}}</ul>{{end}}
-{{end}}{{end}}
+{{end}}
+</div></div>{{end}}

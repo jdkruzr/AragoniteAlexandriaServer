@@ -209,7 +209,7 @@ func (s Service) cleanupHTTP(w http.ResponseWriter, r *http.Request) {
 		s.failure(w, "cleanupHTTP", e)
 		return
 	}
-	s.renderPage(w, r, cleanupTemplate, "Clean Up BOOX Notebooks", d)
+	s.renderSettingsPage(w, r, cleanupTemplate, "Clean up numbered notebooks", d)
 }
 
 var cleanupTemplate = template.Must(template.New("cleanup.html").Funcs(listFuncs()).ParseFS(templateFS, "templates/cleanup.html"))

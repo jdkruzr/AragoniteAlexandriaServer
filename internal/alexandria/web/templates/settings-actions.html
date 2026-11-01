@@ -1,0 +1,30 @@
+{{define "content"}}{{$d := .Data}}
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main">
+{{if $d.Providers}}{{$p := $d.Providers}}
+<section class="set-group" id="note-actions">
+<h2>{{t "Note actions"}} {{template "help" "actions.overview"}}</h2>
+<p class="set-desc">{{t "Handwriting in an assigned BOOX pen color becomes tasks or calendar events, each linking back to its page."}}</p>
+{{if $d.ActionsWhy}}<p class="notice" data-actions-state="waiting">{{t $d.ActionsWhy}}</p>{{else}}<p class="set-status" data-actions-state="on">{{t "On. Ink written since {{.When}} is read when its page is recognized." "When" $d.ActionsSince}}</p>{{end}}
+{{template "group-notice" ($.Group "note-actions")}}
+<form method="post" action="/settings/actions" class="stack set-form"><input type="hidden" name="revision" value="{{$p.Revision}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}>
+<label><input type="checkbox" name="x_on" {{if not $p.Config.Actions.Off}}checked{{end}}> {{t "Find tasks and events in colored ink"}}</label>
+<div class="set-grid">{{range $c := $d.ActionColors}}<label><span>{{if eq $c.Name "red"}}{{t "Red ink"}}{{else}}{{t "Sky blue ink"}}{{end}} <span class="swatch {{$c.Name}}" aria-hidden="true"></span></span>
+<select class="input" name="x_{{$c.Name}}"><option value="task" {{if eq $c.Action "task"}}selected{{end}}>{{t "Makes tasks"}}</option><option value="event" {{if eq $c.Action "event"}}selected{{end}}>{{t "Makes calendar events"}}</option><option value="off" {{if eq $c.Action "off"}}selected{{end}}>{{t "Nothing"}}</option></select></label>{{end}}</div>
+</fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Task instructions"}} {{template "help" "actions.instructions"}}</legend>
+<textarea class="input" name="x_task_instructions" rows="10" maxlength="16000" aria-label="{{t "Task instructions"}}">{{with $p.Config.Actions.TaskInstructions}}{{.}}{{else}}{{$d.DefaultTaskInstructions}}{{end}}</textarea>
+<details class="more"><summary>{{t "Response format (always added)"}}</summary><pre>{{$d.TaskFormat}}</pre></details>
+</fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Event instructions"}}</legend>
+<textarea class="input" name="x_event_instructions" rows="10" maxlength="16000" aria-label="{{t "Event instructions"}}">{{with $p.Config.Actions.EventInstructions}}{{.}}{{else}}{{$d.DefaultEventInstructions}}{{end}}</textarea>
+<details class="more"><summary>{{t "Response format (always added)"}}</summary><pre>{{$d.EventFormat}}</pre></details>
+</fieldset>
+<p class="hint">{{t "Clear a box and save to go back to the built-in instructions. Uses the recognition provider and summary model in AI models; charges may apply."}}</p>
+<div class="set-actions"><button class="btn btn-primary" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button>{{template "saved" ($.Group "note-actions")}}</div>
+</form>
+</section>
+{{else}}<p class="set-lede">{{t "AI tools and recognition are configured by this deployment."}}</p>{{end}}
+</div></div>
+{{end}}

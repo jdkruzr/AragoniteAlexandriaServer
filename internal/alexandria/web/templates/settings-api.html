@@ -1,0 +1,21 @@
+{{define "content"}}{{$d := .Data}}
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main">
+<section class="set-group" id="api">
+<h2>{{t "API & MCP"}} {{template "help" "api.mcp"}}</h2>
+<p class="set-desc">{{t "Connect assistants and other tools. Claude on the web connects with the MCP address and asks you to approve access here; other clients use a token."}}</p>
+<dl class="set-facts"><div><dt>{{t "MCP address"}}</dt><dd>{{template "copy" (printf "%s/mcp" .Base)}}</dd></div></dl>
+{{with $d.NewToken}}<div class="set-panel" role="status"><p>{{th "Copy this token for <strong>{{.Name}}</strong> now. It won't be shown again." "Name" $d.NewLabel}}</p>{{template "copy" .}}</div>{{end}}
+{{template "group-notice" ($.Group "api")}}
+<form method="post" action="/settings/tokens/create" class="set-inline">
+<label class="field-col">{{t "New token"}} <input class="input" name="label" placeholder="{{t "What is this token for?"}}" maxlength="100"></label><button class="btn btn-primary">{{t "Create token"}}</button>
+</form>
+<ul class="set-rows">{{range $d.Tokens}}
+<li class="set-row"><div class="set-row-main"><span class="set-row-title">{{if eq .Label $d.OAuthLabel}}{{t "Claude (approved here)"}}{{else}}{{.Label}}{{end}}</span>
+<span class="set-row-sub">{{t "Created {{.When}}" "When" (.Created.Local.Format "2006-01-02")}} · {{if .LastUsed}}{{t "last used {{.When}}" "When" (.LastUsed.Local.Format "2006-01-02 15:04")}}{{else}}{{t "never used"}}{{end}}</span></div>
+<form method="post" action="/settings/tokens/revoke"><input type="hidden" name="token_hash" value="{{.Hash}}"><button class="btn btn-ghost btn-sm">{{t "Revoke"}}</button></form></li>
+{{else}}<li class="empty">{{t "No tokens yet."}}</li>{{end}}</ul>
+{{with ($.Group "api")}}{{if .Saved}}<p>{{template "saved" .}}</p>{{end}}{{end}}
+</section>
+</div></div>
+{{end}}

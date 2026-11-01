@@ -35,14 +35,14 @@ mkdir -p "$out"
 while read -r name height; do
 	shot "$work/site/$name.html" "$out/$name.png" 1280 "$height"
 done <<'EOF'
-overview 760
+settings-devices 900
 boox-notebook 1300
 boox-notebooks 900
 search 830
 tasks 900
 calendar 690
 boox-minutes 900
-settings-recognition 900
+settings-models 900
 jobs 900
 EOF
 echo "wrote $(ls "$out"/*.png | wc -l) screenshots to $out"

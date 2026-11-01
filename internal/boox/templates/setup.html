@@ -1,14 +1,22 @@
-{{define "content"}}
-<p class="crumbs">{{th "<a href=\"/boox/devices\">BOOX devices</a> /"}}</p>
-<h1>{{t "Connect a BOOX Device"}} {{template "help" "boox.enroll"}}</h1>
-<section class="card">
-<ol>
-<li>{{th "Install <strong>PowerSync</strong> on the tablet."}}</li>
-<li>{{th "Enter <code>{{.URL}}</code> as the server address." "URL" .Base}}</li>
-<li>{{t "Create a code below and type it into PowerSync. It works once and expires after ten minutes."}}</li>
+{{define "content"}}{{$d := .Data}}
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main">
+<p class="crumbs"><a href="/settings/devices#boox">{{t "Devices"}}</a> /</p>
+<section class="set-group" id="pair">
+<h2>{{t "Connect a BOOX"}} {{template "help" "boox.enroll"}}</h2>
+<div class="set-panel">
+<ol class="pair-steps">
+<li>{{th "Install <strong>PowerSync</strong> on the tablet and open it."}}</li>
+<li>{{t "Enter this server's address:"}} {{template "copy" .Base}}</li>
+<li>{{if $d.Code}}{{t "Enter the code"}} <strong class="pair-code">{{$d.Code}}</strong> {{t "(expires in 10 minutes)"}}{{else}}{{t "Create a code and type it into PowerSync. It works once and expires after ten minutes."}}{{end}}</li>
 </ol>
-{{if .Data}}<p>{{t "Enrollment code:"}}</p><code class="secret">{{.Data}}</code>{{end}}
-<form class="actions" method="post" action="/boox/enroll"><button>{{if .Data}}{{t "Create another code"}}{{else}}{{t "Create enrollment code"}}{{end}}</button></form>
+<form method="post" action="/boox/enroll"><button class="btn {{if $d.Code}}btn-secondary{{else}}btn-primary{{end}}">{{if $d.Code}}{{t "Create another code"}}{{else}}{{t "Create a code"}}{{end}}</button></form>
+</div>
+<div id="pairing" data-live-region data-live-key="pairing">
+{{range $d.Connected}}<p class="notice" role="status">{{t "{{.Model}} connected." "Model" .Model}} <a href="/settings/devices#boox">{{t "See it in Devices"}}</a></p>{{end}}
+{{if $d.Waiting}}<p class="set-status">{{t "Waiting for the tablet… it appears in Devices once it connects."}}</p>{{end}}
+</div>
+<p class="set-desc">{{t "Every tablet must use the same BOOX account. In PowerSync 0.3 or later, choose Connect to Alexandria and follow the permission and confirmation steps. Notebook and reading sync are enabled after connection; individually excluded content stays excluded. Earlier versions require enabling both sync checkboxes. Your existing BOOX library is kept, and returning to the previous server does not need this server."}}</p>
 </section>
-<p class="small muted">{{t "Every tablet must use the same BOOX account. In PowerSync 0.3 or later, choose Connect to Alexandria and follow the permission and confirmation steps. Notebook and reading sync are enabled after connection; individually excluded content stays excluded. Earlier versions require enabling both sync checkboxes. Your existing BOOX library is kept, and returning to the previous server does not need this server."}}</p>
+</div></div>
 {{end}}

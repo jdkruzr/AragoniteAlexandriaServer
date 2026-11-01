@@ -1,0 +1,105 @@
+{{define "content"}}{{$d := .Data}}
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main">
+{{if $d.Providers}}{{$p := $d.Providers}}
+<p class="set-lede">{{t "The models Alexandria uses for handwriting, audio note minutes and search by meaning. Nothing is sent until you queue work, or automatically once automatic processing is on."}} {{template "help" "recognition.where"}}</p>
+{{if $p.Locked}}<p class="notice">{{t "Provider settings are locked by the deployment."}}</p>{{else if not $p.CanSave}}<p class="notice">{{t "The deployment needs a settings encryption key before provider credentials can be saved."}}</p>{{end}}
+<section class="set-group" id="provider">
+<h2>{{t "Handwriting recognition"}} {{template "help" "recognition.provider"}}</h2>
+<p class="set-status">{{if $p.Config.OCR.Enabled}}<span class="tag tag-accent">{{t "On"}}</span>{{else}}<span class="tag tag-neutral">{{t "Off"}}</span>{{end}}{{with $p.Config.OCR.Model}} <code>{{.}}</code>{{end}}{{with $p.Config.OCR.URL}} · <code>{{.}}</code>{{end}}</p>
+{{template "group-notice" ($.Group "provider")}}
+<form method="post" action="/settings/providers" class="stack set-form">
+<input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="recognition">
+{{/* The provider form saves both providers at once; carry the saved embedding settings unchanged. */}}
+{{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}<input type="hidden" name="embed_url" value="{{$p.Config.Embedding.URL}}"><input type="hidden" name="embed_model" value="{{$p.Config.Embedding.Model}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}>
+<label><input type="checkbox" name="ocr_enabled" {{if $p.Config.OCR.Enabled}}checked{{end}}> {{t "Enable recognition"}}</label>
+<div class="set-grid">
+<label>{{t "API format"}} <select class="input" name="ocr_format"><option value="anthropic" {{if eq $p.Config.OCR.Format "anthropic"}}selected{{end}}>{{t "Anthropic Messages"}}</option><option value="openai" {{if eq $p.Config.OCR.Format "openai"}}selected{{end}}>{{t "OpenAI Chat Completions"}}</option></select></label>
+<label>{{t "Model"}} <input class="input" name="ocr_model" value="{{$p.Config.OCR.Model}}" maxlength="256"></label>
+<div class="field set-wide"><span><label for="ocr-url">{{t "Base URL"}}</label> {{template "help" "recognition.url"}}</span><input class="input" id="ocr-url" type="url" name="ocr_url" value="{{$p.Config.OCR.URL}}" maxlength="2048" placeholder="https://api.example.com"></div>
+<label>{{t "API key"}} <input class="input" type="password" name="api_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasKey}}{{t "Saved — leave blank to keep"}}{{else}}{{t "Never displayed after saving"}}{{end}}"></label>
+<label>{{t "Key action"}} <select class="input" name="key_action"><option value="keep">{{t "Use entered key, otherwise keep saved key"}}</option><option value="replace">{{t "Replace with entered key"}}</option><option value="clear">{{t "Clear saved key"}}</option></select></label>
+</div>
+<p class="hint">{{if $p.HasKey}}{{t "A key is saved."}}{{else}}{{t "No key is saved. Local servers usually don't need one."}}{{end}}</p>
+<details class="more"><summary>{{t "More options"}}</summary>
+<div class="stack">
+<div class="field"><span><label for="anthropic-workspace">{{t "Anthropic workspace ID (optional)"}}</label> {{template "help" "recognition.workspace"}}</span><input class="input" id="anthropic-workspace" name="anthropic_workspace" value="{{$p.Config.OCR.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></div>
+<div class="field"><span><label for="ocr-prompt">{{t "Recognition prompt"}}</label> {{template "help" "recognition.prompt"}}</span><textarea class="input" id="ocr-prompt" name="ocr_prompt" rows="4" maxlength="16000" aria-describedby="ocr-prompt-help" placeholder="{{$d.DefaultOCRPrompt}}">{{$p.Config.OCR.Prompt}}</textarea></div>
+<p id="ocr-prompt-help" class="hint">{{t "Leave blank to use the default prompt:"}} <q>{{$d.DefaultOCRPrompt}}</q></p>
+<label><input type="checkbox" name="vllm" {{if $p.Config.OCR.VLLMDisableThinking}}checked{{end}}> {{t "vLLM only: disable thinking (OpenAI format)"}}</label>
+</div>
+</details>
+</fieldset>
+<div class="set-actions"><button class="btn btn-primary" name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button class="btn btn-secondary" name="action" value="test_ocr">{{t "Test without saving"}}</button>{{template "help" "recognition.tests"}}{{template "saved" ($.Group "provider")}}</div>
+</form>
+</section>
+
+<section class="set-group" id="minutes">
+<h2>{{t "Audio note minutes"}} {{template "help" "minutes.providers"}}</h2>
+<p class="set-status">{{if and $p.Config.Transcription.Enabled $p.Config.Summary.Enabled}}<span class="tag tag-accent">{{t "On"}}</span>{{else}}<span class="tag tag-neutral">{{t "Off"}}</span>{{end}}{{with $p.Config.Transcription.Model}} <code>{{.}}</code>{{end}}{{with $p.Config.Summary.Model}} · <code>{{.}}</code>{{end}}</p>
+<p class="set-desc">{{t "Transcribe a BOOX note's recordings and summarize them together with its handwriting. Nothing is sent until you summarize a note and confirm."}}</p>
+{{template "group-notice" ($.Group "minutes")}}
+<form method="post" action="/settings/minutes" class="stack set-form">
+<input type="hidden" name="revision" value="{{$p.Revision}}">
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Transcription"}}</legend>
+<label><input type="checkbox" name="t_enabled" {{if $p.Config.Transcription.Enabled}}checked{{end}}> {{t "Enable transcription"}}</label>
+<div class="set-grid">
+<div class="field set-wide"><span><label for="t-url">{{t "Base URL"}}</label> {{template "help" "minutes.transcription"}}</span><input class="input" id="t-url" type="url" name="t_url" value="{{$p.Config.Transcription.URL}}" maxlength="2048" placeholder="http://whisper.local:8090"></div>
+<label>{{t "Model"}} <input class="input" name="t_model" value="{{$p.Config.Transcription.Model}}" maxlength="256" placeholder="whisper-large-v3-turbo"></label>
+<label>{{t "Language"}} <input class="input" name="t_language" value="{{$p.Config.Transcription.Language}}" maxlength="8" placeholder="{{t "Detect automatically"}}"></label>
+<label>{{t "API key"}} <input class="input" type="password" name="t_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasTranscriptionKey}}{{t "Saved — leave blank to keep"}}{{else}}{{t "Optional for local servers"}}{{end}}"></label>
+<label>{{t "Key action"}} <select class="input" name="t_key_action"><option value="keep">{{t "Use entered key, otherwise keep saved key"}}</option><option value="replace">{{t "Replace with entered key"}}</option><option value="clear">{{t "Clear saved key"}}</option></select></label>
+</div>
+</fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Summary model"}}</legend>
+<label><input type="checkbox" name="s_enabled" {{if $p.Config.Summary.Enabled}}checked{{end}}> {{t "Enable summaries"}}</label>
+<div class="set-grid">
+<label>{{t "API format"}} <select class="input" name="s_format"><option value="openai" {{if eq $p.Config.Summary.Format "openai"}}selected{{end}}>{{t "OpenAI Chat Completions"}}</option><option value="anthropic" {{if eq $p.Config.Summary.Format "anthropic"}}selected{{end}}>{{t "Anthropic Messages"}}</option></select></label>
+<label>{{t "Model"}} <input class="input" name="s_model" value="{{$p.Config.Summary.Model}}" maxlength="256"></label>
+<div class="field set-wide"><span><label for="s-url">{{t "Base URL"}}</label> {{template "help" "minutes.summary"}}</span><input class="input" id="s-url" type="url" name="s_url" value="{{$p.Config.Summary.URL}}" maxlength="2048" placeholder="http://llm.local:8080"></div>
+<label>{{t "API key"}} <input class="input" type="password" name="s_key" autocomplete="new-password" maxlength="8192" placeholder="{{if $p.HasSummaryKey}}{{t "Saved — leave blank to keep"}}{{else}}{{t "Never displayed after saving"}}{{end}}"></label>
+<label>{{t "Key action"}} <select class="input" name="s_key_action"><option value="keep">{{t "Use entered key, otherwise keep saved key"}}</option><option value="replace">{{t "Replace with entered key"}}</option><option value="clear">{{t "Clear saved key"}}</option></select></label>
+</div>
+<details class="more"><summary>{{t "More options"}}</summary><div class="stack">
+<label>{{t "Anthropic workspace ID (optional)"}} <input class="input" name="s_workspace" value="{{$p.Config.Summary.AnthropicWorkspace}}" maxlength="128" placeholder="wrkspc_…"></label>
+<label><input type="checkbox" name="s_vllm" {{if $p.Config.Summary.VLLMDisableThinking}}checked{{end}}> {{t "vLLM only: disable thinking (OpenAI format)"}}</label>
+</div></details>
+</fieldset>
+<p class="hint">{{if $p.HasTranscriptionKey}}{{t "A transcription key is saved."}}{{else}}{{t "No transcription key is saved."}}{{end}} {{if $p.HasSummaryKey}}{{t "A summary key is saved."}}{{else}}{{t "No summary key is saved."}}{{end}}</p>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "Summary instructions"}} {{template "help" "minutes.instructions"}}</legend>
+<textarea class="input" id="s-instructions" name="s_instructions" rows="12" maxlength="16000" aria-label="{{t "Summary instructions"}}" aria-describedby="s-instructions-help">{{with $p.Config.Summary.Instructions}}{{.}}{{else}}{{$d.DefaultMinutesInstructions}}{{end}}</textarea>
+<p id="s-instructions-help" class="hint">{{if $p.Config.Summary.Instructions}}{{t "You're using your own instructions."}}{{else}}{{t "These are the built-in instructions."}}{{end}} {{t "Clear the box and save to go back to the built-in ones. Changing them marks existing minutes as out of date; nothing is rewritten until you summarize a note again."}}</p>
+<details class="more"><summary>{{t "Response format (always added)"}}</summary><pre>{{$d.MinutesFormat}}</pre></details>
+</fieldset>
+<fieldset {{if not $p.CanSave}}disabled{{end}}><legend>{{t "When minutes are ready"}} {{template "help" "minutes.autosend"}}</legend>
+<label><input type="checkbox" name="s_boox" {{if $p.Config.Summary.SendToBOOX}}checked{{end}}> {{t "Send them to BOOX automatically"}}</label>
+<label>{{t "Language of headings in minutes notes"}} <select class="input" name="s_note_language"><option value="" {{if not $p.Config.Summary.NoteLanguage}}selected{{end}}>English</option><option value="auto" {{if eq $p.Config.Summary.NoteLanguage "auto"}}selected{{end}}>{{t "Match the recordings"}}</option>{{range languages}}{{if ne .Tag "en"}}<option value="{{.Tag}}" lang="{{.Tag}}" {{if eq $p.Config.Summary.NoteLanguage .Tag}}selected{{end}}>{{.Name}}</option>{{end}}{{end}}</select></label>
+<p class="hint">{{t "The minutes themselves are written in the recordings' language; this sets the headings and labels around them, such as “Key points”."}}</p>
+</fieldset>
+<div class="set-actions"><button class="btn btn-primary" name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button class="btn btn-secondary" name="action" value="test_transcription">{{t "Test transcription"}}</button><button class="btn btn-secondary" name="action" value="test_summary">{{t "Test summary"}}</button>{{template "saved" ($.Group "minutes")}}</div>
+</form>
+</section>
+
+<section class="set-group" id="embedding">
+<h2>{{t "Search by meaning"}} {{template "help" "semantic.provider"}}</h2>
+<p class="set-status">{{if $p.SavedEmbedding.Enabled}}<span class="tag tag-accent">{{t "On"}}</span>{{else}}<span class="tag tag-neutral">{{t "Off"}}</span>{{end}}{{with $p.SavedEmbedding.Model}} {{t "Saved model:"}} <code>{{.}}</code>{{end}}{{with $p.SavedEmbedding.URL}} · <code>{{.}}</code>{{end}}</p>
+{{template "group-notice" ($.Group "embedding")}}
+<form method="post" action="/settings/providers" class="stack set-form" id="semantic-advanced">
+<input type="hidden" name="revision" value="{{$p.Revision}}"><input type="hidden" name="page" value="embedding">
+{{/* The provider form saves both providers at once; carry the saved recognition settings unchanged. */}}
+{{with $p.Config.OCR}}{{if .Enabled}}<input type="hidden" name="ocr_enabled" value="on">{{end}}<input type="hidden" name="ocr_format" value="{{.Format}}"><input type="hidden" name="ocr_url" value="{{.URL}}"><input type="hidden" name="anthropic_workspace" value="{{.AnthropicWorkspace}}"><input type="hidden" name="ocr_model" value="{{.Model}}"><input type="hidden" name="ocr_prompt" value="{{.Prompt}}">{{if .VLLMDisableThinking}}<input type="hidden" name="vllm" value="on">{{end}}{{end}}<input type="hidden" name="key_action" value="keep">
+{{if $p.SavedEmbedding.Enabled}}<input type="hidden" name="embed_enabled" value="on">{{end}}
+<fieldset {{if not $p.CanSave}}disabled{{end}}>
+<div class="set-grid">
+<label class="set-wide">{{t "Base URL (Ollama-compatible)"}} <input class="input" type="url" name="embed_url" value="{{$p.Config.Embedding.URL}}" maxlength="2048" placeholder="http://ollama:11434"></label>
+<label>{{t "Embedding model"}} <input class="input" name="embed_model" value="{{$p.Config.Embedding.Model}}" maxlength="256" placeholder="nomic-embed-text:v1.5"></label>
+</div>
+<p class="hint">{{th "Changing the provider or model needs a new index, built from <a href=\"/settings/search\">Search by meaning</a>."}}</p>
+</fieldset>
+<div class="set-actions"><button class="btn btn-primary" name="action" value="save" {{if not $p.CanSave}}disabled{{end}}>{{t "Save"}}</button><button class="btn btn-secondary" name="action" value="test_embedding">{{t "Test without saving"}}</button>{{template "saved" ($.Group "embedding")}}</div>
+</form>
+</section>
+{{else}}<p class="set-lede">{{t "AI tools and recognition are configured by this deployment."}}</p>{{end}}
+</div></div>
+{{end}}

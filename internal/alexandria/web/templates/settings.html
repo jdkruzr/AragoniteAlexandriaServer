@@ -1,43 +1,40 @@
 {{define "content"}}{{$d := .Data}}
-<h1>{{t "Account"}}</h1>
-<div class="settings-tiles">
-{{if $d.LocalPasswords}}
-<details class="settings-tile" id="password" {{if eq .SettingsSection "password"}}open{{end}}>
-<summary><h2>{{t "Change Password"}}</h2><span class="settings-description">{{t "Change your account password without disconnecting devices."}}</span></summary>
-<div class="settings-body">
-{{if eq .SettingsSection "password"}}{{template "settings-notice" .}}{{end}}
-<p class="settings-help">{{template "help" "account.password"}}</p>
-<form method="post" action="/settings/password" class="stack">
-<label>{{t "Current password"}} <input type="password" name="current_password" autocomplete="current-password" required></label>
-<label>{{t "New password"}} <input type="password" name="new_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
-<label>{{t "Confirm new password"}} <input type="password" name="confirm_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
-<p class="hint">{{t "At least 12 characters. Devices and API tokens keep working."}}</p>
-<div><button>{{t "Change password"}}</button></div>
+<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main">
+{{if $d.LocalPasswords}}<section class="set-group" id="password">
+<h2>{{t "Change password"}} {{template "help" "account.password"}}</h2>
+{{template "group-notice" ($.Group "password")}}
+<p class="set-desc">{{t "At least 12 characters. Devices and API tokens keep working; this browser may ask you to sign in again."}}</p>
+<form method="post" action="/settings/password" class="set-form">
+<div class="set-grid">
+<label class="field-col">{{t "Current password"}} <input class="input" type="password" name="current_password" autocomplete="current-password" required></label>
+<label class="field-col">{{t "New password"}} <input class="input" type="password" name="new_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+<label class="field-col">{{t "Confirm new password"}} <input class="input" type="password" name="confirm_password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+</div>
+<div class="set-actions"><button class="btn btn-primary">{{t "Change password"}}</button>{{template "saved" ($.Group "password")}}</div>
 </form>
-
-</div>
-</details>
-{{else}}<p class="muted">{{t "Your sign-in is managed by the service hosting this library."}}</p>{{end}}
-<details class="settings-tile" id="language" {{if eq .SettingsSection "language"}}open{{end}}>
-<summary><h2>{{t "Language"}}</h2><span class="settings-description">{{t "Choose the language used in this browser."}}</span></summary>
-<div class="settings-body">
-{{if eq .SettingsSection "language"}}{{template "settings-notice" .}}{{end}}
-<form method="post" action="/settings/language" class="stack">
-<label>{{t "Show Alexandria in"}} <select name="language" id="display-language"><option value="">{{t "Your browser's language"}}</option>{{range $d.Languages}}<option value="{{.Tag}}" lang="{{.Tag}}" {{if eq $d.Language .Tag}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
-<p class="hint">{{t "Saved in this browser. Text that Alexandria writes onto your tablets is set separately."}}</p>
-<div><button>{{t "Save language"}}</button></div>
+</section>
+{{else}}<section class="set-group" id="sign-in"><h2>{{t "Sign-in"}}</h2><p class="set-desc">{{t "Your sign-in is managed by the service hosting this library."}}</p></section>{{end}}
+<section class="set-group" id="language">
+<h2>{{t "Language"}}</h2>
+{{template "group-notice" ($.Group "language")}}
+<p class="set-desc">{{t "Saved in this browser. Text that Alexandria writes onto your tablets is set separately."}}</p>
+<form method="post" action="/settings/language" class="set-form">
+<div class="set-grid"><label class="field-col">{{t "Show Alexandria in"}} <select class="input" name="language" id="display-language"><option value="">{{t "Your browser's language"}}</option>{{range $d.Languages}}<option value="{{.Tag}}" lang="{{.Tag}}" {{if eq $d.Language .Tag}}selected{{end}}>{{.Name}}</option>{{end}}</select></label></div>
+<div class="set-actions"><button class="btn btn-primary">{{t "Save language"}}</button>{{template "saved" ($.Group "language")}}</div>
 </form>
-
-</div>
-</details>
-<details class="settings-tile" id="about" {{if eq .SettingsSection "about"}}open{{end}}>
-<summary><h2>{{t "About This Server"}}</h2><span class="settings-description">{{t "Find this server’s address, version, and other settings."}}</span></summary>
-<div class="settings-body">
-{{if eq .SettingsSection "about"}}{{template "settings-notice" .}}{{end}}
-<p class="stats"><span><span class="stat-label">{{t "Address"}}</span><br><code>{{.Base}}</code></span><span><span class="stat-label">{{t "Version"}}</span><br><code>{{version}}</code></span></p>
-<p class="small muted">{{th "Other settings: <a href=\"/settings/search\">search by meaning</a>, <a href=\"/settings/recognition\">AI tools and recognition</a>, and <a href=\"/settings/integrations\">tasks, CalDAV and API access</a>."}}</p>
-
-</div>
-</details>
-</div>
+</section>
+<section class="set-group" id="theme">
+<h2>{{t "Theme"}}</h2>
+<p class="set-desc">{{t "Saved in this browser. The moon and sun buttons in the header switch it too."}}</p>
+<form method="post" action="/settings/theme" class="set-form"><input type="hidden" name="back" value="/settings#theme">
+<div class="seg" role="group" aria-label="{{t "Theme"}}"><button class="seg-opt" name="theme" value="auto" {{if not .Theme}}aria-pressed="true"{{end}}>{{t "Match this device"}}</button><button class="seg-opt" name="theme" value="light" {{if eq .Theme "light"}}aria-pressed="true"{{end}}>{{t "Light"}}</button><button class="seg-opt" name="theme" value="dark" {{if eq .Theme "dark"}}aria-pressed="true"{{end}}>{{t "Dark"}}</button></div>
+</form>
+</section>
+<section class="set-group" id="about">
+<h2>{{t "About this server"}}</h2>
+<dl class="set-facts"><div><dt>{{t "Address"}}</dt><dd>{{template "copy" .Base}}</dd></div><div><dt>{{t "Version"}}</dt><dd><code>{{version}}</code></dd></div></dl>
+<p class="set-desc">{{th "Storage and maintenance are in <a href=\"/settings/operator\">Operator tools</a>."}}</p>
+</section>
+</div></div>
 {{end}}

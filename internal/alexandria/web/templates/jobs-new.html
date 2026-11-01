@@ -1,5 +1,5 @@
 {{define "content"}}{{$d := .Data}}<p class="crumbs"><a class="back-link" href="/jobs">{{icon "arrow-left"}} {{t "Recognition"}}</a></p><h1>{{t "Recognize one notebook"}}</h1>
-{{if not $d.Enabled}}<p class="notice">{{th "Turn on handwriting recognition in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> before queueing pages."}}</p>{{end}}
+{{if not $d.Enabled}}<p class="notice">{{th "Turn on handwriting recognition in <a href=\"/settings/models\">Settings → AI models</a> before queueing pages."}}</p>{{end}}
 {{if $d.Notebook}}{{$n := $d.Notebook}}<h2>{{$n.Title}}</h2><p class="lib-sub">{{if eq $d.Source "boox"}}BOOX{{else}}Alexandria Client{{end}} · {{t "{{.Count}} pages" $d.Count}}</p>
 {{with $d.SizePolicy}}<section class="{{if .Limited}}notice notice-attention{{else}}rec-policy{{end}}" id="size-policy"><h3>{{t "Notebook size policy"}}</h3><p>{{t "Notebooks over {{.Count}} pages need an override before recognition." .Limit}}</p>{{if .Limited}}<p><strong>{{t "Over the recognition page limit"}}</strong></p>{{end}}
 <p>{{t "The limit applies to the whole notebook, including single-page requests. Existing recognized text is kept. Overrides never undo skips or restore deleted notebooks."}}</p>

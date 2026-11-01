@@ -16,7 +16,7 @@ being sent again.
 ## What You Need First
 
 - A vision model set up and **Enable recognition** ticked under
-  **Settings → AI Tools and Recognition → Provider**. See
+  **Settings → AI models → Handwriting recognition**. See
   [Set Up AI Models](ai-models.md) (or [Local Models](local-models.md) if you
   run your own).
 - Some notebooks. BOOX notebooks arrive through PowerSync (see
@@ -32,7 +32,7 @@ request size limit.
 
 | Scope | Where | What it sends |
 | --- | --- | --- |
-| Automatic | **Settings → AI Tools and Recognition → Automatic Processing** | New BOOX pages, as notebooks change |
+| Automatic | **Settings → Automatic processing** | New BOOX pages, as notebooks change |
 | One page | **Page text** in the notebook's **Page details** | That page |
 | One notebook, or some of its pages | **Recognition → Recognize one notebook…** | The page range you pick |
 | A whole library | **Recognition → Recognize a library…** | Every page in the notebooks you keep in the review |
@@ -46,8 +46,7 @@ setting only concerns BOOX.
 ### Automatic Recognition
 
 Automatic recognition is **on by default** as soon as a recognition provider
-is set up. The **Automatic Processing** card on **Settings → AI Tools and
-Recognition** says when it has been on since. To turn it off, untick
+is set up. **Settings → Automatic processing** says when it has been on since. To turn it off, untick
 **Recognize new BOOX pages automatically** and choose **Save automatic
 processing**.
 
@@ -257,7 +256,7 @@ halfway through the invoice.
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Buttons are disabled or say to set up a provider | Recognition isn't enabled | Tick **Enable recognition** in Settings → AI Tools and Recognition and save. |
+| Buttons are disabled or say to set up a provider | Recognition isn't enabled | Tick **Enable recognition** in Settings → AI models and save. |
 | Nothing happens automatically | Automatic recognition is turned off, the notebook hasn't changed since it started, or it hasn't been quiet for five minutes | Check **Automatic Processing**; use **Recognize one notebook…** or a library run for older notebooks. |
 | Jobs **failed** with "The provider rejected authentication or model access" | Wrong key, model name or API format | Fix the provider in Settings, use **Test without saving**, then **Retry**. |
 | "Provider rejected the request (HTTP …)" | Wrong endpoint, model or format | Check the base URL (no `/v1`), model and API format, then retry. |

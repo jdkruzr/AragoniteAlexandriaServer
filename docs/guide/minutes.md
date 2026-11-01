@@ -14,7 +14,7 @@ separate text note if you like.
 
 ## What You Need First
 
-In **Settings → AI Tools and Recognition → Audio Note Minutes**:
+In **Settings → AI models → Audio note minutes**:
 
 | Part | Setting | Notes |
 | --- | --- | --- |
@@ -127,8 +127,7 @@ themselves are written in the recordings' language.
 
 Automatic summaries are **on by default** once transcription and a summary
 model are set up. To turn them off, untick **Summarize notes with new
-recordings automatically** under **Settings → AI Tools and Recognition →
-Automatic Processing** and choose **Save automatic processing**.
+recordings automatically** under **Settings → Automatic processing** and choose **Save**.
 
 - It starts minutes for a note whose recording arrived **after automatic
   processing started**, once the note has gone without changes for **Wait
@@ -190,7 +189,7 @@ a device when you're done.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| The review page says to set up transcription and a summary model | One of them isn't enabled | Set both up in Settings → AI Tools and Recognition, then try again. |
+| The review page says to set up transcription and a summary model | One of them isn't enabled | Set both up in Settings → AI models, then try again. |
 | No **Audio Note Minutes** card in the viewer | The notebook has no recordings that reached the server | Let the tablet sync. If recordings are missing, see **Recover audio…** under the notebook's **Source and History**. |
 | Failed: "A recording could not be transcribed: …" | The transcription server refused or failed | Check the transcription settings with **Test transcription**, then **Retry**. |
 | "The recording is larger than the transcription upload limit (64 MiB)." | A very long recording | Keep future recordings shorter; this one can't be transcribed. |

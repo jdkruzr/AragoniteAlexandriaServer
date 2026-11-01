@@ -68,10 +68,10 @@ func TestSemanticPanelReadinessActionsAndOwnerBoundary(t *testing.T) {
 		}
 		return html
 	}
-	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", "Embedding Model", `href="/settings/recognition?section=embedding#embedding"`, "BOOX notebook pages")
-	// The embedding endpoint itself is set on the Recognition tab.
-	if rec := b.do("GET", "/settings/recognition", "", nil, true).Body.String(); !strings.Contains(rec, `id="embedding"`) || !strings.Contains(rec, `name="embed_url"`) {
-		t.Fatal("embedding settings missing from Recognition")
+	get("Ready", "Not built", "Turning this on sends your existing searchable text", "Enable and build index", `href="/settings/models?section=embedding#embedding"`, "BOOX notebook pages")
+	// The embedding endpoint itself is set in AI models.
+	if rec := b.do("GET", "/settings/models", "", nil, true).Body.String(); !strings.Contains(rec, `id="embedding"`) || !strings.Contains(rec, `name="embed_url"`) {
+		t.Fatal("embedding settings missing from AI models")
 	}
 	if inference.Load() != 0 {
 		t.Fatal("viewing Settings ran inference")

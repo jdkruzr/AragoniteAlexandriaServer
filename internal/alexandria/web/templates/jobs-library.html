@@ -1,7 +1,7 @@
 {{define "content"}}{{$d:=.Data}}
 <p class="crumbs"><a class="back-link" href="/jobs">{{icon "arrow-left"}} {{t "Recognition"}}</a></p><h1>{{t "Recognize a library"}} {{template "help" "recognition.library"}}</h1>
 {{$step := 1}}{{with $d.Run}}{{$step = 3}}{{if or (eq .State "preparing") (eq .State "review")}}{{$step = 2}}{{end}}{{end}}<ol class="rec-steps"><li {{if eq $step 1}}aria-current="step"{{end}}><span>1</span> {{t "Prepare"}}</li><li {{if eq $step 2}}aria-current="step"{{end}}><span>2</span> {{t "Review"}}</li><li {{if eq $step 3}}aria-current="step"{{end}}><span>3</span> {{t "Send"}}</li></ol>
-{{if $d.SourceUnavailable}}<p class="notice">{{t "This source is disabled in this deployment. Existing batch history remains available."}}</p>{{else if not $d.Enabled}}<p class="notice">{{th "Recognition is off. You can prepare a review now; turn on recognition in <a href=\"/settings/recognition\">Settings → AI Tools and Recognition</a> before confirming it."}}</p>{{end}}
+{{if $d.SourceUnavailable}}<p class="notice">{{t "This source is disabled in this deployment. Existing batch history remains available."}}</p>{{else if not $d.Enabled}}<p class="notice">{{th "Recognition is off. You can prepare a review now; turn on recognition in <a href=\"/settings/models\">Settings → AI models</a> before confirming it."}}</p>{{end}}
 {{if not $d.Run}}
 {{if $d.NativeBOOX}}<p class="rec-source">{{t "Source"}} <nav class="source-switch" aria-label="{{t "Source"}}"><a href="/jobs/library?source=boox" {{if eq $d.Source "boox"}}aria-current="page"{{end}}>BOOX</a><a href="/jobs/library?source=client" {{if eq $d.Source "client"}}aria-current="page"{{end}}>Alexandria Client</a></nav></p>{{end}}
 <ol class="steps">

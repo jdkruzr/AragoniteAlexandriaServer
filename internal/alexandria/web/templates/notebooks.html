@@ -12,7 +12,7 @@
 {{else}}<li class="lib-row" data-select="{{$l.Link "selected" .ID}}" data-open="/files/forestnote?notebook={{.ID}}"{{if $d.Selected}}{{if eq $d.Selected.ID .ID}} aria-current="true"{{end}}{{end}}>
 <span class="lib-main"><a class="lib-title" href="{{$l.Link "selected" .ID}}" data-select-link>{{if .Name}}{{.Name}}{{else}}{{t "Untitled notebook"}}{{end}}</a><span class="lib-sub">{{if $d.All}}{{if .FolderName}}{{.FolderName}}{{else}}{{t "Notebook root"}}{{end}} · {{end}}{{if eq .Status "indexed"}}{{t "Searchable"}}{{else if eq .Status "partial"}}{{t "Partly searchable"}}{{else}}{{t "Empty"}}{{end}}</span></span>
 <span class="lib-meta">{{t "{{.Count}} pp" .PageCount}}{{with day .ModifiedAt}} · {{.}}{{end}}</span></li>{{end}}
-{{else}}<li class="empty">{{t "Nothing here yet. Notebooks appear after a device syncs."}} <a href="/files/forestnote/devices">{{t "Connect a device"}}</a></li>{{end}}</ul>
+{{else}}<li class="empty">{{t "Nothing here yet. Notebooks appear after a device syncs."}} <a href="/settings/devices#client">{{t "Connect a device"}}</a></li>{{end}}</ul>
 {{if $d.Entries}}{{template "pagination" $l}}{{end}}
 </section>
 {{with $d.Selected}}<aside class="lib-preview" id="preview" aria-label="{{t "Preview"}}">

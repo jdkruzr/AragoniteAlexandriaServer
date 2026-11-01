@@ -58,6 +58,8 @@ var funcs = withFormats(template.FuncMap{
 	// direction names a list's order in its sort field's words ("A–Z").
 	"direction": directionLabel,
 	"runActive": runActive,
+	// settingsSections is the Settings nav, one page per section.
+	"settingsSections": settingsSections,
 	// kb rounds a byte count to whole kilobytes for display.
 	"kb": func(n int) int { return (n + 512) / 1024 },
 	// day is a list date in the owner's zone (see dayIn); bound per request.
@@ -65,6 +67,8 @@ var funcs = withFormats(template.FuncMap{
 	"listJobStates": func() []string {
 		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled", "skipped"}
 	},
+	// msTime turns Unix milliseconds into a time for ago and day.
+	"msTime": func(ms int64) time.Time { return time.UnixMilli(ms) },
 	"ms": func(ms int64) string {
 		if ms <= 0 {
 			return "—"
@@ -179,13 +183,16 @@ type Deps struct {
 	BOOXSummary func(context.Context) (SourceSummary, error)
 	// BOOXWork lists note actions and minutes on the Jobs page; nil without BOOX.
 	BOOXWork BOOXWorkFunc
+	// BOOXDevices lists BOOX tablets for Settings → Devices; nil without BOOX.
+	BOOXDevices func(context.Context) (BOOXDevices, error)
+	// BOOXOperator counts BOOX maintenance work for Operator tools; nil without BOOX.
+	BOOXOperator func(context.Context) (BOOXOperator, error)
 }
 
 type page struct {
 	SettingsSection string
 	Lang            string // HTML lang attribute
 	SourceTab       string
-	ClientSource    bool
 	NativeBOOX      bool
 	Title           string
 	Section         string // nav highlight
@@ -209,13 +216,30 @@ type page struct {
 	// LibraryTab is notebooks, books, tags or reader on a redesigned Library page,
 	// whose LibrarySource is boox or client; "" elsewhere.
 	LibraryTab, LibrarySource string
+	// Saved marks a Settings form's notice as a successful save.
+	Saved bool
+}
+
+// groupResult is one Settings group's form result.
+type groupResult struct {
+	Notice string
+	Saved  bool
+}
+
+// Group is the form result for the Settings group id: a save puts
+// "✓ <notice>" beside its button; anything else heads the group.
+func (p page) Group(id string) groupResult {
+	if p.SettingsSection != id {
+		return groupResult{}
+	}
+	return groupResult{p.Notice, p.Saved}
 }
 
 // InLibrary reports whether the page belongs under the Library nav item:
 // the overview and both sources' pages.
 func (p page) InLibrary() bool {
 	switch p.Section {
-	case "overview", "boox", "sources", "notebooks", "books", "devices", "client-settings":
+	case "boox", "notebooks", "books":
 		return true
 	}
 	return false
@@ -251,8 +275,8 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc), "day": d.dayIn(r, loc)}).Funcs(formatFuncs(loc))
 		w.Header().Set("Content-Language", loc.Lang())
 		w.Header().Add("Vary", "Accept-Language")
-		p := page{SettingsSection: settingsSection(r), Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), ClientSource: section == "notebooks" || section == "books" || section == "devices" || section == "client-settings", NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
-			Notice: notice(loc, r), Theme: Theme(r), Back: returnPath(r)}
+		p := page{SettingsSection: settingsSection(r), Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,
+			Notice: notice(loc, r), Theme: Theme(r), Back: returnPath(r), Saved: r.URL.Query().Get("saved") == "1"}
 		p.Attention, p.AttentionURL = d.attention(r.Context())
 		if p.LibraryTab, p.LibrarySource = libraryTab(r); p.LibrarySource != "" {
 			rememberLibrarySource(w, p.LibrarySource)
@@ -433,14 +457,13 @@ func back(w http.ResponseWriter, r *http.Request, path, notice string, count ...
 func Handler(d Deps) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /library", d.libraryHome)
-	mux.HandleFunc("GET /library/overview", d.overview)
+	// The overview's facts now live in Settings → Devices and the header.
+	mux.HandleFunc("GET /library/overview", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/library", http.StatusMovedPermanently)
+	})
 	mux.Handle("GET /static/", http.FileServerFS(assets))
 	mux.HandleFunc("GET /help", func(w http.ResponseWriter, r *http.Request) {
 		d.render(w, r, "help", "Help", "help", map[string]any{"NativeBOOX": d.Status.NativeBOOX})
-	})
-	mux.HandleFunc("GET /sources", func(w http.ResponseWriter, r *http.Request) { d.render(w, r, "sources", "Add Source", "sources", nil) })
-	mux.HandleFunc("GET /sources/client", func(w http.ResponseWriter, r *http.Request) {
-		d.render(w, r, "client-settings", "Alexandria Client Settings", "client-settings", nil)
 	})
 	d.notebookRoutes(mux)
 	d.bookRoutes(mux)
@@ -449,6 +472,7 @@ func Handler(d Deps) http.Handler {
 	d.calendarRoutes(mux)
 	d.deviceRoutes(mux)
 	d.settingsRoutes(mux)
+	d.settingsPageRoutes(mux)
 	d.providerRoutes(mux)
 	d.jobRoutes(mux)
 	d.authorizeRoutes(mux)
@@ -477,30 +501,22 @@ func Owns(path string) bool {
 	return path == "/" || path == "/library" || path == "/library/overview"
 }
 
+// sourceTab is the Settings nav entry a page belongs under.
 func sourceTab(path, section string) string {
-	switch section {
-	case "settings":
-		switch path {
-		case "/settings/providers", "/settings/minutes":
-			return "recognition"
-		case "/settings/tokens/create":
-			return "integrations"
-		case "/settings/search", "/settings/recognition", "/settings/integrations":
-			return strings.TrimPrefix(path, "/settings/")
-		}
-		return "account"
-	case "boox":
-		switch path {
-		case "/boox/reading", "/boox/books/upload", "/boox/books/manage", "/boox/books/trash", "/boox/reading/refresh":
-			return "reading"
-		case "/boox/tags":
-			return "tags"
-		case "/boox/devices", "/boox/enroll":
-			return "devices"
-		case "/boox/activity", "/boox/settings":
-			return "settings"
-		}
-		return "notebooks"
+	if section != "settings" {
+		return section
 	}
-	return section
+	switch path {
+	case "/settings", "/settings/password", "/settings/language":
+		return "account"
+	case "/settings/providers", "/settings/minutes":
+		return "models"
+	case "/settings/tokens/create":
+		return "api"
+	case "/boox/enroll":
+		return "devices"
+	case "/boox/activity", "/boox/cleanup", "/boox/text-notes/new":
+		return "operator"
+	}
+	return strings.TrimPrefix(path, "/settings/")
 }

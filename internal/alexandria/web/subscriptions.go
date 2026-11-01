@@ -13,7 +13,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 )
 
-const subscriptionSettings = "/settings/integrations?section=subscriptions#subscriptions"
+const subscriptionSettings = "/settings/calendar?section=subscriptions#subscriptions"
 const sourceCookie = "alexandria_calendar_sources"
 
 type calendarSource struct {

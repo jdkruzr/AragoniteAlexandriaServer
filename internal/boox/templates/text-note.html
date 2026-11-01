@@ -1,5 +1,6 @@
-{{define "content"}}{{$d:=.Data}}
-<p class="crumbs">{{th "<a href=\"/boox/settings\">BOOX settings</a> /"}}</p>
+{{define "content"}}<div class="settings">{{template "settings-nav" .}}
+<div class="settings-main op-page">{{$d:=.Data}}
+<p class="crumbs"><a href="/settings">{{t "Settings"}}</a> / <a href="/settings/operator">{{t "Operator tools"}}</a> /</p>
 <h1>{{t "Create a Test Text Note"}} {{template "help" "boox.textnote"}}</h1>
 {{if $d.Error}}<p role="alert">{{$d.Error}}</p>{{end}}
 {{if $d.State}}<section class="card"><h2>{{$d.Title}}</h2><p>{{t "Server publication:"}} <strong>{{$d.State}}</strong>{{if $d.Code}} ({{$d.Code}}){{end}}</p><p>{{t "Device delivery: not verified. Check the folder in BOOX Notes; if the notebook is listed but empty, use the Notes cloud sync button."}}</p><a href="/boox/text-notes/new?operation={{$d.ID}}">{{t "Refresh status"}}</a></section>{{end}}
@@ -9,4 +10,5 @@
 <label>{{t "Text"}} <textarea name="text" rows="10" required></textarea></label>
 <p class="small muted">{{t "One block per line. Start a line with \"# \" for a heading, or \"- \" or \"* \" for a bullet. \"**Label:** text\" starts a line in bold."}}</p>
 <label class="confirm"><input type="checkbox" name="confirm" required> {{t "Create this notebook on every connected BOOX device. Nothing existing is changed."}}</label>
-<p><button>{{t "Create text note"}}</button></p></form>{{end}}
+<p><button>{{t "Create text note"}}</button></p></form>
+</div></div>{{end}}

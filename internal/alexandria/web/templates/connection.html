@@ -7,7 +7,7 @@
 {{if ne .Kind "calendar"}}<label>{{t "Tasks collection address"}} <span class="copy-address"><input readonly value="{{.Tasks}}" aria-label="{{t "Tasks collection address"}}"><button type="button" class="secondary" data-copy hidden>{{t "Copy"}}</button></span></label>{{end}}
 {{if ne .Kind "tasks"}}<label>{{t "Calendar collection address"}} <span class="copy-address"><input readonly value="{{.Calendar}}" aria-label="{{t "Calendar collection address"}}"><button type="button" class="secondary" data-copy hidden>{{t "Copy"}}</button></span></label>{{end}}
 <p class="small" role="status" data-copy-status data-success="{{t "Copied."}}" data-failure="{{t "Copy is unavailable. The address is selected; copy it using your browser."}}">{{t "You can also select and copy these addresses yourself."}}</p>
-<a href="/settings/integrations">{{t "Tasks & Integrations"}}</a>
+<a href="/settings/calendar">{{t "Calendar & tasks settings"}}</a>
 </details>
 <script src="/static/connections.js?v={{version}}" defer></script>
 {{end}}

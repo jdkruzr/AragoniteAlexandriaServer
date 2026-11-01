@@ -19,12 +19,6 @@ import (
 // shared site shell. With ALEXANDRIA_UI_PREVIEW_DIR set it also writes them
 // next to the core web previews for screenshot review (docs/web-ui.md).
 func TestBOOXViewsRender(t *testing.T) {
-	now := time.Now()
-	type device struct {
-		ID, Model  string
-		Revoked    bool
-		LastUpload sql.NullTime
-	}
 	type diag struct {
 		ID, Revision, Domain, Title string
 		Supported                   bool
@@ -73,9 +67,8 @@ func TestBOOXViewsRender(t *testing.T) {
 		}()},
 		{"boox-reading-record", "/boox/reading", "Reading", readingTemplate, readingView{Record: "h", View: "all", Items: []readingItem{{ID: "h", Title: "Synthetic book", Kind: "Annotation", Quote: "A quoted passage.", Page: "12"}}}},
 		{"boox-book-trash", "/boox/books/trash", "Book Trash", bookTrashTemplate, bookTrashPage{Token: "t", Return: "/boox/books/trash", Items: []bookChoice{{ID: "b1", Name: "Synthetic trashed.epub", Trashed: true}, {ID: "b2", Name: "Another synthetic.pdf", Trashed: true}}, Shelves: []readingFolder{{ID: "s", Path: "Classics", Writable: true}}, Selected: &bookChoice{ID: "b1", Name: "Synthetic trashed.epub", Trashed: true}}},
-		{"boox-devices", "/boox/devices", "BOOX devices", devicesTemplate, []device{{ID: "8bc4cf5c-0000-4000-8000-000000000001", Model: "Synthetic Go 10.3", LastUpload: sql.NullTime{Time: now, Valid: true}}, {ID: "8bc4cf5c-0000-4000-8000-000000000002", Model: "Retired tablet", Revoked: true}}},
-		{"boox-enroll", "/boox/enroll", "Connect a BOOX device", setupTemplate, "ABCD-1234"},
-		{"boox-settings", "/boox/settings", "BOOX settings", booxSettings, nil},
+		{"boox-enroll", "/boox/enroll", "Connect a BOOX", setupTemplate, pairingView{Code: "ABCD-1234", Waiting: true}},
+		{"boox-enroll-connected", "/boox/enroll", "Connect a BOOX", setupTemplate, pairingView{Connected: []web.BOOXDevice{{ID: "8bc4cf5c-0000-4000-8000-000000000001", Model: "Synthetic Go 10.3", New: true}}}},
 		{"boox-diagnostics", "/boox/activity", "BOOX diagnostics", browseTemplate, struct {
 			Items                  []diag
 			Domains                []string
@@ -106,7 +99,12 @@ func TestBOOXViewsRender(t *testing.T) {
 	dir := os.Getenv("ALEXANDRIA_UI_PREVIEW_DIR")
 	for _, v := range views {
 		w := httptest.NewRecorder()
-		web.Deps{PublicURL: "https://library.example", Status: web.Status{NativeBOOX: true}}.RenderContent(w, httptest.NewRequest("GET", v.path, nil), v.tmpl, v.title, "boox", v.data)
+		section := "boox"
+		switch v.path {
+		case "/boox/enroll", "/boox/activity", "/boox/cleanup", "/boox/text-notes/new":
+			section = "settings"
+		}
+		web.Deps{PublicURL: "https://library.example", Status: web.Status{NativeBOOX: true}}.RenderContent(w, httptest.NewRequest("GET", v.path, nil), v.tmpl, v.title, section, v.data)
 		if w.Code != 200 {
 			t.Fatalf("%s: %d %s", v.name, w.Code, w.Body.String())
 		}

@@ -360,7 +360,7 @@ func (s Service) browse(w http.ResponseWriter, r *http.Request) {
 	if offset+size < d.Total {
 		d.Next = page(offset + size)
 	}
-	s.renderPage(w, r, browseTemplate, "BOOX Diagnostics", d)
+	s.renderSettingsPage(w, r, browseTemplate, "BOOX record browser", d)
 }
 
 func (s Service) assetHistory(w http.ResponseWriter, r *http.Request) {

@@ -2,7 +2,7 @@
 
 Alexandria uses AI models you choose for four jobs: a **vision model** that reads handwriting, a **transcription** service and a **summary model** for [Audio Note Minutes](minutes.md), and an **embedding model** for search by meaning. They're all set on one page, **Settings → AI Tools and Recognition**. Each one is just an HTTP endpoint, so it can be a hosted service, a model on your own GPU box, or a mix. Once a model is set up, automatic processing sends new BOOX material to it (you can turn that off); everything else waits until you queue it.
 
-![Settings → AI Tools and Recognition](../images/settings-recognition.png)
+![Settings → AI models](../images/settings-models.png)
 
 ## What You Need First
 
@@ -80,7 +80,7 @@ The **Search by Meaning** card holds the embedding endpoint. It needs an **Ollam
 
 Alexandria sends no API key to the embedding endpoint, so protect it with your network rather than a key (see [Run Models on Your Own Hardware](local-models.md)).
 
-Saving only sets the endpoint. To turn the feature on, go to **Settings → Search**:
+Saving only sets the endpoint. To turn the feature on, go to **Settings → Search by meaning**:
 
 | Status | Meaning |
 |---|---|
@@ -141,6 +141,6 @@ Note actions run only when a recognition provider, a summary model and **Recogni
 | An Anthropic test mentions the workspace | Your key can reach several workspaces. | Fill in **Anthropic workspace ID**. |
 | *Settings changed in another session. Reload before saving.* | The settings were saved from another tab. | Reload and redo your change. |
 | Recognition returns empty text or rambles | A reasoning model is spending its answer on thinking. | With vLLM, tick **vLLM only: disable thinking**, or use a non-reasoning vision model. |
-| **Provider** on Settings → Search says **Model missing** | The embedding model isn't installed on that Ollama. | Pull it there (for example `ollama pull nomic-embed-text:v1.5`). |
+| **Provider** on Settings → Search by meaning says **Model missing** | The embedding model isn't installed on that Ollama. | Pull it there (for example `ollama pull nomic-embed-text:v1.5`). |
 | *Provider credential cannot be decrypted.* | `ALEXANDRIA_SETTINGS_KEY` changed since the key was saved. | Restore the original `.env` value, or re-enter the keys. |
 | Changing settings didn't recognize anything | Saving never queues work. | Queue pages, run **Recognize a library…**, or check that automatic processing is ticked. |
