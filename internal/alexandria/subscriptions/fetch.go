@@ -130,7 +130,7 @@ func fetchDocument(ctx context.Context, client *http.Client, s Subscription, all
 		return f, ""
 	}
 	if resp.StatusCode != http.StatusOK {
-		return f, "http_error"
+		return f, httpCode(resp.StatusCode)
 	}
 	typ, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	switch strings.ToLower(typ) {

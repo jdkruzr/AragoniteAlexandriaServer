@@ -1,15 +1,16 @@
-// Native disclosures still work when JavaScript or browser storage is disabled.
 (() => {
-  document.querySelectorAll('details.calendar-disclosure').forEach(section => {
-    const key = 'alexandria.calendar.' + section.id + '.collapsed';
-    try {
-      const collapsed = localStorage.getItem(key);
-      if (collapsed !== null) section.open = collapsed !== 'true';
-    } catch (_) { /* Storage may be blocked by browser policy. */ }
-    section.addEventListener('toggle', () => {
-      try {
-        localStorage.setItem(key, String(!section.open));
-      } catch (_) { /* Collapsing does not require persistence. */ }
-    });
-  });
+  // The editor's end time follows the start, an hour later, until it is
+  // changed by hand. Without script the server does the same for an empty end.
+  const start = document.querySelector('.cal-form [data-start]');
+  const end = document.querySelector('.cal-form [data-end]');
+  if (start && end) {
+    const later = (value) => {
+      const [h, m] = value.split(':').map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return '';
+      return h >= 23 ? '23:59' : String(h + 1).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    };
+    let follows = !end.value || end.value === later(start.value);
+    end.addEventListener('input', () => { follows = false; });
+    start.addEventListener('input', () => { if (follows && start.value) end.value = later(start.value); });
+  }
 })();

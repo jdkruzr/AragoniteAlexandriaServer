@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
@@ -34,16 +33,6 @@ func docsPages() []previewPage {
 		{ID: "t4", Title: "Return The Overstory to the library", Status: tasksvc.StatusNeedsAction, CreatedAt: now.Add(-80 * time.Hour), UpdatedAt: now.Add(-80 * time.Hour)},
 	}
 	done := []tasksvc.Task{{ID: "t5", Title: "Get rain barrel quote", Status: tasksvc.StatusCompleted, CreatedAt: now.Add(-120 * time.Hour), UpdatedAt: now.Add(-5 * time.Hour)}}
-	row := func(e events.Event, src *NoteSource) calendarRow {
-		e.TZID = "America/Chicago"
-		return calendarRow{Event: e, When: eventWhen(e, chicago), Source: src}
-	}
-	upcoming := []calendarRow{
-		row(events.Event{ID: "e1", Title: "Seed swap at the library", Location: "Branch library, community room", Start: at(10, 28, 18, 30), End: at(10, 28, 19, 30)}, garden),
-		row(events.Event{ID: "e2", Title: "Water shut-off at the garden", Start: at(11, 1, 0, 0), End: at(11, 2, 0, 0), AllDay: true}, nil),
-		row(events.Event{ID: "e3", Title: "Book club: The Overstory", Start: at(11, 6, 19, 0), End: at(11, 6, 21, 0)}, nil),
-	}
-	past := []calendarRow{row(events.Event{ID: "e4", Title: "Garden committee", Start: at(10, 14, 18, 0), End: at(10, 14, 19, 30)}, nil)}
 	models := &providers.View{Revision: 12, CanSave: true, HasKey: true, ActiveModel: "nomic-embed-text:v1.5", IndexState: "ready", IndexedPages: 1874,
 		Availability:   providers.Availability{Label: "Ready", Detail: "The saved provider is reachable and this model is installed.", Ready: true},
 		SavedEmbedding: providers.EmbedConfig{Enabled: true, URL: "http://models.home.arpa:11434", Model: "nomic-embed-text:v1.5"},
@@ -75,7 +64,7 @@ func docsPages() []previewPage {
 			rows[1].Source = &pageLink{URL: "#", Notebook: garden.Notebook, Page: 2}
 			return d
 		}()},
-		{"calendar", "calendar", "Calendar", "calendar", "/calendar", map[string]any{"View": calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: at(10, 18, 0, 0), Horizon: 7}, "Days": calendarDays(calendarView{View: "month", Order: "upcoming", Week: "sunday", Date: at(10, 18, 0, 0), Horizon: 7}, upcoming, now), "Upcoming": upcoming, "Past": past, "Trash": false, "Zone": "America/Chicago", "Today": "2026-10-16"}},
+		{"calendar", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("week", nil, nil)},
 		{"settings-models", "settings-models", "AI models", "settings", "/settings/models", map[string]any{"Providers": models,
 			"DefaultOCRPrompt": notes.DefaultPrompt, "DefaultMinutesInstructions": minutes.DefaultInstructions, "MinutesFormat": minutes.ResponseFormat}},
 		{"jobs", "jobs", "Recognition", "jobs", "/jobs", recognitionView{Tab: "active", Sources: true, WorkTab: true, Mode: "auto", Model: "qwen2.5-vl-7b-instruct", Return: "/jobs?tab=active",

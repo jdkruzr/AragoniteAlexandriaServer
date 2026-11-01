@@ -1,15 +1,10 @@
 package web
 
 import (
-	"database/sql"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
-	"time"
 
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 )
 
@@ -84,59 +79,9 @@ func (d Deps) subscriptionRoutes(mux *http.ServeMux) {
 		back(w, r, subscriptionSettings, "Calendar unsubscribed. Local events were kept.")
 	})
 	mux.HandleFunc("POST /calendar/subscriptions/visibility", d.updateCalendarFilters)
+	// Subscribed events open read-only in the Calendar's editor column.
 	mux.HandleFunc("GET /calendar/subscriptions/{id}/events/{key}", func(w http.ResponseWriter, r *http.Request) {
-		sub, err := store.Get(r.Context(), r.PathValue("id"))
-		if errors.Is(err, sql.ErrNoRows) || err == nil && !sub.Enabled {
-			http.NotFound(w, r)
-			return
-		}
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		loc := settings.Zone(r.Context(), d.DB)
-		var blob string
-		err = d.DB.QueryRowContext(r.Context(), `SELECT ical_blob FROM alexandria_calendar_import WHERE subscription_id=$1 AND series_key=$2`, sub.ID, r.PathValue("key")).Scan(&blob)
-		if errors.Is(err, sql.ErrNoRows) {
-			http.NotFound(w, r)
-			return
-		}
-		if err != nil {
-			d.fail(w, err)
-			return
-		}
-		e, parseErr := events.FromSeries(subscriptions.EventID(sub.ID, r.PathValue("key")), blob, loc)
-		day, err := time.ParseInLocation("2006-01-02", r.URL.Query().Get("on"), loc)
-		if err != nil {
-			day = midnight(time.Now(), loc)
-		}
-		result := events.Expansion{}
-		if parseErr == nil {
-			result = events.Expand(r.Context(), []events.Event{e}, []events.Window{{From: day, To: day.AddDate(0, 0, 1)}}, loc)
-		} else {
-			result.Incomplete = []events.Incomplete{{ID: e.ID, Title: e.Title, Reason: "unsupported"}}
-		}
-		var row *calendarRow
-		for _, o := range result.Occurrences {
-			if !o.Recurring || o.Identity == r.URL.Query().Get("occurrence") {
-				v := subscriptionRow(makeCalendarRow(o, calendarReturn(r), loc), subscriptions.Imported{SubscriptionID: sub.ID, Key: r.PathValue("key"), Name: sub.Name, Color: sub.Color}, loc)
-				row = &v
-				break
-			}
-		}
-		d.render(w, r, "subscription-event", "Event details", "calendar", map[string]any{"Subscription": sub, "Row": row, "Event": e, "Return": calendarReturn(r), "Incomplete": result.Incomplete})
+		q := r.URL.Query()
+		http.Redirect(w, r, calendarWith(r, "sub", r.PathValue("id"), "key", r.PathValue("key"), "occurrence", q.Get("occurrence"), "on", q.Get("on"), "date", q.Get("on")), http.StatusSeeOther)
 	})
-}
-func subscriptionRow(row calendarRow, v subscriptions.Imported, loc *time.Location) calendarRow {
-	if u, err := url.Parse(row.Event.URL); err != nil || u.Host == "" || u.User != nil || (u.Scheme != "https" && u.Scheme != "http") {
-		row.Event.URL = ""
-	}
-	row.CalendarName, row.Color, row.ReadOnly = v.Name, v.Color, true
-	on := row.Event.Start.In(loc).Format("2006-01-02")
-	if row.Event.AllDay {
-		on = row.Event.Start.Format("2006-01-02")
-	}
-	q := url.Values{"return": {row.Return}, "on": {on}, "occurrence": {row.Identity}}
-	row.Link = "/calendar/subscriptions/" + v.SubscriptionID + "/events/" + v.Key + "?" + q.Encode()
-	return row
 }

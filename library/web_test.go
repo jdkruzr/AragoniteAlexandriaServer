@@ -71,7 +71,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/settings/devices?counts":                              "1 notebook · ",
 		"/settings/calendar":                                    "/caldav/user/calendars/tasks/",
 		"/settings/calendar?events":                             "/caldav/user/calendars/events/",
-		"/calendar":                                             "No events.",
+		"/calendar":                                             "Local calendar and task due dates.",
 		"/calendar?show=deleted":                                "Deleted Events",
 		"/help":                                                 "Handwriting recognition",
 		"/":                                                     "Nothing to do",
@@ -128,10 +128,10 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		t.Fatal("event in 2099 leaked into the bounded upcoming horizon")
 	}
 	cal := b.do("GET", "/calendar?date=2099-10-22&view=month", "", nil, true).Body.String()
-	if !strings.Contains(cal, "Plant garlic") || !strings.Contains(cal, "2099-10-22 15:00 -0500 – 16:00 -0500") || !strings.Contains(cal, "America/Chicago") {
+	if !strings.Contains(cal, "Plant garlic") || !strings.Contains(cal, "Oct 22, 2099 · 15:00–16:00") || !strings.Contains(cal, "America/Chicago") {
 		t.Fatalf("calendar page:\n%s", cal)
 	}
-	match := regexp.MustCompile(`href="(/calendar/[^"/]+/edit\?[^"]*)"`).FindStringSubmatch(cal)
+	match := regexp.MustCompile(`href="(/calendar\?[^"]*edit=[^"]*)"`).FindStringSubmatch(cal)
 	if len(match) != 2 {
 		t.Fatal("missing event edit link")
 	}

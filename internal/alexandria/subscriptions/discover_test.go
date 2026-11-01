@@ -76,7 +76,7 @@ func TestResolveCalendarSources(t *testing.T) {
 		{name: "private link", input: "/page", page: `<a href="https://127.0.0.1/feed.ics">ICS</a>`, code: "no_feed", calls: 1},
 		{name: "credentials", input: "/page", page: `<a href="https://user:pass@example.org/feed.ics">ICS</a>`, code: "no_feed", calls: 1},
 		{name: "no crawling", input: "/page", page: `<iframe src="https://example.org/another-page"></iframe>`, code: "no_feed", calls: 1},
-		{name: "private calendar", input: "https://calendar.google.com/calendar?cid=a%40b", status: 404, code: "http_error", calls: 1},
+		{name: "private calendar", input: "https://calendar.google.com/calendar?cid=a%40b", status: 404, code: "http_404", calls: 1},
 		{name: "upstream HTML", input: "https://calendar.google.com/calendar?cid=a%40b", page: `<html>Login</html>`, code: "html_page", calls: 1},
 		{name: "oversized", input: "/page", page: strings.Repeat("x", MaxFeedBytes+1), code: "too_large", calls: 1},
 		{name: "private input", input: "https://127.0.0.1/feed.ics", code: "invalid_url", calls: 0},

@@ -90,10 +90,10 @@ recognition card already says why.
   - Alexandria writes times in UTC or as DATE. A client's own
     `DTSTART;TZID=…` is kept until Alexandria moves the event.
 - **Web.**
-  - `/calendar` lists Upcoming and the Past 30 Days, has an add form, edit,
-    and Deleted Events with restore and permanent delete. It appears in the
-    top navigation.
-  - Settings → Tasks & Integrations adds the calendar name, the events
+  - `/calendar` shows Day, Week, Month and Upcoming views with the editor in
+    a column beside them, and Deleted events with restore and permanent
+    delete. Today links to it.
+  - Settings → Calendar & tasks adds the calendar name, the events
     address and the **time zone**. It is a dropdown of tzdata's
     `zone1970.tab` (312 zones plus UTC, embedded, public domain), grouped by
     region and labeled with the current UTC offset. The browser's own zone is

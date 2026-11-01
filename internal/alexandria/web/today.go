@@ -184,7 +184,7 @@ func (d Deps) nextEvents(ctx context.Context, r *http.Request, loc *time.Locatio
 	w := dateWords{d.Localizer(r)}
 	today := midnight(now, loc)
 	window := events.Window{From: today, To: today.AddDate(0, 0, 7)}
-	filter := readCalendarFilter(r, "list")
+	filter := readCalendarFilter(r)
 	set, err := d.collectOccurrences(ctx, r, loc, []events.Window{window}, filter.Visible)
 	if err != nil {
 		return nil, false, 0, err
@@ -201,9 +201,9 @@ func (d Deps) nextEvents(ctx context.Context, r *http.Request, loc *time.Locatio
 		if !events.Overlaps(o.Event, window, loc) {
 			continue
 		}
-		row := makeCalendarRow(o, "/", loc)
+		params := eventParams(o, nil, loc)
 		if v, ok := set.Imported[o.Event.ID]; ok {
-			row = subscriptionRow(row, v, loc)
+			params = eventParams(o, &v, loc)
 		}
 		start := o.Event.Start.In(loc)
 		if o.Event.AllDay {
@@ -213,7 +213,7 @@ func (d Deps) nextEvents(ctx context.Context, r *http.Request, loc *time.Locatio
 		if day.Before(today) {
 			day = today // still running from an earlier day
 		}
-		e := todayEvent{Day: w.shortWeekday(day) + " " + day.Format("2"), Title: o.Event.Title, Link: row.Link, AllDay: o.Event.AllDay, start: start}
+		e := todayEvent{Day: w.shortWeekday(day) + " " + day.Format("2"), Title: o.Event.Title, Link: calendarOpen(day.Format("2006-01-02"), params), AllDay: o.Event.AllDay, start: start}
 		if e.Title == "" {
 			e.Title = w.l.T("Untitled event")
 		}

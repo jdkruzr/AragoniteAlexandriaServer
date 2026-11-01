@@ -43,29 +43,25 @@ func calendarSection(t *testing.T, body, id string) string {
 func TestCalendarFiltersNavigationAndValidation(t *testing.T) {
 	now := calTime("2026-10-19T12:00:00Z")
 	id := "9ea68f62-ea53-415c-ad76-7d10e4cc156f"
-	req := httptest.NewRequest("GET", "/calendar?grid_hide=&list_q=wood+working&days=14", nil)
+	// The event list's choice from earlier releases wins over the old shared one.
+	req := httptest.NewRequest("GET", "/calendar?q=wood+working&days=14&past=1&filters=1", nil)
 	req.AddCookie(&http.Cookie{Name: sourceCookie, Value: "local," + id})
 	req.AddCookie(&http.Cookie{Name: sourceCookie + "_list", Value: id})
 	v := readCalendarView(req, now, time.UTC)
-	if v.ListFilter.Visible(id) || !v.ListFilter.Visible("local") || !v.GridFilter.Visible(id) || v.Horizon != 14 {
+	if v.Filter.Visible(id) || !v.Filter.Visible("local") || v.Horizon != 14 || !v.Past || !v.Filters {
 		t.Fatal(v)
 	}
-	for _, raw := range []string{v.URL(), v.Previous(), v.Next(), v.More(), v.Day("2026-11-01")} {
+	for _, raw := range []string{v.URL(), v.Previous(), v.Next(), v.Day("2026-11-01"), v.New("2026-10-19", "09:00")} {
 		u, _ := url.Parse(raw)
 		q := u.Query()
-		if q.Get("list_q") != "wood working" || q.Get("list_hide") != id || !q.Has("grid_hide") || q.Get("grid_hide") != "" {
-			t.Fatal("lost filters", raw)
+		if q.Get("q") != "wood working" || q.Has("hide") || q.Get("past") != "1" {
+			t.Fatal("lost the view", raw)
 		}
 	}
-	newURL, _ := url.Parse(v.New("2026-10-19", "09:00", "0"))
-	ret, _ := url.Parse(newURL.Query().Get("return"))
-	if ret.Query().Get("list_q") != "wood working" {
-		t.Fatal("lost form return")
-	}
-	if got := readCalendarView(httptest.NewRequest("GET", "/calendar", nil), now, time.UTC); got.Horizon != 7 || got.ListFilter.Active() || got.GridFilter.Active() {
+	if got := readCalendarView(httptest.NewRequest("GET", "/calendar", nil), now, time.UTC); got.Horizon != 7 || got.Filter.Active() {
 		t.Fatal("browser isolation", got)
 	}
-	for _, days := range []string{"7", "14", "30", "90", "37", "3660"} {
+	for _, days := range []string{"14", "30", "90", "37", "3660"} {
 		got := readCalendarView(httptest.NewRequest("GET", "/calendar?days="+days, nil), now, time.UTC)
 		if u, _ := url.Parse(got.URL()); u.Query().Get("days") != days {
 			t.Fatal("range", days)
@@ -76,24 +72,24 @@ func TestCalendarFiltersNavigationAndValidation(t *testing.T) {
 			t.Fatal("unbounded range", got)
 		}
 	}
-	if cleanHidden("local,garbage,"+id+","+id) != id+",local" || cleanHidden(strings.Repeat("x", 1001)) != "" {
+	if cleanHidden("tasks,local,garbage,"+id+","+id) != id+",local,tasks" || cleanHidden(strings.Repeat("x", 1001)) != "" {
 		t.Fatal("invalid source state")
 	}
 	if len([]rune(cleanCalendarQuery(strings.Repeat("á", 300)))) != 200 {
 		t.Fatal("query limit")
 	}
-	row := calendarRow{Event: events.Event{Title: "Woodworking Workshop", Location: "Austin", Detail: "Bring SAFETY glasses"}, CalendarName: "Community"}
+	texts := []string{"Woodworking Workshop", "Austin", "Bring SAFETY glasses", "Community"}
 	for _, q := range []string{"workshop AUSTIN", "safety community", "woodworking"} {
-		if !(calendarFilter{Query: q}).Matches(row, "local") {
+		if !(calendarFilter{Query: q}).Matches("local", texts...) {
 			t.Fatal("search", q)
 		}
 	}
-	if (calendarFilter{Query: "woodworking berlin"}).Matches(row, "local") || (calendarFilter{Hidden: "local"}).Matches(row, "local") {
+	if (calendarFilter{Query: "woodworking berlin"}).Matches("local", texts...) || (calendarFilter{Hidden: "local"}).Matches("local", texts...) {
 		t.Fatal("filter did not restrict")
 	}
 }
 
-func TestSeparateCalendarFiltersAndSevenDayHorizon(t *testing.T) {
+func TestCalendarFiltersAndUpcoming(t *testing.T) {
 	d, id, _ := subscriptionFixture(t)
 	loc, _ := time.LoadLocation("America/Chicago")
 	today := midnight(time.Now(), loc)
@@ -123,86 +119,84 @@ func TestSeparateCalendarFiltersAndSevenDayHorizon(t *testing.T) {
 		return w
 	}
 	get := func(path string, cookies []*http.Cookie) string { return call("GET", path, nil, cookies).Body.String() }
-	body := get("/calendar", nil)
-	list := calendarSection(t, body, "upcoming")
-	if !strings.Contains(list, "last-of-seven") || strings.Contains(list, "after-seven") {
+	list := calendarSection(t, get("/calendar?view=upcoming", nil), "upcoming")
+	if !strings.Contains(list, "last-of-seven") || strings.Contains(list, "after-seven") || strings.Contains(list, "Subscribed event -1") {
 		t.Fatal("seven-day boundary")
 	}
-	if !strings.Contains(calendarSection(t, get("/calendar?days=14", nil), "upcoming"), "after-seven") {
+	if !strings.Contains(calendarSection(t, get("/calendar?view=upcoming&days=14", nil), "upcoming"), "after-seven") {
 		t.Fatal("range did not expand")
 	}
-	body = get("/calendar?list_hide="+id+"&grid_hide=local", nil)
-	list = calendarSection(t, body, "upcoming")
-	grid := calendarSection(t, body, "calendar-grid")
-	if strings.Contains(list, "Subscribed event 0") || !strings.Contains(list, "Synthetic appointment 1") || !strings.Contains(grid, "Subscribed event 0") || strings.Contains(grid, "Synthetic appointment 1") {
-		t.Fatal("sources leaked between sections")
+	past := calendarSection(t, get("/calendar?view=upcoming&past=1", nil), "past")
+	if !strings.Contains(past, "Subscribed event -1") || strings.Contains(past, "Subscribed event 0") {
+		t.Fatal("past 30 days", past)
 	}
-	body = get("/calendar?list_q=Subscribed+event+0&grid_q=Synthetic+appointment+1", nil)
-	list = calendarSection(t, body, "upcoming")
-	grid = calendarSection(t, body, "calendar-grid")
-	if !strings.Contains(list, ">Subscribed event 0</a>") || strings.Contains(list, ">Subscribed event 1</a>") || strings.Contains(list, ">Synthetic appointment 1</a>") || !strings.Contains(grid, ">Synthetic appointment 1</strong>") || strings.Contains(grid, ">Subscribed event 0</strong>") {
-		t.Fatal("searches leaked between sections")
+	body := get("/calendar?view=upcoming&q=Subscribed+event+0", nil)
+	if list = calendarSection(t, body, "upcoming"); !strings.Contains(list, ">Subscribed event 0<") || strings.Contains(list, ">Subscribed event 1<") || strings.Contains(list, "Synthetic appointment 1") {
+		t.Fatal("search", list)
 	}
-	// Sources persist separately, search and date are preserved in URLs only.
-	ret := "/calendar?view=week&date=2026-11-01&order=calendar&days=14&grid_q=appointment"
-	w := call("POST", "/calendar/subscriptions/visibility", url.Values{"scope": {"list"}, "return": {ret}, "q": {"Subscribed"}, "visible": {id}}, nil)
+	if !strings.Contains(body, "Filter · on") {
+		t.Fatal("filter state not shown")
+	}
+	// One choice for the whole site, kept in the browser; search and the date stay in the URL.
+	ret := "/calendar?view=week&date=2026-11-01&days=14&q=appointment"
+	old := &http.Cookie{Name: sourceCookie + "_grid", Value: "local"}
+	w := call("POST", "/calendar/subscriptions/visibility", url.Values{"return": {ret}, "q": {"Subscribed"}, "visible": {id, "tasks"}, "week": {"monday"}}, []*http.Cookie{old})
 	var saved *http.Cookie
-	expired := false
+	expired, week := 0, false
 	for _, c := range w.Result().Cookies() {
-		if c.Name == sourceCookie+"_list" && c.Path == "/" {
+		if c.Name == sourceCookie && c.Path == "/" {
 			saved = c
 		}
-		if c.Name == sourceCookie+"_list" && c.Path == "/calendar" && c.MaxAge < 0 {
-			expired = true
+		if c.Name == sourceCookie+"_grid" && c.MaxAge < 0 {
+			expired++
 		}
+		week = week || c.Name == calendarCookie && strings.Contains(c.Value, "week=monday")
 	}
-	// Site-wide, so Today's Next 7 days follows it; the old /calendar copy is removed.
-	if saved == nil || saved.Value != "local" || !expired {
-		t.Fatal("source preference not saved for the whole site")
+	if saved == nil || saved.Value != "local" || expired != 2 || !week {
+		t.Fatal("source preference not saved for the whole site", w.Result().Cookies())
 	}
 	redirect, _ := url.Parse(w.Header().Get("Location"))
 	q := redirect.Query()
-	if redirect.Fragment != "upcoming" || q.Get("list_q") != "Subscribed" || q.Get("grid_q") != "appointment" || q.Get("date") != "2026-11-01" || q.Get("days") != "14" {
+	if q.Get("q") != "Subscribed" || q.Get("date") != "2026-11-01" || q.Get("days") != "14" || q.Get("filters") != "1" || q.Get("week") != "monday" {
 		t.Fatal("lost navigation", redirect)
 	}
-	body = get("/calendar", []*http.Cookie{saved})
-	if strings.Contains(calendarSection(t, body, "upcoming"), "Synthetic appointment 1") || !strings.Contains(calendarSection(t, body, "calendar-grid"), "Synthetic appointment 1") {
-		t.Fatal("preference not isolated")
+	body = get("/calendar?view=upcoming", []*http.Cookie{saved})
+	if strings.Contains(body, "Synthetic appointment 1") || !strings.Contains(body, "Subscribed event 0") {
+		t.Fatal("hidden calendar shown")
 	}
-	explicit := "/calendar?list_hide=&list_q=NoSuchEvent"
-	body = get(explicit, []*http.Cookie{saved})
-	if !strings.Contains(calendarSection(t, body, "upcoming"), "No events match these filters.") || !strings.Contains(calendarSection(t, body, "calendar-grid"), "Synthetic appointment") {
-		t.Fatal("empty search affected grid")
-	}
-	w = call("POST", "/calendar/subscriptions/visibility", url.Values{"scope": {"list"}, "return": {explicit}, "reset": {"yes"}}, []*http.Cookie{saved})
+	w = call("POST", "/calendar/subscriptions/visibility", url.Values{"return": {redirect.String()}, "reset": {"yes"}}, []*http.Cookie{saved})
 	redirect, _ = url.Parse(w.Header().Get("Location"))
-	if redirect.Query().Get("list_q") != "" || redirect.Query().Get("list_hide") != "" {
+	if redirect.Query().Get("q") != "" {
 		t.Fatal("reset failed")
 	}
 	for _, c := range w.Result().Cookies() {
-		if c.Name == sourceCookie+"_list" && c.Value != "" {
+		if c.Name == sourceCookie && c.Path == "/" && c.Value != "" {
 			t.Fatal("reset not remembered")
 		}
 	}
-	// Past uses list filters; no filtering or hiding of deleted events.
-	if strings.Contains(calendarSection(t, get("/calendar?list_hide="+id, nil), "past"), "Subscribed event -1") {
-		t.Fatal("past ignores list source")
-	}
 }
 
-// Choices saved under /calendar by earlier releases move to the whole site on
-// the next Calendar visit.
-func TestMoveFilterCookies(t *testing.T) {
+// A choice saved by an earlier release, under /calendar or split into the
+// event list's and the grid's, becomes the one site-wide choice.
+func TestMigrateCalendarFilter(t *testing.T) {
 	r := httptest.NewRequest("GET", "/calendar", nil)
 	r.AddCookie(&http.Cookie{Name: sourceCookie + "_list", Value: "local"})
 	w := httptest.NewRecorder()
-	moveFilterCookies(w, r)
-	var site, old bool
+	migrateCalendarFilter(w, r, readCalendarFilter(r))
+	var site bool
+	old := 0
 	for _, c := range w.Result().Cookies() {
-		site = site || c.Name == sourceCookie+"_list" && c.Path == "/" && c.Value == "local" && c.MaxAge > 0
-		old = old || c.Name == sourceCookie+"_list" && c.Path == "/calendar" && c.MaxAge < 0
+		site = site || c.Name == sourceCookie && c.Path == "/" && c.Value == "local" && c.MaxAge > 0
+		if c.Name == sourceCookie+"_list" && c.MaxAge < 0 {
+			old++
+		}
 	}
-	if !site || !old || len(w.Result().Cookies()) != 2 {
+	if !site || old != 2 {
 		t.Fatalf("%+v", w.Result().Cookies())
+	}
+	w = httptest.NewRecorder()
+	migrateCalendarFilter(w, httptest.NewRequest("GET", "/calendar", nil), calendarFilter{})
+	if len(w.Result().Cookies()) != 0 {
+		t.Fatal("a browser without a choice got one")
 	}
 }

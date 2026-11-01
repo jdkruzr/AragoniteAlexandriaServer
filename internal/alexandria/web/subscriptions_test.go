@@ -47,7 +47,7 @@ func subscriptionFixture(t *testing.T) (Deps, string, string) {
 			t.Fatal(err)
 		}
 	}
-	if _, err = d.DB.ExecContext(ctx, `UPDATE alexandria_calendar_subscription SET last_success=now(),next_at=now()+interval '30 minutes',error_code='http_error' WHERE id=$1`, id); err != nil {
+	if _, err = d.DB.ExecContext(ctx, `UPDATE alexandria_calendar_subscription SET last_success=now(),next_at=now()+interval '30 minutes',error_code='http_404' WHERE id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
 	return d, id, key
@@ -112,9 +112,16 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 		return w.Body.String()
 	}
 	for _, lang := range []string{"en", "es"} {
-		for _, view := range []string{"day", "week", "month"} {
+		for _, view := range []string{"day", "week", "month", "upcoming&past=1"} {
 			body := get("/calendar?view="+view, lang, nil)
-			for _, want := range []string{"Subscribed event 0", "Subscribed event -1", "Community calendar", "Subscribed recurring event"} {
+			want := []string{"Subscribed event 0", "Community calendar", "Subscribed recurring event", "HTTP 404"}
+			switch view {
+			case "month": // three a day, and the rest behind "more"
+				want = []string{"Community calendar", "HTTP 404"}
+			case "upcoming&past=1": // yesterday may fall in last week, or last month
+				want = append(want, "Subscribed event -1")
+			}
+			for _, want := range want {
 				if !strings.Contains(body, want) {
 					t.Fatal(lang, view, "missing", want)
 				}
@@ -139,8 +146,14 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 	}
 	loc, _ := time.LoadLocation("America/Chicago")
 	detail := "/calendar/subscriptions/" + id + "/events/" + key + "?on=" + time.Now().In(loc).Format("2006-01-02") + "&return=" + url.QueryEscape("/calendar?view=week&order=calendar")
+	w := call("GET", detail, "en", "", nil, nil)
+	opened, _ := url.Parse(w.Header().Get("Location"))
+	if w.Code != 303 || opened.Query().Get("sub") != id || opened.Query().Get("key") != key || opened.Query().Get("view") != "week" {
+		t.Fatal("old detail page not redirected to the editor column", w.Code, opened)
+	}
+	detail = opened.String()
 	body = get(detail, "en", nil)
-	if !strings.Contains(body, "Subscribed event 0") || !strings.Contains(body, "is read-only") || strings.Contains(body, `name="title"`) || !strings.Contains(body, "view=week&amp;order=calendar") {
+	if !strings.Contains(body, "Subscribed event 0") || !strings.Contains(body, "so it can&#39;t be edited here") || strings.Contains(body, `name="title"`) || !strings.Contains(calendarSection(t, body, "editor"), "view=week") {
 		t.Fatal(body)
 	}
 	// Direct submissions cannot mutate the separate imported store, including
@@ -153,18 +166,18 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 	if !strings.Contains(get(detail, "en", nil), "Subscribed event 0") {
 		t.Fatal("import mutated")
 	}
-	if !strings.Contains(get("/calendar/synthetic-1/edit", "en", nil), `name="title"`) {
+	if !strings.Contains(get("/calendar?edit=synthetic-1", "en", nil), `name="title"`) {
 		t.Fatal("ordinary editing lost")
 	}
-	ret := "/calendar?view=week&order=calendar&date=2026-11-01"
-	w := call("POST", "/calendar/subscriptions/visibility", "en", d.PublicURL, url.Values{"visible": {"local"}, "return": {ret}}, nil)
+	ret := "/calendar?view=week&date=2026-11-01"
+	w = call("POST", "/calendar/subscriptions/visibility", "en", d.PublicURL, url.Values{"visible": {"local"}, "return": {ret}}, nil)
 	var cookie *http.Cookie
 	for _, c := range w.Result().Cookies() {
 		if c.Name == sourceCookie && c.MaxAge >= 0 { // not the expiry of the old /calendar copy
 			cookie = c
 		}
 	}
-	if cookie == nil || !strings.HasPrefix(w.Header().Get("Location"), ret+"&") {
+	if back, _ := url.Parse(w.Header().Get("Location")); cookie == nil || back.Query().Get("date") != "2026-11-01" || back.Query().Get("view") != "week" {
 		t.Fatal(w.Header())
 	}
 	if strings.Contains(get("/calendar", "en", cookie), "Subscribed event 0") {
@@ -202,10 +215,10 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 	if _, err = s.Get(ctx, id); err == nil {
 		t.Fatal("unsubscribe failed")
 	}
-	if !strings.Contains(get("/calendar/synthetic-1/edit", "en", nil), `name="title"`) {
+	if !strings.Contains(get("/calendar?edit=synthetic-1", "en", nil), `name="title"`) {
 		t.Fatal("unsubscribe damaged local calendar")
 	}
-	if !strings.Contains(get("/calendar", "en", &http.Cookie{Name: sourceCookie, Value: "local"}), "calendar-sources") {
+	if !strings.Contains(get("/calendar?filters=1", "en", &http.Cookie{Name: sourceCookie, Value: "local"}), `name="visible" value="local"`) {
 		t.Fatal("hidden local calendar cannot be restored after unsubscribe")
 	}
 	for _, raw := range []string{"http://example.org/feed", "https://127.0.0.1/feed"} {

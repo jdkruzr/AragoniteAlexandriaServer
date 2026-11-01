@@ -106,54 +106,79 @@ full calendar.
 
 ## Calendar
 
-Select **Open calendar** on Today. **Upcoming** starts with the next 7 days,
-anchored to today; **Show next 30 days** extends that list. **Past 30 Days**
-stays below the main sections, and **Deleted events** has its own page.
+Select **Open calendar** on Today. The calendar has four views:
 
-Use **Day**, **Week**, or **Month** to browse the calendar. **Previous**,
-**Today**, **Next**, and the date picker move through dates. Month shows up to
-three entries per day; **+N more** opens that Day view. Week scrolls sideways
-on a small screen. Day and Week separate overlapping appointments into columns.
+- **Week** shows seven columns of events, today's filled in. Each day's **+**
+  adds an event that day.
+- **Day** is an hour grid from 07:00 to 22:00. It grows to fit an event that
+  starts earlier or ends later, so nothing is squeezed out. All-day events and
+  tasks due sit in a row above it. Select an empty hour to add an event then.
+  Overlapping events share the width.
+- **Month** shows up to three items a day; **+N more** opens that Day. Select a
+  date's number to add an event on it.
+- **Upcoming** lists the next 7, 14, 30 or 90 days, grouped by day, starting
+  today. **Show next 30 days** reaches further, and **Show past 30 days** adds
+  the month behind you.
 
-The defaults are **Upcoming first**, **Month**, and **Sunday** as the first day
-of the week. Change the section order above the sections, or choose Monday in
-**Week starts on** and select **Go**. This browser remembers those preferences;
-a different browser has its own. Returning to Calendar starts at today's date.
-Links and forms work with JavaScript disabled.
+The arrows move by a day, week or month; **Today**, **This week** or **This
+month** comes back. This browser remembers the view and the first day of the
+week; returning to Calendar starts at today's date. Everything works with
+JavaScript disabled.
 
-Select the **Upcoming** or **Calendar** heading to collapse or expand that
-section independently. Both start expanded. With JavaScript enabled, this
-browser remembers which sections you collapsed across navigation and reloads.
+Events show their time, title and, when a note action made them, the notebook
+and page: **Garden Committee, p. 7**. A repeat icon marks a recurring event and
+a flag marks one from a subscribed calendar.
 
-![Calendar Month view with synthetic events](../calendar/20261020/filters/desktop-month-readable.png)
+**Task due dates** appear in magenta with **Due**: open tasks with a due date,
+on that date (with the time, when the task has one). Selecting one opens the
+task's editor on Today.
+
+![Calendar Week view with synthetic events](../images/calendar.png)
+
+### Filtering
+
+**Filter** opens a row of filters, and reads **Filter · on** while any apply:
+
+- **Search** matches titles, places and descriptions; every word must match,
+  regardless of case. It stays in the address, so a link keeps it.
+- **Local calendar**, **Task due dates** and each subscription show or hide
+  that calendar. This browser remembers the choice, and Today's Next 7 days
+  follows it too.
+- **Week starts on** picks Sunday or Monday.
+- **Clear filters** shows everything again, and **Deleted events (n)** opens
+  the deleted events.
+- **Go to date** jumps to a date.
 
 ### Adding an Event
 
-1. Select **Add event**, or select a date in the calendar for an all-day event.
-   Selecting an hourly slot prefills a one-hour appointment.
-2. Enter a title and adjust the dates, times, location, link or notes.
-3. Select **Save**. Save and Cancel return to the same calendar view.
+1. Select **+ New event**, a day's **+**, an empty hour in Day, or a date in
+   Month. The editor opens in a column beside the calendar, with the start at
+   that hour (09:00 otherwise) and the end an hour later.
+2. Enter a title, and adjust the date, times, location or description. Tick
+   **All day** for an event without times.
+3. Select **Save**. Save and Cancel return to the same view.
 
-Leave the time empty for an all-day event. Times are in the time zone from
-Settings, which the page reminds you of. When daylight saving time repeats a
-local hour, the UTC offset fields distinguish its two occurrences. A local time
-that does not exist produces a validation message and keeps your form values.
+**More options** holds the end date (for an event over several days), the UTC
+offsets, and a link. Times are in the time zone from Settings. When daylight
+saving time repeats a local hour, the UTC offsets tell its two occurrences
+apart. A local time that doesn't exist produces a message, and the editor keeps
+what you typed.
 
 ### Editing an Event
 
-Select **Edit** to change the **Title**, **Date**, **Start time (optional)**,
-**End date (optional)**, **End time (optional)**, **Location**, **Link** and
-**Notes**. An end date makes a multi-day event. Events from note actions show a
-**From note** link back to their page.
+Select an event to open it in the editor. Events from note actions show
+**From note: Garden Committee, p. 7**, linking to the page. Older links to the
+separate edit page open the editor instead.
 
 ### Deleting and Restoring
 
-**Delete** moves an event to **Deleted events**. There you can **Restore** it,
-or tick **Permanently** and select **Delete permanently** to erase it.
+**Delete…** in the editor moves an event to **Deleted events** (under
+**Filter**). There you can **Restore** it, or select **Delete permanently…**,
+tick the box and confirm to erase it from every CalDAV app too.
 
-Imported recurring events and their exceptions appear in every calendar view
-and both event lists. Selecting one opens read-only occurrence details: edit
-or delete the series in your CalDAV app. Web edits cannot flatten the series.
+Imported recurring events and their exceptions appear in every view. Selecting
+one opens its details, read-only, in the editor column: edit or delete the
+series in your CalDAV app. Web edits cannot flatten the series.
 Repeat rules, reminders, attendees and original calendar blobs are preserved.
 
 If a series is malformed, unsupported, or too large to expand safely, a notice
@@ -169,7 +194,7 @@ Alexandria serves two CalDAV collections under one account:
 | Task list | Tasks (VTODO) | `https://alexandria.example.com/caldav/user/calendars/tasks/` |
 | Calendar | Events (VEVENT) | `https://alexandria.example.com/caldav/user/calendars/events/` |
 
-Open **Connect a CalDAV app** near the heading on Tasks or Calendar, or in
+Open **Connect a CalDAV app** near the heading on Today, or
 **Settings → Calendar & tasks**. It shows your server's discovery address
 and the relevant collection address, with Copy buttons. If copying is blocked,
 the address is selected so you can copy it manually. The address fields also
@@ -252,8 +277,8 @@ their next sync.
 
 ## Subscribe to a public calendar
 
-Choose **Subscribe to calendar** on Calendar, or open **Settings → Tasks &
-Integrations → Calendar subscriptions**. Enter a name, choose a color, and paste
+Select **Manage subscriptions** at the foot of Calendar, or open **Settings →
+Calendar & tasks → Calendar subscriptions**. Enter a name, choose a color, and paste
 an HTTPS iCalendar (ICS) feed address, a Google Calendar share/embed link, or a
 webpage containing one calendar. Alexandria resolves Google calendar IDs and
 looks for embedded Google calendars or explicit ICS links on the page, then
@@ -262,26 +287,17 @@ If several calendars are found, paste the share link or ICS URL for the specific
 calendar you want. Pages that require scripts to generate their calendar links
 need a direct share/ICS link. The calendar must be publicly accessible.
 
-Upcoming starts with **Next 7 days**, including today. Choose 14, 30, or 90 days,
-or **Show next 30 days** to extend the displayed range. It stays anchored to today
-while you browse other dates in the grid. Event descriptions and Past 30 Days
-start collapsed; open them when needed. Month cells have wrapping titles and
-less padding; **+N more** still opens the full Day view.
-
-Subscribed events appear in Day, Week, Month, Upcoming and Past, with the source
-calendar's name and color. **Filter event list** and **Filter calendar** independently select sources and
-search titles, locations, descriptions, or calendar names. All search words must
-match, regardless of case. Source choices are remembered separately for this
-browser; searches stay in the current page URL and its navigation links. **Clear
-filters** restores all sources for that section. The event list filter also
-applies to Past 30 Days. Event details are read-only; make changes
-at the source. Subscriptions do not add events to Alexandria's writable CalDAV
-collection or its event API.
+Subscribed events appear in every view with a flag and the calendar's colour.
+Selecting one opens its details, read-only, in the editor column: make changes
+at the source. The filter row shows or hides each subscription. Subscriptions do
+not add events to Alexandria's writable CalDAV collection or its event API.
 
 Alexandria refreshes enabled subscriptions every 30 minutes. **Refresh now**
 requests an earlier refresh; repeated requests are limited to one attempt per
 30 seconds. Settings shows the last successful refresh and any error. A failed
-refresh keeps the last good snapshot. An unsupported time zone or recurrence rule
+refresh keeps the last good snapshot, and Calendar says so: **School term
+dates: Refresh failed: The calendar source returned HTTP 404. Check that the
+feed is public. Showing the Oct 19 snapshot.**, with **Manage** to fix it. An unsupported time zone or recurrence rule
 produces an incomplete-results notice instead of silently hiding the problem.
 Uncheck **Enable calendar and automatic refresh** to pause a source. **Unsubscribe**
 removes its cached events after confirmation and leaves local events untouched.

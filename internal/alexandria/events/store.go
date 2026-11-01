@@ -165,6 +165,13 @@ func (s *Store) Deleted(ctx context.Context) ([]Event, error) {
 	return s.list(ctx, "e WHERE deleted AND NOT EXISTS (SELECT 1 FROM alexandria_event_purged p WHERE p.event_id=e.event_id) ORDER BY updated_at DESC")
 }
 
+// CountDeleted is how many events Deleted lists.
+func (s *Store) CountDeleted(ctx context.Context) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, "SELECT count(*) FROM alexandria_events e WHERE deleted AND NOT EXISTS (SELECT 1 FROM alexandria_event_purged p WHERE p.event_id=e.event_id)").Scan(&n)
+	return n, err
+}
+
 func (s *Store) Get(ctx context.Context, id string) (Event, error) {
 	e, err := scan(s.db.QueryRowContext(ctx, "SELECT "+columns+" FROM alexandria_events WHERE event_id=$1 AND NOT deleted", id))
 	if errors.Is(err, sql.ErrNoRows) {

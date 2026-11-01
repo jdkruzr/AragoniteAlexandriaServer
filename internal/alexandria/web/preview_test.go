@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/books"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
@@ -65,6 +66,26 @@ func previewPages() []previewPage {
 		{"search", "search", "Search", "search", "/search", map[string]any{"Query": "trellis", "Semantic": true, "BOOX": true,
 			"Results": []notes.Result{{Source: "boox", Kind: "Notebook page", NotebookName: "Synthetic garden plan", PageNumber: 2, Snippet: "…build the bean trellis before May…", URL: "#", Tags: []string{"Bean Trellis", "garden"}}},
 			"Native":  []sourceMatch{{Title: "Synthetic trellis notes", Kind: "Notebook", URL: "#"}}}},
+		{"calendar-week", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("week", nil, nil)},
+		{"calendar-day-editor", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("day", &calendarEditor{Mode: "edit", Event: events.Event{ID: "team-sync", Title: "Team sync"},
+			Form: map[string]string{"date": "2026-10-27", "start": "10:00", "end": "11:00"}, Offsets: []zoneOffset{{"-18000", "CDT -0500"}}, Source: &NoteSource{NotebookID: "n", PageID: "p", Notebook: "Q4 planning — meetings", Page: 12}}, nil)},
+		{"calendar-new-problem", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("week", &calendarEditor{Mode: "new", Event: events.Event{Title: "Synthetic night ferry", URL: "https://example.org/ferry"},
+			Form: map[string]string{"date": "2026-03-08", "start": "02:30", "end_date": "2026-03-09"}, Problem: "That local time does not exist in this time zone, or the UTC offset does not match. Choose another time or offset.", Offsets: []zoneOffset{{"-21600", "CST -0600"}, {"-18000", "CDT -0500"}}}, nil)},
+		{"calendar-month", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("month", nil, nil)},
+		{"calendar-upcoming", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("upcoming", &calendarEditor{Mode: "recurring", Event: events.Event{ID: "s", Title: "Garden committee", Location: "Community hall"}, When: "Tue, Oct 27 · 18:00–19:30"}, nil)},
+		{"calendar-filters", "calendar", "Calendar", "calendar", "/calendar", func() map[string]any {
+			d := calendarPreview("week", &calendarEditor{Mode: "subscribed", Event: events.Event{Title: "Halloween", Detail: "Synthetic public holiday"}, When: "Sat, Oct 31 · All day", Snapshot: "Oct 19",
+				Subscription: subscriptions.Subscription{Name: "School term dates", Color: "green", Enabled: true, ErrorCode: "http_404"}}, nil)
+			v := d["View"].(calendarView)
+			v.Filters, v.Filter = true, calendarFilter{Hidden: "tasks", Query: "garden"}
+			d["View"], d["Filters"] = v, filterForm(v, nil)
+			last := now.Add(-13 * 24 * time.Hour)
+			d["Notices"] = []feedNotice{{Subscription: subscriptions.Subscription{Name: "School term dates", Enabled: true, ErrorCode: "http_404", LastSuccess: &last}, Snapshot: "Oct 19"}}
+			return d
+		}()},
+		{"calendar-deleted", "calendar", "Deleted Events", "calendar", "/calendar?show=deleted", calendarPreview("week", nil, map[string]any{"Trash": true, "Deleted": []deletedEvent{
+			{Event: events.Event{ID: "d1", Title: "Synthetic dentist"}, When: "Thu, Oct 22 · 08:30–09:30", Source: &NoteSource{NotebookID: "n", PageID: "p", Notebook: "Synthetic errands", Page: 3}},
+			{Event: events.Event{ID: "d2", Title: "Synthetic standup"}, When: "Mon, Oct 19 · 09:00–09:15", Recurring: true}}})},
 		{"settings-account", "settings", "Account", "settings", "/settings?section=language&saved=1&notice=Language+saved.", map[string]any{"LocalPasswords": true}},
 		{"settings-devices", "settings-devices", "Devices", "settings", "/settings/devices", map[string]any{"Devices": devicesView{
 			BOOX: &BOOXDevices{Summary: SourceSummary{Notebooks: 1038, Books: 130, Devices: 2, LastActivity: now.Add(-4 * time.Minute)}, Waiting: true, Devices: []BOOXDevice{

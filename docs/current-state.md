@@ -12,7 +12,24 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-01): **`settings-57db268103d9`**, app-only on schema **41**,
+Latest recorded deployment (2026-11-01): **`calendar-952da26214e6`**, app-only on schema **41**,
+image `sha256:aa17eb91af4c91873133082a07406f6b7c98ba0614ac9d350337a30b4602a1c6`, on top of
+**`settings-57db268103d9`**. Phase 7a of the redesign: Calendar has Day, Week, Month and Upcoming
+views of chips (events, and open tasks on their due dates in magenta, which open the task on
+Today). Day runs 07:00–22:00 and grows to fit earlier or later events. The editor is a column on
+the page (`new=`, `edit=`, `sub=&key=`; recurring and subscribed events read-only, Delete with an
+inline confirm); `/calendar/new`, `/calendar/{id}/edit` and the subscription-event page redirect
+into it, and a form problem re-renders with the column open (400). The list and grid filters
+merged into one site-wide choice (`alexandria_calendar_sources`, adopting the old list choice on
+first visit; values `local`, `tasks`, subscription IDs) that Today also follows; the search stays
+in `q=`. Feed fetches store `http_<status>` and the page names it ("Refresh failed: … HTTP 404 …
+Showing the Oct 19 snapshot."). The Upcoming and Past 30 Days lists under the grids are gone
+(Upcoming is a view, with "Show past 30 days"). Live check: every view against real
+subscriptions, a read-only subscribed event, the new-event column (not saved), Today's links,
+and 3 deleted events matching SQL. No open task has a due date yet, so Due items were checked by
+tests only.
+
+Before that (2026-11-01): **`settings-57db268103d9`**, app-only on schema **41**,
 image `sha256:c3cd7fdcd9729238425772c097210363851137a7fc58209c228a3a6b16576c9e`, on top of
 **`recognition-1c3c4ecb3380`**. Phase 6 of the redesign: Settings is one page per section with a
 sticky nav (Account, Devices, AI models, Automatic processing, Note actions, Search by meaning,

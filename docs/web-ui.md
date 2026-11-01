@@ -27,6 +27,18 @@ templates in `internal/boox/*.go`, grafted into the same layout by
   `/boox/minutes/audio`, sending at POST `/boox/minutes/send`) open from the Audio Note Minutes card in the notebook reader's side
   panel. BOOX pages allow `media-src 'self'` for the recording player. See
   [Audio Note Minutes](note-minutes.md).
+- **Calendar** (`/calendar`) has Day, Week, Month and Upcoming views
+  (`view=`), all of them chips built from event occurrences and open tasks due
+  (`calendarChip`). The Day grid runs 07:00–22:00 and grows to fit. The editor
+  is a column on the same page, opened by `new=<date>&start=HH:MM`,
+  `edit=<event>` (with `occurrence=&on=` for a recurring one, read-only) or
+  `sub=<subscription>&key=<series>` (read-only); the old `/calendar/new`,
+  `/calendar/{id}/edit` and subscription-event pages redirect into it. A form
+  with a problem re-renders the page with the column open. One filter
+  (`alexandria_calendar_sources`, values `local`, `tasks` or a subscription
+  ID) serves Calendar and Today's Next 7 days; the search is `q=` in the URL.
+  `filters=1` opens the filter row and `past=1` adds the past 30 days to
+  Upcoming.
 - **Settings** is one page per section, with a sticky nav (`settings-nav` in
   `layout.html`): Account (`/settings`), Devices (`/settings/devices`), AI
   models (`/settings/models`), Automatic processing (`/settings/automatic`),

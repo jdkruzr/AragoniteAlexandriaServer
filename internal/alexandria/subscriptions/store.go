@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,9 +62,31 @@ func Problem(code string) string {
 	case "http_error":
 		return "The calendar source returned an HTTP error. Check that the feed is public."
 	default:
+		if HTTPStatus(code) != "" {
+			return Problem("http_error")
+		}
 		return "The calendar could not be fetched. Check its public URL and try again."
 	}
 }
+
+// httpCode is the error code for an unexpected HTTP status, such as http_404.
+func httpCode(status int) string {
+	if status < 100 || status > 999 {
+		return "http_error"
+	}
+	return "http_" + strconv.Itoa(status)
+}
+
+// HTTPStatus is the status in an http_NNN error code, or "" for other codes.
+// Problem explains these codes without the number; the web pages add it.
+func HTTPStatus(code string) string {
+	n, ok := strings.CutPrefix(code, "http_")
+	if !ok || len(n) != 3 || strings.Trim(n, "0123456789") != "" {
+		return ""
+	}
+	return n
+}
+
 func valid(name, color string) bool {
 	if len(name) == 0 || len(name) > 120 {
 		return false

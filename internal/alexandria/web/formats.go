@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 )
 
 // formatFuncs are the template functions that print numbers and relative
@@ -27,6 +28,14 @@ func formatFuncs(l i18n.Localizer) template.FuncMap {
 				return fmt.Sprintf("%s %d", l.T(months[t.Month()-1]), t.Year())
 			}
 			return l.T(weekdays[t.Weekday()]) + " " + t.Format("2006-01-02")
+		},
+		// feedStatus is a calendar subscription's status line, naming the
+		// HTTP status when the feed returned one.
+		"feedStatus": func(s subscriptions.Subscription) string {
+			if n := subscriptions.HTTPStatus(s.ErrorCode); n != "" && s.Status() == subscriptions.Problem(s.ErrorCode) {
+				return l.T("The calendar source returned HTTP {{.Status}}. Check that the feed is public.", "Status", n)
+			}
+			return l.T(s.Status())
 		},
 		"num": func(n int) string { return l.Number(n, 0) },
 		"count": func(n int) string {

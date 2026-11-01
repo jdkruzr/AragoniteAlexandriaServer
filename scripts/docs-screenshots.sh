@@ -40,7 +40,7 @@ boox-notebook 1300
 boox-notebooks 900
 search 830
 tasks 900
-calendar 690
+calendar 740
 boox-minutes 900
 settings-models 900
 jobs 900

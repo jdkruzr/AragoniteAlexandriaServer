@@ -90,14 +90,7 @@ var funcs = withFormats(template.FuncMap{
 			View taskView
 		}{t, v}
 	},
-	// eventRow pairs a Calendar row with whether it is in the trash.
 	"connection": connection,
-	"eventRow": func(r calendarRow, trash bool) any {
-		return struct {
-			Row   calendarRow
-			Trash bool
-		}{r, trash}
-	},
 	"deref": func(s *string) string {
 		if s == nil {
 			return ""

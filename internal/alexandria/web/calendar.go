@@ -14,23 +14,25 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 )
 
-// Calendar lists the events served over CalDAV beside Tasks.
-
-// calendarRow is an event as the Calendar page shows it, in the owner's zone.
-type calendarRow struct {
-	CalendarName, Color    string
-	ReadOnly               bool
-	Event                  events.Event
-	When                   string
-	Source                 *NoteSource
-	Recurring              bool
-	Identity, Link, Return string
-}
+// Calendar shows local events, subscribed calendars and task due dates by
+// day, week, month or as an upcoming list, with the editor in a column beside.
 
 // NoteSource is the BOOX page a task or event was made from (note actions).
 type NoteSource struct {
 	NotebookID, PageID, Notebook string
 	Page                         int // page number, 0 when unknown
+}
+
+// Label is "Notebook, p. 7", or the notebook alone when the page is unknown.
+func (s NoteSource) Label(l i18n.Localizer) string {
+	name := s.Notebook
+	if name == "" {
+		name = l.T("Notebook page")
+	}
+	if s.Page > 0 {
+		return l.T("{{.Name}}, p. {{.Number}}", "Name", name, "Number", s.Page)
+	}
+	return name
 }
 
 // URL is the page in the BOOX notebook view.
@@ -62,20 +64,46 @@ func (d Deps) noteSources(ctx context.Context, kind string, ids []string) map[st
 	return out
 }
 
-// eventWhen formats an event's dates and times in loc.
-func eventWhen(e events.Event, loc *time.Location) string {
+// when is an event's day and time in loc: "Tue, Oct 27 · 10:00–11:00".
+func (w dateWords) when(e events.Event, loc *time.Location, now time.Time) string {
 	if e.AllDay {
-		first, last := e.Start.Format("2006-01-02"), e.LastDay().Format("2006-01-02")
-		if first == last {
-			return first
+		first := time.Date(e.Start.Year(), e.Start.Month(), e.Start.Day(), 0, 0, 0, 0, loc)
+		last := e.LastDay()
+		if last.Format("2006-01-02") == e.Start.Format("2006-01-02") {
+			return w.dayTitle(first, now) + " · " + w.l.T("All day")
 		}
-		return first + " – " + last
+		last = time.Date(last.Year(), last.Month(), last.Day(), 0, 0, 0, 0, loc)
+		return w.shortDate(first, now) + " – " + w.shortDate(last, now) + " · " + w.l.T("All day")
 	}
 	s, f := e.Start.In(loc), e.End.In(loc)
 	if s.Format("2006-01-02") == f.Format("2006-01-02") {
-		return s.Format("2006-01-02 15:04 -0700") + " – " + f.Format("15:04 -0700")
+		if s.Equal(f) {
+			return w.dayTitle(s, now) + " · " + s.Format("15:04")
+		}
+		return w.dayTitle(s, now) + " · " + s.Format("15:04") + "–" + f.Format("15:04")
 	}
-	return s.Format("2006-01-02 15:04") + " – " + f.Format("2006-01-02 15:04 -0700")
+	return w.dayTitle(s, now) + " " + s.Format("15:04") + " – " + w.dayTitle(f, now) + " " + f.Format("15:04")
+}
+
+// dayTitle is "Tue, Oct 27", with the year when it isn't this year's.
+func (w dateWords) dayTitle(t, now time.Time) string {
+	return w.l.T("{{.Weekday}}, {{.Date}}", "Weekday", w.shortWeekday(t), "Date", w.shortDate(t, now))
+}
+
+// viewRange names what a Day, Week or Month view shows.
+func (w dateWords) viewRange(v calendarView, now time.Time) string {
+	switch v.View {
+	case "day":
+		if v.Date.Equal(v.Today) {
+			return w.dayTitle(v.Date, now) + " · " + w.l.T("Today")
+		}
+		return w.dayTitle(v.Date, now)
+	case "month":
+		return w.l.T("{{.Month}} {{.Year}}", "Month", w.l.T(monthNames[v.Date.Month()-1]), "Year", strconv.Itoa(v.Date.Year()))
+	}
+	win := v.Window()
+	first, last := win.From, win.To.AddDate(0, 0, -1)
+	return w.l.T("{{.From}} – {{.To}}, {{.Year}}", "From", w.shortDate(first, last), "To", w.shortDate(last, last), "Year", strconv.Itoa(last.Year()))
 }
 
 // parseEventForm reads the add and edit forms: a date, optional start and
@@ -97,6 +125,9 @@ func parseEventForm(r *http.Request, loc *time.Location) (events.Event, string) 
 		}
 	}
 	start := r.FormValue("start")
+	if r.FormValue("all_day") == "yes" {
+		start = ""
+	}
 	if start == "" {
 		e.AllDay = true
 		e.Start = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
@@ -151,9 +182,13 @@ func eventFormValues(e events.Event, loc *time.Location) map[string]string {
 		v["date"], v["end_date"] = e.Start.Format("2006-01-02"), e.LastDay().Format("2006-01-02")
 	} else {
 		s, f := e.Start.In(loc), e.End.In(loc)
-		_, so := s.Zone()
-		_, eo := f.Zone()
-		v["offset"], v["end_offset"] = strconv.Itoa(so), strconv.Itoa(eo)
+		// An offset is only needed for the second of a repeated hour.
+		for key, t := range map[string]time.Time{"offset": s, "end_offset": f} {
+			if !time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, loc).Equal(t) {
+				_, offset := t.Zone()
+				v[key] = strconv.Itoa(offset)
+			}
+		}
 		v["date"], v["start"], v["end_date"], v["end"] = s.Format("2006-01-02"), s.Format("15:04"), f.Format("2006-01-02"), f.Format("15:04")
 	}
 	if v["end_date"] == v["date"] {
@@ -169,31 +204,67 @@ func calendarReturn(r *http.Request) string {
 	return "/calendar"
 }
 
+// calendarNav is the request for the calendar view a form returns to.
+func calendarNav(r *http.Request) *http.Request {
+	nav := r.Clone(r.Context())
+	nav.URL, _ = url.Parse(calendarReturn(r))
+	return nav
+}
+
+// calendarWith is the return address with the given keys set, each followed
+// by its value; empty values are left out.
+func calendarWith(r *http.Request, pairs ...string) string {
+	u, _ := url.Parse(calendarReturn(r))
+	q := u.Query()
+	for i := 0; i+1 < len(pairs); i += 2 {
+		if pairs[i+1] != "" {
+			q.Set(pairs[i], pairs[i+1])
+		}
+	}
+	return "/calendar?" + q.Encode()
+}
+
+func submittedEventForm(r *http.Request) map[string]string {
+	v := map[string]string{}
+	for _, k := range []string{"date", "end_date", "start", "end", "offset", "end_offset", "all_day"} {
+		v[k] = r.FormValue(k)
+	}
+	return v
+}
+
 func (d Deps) calendarRoutes(mux *http.ServeMux) {
 	d.subscriptionRoutes(mux)
 	store := func() *events.Store { return events.NewStore(d.DB) }
 	mux.HandleFunc("GET /calendar", d.calendarPage)
+	// The editor is a column on the Calendar; older links land there.
 	mux.HandleFunc("GET /calendar/new", func(w http.ResponseWriter, r *http.Request) {
-		loc := settings.Zone(r.Context(), d.DB)
-		form := map[string]string{"date": time.Now().In(loc).Format("2006-01-02")}
-		for _, key := range []string{"date", "start", "offset"} {
-			if val := r.URL.Query().Get(key); val != "" {
-				form[key] = val
+		q := r.URL.Query()
+		date := q.Get("date")
+		if date == "" {
+			date = time.Now().In(settings.Zone(r.Context(), d.DB)).Format("2006-01-02")
+		}
+		start := q.Get("start")
+		if start == "" {
+			start = "09:00"
+		}
+		http.Redirect(w, r, calendarWith(r, "new", date, "date", date, "start", start, "offset", q.Get("offset")), http.StatusSeeOther)
+	})
+	mux.HandleFunc("GET /calendar/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		date := q.Get("on")
+		if e, err := store().Get(r.Context(), r.PathValue("id")); err == nil && date == "" {
+			date = e.Start.In(settings.Zone(r.Context(), d.DB)).Format("2006-01-02")
+			if e.AllDay {
+				date = e.Start.Format("2006-01-02")
 			}
 		}
-		if form["start"] != "" {
-			clone := r.Clone(r.Context())
-			clone.Form = url.Values{"title": {"new"}, "date": {form["date"]}, "start": {form["start"]}, "offset": {form["offset"]}}
-			if e, problem := parseEventForm(clone, loc); problem == "" {
-				form = eventFormValues(e, loc)
-			}
-		}
-		d.eventForm(w, r, events.Event{}, form, loc, "")
+		http.Redirect(w, r, calendarWith(r, "edit", r.PathValue("id"), "occurrence", q.Get("occurrence"), "on", q.Get("on"), "date", date), http.StatusSeeOther)
 	})
 	mux.HandleFunc("POST /calendar", func(w http.ResponseWriter, r *http.Request) {
-		e, problem := parseEventForm(r, settings.Zone(r.Context(), d.DB))
+		loc := settings.Zone(r.Context(), d.DB)
+		e, problem := parseEventForm(r, loc)
 		if problem != "" {
-			d.eventForm(w, r, e, submittedEventForm(r), settings.Zone(r.Context(), d.DB), problem)
+			d.showCalendar(w, r, calendarNav(r), d.eventEditor(r.Context(), e, submittedEventForm(r), loc, problem))
 			return
 		}
 		if err := store().Create(r.Context(), &e); err != nil {
@@ -201,22 +272,6 @@ func (d Deps) calendarRoutes(mux *http.ServeMux) {
 			return
 		}
 		back(w, r, calendarReturn(r), "Event added.")
-	})
-	mux.HandleFunc("GET /calendar/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
-		e, err := store().Get(r.Context(), r.PathValue("id"))
-		if errors.Is(err, events.ErrNotFound) {
-			http.NotFound(w, r)
-			return
-		} else if err != nil {
-			d.fail(w, err)
-			return
-		}
-		loc := settings.Zone(r.Context(), d.DB)
-		if events.Protected(e) {
-			d.occurrenceDetails(w, r, e, loc)
-			return
-		}
-		d.eventForm(w, r, e, eventFormValues(e, loc), loc, "")
 	})
 	mux.HandleFunc("POST /calendar/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
 		id, ret := r.PathValue("id"), calendarReturn(r)
@@ -232,10 +287,11 @@ func (d Deps) calendarRoutes(mux *http.ServeMux) {
 			http.Error(w, d.Localizer(r).T("Edit this series in your CalDAV app."), http.StatusConflict)
 			return
 		}
-		e, problem := parseEventForm(r, settings.Zone(r.Context(), d.DB))
+		loc := settings.Zone(r.Context(), d.DB)
+		e, problem := parseEventForm(r, loc)
 		if problem != "" {
 			e.ID = id
-			d.eventForm(w, r, e, submittedEventForm(r), settings.Zone(r.Context(), d.DB), problem)
+			d.showCalendar(w, r, calendarNav(r), d.eventEditor(r.Context(), e, submittedEventForm(r), loc, problem))
 			return
 		}
 		e.ID, e.Blob = id, existing.Blob

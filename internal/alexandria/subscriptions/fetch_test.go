@@ -17,8 +17,8 @@ func TestFetchFailuresAndBounds(t *testing.T) {
 		typ, body  string
 		gzip       bool
 	}{
-		{"http", "http_error", 503, "text/calendar", "", false},
-		{"unsolicited304", "http_error", 304, "", "", false},
+		{"http", "http_503", 503, "text/calendar", "", false},
+		{"unsolicited304", "http_304", 304, "", "", false},
 		{"html", "html_page", 200, "text/html", "<html>not a calendar</html>", false},
 		{"size", "too_large", 200, "text/calendar", strings.Repeat("x", MaxFeedBytes+1), false},
 		{"gzip size", "too_large", 200, "text/calendar", strings.Repeat("x", MaxFeedBytes+1), true},
@@ -77,5 +77,16 @@ func TestFeedLimitsAndEmptyValidation(t *testing.T) {
 	}
 	if _, err := Parse(context.Background(), []byte(feed(b.String()))); err == nil || err.Error() != "too_large" {
 		t.Fatal("series bound", err)
+	}
+}
+
+func TestHTTPStatusCodes(t *testing.T) {
+	for code, want := range map[string]string{"http_404": "404", "http_error": "", "http_40": "", "http_4o4": "", "fetch_failed": ""} {
+		if got := HTTPStatus(code); got != want {
+			t.Fatal(code, got)
+		}
+	}
+	if Problem("http_404") != Problem("http_error") || httpCode(1000) != "http_error" {
+		t.Fatal("unnumbered problem text")
 	}
 }

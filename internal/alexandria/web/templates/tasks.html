@@ -53,7 +53,7 @@
   <div class="side-head"><h6 id="next-title">{{t "Next 7 days"}}</h6><a class="btn btn-ghost" href="/calendar/new?return=%2F">{{icon "plus"}} {{t "Event"}}</a></div>
   {{if $d.Events}}<ul class="next-events">{{range $d.Events}}<li><a href="{{.Link}}"><span class="ev-when"><span class="ev-day">{{.Day}}</span><span class="ev-time">{{.Time}}</span></span><span class="ev-what"><span class="ev-title">{{.Title}}</span>{{with .From}}<span class="ev-from">{{t "From {{.Notebook}}" "Notebook" .}}</span>{{end}}</span></a></li>{{end}}</ul>
   {{else}}<p class="empty">{{t "Nothing in the next 7 days."}}</p>{{end}}
-  {{with $d.HiddenCalendars}}<p class="muted small"><a href="/calendar#upcoming">{{t "{{.Count}} calendars hidden by Calendar's event filter" .}}</a></p>{{end}}
+  {{with $d.HiddenCalendars}}<p class="muted small"><a href="/calendar?view=upcoming&amp;filters=1">{{t "{{.Count}} calendars hidden by Calendar's event filter" .}}</a></p>{{end}}
   {{if $d.EventsIncomplete}}<p class="muted small">{{t "Some events couldn't be read. Open the calendar for details."}}</p>{{end}}
   <p><a href="/calendar">{{t "Open calendar"}}</a></p>
   {{template "connection" (connection .Base "tasks")}}

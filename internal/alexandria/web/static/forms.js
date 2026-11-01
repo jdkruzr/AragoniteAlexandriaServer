@@ -26,10 +26,11 @@
     if (clear && clear.type !== 'reset') clear.addEventListener('click', () => { for (const b of boxes) b.checked = false; sync(); });
     sync();
   }
-  // Menus apply on change; their buttons are for browsers without script.
-  for (const select of document.querySelectorAll('select[data-autosubmit]')) {
-    for (const button of select.form.querySelectorAll('[data-sort-submit]')) button.hidden = true;
-    select.addEventListener('change', () => select.form.requestSubmit());
+  // Menus and checkboxes apply on change; their buttons are for browsers
+  // without script.
+  for (const field of document.querySelectorAll('select[data-autosubmit], input[data-autosubmit]')) {
+    for (const button of field.form.querySelectorAll('[data-sort-submit]')) button.hidden = true;
+    field.addEventListener('change', () => field.form.requestSubmit());
   }
   // A destructive button waits for its checkbox (the browser also requires
   // it). The pair shares a <details> or, failing that, a form.

@@ -61,7 +61,7 @@ calendar apps over CalDAV, and you can choose which color does what, or
 switch either off.
 
 <p align="center"><img src="docs/images/tasks.png" width="760" alt="Tasks made from a notebook page, marked From note"></p>
-<p align="center"><img src="docs/images/calendar.png" width="760" alt="The calendar with an event made from sky blue ink"></p>
+<p align="center"><img src="docs/images/calendar.png" width="760" alt="The calendar's week, with events made from notebook pages and tasks due"></p>
 
 ### Writes Minutes From Your Audio Notes
 

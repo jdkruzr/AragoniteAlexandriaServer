@@ -52,7 +52,7 @@ The **More** menu holds **Recognize this library…**, the BOOX maintenance page
 
 ## Browsing Notebooks
 
-Notebooks are listed on the left, newest first; sort by name, pages, or created or modified date, and flip the order. **All notebooks** lists every notebook with its folder; **Folders** goes one folder at a time. Dates are in your time zone (**Settings → Tasks & Integrations**). BOOX lists also have a title search and a **Type** filter (handwritten, text, reading and other note types).
+Notebooks are listed on the left, newest first; sort by name, pages, or created or modified date, and flip the order. **All notebooks** lists every notebook with its folder; **Folders** goes one folder at a time. Dates are in your time zone (**Settings → Calendar & tasks**). BOOX lists also have a title search and a **Type** filter (handwritten, text, reading and other note types).
 
 Click a notebook to preview it on the right: its first eight pages, its folder and how many pages have recognized text. Double-click it, or choose **Open**, to read it.
 
