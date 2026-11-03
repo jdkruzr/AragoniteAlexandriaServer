@@ -105,7 +105,7 @@ func TestConcurrentIdentityAdoption(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			results[i] = enrollIdentity(t, s, codes[i], []string{"owner-a", "owner-b"}[i]).Code
+			results[i] = enrollIdentity(t, pooled(s), codes[i], []string{"owner-a", "owner-b"}[i]).Code
 		}(i)
 	}
 	wg.Wait()

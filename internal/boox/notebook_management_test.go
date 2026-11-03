@@ -3,7 +3,6 @@ package boox
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -197,7 +196,7 @@ func TestNotebookManagementStaleAndReplay(t *testing.T) {
 		go func() {
 			copy := in
 			copy.Choices = append([]notebookChoice(nil), in.Choices...)
-			results <- s.queueNotebookManagement(ctx, copy)
+			results <- pooled(s).queueNotebookManagement(ctx, copy)
 		}()
 	}
 	for i := 0; i < 4; i++ {
@@ -469,9 +468,7 @@ func TestNotebookPurgeAdmissionAndSingleConnection(t *testing.T) {
 	if e = s.queueNotebookManagement(ctx, notebookIntent{Token: uuid.NewString(), Action: "purge", Choices: []notebookChoice{items[0].notebookChoice}}); !errors.Is(e, errNotebookSelection) {
 		t.Fatal(e)
 	}
-	// Runtime admission often owns exactly one DB connection.
-	db := s.DB.(*sql.DB)
-	db.SetMaxOpenConns(1)
+	// Runtime admission owns exactly one DB connection, as testService does.
 	batch := managementQueue(t, s, "purge", notebookChoice{ID: "n", Revision: "1-original"})
 	deadline, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -519,14 +516,14 @@ func TestNotebookGarbageCollectionVersusUpload(t *testing.T) {
 	blocker := blockedPurgeDelete{Store: s.Objects, entered: make(chan struct{}, 1), release: make(chan struct{})}
 	s.Objects = blocker
 	collected := make(chan error, 1)
-	go func() { _, e := s.PublishOne(ctx); collected <- e }()
+	go func() { _, e := pooled(s).PublishOne(ctx); collected <- e }()
 	select {
 	case <-blocker.entered:
 	case <-ctx.Done():
 		t.Fatal("collector did not reach object")
 	}
 	uploaded := make(chan int, 1)
-	go func() { uploaded <- signed(t, s, c, "PUT", s.uid()+"/note/other/resource/a", "", body, false).Code }()
+	go func() { uploaded <- signed(t, pooled(s), c, "PUT", s.uid()+"/note/other/resource/a", "", body, false).Code }()
 	select {
 	case code := <-uploaded:
 		t.Fatalf("upload bypassed GC lock: %d", code)

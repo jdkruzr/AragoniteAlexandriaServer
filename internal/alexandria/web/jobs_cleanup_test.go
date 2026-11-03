@@ -15,7 +15,8 @@ import (
 func TestRecognitionCleanupRoutes(t *testing.T) {
 	ctx := context.Background()
 	db := testenv.Database(t).DB
-	d := Deps{DB: db, PublicURL: "https://cleanup.example.test"}
+	conn := testenv.Request(t, db) // one connection, as production gives a request
+	d := Deps{DB: conn, PublicURL: "https://cleanup.example.test"}
 	s := recognition.Store{DB: db}
 
 	if _, _, err := s.Queue(ctx, "boox", recognition.Notebook{ID: "cleanup-demo", Pages: []recognition.Page{{ID: "p", Number: 1}}}, 1, 1, false, uuid.NewString()); err != nil {

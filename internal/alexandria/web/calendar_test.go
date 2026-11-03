@@ -188,7 +188,8 @@ func TestCalendarLocalTimeInput(t *testing.T) {
 func calendarFixture(t *testing.T) (Deps, *events.Store) {
 	t.Helper()
 	db := testenv.Database(t).DB
-	d := Deps{DB: db, PublicURL: "https://calendar.example.test"}
+	conn := testenv.Request(t, db) // one connection, as production gives a request
+	d := Deps{DB: conn, PublicURL: "https://calendar.example.test"}
 	ctx := context.Background()
 	if err := settings.Set(ctx, db, settings.TimeZone, "America/Chicago", false); err != nil {
 		t.Fatal(err)

@@ -11,8 +11,12 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/schema"
 )
 
+// Driver is the database/sql driver Open uses. Tests swap in a checking
+// wrapper (internal/testenv); production always uses pgx.
+var Driver = "pgx"
+
 func Open(ctx context.Context, databaseURL string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", databaseURL)
+	db, err := sql.Open(Driver, databaseURL)
 	if err != nil {
 		return nil, err
 	}

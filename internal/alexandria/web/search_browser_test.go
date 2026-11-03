@@ -38,7 +38,8 @@ func TestSearchSortingBrowserFixture(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	d := Deps{DB: db, Search: notes.Searcher{DB: db, Embedder: browserSearchEmbedder{}}, Status: Status{NativeBOOX: true, Embedding: "synthetic"}}
+	conn := testenv.Request(t, db) // one connection, as production gives a request
+	d := Deps{DB: conn, Search: notes.Searcher{DB: conn, Embedder: browserSearchEmbedder{}}, Status: Status{NativeBOOX: true, Embedding: "synthetic"}}
 	srv := httptest.NewServer(Handler(d))
 	defer srv.Close()
 	if err := os.WriteFile(filepath.Join(dir, "url"), []byte(srv.URL), 0600); err != nil {

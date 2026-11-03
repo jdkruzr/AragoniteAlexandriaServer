@@ -4,6 +4,10 @@
 //
 // Tests skip when the fixtures are not configured, unless
 // ALEXANDRIA_REQUIRE_INTEGRATION=1, in which case they fail (the CI gate).
+//
+// Databases open through a checking pgx driver (guard.go). Give handlers
+// under test Request's single connection, as production gives each request
+// one; a query sent while earlier rows on it are open then panics at once.
 package testenv
 
 import (
@@ -89,7 +93,7 @@ func UnmigratedDatabase(t testing.TB) Library {
 		}
 	})
 	base.Path = "/" + name
-	db, err = sql.Open("pgx", base.String())
+	db, err = sql.Open(guardedDriver, base.String())
 	if err != nil {
 		t.Fatal(err)
 	}

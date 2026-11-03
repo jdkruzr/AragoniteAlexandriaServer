@@ -30,7 +30,8 @@ func TestRecognitionSizeBrowserFixture(t *testing.T) {
 	if e := provider.Ensure(ctx); e != nil {
 		t.Fatal(e)
 	}
-	d := Deps{DB: db, Providers: provider, Status: Status{NativeBOOX: true, OCR: "synthetic"}, RecognitionCatalog: func(context.Context, string, string) (recognition.Notebook, error) {
+	conn := testenv.Request(t, db) // one connection, as production gives a request
+	d := Deps{DB: conn, Providers: provider, Status: Status{NativeBOOX: true, OCR: "synthetic"}, RecognitionCatalog: func(context.Context, string, string) (recognition.Notebook, error) {
 		n := recognition.Notebook{ID: "large", Title: "Synthetic oversized notebook"}
 		for i := 1; i <= 101; i++ {
 			n.Pages = append(n.Pages, recognition.Page{ID: fmt.Sprint("p", i), Number: i})

@@ -17,7 +17,8 @@ func TestRecognitionSizeFormsAndOrigin(t *testing.T) {
 	if _, e := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,body) SELECT 'large','1-a','notebook','1',jsonb_build_object('uniqueId','large','type',1,'status',1,'title','Synthetic giant','pageNameList',(SELECT jsonb_agg('p'||i) FROM generate_series(1,101) i))`); e != nil {
 		t.Fatal(e)
 	}
-	d := Deps{DB: db, PublicURL: "https://size.example.test", RecognitionCatalog: func(context.Context, string, string) (recognition.Notebook, error) {
+	conn := testenv.Request(t, db) // one connection, as production gives a request
+	d := Deps{DB: conn, PublicURL: "https://size.example.test", RecognitionCatalog: func(context.Context, string, string) (recognition.Notebook, error) {
 		return recognition.Notebook{ID: "large", Title: "Synthetic giant", Pages: make([]recognition.Page, 101)}, nil
 	}}
 	h := Handler(d)

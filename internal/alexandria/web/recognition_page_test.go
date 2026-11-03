@@ -16,7 +16,8 @@ import (
 func TestRecognitionTabs(t *testing.T) {
 	ctx := context.Background()
 	db := testenv.Database(t).DB
-	d := Deps{DB: db, PublicURL: "https://recognition.example.test", Status: Status{NativeBOOX: true, OCR: "synthetic-vl"}}
+	conn := testenv.Request(t, db) // one connection, as production gives a request
+	d := Deps{DB: conn, PublicURL: "https://recognition.example.test", Status: Status{NativeBOOX: true, OCR: "synthetic-vl"}}
 	s := recognition.Store{DB: db}
 	n := recognition.Notebook{ID: "rec-demo", Title: "Synthetic recognition notebook"}
 	for _, p := range []string{"p1", "p2", "p3"} {

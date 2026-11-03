@@ -110,7 +110,7 @@ func TestCleanupAtomicStaleSelectionAndConcurrentReplay(t *testing.T) {
 	results := make(chan error, 4)
 	for i := 0; i < 4; i++ {
 		go func() {
-			results <- s.queueCleanup(ctx, token, []cleanupChoice{{"a", "1-original"}, {"b", "1-original"}})
+			results <- pooled(s).queueCleanup(ctx, token, []cleanupChoice{{"a", "1-original"}, {"b", "1-original"}}) // concurrent requests, own connections
 		}()
 	}
 	for i := 0; i < 4; i++ {

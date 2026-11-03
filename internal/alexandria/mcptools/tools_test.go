@@ -62,7 +62,8 @@ func setup(t *testing.T) (*sql.DB, *mcp.ClientSession) {
 	if _, err := (notes.Pipeline{OCR: ocr{}}).Step(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	server := NewServer(Deps{DB: db, Search: notes.Searcher{DB: db}, PublicURL: "https://library.example",
+	conn := testenv.Request(t, db) // one connection, as production gives a request
+	server := NewServer(Deps{DB: conn, Search: notes.Searcher{DB: conn}, PublicURL: "https://library.example",
 		Tasks: tasksvc.NewTaskService(taskdb.NewStore(db), nil)})
 	st, ct := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(ctx, st, nil); err != nil {

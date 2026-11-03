@@ -68,7 +68,7 @@ func TestPublicationOwnerIsFencedDuringObjectBinding(t *testing.T) {
 			if _, e := s.DB.ExecContext(ctx, `UPDATE boox_identity SET native_uid=$1 WHERE id=1`, uid); e != nil {
 				t.Fatal(e)
 			}
-			objects := &fencedPublicationOwner{Store: s.Objects, db: s.DB, t: t}
+			objects := &fencedPublicationOwner{Store: s.Objects, db: pooled(s).DB, t: t} // a competing session: another connection
 			s.Objects = objects
 			var e error
 			if kind == "book" {

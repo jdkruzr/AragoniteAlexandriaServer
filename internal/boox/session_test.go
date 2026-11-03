@@ -51,7 +51,7 @@ func TestStableSessionRenewalGuardsAndRestart(t *testing.T) {
 	results := make(chan string, 8)
 	for i := 0; i < 8; i++ {
 		go func() {
-			b, e := s.sessionBackend(ctx, front, "")
+			b, e := pooled(s).sessionBackend(ctx, front, "")
 			if e != nil {
 				results <- ""
 			} else {

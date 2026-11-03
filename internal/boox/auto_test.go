@@ -162,7 +162,7 @@ func TestAutomaticMinutesTraversesFinishedNotebooks(t *testing.T) {
 			for i := 0; i < 2; i++ {
 				go func() {
 					<-start
-					found, err := s.autoSummarize(ctx, since, cfg, 10*time.Minute)
+					found, err := pooled(s).autoSummarize(ctx, since, cfg, 10*time.Minute) // two workers, two connections
 					results <- result{found, err}
 				}()
 			}

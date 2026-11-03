@@ -2,7 +2,6 @@ package boox
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"github.com/google/uuid"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
@@ -154,13 +153,8 @@ func TestQueuePageUsesOneAdmittedConnection(t *testing.T) {
 	s := indexFixture(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	conn, err := s.DB.(*sql.DB).Conn(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-	s.DB = conn
-	if err = s.QueuePage(ctx, "note", 1); err != nil {
+	// testService already runs on one connection, as production admits.
+	if err := s.QueuePage(ctx, "note", 1); err != nil {
 		t.Fatal(err)
 	}
 }

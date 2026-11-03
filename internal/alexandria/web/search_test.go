@@ -1,7 +1,6 @@
 package web
 
 import (
-	"context"
 	"net/http/httptest"
 	"reflect"
 	"regexp"
@@ -44,13 +43,7 @@ func TestSearchTabsHighlightsAndPaging(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Like production, the handler gets one connection, which can't run a
-	// second query while it reads rows.
-	conn, err := db.Conn(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
+	conn := testenv.Request(t, db) // one connection, as production gives a request
 	h := Handler(Deps{DB: conn, Search: notes.Searcher{DB: conn}, Status: Status{NativeBOOX: true}})
 	get := func(path string) string {
 		t.Helper()

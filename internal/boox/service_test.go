@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
@@ -16,17 +17,33 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
+// testService runs on one connection, as production serves a request, so a
+// query sent while earlier rows are still open fails (see testenv.Request).
 func testService(t *testing.T) Service {
 	t.Helper()
 	db := testenv.Database(t)
 	if e := generation.Ensure(context.Background(), db.DB); e != nil {
 		t.Fatal(e)
 	}
-	return Service{Config: Config{PublicURL: "https://boox.example", GatewayPublicURL: "http://127.0.0.1:4984", GatewayAdminURL: "http://127.0.0.1:4985", GatewayUsername: "private", GatewayPassword: "private", Database: "neocloud"}, DB: db.DB, Objects: testenv.Objects(t, db.ID), LibraryID: db.ID}
+	testPools.Store(db.ID, db.DB)
+	t.Cleanup(func() { testPools.Delete(db.ID) })
+	return Service{Config: Config{PublicURL: "https://boox.example", GatewayPublicURL: "http://127.0.0.1:4984", GatewayAdminURL: "http://127.0.0.1:4985", GatewayUsername: "private", GatewayPassword: "private", Database: "neocloud"}, DB: testenv.Request(t, db.DB), Objects: testenv.Objects(t, db.ID), LibraryID: db.ID}
+}
+
+// testPools are testService's connection pools, by library.
+var testPools sync.Map
+
+// pooled is s on its connection pool, as production's workers and concurrent
+// requests run: for tests that do several things at once.
+func pooled(s Service) Service {
+	db, _ := testPools.Load(s.LibraryID)
+	s.DB = db.(*sql.DB)
+	return s
 }
 func request(t *testing.T, s Service, method, path string, input any, headers map[string]string) *httptest.ResponseRecorder {
 	t.Helper()
@@ -466,7 +483,7 @@ func TestConcurrentNativeChannelUpdatesAvoidLockUpgradeDeadlock(t *testing.T) {
 	results := make(chan error, 8)
 	for i := 0; i < 8; i++ {
 		go func() {
-			_, e := s.updateChannels(context.Background(), d, "add", []string{nativeUID(s.LibraryID) + "-NOTE_TREE"})
+			_, e := pooled(s).updateChannels(context.Background(), d, "add", []string{nativeUID(s.LibraryID) + "-NOTE_TREE"})
 			results <- e
 		}()
 	}

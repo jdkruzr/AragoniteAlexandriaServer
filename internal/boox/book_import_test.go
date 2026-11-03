@@ -2,7 +2,6 @@ package boox
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -56,16 +55,9 @@ func TestImportFolderResolutionAndSingleConnection(t *testing.T) {
 	s := enrolledImportService(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	// Runtime admits a single connection: never query s.DB while its transaction is open.
-	db := s.DB
-	conn, e := db.(interface {
-		Conn(context.Context) (*sql.Conn, error)
-	}).Conn(ctx)
-	if e != nil {
-		t.Fatal(e)
-	}
-	defer conn.Close()
-	s.DB = conn
+	// Runtime admits a single connection, and so does testService: never
+	// query s.DB while its transaction is open.
+	var e error
 	importFixtureFolder(t, s, "f1", "Books", "")
 	importFixtureFolder(t, s, "f2", "Books", "")
 	var generation string
