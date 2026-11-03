@@ -2,8 +2,11 @@
 package searchorder
 
 import (
+	"cmp"
+	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
@@ -28,6 +31,48 @@ func Parse(value string) Order {
 func NaturalSQL(expression string) string {
 	return `ARRAY(SELECT CASE WHEN part[1] ~ '^[0-9]+$' THEN '0'||lpad(length(coalesce(nullif(ltrim(part[1],'0'),''),'0'))::text,10,'0')||coalesce(nullif(ltrim(part[1],'0'),''),'0') ELSE '1'||part[1] END FROM regexp_matches(lower(coalesce(` + expression + `,'')), '[0-9]+|[^0-9]+', 'g') WITH ORDINALITY AS pieces(part,position) ORDER BY position) COLLATE "C"`
 }
+
+// Natural compares titles as NaturalSQL orders them, so lists merged in Go
+// sort the way SQL sorts each part: case-insensitively, digit runs by
+// magnitude, then bytewise.
+func Natural(a, b string) int {
+	x, y := naturalKey(a), naturalKey(b)
+	for i := 0; i < len(x) && i < len(y); i++ {
+		if c := strings.Compare(x[i], y[i]); c != 0 {
+			return c
+		}
+	}
+	if c := cmp.Compare(len(x), len(y)); c != 0 {
+		return c
+	}
+	return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+}
+
+// naturalKey splits a title into the pieces NaturalSQL builds.
+func naturalKey(s string) []string {
+	var out []string
+	s = strings.ToLower(s)
+	for len(s) > 0 {
+		digits := s[0] >= '0' && s[0] <= '9'
+		n := strings.IndexFunc(s, func(r rune) bool { return (r >= '0' && r <= '9') != digits })
+		if n < 0 {
+			n = len(s)
+		}
+		part := s[:n]
+		s = s[n:]
+		if !digits {
+			out = append(out, "1"+part)
+			continue
+		}
+		part = strings.TrimLeft(part, "0")
+		if part == "" {
+			part = "0"
+		}
+		out = append(out, "0"+fmt.Sprintf("%010d", len(part))+part)
+	}
+	return out
+}
+
 func (o Order) SQL(title, created, relevance, tie string) string {
 	name := NaturalSQL(title)
 	stable := "lower(coalesce(" + title + `,'')) COLLATE "C" ASC,` + tie
@@ -53,12 +98,15 @@ func Date(ms int64) string { return listing.Date(ms) }
 
 const Size = 50
 
-func Offset(value string) int {
+func Offset(value string) int { return OffsetOf(value, Size) }
+
+// OffsetOf reads an offset for pages of size results, rounded down to a page.
+func OffsetOf(value string, size int) int {
 	n, err := strconv.Atoi(value)
 	if err != nil || n < 0 || n > 1000000 {
 		return 0
 	}
-	return n / Size * Size
+	return n / size * size
 }
 
 type Page struct {
@@ -67,7 +115,12 @@ type Page struct {
 }
 
 func Navigation(q url.Values, key, anchor string, offset, total int) Page {
-	p := Page{Total: total, Start: min(offset+1, total), End: min(offset+Size, total), Page: offset/Size + 1, Pages: max(1, (total+Size-1)/Size)}
+	return NavigationOf(q, key, anchor, offset, total, Size)
+}
+
+// NavigationOf is Navigation for pages of size results.
+func NavigationOf(q url.Values, key, anchor string, offset, total, size int) Page {
+	p := Page{Total: total, Start: min(offset+1, total), End: min(offset+size, total), Page: offset/size + 1, Pages: max(1, (total+size-1)/size)}
 	link := func(n int) string {
 		v := url.Values{}
 		for k, values := range q {
@@ -77,10 +130,10 @@ func Navigation(q url.Values, key, anchor string, offset, total int) Page {
 		return "/search?" + v.Encode() + "#" + anchor
 	}
 	if offset > 0 {
-		p.Previous = link(max(0, offset-Size))
+		p.Previous = link(max(0, offset-size))
 	}
-	if offset+Size < total {
-		p.Next = link(offset + Size)
+	if offset+size < total {
+		p.Next = link(offset + size)
 	}
 	return p
 }

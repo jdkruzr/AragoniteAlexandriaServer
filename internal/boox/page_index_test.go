@@ -120,7 +120,7 @@ func TestPageRecognitionCacheInvalidationAndSearch(t *testing.T) {
 	d := web.Deps{DB: s.DB, Search: notes.Searcher{DB: s.DB}, Status: web.Status{NativeBOOX: true}}
 	w := httptest.NewRecorder()
 	web.Handler(d).ServeHTTP(w, httptest.NewRequest("GET", "/search?q=quasar&source=boox", nil))
-	if !strings.Contains(w.Body.String(), "synthetic quasar transcript") {
+	if !strings.Contains(unmarked(w.Body.String()), "synthetic quasar transcript") {
 		t.Fatal("recognition not searchable", w.Body.String())
 	}
 	ocr.hook = func() {
@@ -140,7 +140,7 @@ func TestPageRecognitionCacheInvalidationAndSearch(t *testing.T) {
 	}
 	w = httptest.NewRecorder()
 	web.Handler(d).ServeHTTP(w, httptest.NewRequest("GET", "/search?q=quasar&source=boox", nil))
-	if strings.Contains(w.Body.String(), "synthetic quasar transcript") {
+	if strings.Contains(unmarked(w.Body.String()), "synthetic quasar transcript") {
 		t.Fatal("stale text searchable")
 	}
 	ocr.hook = nil

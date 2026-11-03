@@ -196,7 +196,7 @@ details.more { margin:1rem 0; } details.more > summary { color:var(--muted); fon
 
 /* Cards and panels */
 /* Broadsheet separates sections with whitespace; cards keep their spacing but lose their frames. */
-.card, .help, .semantic-panel, .annotation, .result { background:transparent; }
+.card, .help, .semantic-panel, .annotation { background:transparent; }
 .card, .semantic-panel { padding:0; margin:0 0 var(--space-8); }
 .card > h2:first-child, .card > h3:first-child, .semantic-panel > h2:first-child { margin-top:0; }
 .help { padding:.25rem 1.1rem .75rem; margin:0 0 1rem; }
@@ -208,10 +208,9 @@ details.more { margin:1rem 0; } details.more > summary { color:var(--muted); fon
 .stat { font:600 38px/1.1 var(--font-heading); }
 .stat-label { color:var(--muted); font-size:.85rem; }
 .stats { display:flex; flex-wrap:wrap; gap:.5rem 1.75rem; margin:.25rem 0; }
-.annotation, .result { padding:0; margin:var(--space-4) 0; }
+.annotation { padding:0; margin:var(--space-4) 0; }
 .annotation h2 { font-size:1rem; margin:0 0 .25rem; color:var(--muted); }
 .annotation img { max-width:100%; height:auto; background:var(--paper); box-shadow:var(--shadow-sm); }
-.result p { margin:.3rem 0 0; }
 
 /* Status pills */
 .badge { display:inline-block; font-size:12px; line-height:1.4; padding:2px 8px; border-radius:var(--radius-md); color:var(--color-neutral-800); background:var(--color-neutral-100); white-space:nowrap; }
@@ -910,3 +909,26 @@ form.set-form { max-width:none; margin:0 0 var(--space-3); }
   .operator-title { font-size:34px; }
 }
 
+
+/* Search: type tabs with counts, a match mode, then one ranked list. */
+.search-head { margin-bottom:var(--space-4); }
+.search-head h1 { margin:0; overflow-wrap:anywhere; }
+.search-tools { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:var(--space-3); margin:0 0 var(--space-3); max-width:860px; }
+.search-tools nav.seg { max-width:100%; overflow-x:auto; }
+.search-tools .seg-opt, .search-tools .source-switch a { white-space:nowrap; }
+.search-tools .source-switch { margin:0; flex-wrap:nowrap; }
+.search-mode, .search-sort { display:flex; align-items:center; gap:var(--space-2); }
+.search-sort .input { width:auto; }
+.seg-count { font-variant-numeric:tabular-nums; opacity:.8; }
+.search-results { max-width:860px; margin-top:var(--space-4); }
+.hit { padding:var(--space-2) 0; margin:0 0 var(--space-2); }
+.hit-label { display:flex; align-items:center; gap:6px; margin:0; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-accent-700); }
+.hit-label .icon { width:14px; height:14px; }
+.hit-title { margin:3px 0 0; font-size:18px; font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
+.hit-title a { color:inherit; text-decoration:none; }
+.hit-title a:hover, .hit-title a:focus-visible { text-decoration:underline; }
+.hit-text { margin:3px 0 0; font-size:15px; font-style:italic; overflow-wrap:anywhere; }
+.hit-meta { margin:3px 0 0; font-size:12px; color:var(--muted); }
+.hit .tags { margin:var(--space-1) 0 0; }
+.hit mark { background:var(--color-accent-100); color:var(--color-accent-800); padding:0 1px; }
+.search-results .pagination { margin-top:var(--space-4); }

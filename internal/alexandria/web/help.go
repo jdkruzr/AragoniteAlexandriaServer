@@ -27,8 +27,8 @@ type helpTip struct {
 var helpTips = map[string]helpTip{
 	"account.password": {"Changing Your Password", "Use at least 12 characters (up to 72 bytes). Your browser may ask you to sign in again. Enrolled devices and API tokens keep working.", "account"},
 
-	"search.coverage": {"What Search Covers", "Alexandria Client page text and book annotations; BOOX notebook titles, book titles, highlights and notes; and handwriting from pages that have been recognized. Pages that were never recognized can only be found by title.", "search"},
-	"search.modes":    {"Words and Meaning", "<strong>Words and meaning</strong> also finds related ideas when semantic search is on. <strong>Exact words only</strong> matches the words you typed. Notebook titles and Client book annotations always use exact words.", "search"},
+	"search.coverage": {"What Search Covers", "Notebook titles and recognized page text from both sources, typed BOOX text notes, Audio Note Minutes, books and highlights, and tasks. Pages that were never recognized can only be found by title. The tabs split results by kind; All mixes them, best first.", "search"},
+	"search.modes":    {"Words and Meaning", "<strong>Words and meaning</strong> also finds related ideas when semantic search is on. <strong>Exact words only</strong> matches the words you typed. Notebook titles, Client books and their annotations, and tasks always use exact words.", "search"},
 
 	"semantic.overview": {"Search by Meaning", "Builds an index of your recognized text so search can find related ideas even when the wording differs. Turning it on sends existing searchable text to the embedding provider; nothing else changes. Keyword search always works.", "semantic"},
 	"semantic.status":   {"Three Separate States", "<strong>Provider</strong>: whether the saved embedding service answers. <strong>Semantic search</strong>: whether you turned it on. <strong>Index</strong>: whether the vectors are built. A ready provider does not mean the feature is on.", "semantic"},

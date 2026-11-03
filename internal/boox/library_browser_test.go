@@ -88,12 +88,12 @@ func TestReadOnlyNotebookBrowserSnapshotAndSearch(t *testing.T) {
 	handler := web.Handler(web.Deps{DB: s.DB, Objects: s.Objects, Search: notes.Searcher{DB: s.DB}, Status: web.Status{NativeBOOX: true}})
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, httptest.NewRequest("GET", "/search?q=Synthetic", nil))
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "Synthetic Browser Note") || strings.Contains(w.Body.String(), "Synthetic deleted") {
+	if w.Code != 200 || !strings.Contains(unmarked(w.Body.String()), "Synthetic Browser Note") || strings.Contains(unmarked(w.Body.String()), "Synthetic deleted") {
 		t.Fatalf("global search: %d %s", w.Code, w.Body.String())
 	}
 	w = httptest.NewRecorder()
 	handler.ServeHTTP(w, httptest.NewRequest("GET", "/search?q=Synthetic&source=client", nil))
-	if w.Code != 200 || strings.Contains(w.Body.String(), "Synthetic Browser Note") {
+	if w.Code != 200 || strings.Contains(unmarked(w.Body.String()), "Synthetic Browser Note") {
 		t.Fatal("client filter leaks native data")
 	}
 	for _, path := range []string{"/boox/reading", "/boox/activity", "/boox/enroll"} {

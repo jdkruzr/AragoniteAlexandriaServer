@@ -39,7 +39,12 @@ func searchHTML(t *testing.T, s Service, query string) string {
 	if w.Code != 200 {
 		t.Fatalf("search HTTP %d: %s", w.Code, w.Body.String())
 	}
-	return w.Body.String()
+	return unmarked(w.Body.String())
+}
+
+// unmarked drops Search's highlighting, so assertions can match the text.
+func unmarked(html string) string {
+	return strings.NewReplacer("<mark>", "", "</mark>", "").Replace(html)
 }
 
 func readingHTML(t *testing.T, s Service, doc string) string {

@@ -12,7 +12,24 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-01): **`calendar-952da26214e6`**, app-only on schema **41**,
+Latest recorded deployment (2026-11-02): **`search-23cfe8d728f3`**, app-only on schema **41**,
+image `sha256:e77701b3e25633d7f98cf3d92f988c1e004fca6e3cac285c1e635a7499e6f430`, on top of
+**`search-fedb40a4a7e5`** (image `sha256:42f93b4a0df68fe45718df12810a346135fcaeb67321f0a5833035ecaef3a5ef`),
+itself on top of **`calendar-952da26214e6`**. Phase 7b of the redesign: Search has type tabs with
+counts (All, Notebooks, Pages, Books & highlights, Tasks), one list 20 to a page (`offset=`), a
+words-and-meaning switch, the sort menu and the All/BOOX/Client switch. Each kind ranks its best
+500 (`notes.Rank` for pages and BOOX reading records; notebook titles of both sources; Client
+books and annotations; tasks, newly searched); All fuses them by reciprocal rank. Matches are
+highlighted through private-use markers from `ts_headline` (`notes.Snippets`) or term matching,
+rendered as escaped text. BOOX highlights carry their book's title and page and open the book in
+the Library. `search-fedb40a4a7e5` read the time zone while task rows were still open on the
+request's single connection, so any search matching a task failed (pgx panic, recovered by the
+server); `search-23cfe8d728f3` reads it first, and the Search test now runs on one pinned
+connection as production does. Live check: counts match read-only SQL (12 notebook titles and 80
+word-matched pages for "budget"), tasks with Done, a highlight opening its book, the source
+switch, paging and Z–A order.
+
+Before that (2026-11-01): **`calendar-952da26214e6`**, app-only on schema **41**,
 image `sha256:aa17eb91af4c91873133082a07406f6b7c98ba0614ac9d350337a30b4602a1c6`, on top of
 **`settings-57db268103d9`**. Phase 7a of the redesign: Calendar has Day, Week, Month and Upcoming
 views of chips (events, and open tasks on their due dates in magenta, which open the task on

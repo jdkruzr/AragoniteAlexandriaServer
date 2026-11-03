@@ -1,13 +1,13 @@
 # Search Your Library
 
 Search looks through everything Alexandria can read in your library at once:
-handwriting that has been recognized, Alexandria Client pages, BOOX reading
-highlights and notes, Audio Note Minutes, and notebook titles. Out of the box it
-matches the words you type. Connect an embedding model and it can also find
-pages by meaning, so a search for "watering schedule" turns up the page where
-you wrote "irrigate the beds every other morning". BOOX tags you add on the
-tablet help too: a tagged page turns up for its tag even when the handwriting
-never says the word.
+notebook titles, handwriting that has been recognized, typed BOOX text notes,
+Audio Note Minutes, books and highlights from both sources, and tasks. Out of
+the box it matches the words you type. Connect an embedding model and it can
+also find pages by meaning, so a search for "watering schedule" turns up the
+page where you wrote "irrigate the beds every other morning". BOOX tags you add
+on the tablet help too: a tagged page turns up for its tag even when the
+handwriting never says the word.
 
 ![Search results with BOOX tags under each page](../images/search.png)
 
@@ -23,39 +23,39 @@ never says the word.
 
 ## What Gets Searched
 
-| Content | Found by | Notes |
+| Tab | What it holds | Found by |
 |---|---|---|
-| Alexandria Client page text | Words, and meaning when it's on | The text Alexandria has for each page, including recognized handwriting. |
-| Alexandria Client book annotations | Exact words | Listed under **Alexandria Client Book Annotations**. |
-| BOOX handwriting | Words, and meaning when it's on | Only pages that have been recognized. |
-| BOOX tags | Words | Only on pages that have recognized text (see below). |
-| BOOX reading highlights and notes | Words, and meaning when it's on | From NeoReader. |
-| Audio Note Minutes | Words, and meaning when it's on | The minutes and their recording transcripts. See [Audio Note Minutes](minutes.md). |
-| BOOX notebook and book titles | Title text | Listed under **BOOX Notebook Titles**; matches part of a title, ignoring case. |
+| **Notebooks** | BOOX and Alexandria Client notebooks whose title contains every word you typed (ignoring case). | Title text |
+| **Pages** | Recognized handwriting from both sources, typed BOOX text notes, and Audio Note Minutes with their transcripts. | Words, and meaning when it's on |
+| **Books & highlights** | BOOX books, highlights and bookmarks from NeoReader; Alexandria Client books (by title or author) and their annotations. | BOOX: words, and meaning when it's on. Client: exact words |
+| **Tasks** | Tasks whose title or details contain every word. Deleted tasks are left out; finished ones are marked **Done**. | Exact words |
 
-Nothing is searchable on a BOOX page until it has recognized text. If a search
-misses a page you know is there, check its recognition state first.
+BOOX tags count as words on the page they're on (see below). Nothing is
+searchable on a BOOX page until it has recognized text. If a search misses a
+page you know is there, check its recognition state first.
 
 ## Searching
 
-1. Select **Search** in the top bar (or use the search box on the **Library**
-   page).
-2. Type up to 256 characters into **Search across your library**.
-3. Optional: pick a source from the menu: **All sources**, **Alexandria Client**
-   or **BOOX** (BOOX appears when the BOOX source is enabled).
-4. Optional, when search by meaning is on: choose **Words and meaning** (the
+1. Type into the search box in the top bar (up to 256 characters) and press
+   Enter. The box keeps your words on the results page so you can refine them.
+2. The tabs across the top split the results by kind and show how many each
+   has. **All**, the default, mixes them into one list: the best match of each
+   kind first, then the second best of each, and so on.
+3. Optional, when search by meaning is on: choose **Words and meaning** (the
    default) or **Exact words only**.
-5. Select **Search**.
+4. Optional: sort by **Best match**, **Title: A–Z** or **Z–A**, or the date the
+   notebook, book or task was created. Client book annotations have no creation
+   date and sort last.
+5. Optional, when BOOX is set up: narrow to **BOOX** or **Alexandria Client**
+   with the switch on the right. A task belongs to a source when a note action
+   or a Client page made it; tasks you added yourself only show under **All**.
 
-Results come in up to three groups:
-
-- **Pages and Reading**: pages, reading records and minutes, best match first,
-  up to 50. Each result shows its source and kind, a link to the page (for
-  example "Garden plans, page 3"), a short snippet, and any BOOX tags on the
-  page. Select a tag to see every page that carries it.
-- **BOOX Notebook Titles**: notebooks and books whose title contains your text.
-- **Alexandria Client Book Annotations**: highlights and notes in Client books.
-  This group isn't shown when you narrow the search to BOOX.
+Each result shows its kind, a title that links to the page, notebook, book or
+task (for example "Garden plans, p. 3"), a snippet with your words
+highlighted, its source, and any BOOX tags on the page. Select a tag to see
+every page that carries it. Results come 20 to a page. Each kind lists its
+best 500 matches; the counts are always complete, and a note says when a list
+stops short.
 
 ### Words vs. Meaning
 
@@ -64,8 +64,8 @@ Results come in up to three groups:
 | **Exact words only** | Matches the words you typed, as whole words. "garden" doesn't find "gardens", so try variations. |
 | **Words and meaning** | Does the word match, then adds pages whose meaning is close even if the wording differs. Pages that match your words still rank higher. |
 
-The mode menu only appears once search by meaning is on. Notebook titles and
-Client book annotations always use exact words. If the embedding service is
+The mode switch only appears once search by meaning is on. Notebook titles,
+Client books and their annotations, and tasks always use exact words. If the embedding service is
 unreachable when you search, you quietly get word results instead of an error.
 
 ## Turning On Search by Meaning
@@ -129,7 +129,7 @@ also arrive; they show as "Not on any page".
 
 ### Tags in the Web App
 
-- **BOOX → Tags** lists every tag with how many pages and notebooks carry it.
+- **Library → Tags** (on the BOOX side) lists every tag with how many pages and notebooks carry it.
   Select a tag to see the pages that have it (matching ignores case, like the
   tag search on the tablet). **Search for it** runs a library search for the
   tag's text.

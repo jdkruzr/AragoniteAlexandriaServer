@@ -39,6 +39,16 @@ templates in `internal/boox/*.go`, grafted into the same layout by
   ID) serves Calendar and Today's Next 7 days; the search is `q=` in the URL.
   `filters=1` opens the filter row and `past=1` adds the past 30 days to
   Upcoming.
+- **Search** (`/search?q=`) has type tabs (`type=` notebooks, pages, books,
+  tasks; All by default), `mode=keyword`, `sort=` and `source=`, with one
+  `offset` and 20 results a page. Each kind is ranked separately, up to its
+  best 500 (`searchCap`): pages and BOOX reading records by `notes.Rank`,
+  notebook titles, Client books and annotations, and tasks by their own
+  queries. A tab fuses its kinds, and All fuses every kind, by reciprocal rank.
+  Snippets for the shown page come from `notes.Snippets`, whose `ts_headline`
+  wraps matches in private-use markers (`notes.MarkStart`/`MarkStop`, stripped
+  from the stored text first); the template renders `markPart`s, so highlights
+  never pass through as HTML. The JSON API (`/api/v1/search`) is unchanged.
 - **Settings** is one page per section, with a sticky nav (`settings-nav` in
   `layout.html`): Account (`/settings`), Devices (`/settings/devices`), AI
   models (`/settings/models`), Automatic processing (`/settings/automatic`),

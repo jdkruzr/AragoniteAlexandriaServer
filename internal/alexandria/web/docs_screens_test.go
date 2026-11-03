@@ -50,11 +50,13 @@ func docsPages() []previewPage {
 				{ID: "8bc4cf5c-0000-4000-8000-000000000002", Model: "Go7", LastUpload: now.Add(-50 * time.Hour)}}},
 			Client:        SourceSummary{Notebooks: 12, Books: 9, Devices: 1, LastActivity: now.Add(-2 * time.Hour)},
 			ClientDevices: []relay.Device{{SiteID: "01JB2Q6V0000000000000000", Name: "Garden tablet", Enrolled: true, LastSeenMs: now.Add(-2 * time.Hour).UnixMilli(), FirstSeenMs: now.Add(-35 * 24 * time.Hour).UnixMilli()}}}}},
-		{"search", "search", "Search", "search", "/search", map[string]any{"Query": "garlic", "Semantic": true, "BOOX": true, "Results": []notes.Result{
-			{Source: "boox", Kind: "Notebook page", NotebookName: "Garden Committee", PageNumber: 1, Snippet: "…North beds → garlic + fava beans. Order seed garlic + straw mulch…", URL: "#", Tags: []string{"garden", "fall planting"}},
-			{Source: "boox", Kind: "Highlight", NotebookName: "The Market Gardener", Snippet: "…plant garlic in the fall, a few weeks before the ground freezes…", URL: "#"},
-			{Source: "client", Kind: "Notebook page", NotebookName: "Bed layout sketches", PageNumber: 4, Snippet: "…bed 3: alliums (garlic, shallots), rotate from last year's tomatoes…", URL: "#"}},
-			"Native": []sourceMatch{{Title: "Garlic varieties to try", Kind: "Notebook", URL: "#"}}}},
+		{"search", "search", "Search", "search", "/search", searchPreview("garlic", "all", map[string]int{"notebooks": 1, "pages": 9, "books": 3, "tasks": 1}, []previewHit{
+			{"Notebook", "notebook", "Garlic varieties to try", "", []string{"BOOX", "6 pages"}, nil},
+			{"Page text", "text-aa", "Garden Committee, p. 1", "…North beds → garlic + fava beans. Order seed garlic + straw mulch…", []string{"BOOX", "recognized"}, []string{"garden", "fall planting"}},
+			{"Highlight", "highlighter", "The Market Gardener, p. 112", "…plant garlic in the fall, a few weeks before the ground freezes…", []string{"BOOX"}, nil},
+			{"Task", "check-square", "Order seed garlic + straw mulch", "", []string{"Due Fri"}, nil},
+			{"Page text", "text-aa", "Bed layout sketches, p. 4", "…bed 3: alliums (garlic, shallots), rotate from last year's tomatoes…", []string{"Client", "recognized"}, nil},
+			{"Page text", "text-aa", "Garden Committee, p. 3", "…cure the garlic in the shed for two weeks before storing…", []string{"BOOX", "recognized"}, []string{"garden"}}}, nil)},
 		{"tasks", "tasks", "Today", "tasks", "/", func() map[string]any {
 			d := todayPreview(open, done, taskView{Sort: "due", Dir: "asc"}, now, map[string]any{"Events": []todayEvent{
 				{Day: "Wed 28", Time: "18:30", Title: "Seed swap at the library", From: "Garden Committee", Link: "#"},

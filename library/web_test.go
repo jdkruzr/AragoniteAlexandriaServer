@@ -65,7 +65,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/files/forestnote": "Seed &lt;Catalogue&gt;",
 		"/files/forestnote?notebook=00000000000000000000000NB1": "heirloom tomatoes",
 		"/files/forestnote/books":                               "No books yet",
-		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, page 1",
+		"/search?q=tomatoes":                                    "Seed &lt;Catalogue&gt;, p. 1",
 		"/tasks":                                                "Nothing to do",
 		"/settings/devices":                                     "No Client devices have connected yet.",
 		"/settings/devices?counts":                              "1 notebook · ",

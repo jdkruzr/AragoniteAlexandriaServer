@@ -63,9 +63,14 @@ func previewPages() []previewPage {
 	trashTasks := []tasksvc.Task{{ID: "t4", Title: "Synthetic duplicate reminder", Status: tasksvc.StatusNeedsAction, Deleted: true, CreatedAt: now.Add(-72 * time.Hour), UpdatedAt: now.Add(-time.Hour)}}
 	clientPages := []notes.Page{{ID: "p1", Number: 1, Key: "forestnote://n/p1", BodyText: "Agenda\n- storage pilot\n- budget review", Model: "vision-model"}, {ID: "p2", Number: 2, Key: "forestnote://n/p2"}, {ID: "p3", Number: 3, Key: "forestnote://n/p3", BodyText: "Follow-ups"}}
 	return []previewPage{
-		{"search", "search", "Search", "search", "/search", map[string]any{"Query": "trellis", "Semantic": true, "BOOX": true,
-			"Results": []notes.Result{{Source: "boox", Kind: "Notebook page", NotebookName: "Synthetic garden plan", PageNumber: 2, Snippet: "…build the bean trellis before May…", URL: "#", Tags: []string{"Bean Trellis", "garden"}}},
-			"Native":  []sourceMatch{{Title: "Synthetic trellis notes", Kind: "Notebook", URL: "#"}}}},
+		{"search", "search", "Search", "search", "/search", searchPreview("trellis", "all", map[string]int{"notebooks": 1, "pages": 1, "books": 1, "tasks": 1}, []previewHit{
+			{"Notebook", "notebook", "Synthetic trellis notes", "", []string{"BOOX", "3 pages"}, nil},
+			{"Page text", "text-aa", "Synthetic garden plan, p. 2", "…build the bean trellis before May…", []string{"BOOX", "recognized"}, []string{"Bean Trellis", "garden"}},
+			{"Book", "book", "The Synthetic Trellis Handbook", "A. Gardener", []string{"Client", "EPUB"}, nil},
+			{"Task", "check-square", "Buy trellis netting", "Two rolls, <b>not</b> the plastic kind", []string{"No due date", "Done"}, nil}}, nil)},
+		{"search-tasks-empty", "search", "Search", "search", "/search", searchPreview("trellis", "tasks", map[string]int{"notebooks": 1, "pages": 1}, nil, nil)},
+		{"search-none", "search", "Search", "search", "/search", searchPreview("quasar", "all", nil, nil, map[string]any{"DateSort": true})},
+		{"search-start", "search", "Search", "search", "/search", map[string]any{"State": searchState{Type: "all"}, "Semantic": true, "BOOX": true, "Sorts": searchSorts}},
 		{"calendar-week", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("week", nil, nil)},
 		{"calendar-day-editor", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("day", &calendarEditor{Mode: "edit", Event: events.Event{ID: "team-sync", Title: "Team sync"},
 			Form: map[string]string{"date": "2026-10-27", "start": "10:00", "end": "11:00"}, Offsets: []zoneOffset{{"-18000", "CDT -0500"}}, Source: &NoteSource{NotebookID: "n", PageID: "p", Notebook: "Q4 planning — meetings", Page: 12}}, nil)},

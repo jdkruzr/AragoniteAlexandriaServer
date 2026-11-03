@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
@@ -28,6 +29,15 @@ func TestNaturalNamesAndUntrustedNavigation(t *testing.T) {
 	want := []string{names[4], names[3], names[1], names[2], names[0], names[5], names[6], names[8], names[7]}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatal(got)
+	}
+	// Lists merged in Go sort the same way.
+	merged := slices.Clone(names)
+	slices.SortStableFunc(merged, Natural)
+	if !reflect.DeepEqual(merged, want) {
+		t.Fatal("Go order", merged)
+	}
+	if OffsetOf("45", 20) != 40 || NavigationOf(url.Values{}, "offset", "results", 20, 45, 20).Next != "/search?offset=40#results" {
+		t.Fatal("sized navigation")
 	}
 	if Parse("name;DROP TABLE x") != Relevance || Offset("-50") != 0 || Offset("1000001") != 0 || Offset("99") != 50 {
 		t.Fatal("invalid navigation accepted")

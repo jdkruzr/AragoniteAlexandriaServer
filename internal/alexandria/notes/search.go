@@ -39,6 +39,8 @@ type Result struct {
 	Snippet      string  `json:"snippet"`
 	Score        float64 `json:"score"`
 	Lexical      bool    `json:"lexical"`
+	// Position orders a notebook's pages; Rank fills it in.
+	Position int64 `json:"-"`
 	// Tags are the page's BOOX tags (recognized BOOX pages only).
 	Tags []string `json:"tags,omitempty"`
 }
@@ -80,6 +82,92 @@ func (s Searcher) SearchPage(ctx context.Context, query string, limit, offset in
 	if query == "" {
 		return []Result{}, 0, nil
 	}
+	raw, err := s.semantic(ctx, query, hybrid, scope)
+	if err != nil {
+		return nil, 0, err
+	}
+	// All lexical matches are ranked, not just the old first 100. Consequently
+	// changing the display order can reach every word match, including later pages.
+	tie := "c.note_key ASC"
+	if searchorder.Parse(string(order)) != searchorder.Relevance {
+		tie = livePosition + " ASC NULLS LAST,c.note_key ASC"
+	}
+	sql := liveWith + `
+ SELECT c.note_key,c.notebook_id,c.title,c.page_id,c.page_number,c.source,c.kind,
+  c.body_text,ts_headline('simple',c.body_text,q.query,'StartSel="",StopSel="",MaxWords=25,MinWords=8,ShortWord=1'),
+  l.note_key IS NOT NULL,` + liveScore + ` AS score,coalesce((` + liveCreated + `),0),count(*) OVER()` + liveFrom + `
+ ORDER BY ` + order.SQL("c.title", liveCreated, "score DESC", tie) + `
+ LIMIT $4 OFFSET $5`
+	results := []Result{}
+	total := 0
+	for {
+		rows, queryErr := s.DB.QueryContext(ctx, sql, query, scope, raw, limit, offset, lexicalWeight, vectorWeight, rrfK, vectorOnlyMinRunes)
+		if queryErr != nil {
+			return nil, 0, queryErr
+		}
+		for rows.Next() {
+			var r Result
+			var text string
+			if err = rows.Scan(&r.NoteKey, &r.NotebookID, &r.NotebookName, &r.PageID, &r.PageNumber, &r.Source, &r.Kind, &text, &r.Snippet, &r.Lexical, &r.Score, &r.CreatedAt, &total); err != nil {
+				rows.Close()
+				return nil, 0, err
+			}
+			if !r.Lexical {
+				r.Snippet = excerpt(text, 200)
+			}
+			r.link()
+			results = append(results, r)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(results) == 0 && offset > 0 {
+			offset = 0
+			continue
+		}
+		break
+	}
+	if err = s.enrich(ctx, results); err != nil {
+		return nil, 0, err
+	}
+	return results, total, nil
+}
+
+// The live search query, shared by SearchPage and Rank. Its parameters are
+// $1 the query, $2 the source ("" for both), $3 the semantic candidates and
+// $6–$9 the fusion constants; callers use $4 and $5 for paging.
+const (
+	liveWith = `WITH q AS (SELECT phraseto_tsquery('simple',$1) || plainto_tsquery('simple',$1) AS query),
+ lexical AS MATERIALIZED (
+  SELECT c.note_key,row_number() OVER(ORDER BY ts_rank_cd(c.search_document,q.query) DESC,c.note_key) AS rank
+  FROM alexandria_search_live c CROSS JOIN q WHERE ($2='' OR c.source=$2) AND
+  (c.search_document @@ q.query OR c.source='boox' AND c.kind='Reading' AND strpos(lower(c.body_text),lower($1))>0)
+ ), semantic AS (SELECT * FROM jsonb_to_recordset($3::jsonb) AS wanted(key text,hash text,rank integer,runes integer))`
+	liveScore = `coalesce($6::float8/($8::float8+l.rank),0)+coalesce($7::float8/($8::float8+s.rank),0)`
+	liveFrom  = `
+ FROM alexandria_search_live c CROSS JOIN q
+ LEFT JOIN lexical l ON l.note_key=c.note_key
+ LEFT JOIN semantic s ON s.key=c.note_key AND s.hash=md5(c.body_text)
+ LEFT JOIN fn_notebook n ON c.source='client' AND n.id=c.notebook_id
+ LEFT JOIN fn_page cp ON c.source='client' AND cp.id=c.page_id
+ LEFT JOIN boox_projection p ON c.source='boox' AND p.document_id=c.notebook_id
+ WHERE ($2='' OR c.source=$2) AND (l.note_key IS NOT NULL OR s.key IS NOT NULL AND
+  (NOT EXISTS(SELECT 1 FROM lexical) OR s.runes >= $9))`
+	// livePosition orders a notebook's pages.
+	livePosition = "CASE WHEN c.source='client' THEN cp.sort_order ELSE c.page_number END"
+)
+
+// liveCreated is the parent notebook's or the native record's creation time.
+var liveCreated = `CASE WHEN c.source='client' THEN CASE WHEN n.created_at>0 THEN n.created_at END ELSE ` + searchorder.NativeCreatedSQL("p") + ` END`
+
+// semantic embeds the query once and lists the closest pages by meaning, as
+// JSON for the live query's $3: empty when hybrid is off, there is no
+// embedder, or it can't be reached (search then degrades to words alone).
+// Candidates keep their text hashes, so the live query rechecks visibility
+// and text after this potentially slow call.
+func (s Searcher) semantic(ctx context.Context, query string, hybrid bool, scope string) ([]byte, error) {
 	type candidate struct {
 		Key   string `json:"key"`
 		Hash  string `json:"hash"`
@@ -101,7 +189,7 @@ func (s Searcher) SearchPage(ctx context.Context, query string, limit, offset in
     WHERE `+filter+` AND e.dimensions=$3 AND ($5='' OR c.source=$5)
     GROUP BY c.note_key,c.body_text ORDER BY distance,c.note_key LIMIT $4`, vectorLiteral(vector), identity, len(vector), candidates, scope)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			for rows.Next() {
 				var c candidate
@@ -109,7 +197,7 @@ func (s Searcher) SearchPage(ctx context.Context, query string, limit, offset in
 				var text string
 				if err = rows.Scan(&c.Key, &c.Hash, &text, &distance); err != nil {
 					rows.Close()
-					return nil, 0, err
+					return nil, err
 				}
 				c.Rank = len(semantic) + 1
 				c.Runes = utf8.RuneCountInString(strings.TrimSpace(text))
@@ -118,83 +206,132 @@ func (s Searcher) SearchPage(ctx context.Context, query string, limit, offset in
 			err = rows.Err()
 			rows.Close()
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 		}
 		// An unreachable embedder degrades to keyword search, as before.
 	}
-	raw, _ := json.Marshal(semantic)
-	created := `CASE WHEN c.source='client' THEN CASE WHEN n.created_at>0 THEN n.created_at END ELSE ` + searchorder.NativeCreatedSQL("p") + ` END`
-	// All lexical matches are ranked, not just the old first 100. Consequently
-	// changing the display order can reach every word match, including later pages.
-	tie := "c.note_key ASC"
-	if searchorder.Parse(string(order)) != searchorder.Relevance {
-		tie = "CASE WHEN c.source='client' THEN cp.sort_order ELSE c.page_number END ASC NULLS LAST,c.note_key ASC"
+	return json.Marshal(semantic)
+}
+
+// link sets the result's page in its source's reader.
+func (r *Result) link() {
+	if r.Source == "client" {
+		r.URL = "/files/forestnote?notebook=" + url.QueryEscape(r.NotebookID) + "&page=" + url.QueryEscape(r.PageID) + "#page-" + url.PathEscape(r.PageID)
+	} else if r.Kind == "Reading" {
+		r.URL = "/boox/reading?record=" + url.QueryEscape(r.NotebookID)
+	} else if r.Kind == "Minutes" {
+		r.URL = "/boox/minutes?id=" + url.QueryEscape(r.NotebookID)
+	} else {
+		r.URL = "/boox/notebook?id=" + url.QueryEscape(r.NotebookID) + "&page=" + strconv.Itoa(r.PageNumber) + "&page_id=" + url.QueryEscape(r.PageID)
 	}
-	sql := `WITH q AS (SELECT phraseto_tsquery('simple',$1) || plainto_tsquery('simple',$1) AS query),
- lexical AS MATERIALIZED (
-  SELECT c.note_key,row_number() OVER(ORDER BY ts_rank_cd(c.search_document,q.query) DESC,c.note_key) AS rank
-  FROM alexandria_search_live c CROSS JOIN q WHERE ($2='' OR c.source=$2) AND
-  (c.search_document @@ q.query OR c.source='boox' AND c.kind='Reading' AND strpos(lower(c.body_text),lower($1))>0)
- ), semantic AS (SELECT * FROM jsonb_to_recordset($3::jsonb) AS wanted(key text,hash text,rank integer,runes integer))
- SELECT c.note_key,c.notebook_id,c.title,c.page_id,c.page_number,c.source,c.kind,
-  c.body_text,ts_headline('simple',c.body_text,q.query,'StartSel="",StopSel="",MaxWords=25,MinWords=8,ShortWord=1'),
-  l.note_key IS NOT NULL,coalesce($6::float8/($8::float8+l.rank),0)+coalesce($7::float8/($8::float8+s.rank),0) AS score,
-  coalesce((` + created + `),0),count(*) OVER()
- FROM alexandria_search_live c CROSS JOIN q
- LEFT JOIN lexical l ON l.note_key=c.note_key
- LEFT JOIN semantic s ON s.key=c.note_key AND s.hash=md5(c.body_text)
- LEFT JOIN fn_notebook n ON c.source='client' AND n.id=c.notebook_id
- LEFT JOIN fn_page cp ON c.source='client' AND cp.id=c.page_id
- LEFT JOIN boox_projection p ON c.source='boox' AND p.document_id=c.notebook_id
- WHERE ($2='' OR c.source=$2) AND (l.note_key IS NOT NULL OR s.key IS NOT NULL AND
-  (NOT EXISTS(SELECT 1 FROM lexical) OR s.runes >= $9))
- ORDER BY ` + order.SQL("c.title", created, "score DESC", tie) + `
- LIMIT $4 OFFSET $5`
-	var err error
-	results := []Result{}
-	total := 0
-	for {
-		rows, queryErr := s.DB.QueryContext(ctx, sql, query, scope, raw, limit, offset, lexicalWeight, vectorWeight, rrfK, vectorOnlyMinRunes)
-		if queryErr != nil {
-			return nil, 0, queryErr
-		}
-		for rows.Next() {
-			var r Result
-			var text string
-			if err = rows.Scan(&r.NoteKey, &r.NotebookID, &r.NotebookName, &r.PageID, &r.PageNumber, &r.Source, &r.Kind, &text, &r.Snippet, &r.Lexical, &r.Score, &r.CreatedAt, &total); err != nil {
-				rows.Close()
-				return nil, 0, err
-			}
-			if !r.Lexical {
-				r.Snippet = excerpt(text, 200)
-			}
-			if r.Source == "client" {
-				r.URL = "/files/forestnote?notebook=" + url.QueryEscape(r.NotebookID) + "&page=" + url.QueryEscape(r.PageID) + "#page-" + url.PathEscape(r.PageID)
-			} else if r.Kind == "Reading" {
-				r.URL = "/boox/reading?record=" + url.QueryEscape(r.NotebookID)
-			} else if r.Kind == "Minutes" {
-				r.URL = "/boox/minutes?id=" + url.QueryEscape(r.NotebookID)
-			} else {
-				r.URL = "/boox/notebook?id=" + url.QueryEscape(r.NotebookID) + "&page=" + strconv.Itoa(r.PageNumber) + "&page_id=" + url.QueryEscape(r.PageID)
-			}
-			results = append(results, r)
-		}
-		err = rows.Err()
-		rows.Close()
-		if err != nil {
-			return nil, 0, err
-		}
-		if len(results) == 0 && offset > 0 {
-			offset = 0
-			continue
-		}
-		break
+}
+
+// Highlight markers that Snippets puts around matched words. They are
+// private-use characters, removed from the stored text first, so a marker
+// in a snippet is always one ts_headline placed.
+const (
+	MarkStart = "\uE000"
+	MarkStop  = "\uE001"
+)
+
+// Ranking is every live match in relevance order, split into pages (Client
+// and BOOX pages and minutes) and BOOX reading records (books, highlights
+// and bookmarks), with each group's full count.
+type Ranking struct {
+	Pages, Reading           []Result
+	PagesTotal, ReadingTotal int
+}
+
+// Rank ranks matches as SearchPage does by relevance, keeping the best limit
+// of each group, without snippets; Snippets adds them to the ones shown.
+func (s Searcher) Rank(ctx context.Context, query string, limit int, hybrid bool, scope string) (Ranking, error) {
+	var out Ranking
+	if scope != "" && scope != "client" && scope != "boox" {
+		return out, fmt.Errorf("invalid search source")
 	}
-	if err = s.enrich(ctx, results); err != nil {
-		return nil, 0, err
+	if limit < 1 || limit > 1000 {
+		return out, fmt.Errorf("invalid search bounds")
 	}
-	return results, total, nil
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return out, nil
+	}
+	raw, err := s.semantic(ctx, query, hybrid, scope)
+	if err != nil {
+		return out, err
+	}
+	rows, err := s.DB.QueryContext(ctx, liveWith+`
+ SELECT note_key,notebook_id,title,page_id,page_number,source,kind,lexical,score,created,position,total FROM (
+  SELECT c.note_key,c.notebook_id,c.title,c.page_id,c.page_number,c.source,c.kind,l.note_key IS NOT NULL AS lexical,`+liveScore+` AS score,
+   coalesce((`+liveCreated+`),0) AS created,coalesce(`+livePosition+`,0) AS position,
+   row_number() OVER(PARTITION BY c.kind='Reading' ORDER BY `+liveScore+` DESC,c.note_key) AS rn,
+   count(*) OVER(PARTITION BY c.kind='Reading') AS total`+liveFrom+`) ranked
+ WHERE rn>$5::bigint AND rn<=$5::bigint+$4::bigint ORDER BY kind='Reading',rn`, query, scope, raw, limit, 0, lexicalWeight, vectorWeight, rrfK, vectorOnlyMinRunes)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var r Result
+		var total int
+		if err = rows.Scan(&r.NoteKey, &r.NotebookID, &r.NotebookName, &r.PageID, &r.PageNumber, &r.Source, &r.Kind, &r.Lexical, &r.Score, &r.CreatedAt, &r.Position, &total); err != nil {
+			return out, err
+		}
+		r.link()
+		if r.Kind == "Reading" {
+			out.Reading, out.ReadingTotal = append(out.Reading, r), total
+		} else {
+			out.Pages, out.PagesTotal = append(out.Pages, r), total
+		}
+	}
+	return out, rows.Err()
+}
+
+// Snippets fills in the given Rank results' snippets: a passage around the
+// matched words, each wrapped in MarkStart and MarkStop, or the start of the
+// text for a match by meaning alone. It also adds Client page numbers and
+// BOOX page tags.
+func (s Searcher) Snippets(ctx context.Context, query string, results []Result) error {
+	if len(results) == 0 {
+		return nil
+	}
+	keys := make([]string, len(results))
+	for i, r := range results {
+		keys[i] = r.NoteKey
+	}
+	options := `StartSel="` + MarkStart + `",StopSel="` + MarkStop + `",MaxWords=25,MinWords=8,ShortWord=1`
+	rows, err := s.DB.QueryContext(ctx, `WITH q AS (SELECT phraseto_tsquery('simple',$1) || plainto_tsquery('simple',$1) AS query)
+ SELECT c.note_key,translate(c.body_text,$3,''),ts_headline('simple',translate(c.body_text,$3,''),q.query,$4)
+ FROM alexandria_search_live c CROSS JOIN q WHERE c.note_key=ANY($2)`, strings.TrimSpace(query), keys, MarkStart+MarkStop, options)
+	if err != nil {
+		return err
+	}
+	type snippet struct{ text, headline string }
+	found := map[string]snippet{}
+	for rows.Next() {
+		var key string
+		var sn snippet
+		if err = rows.Scan(&key, &sn.text, &sn.headline); err != nil {
+			rows.Close()
+			return err
+		}
+		found[key] = sn
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	for i := range results {
+		sn := found[results[i].NoteKey]
+		if results[i].Lexical && strings.Contains(sn.headline, MarkStart) {
+			results[i].Snippet = sn.headline
+		} else {
+			results[i].Snippet = excerpt(sn.text, 200)
+		}
+	}
+	return s.enrich(ctx, results)
 }
 
 func (r Result) CreatedDate() string { return searchorder.Date(r.CreatedAt) }

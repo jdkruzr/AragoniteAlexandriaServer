@@ -47,8 +47,8 @@
 </section>
 
 <section id="search"><h2>{{t "Search"}}</h2>
-<p>{{if $d.NativeBOOX}}{{t "Search looks through Alexandria Client page text and book annotations, BOOX notebook titles, book titles, highlights and notes, and handwriting from BOOX pages that have been recognized."}}{{else}}{{t "Search looks through Alexandria Client page text and book annotations."}}{{end}} {{th "Pages that have never been recognized can only be found by title, so if a search misses something, check whether its pages have been through <a href=\"#recognition\">recognition</a>."}}</p>
-<p>{{th "<strong>Words and meaning</strong> (shown when <a href=\"#semantic\">search by meaning</a> is on) also finds related ideas. <strong>Exact words only</strong> matches what you typed. Use the source menu to narrow results to one source."}}</p>
+<p>{{if $d.NativeBOOX}}{{t "Search looks through notebook titles, recognized handwriting and typed BOOX text notes, Audio Note Minutes, books and highlights from both sources, and tasks."}}{{else}}{{t "Search looks through Alexandria Client notebook titles and page text, Client books and their annotations, and tasks."}}{{end}} {{th "Pages that have never been recognized can only be found by title, so if a search misses something, check whether its pages have been through <a href=\"#recognition\">recognition</a>."}}</p>
+<p>{{th "The tabs split results by kind: notebooks, pages, books and highlights, and tasks; <strong>All</strong> mixes them, best first. <strong>Words and meaning</strong> (shown when <a href=\"#semantic\">search by meaning</a> is on) also finds related ideas; <strong>Exact words only</strong> matches what you typed. The source switch narrows results to BOOX or Alexandria Client."}}</p>
 </section>
 
 <section id="semantic"><h2>{{t "Search by Meaning"}}</h2>
