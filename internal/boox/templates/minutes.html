@@ -1,45 +1,74 @@
 {{define "content"}}{{$d:=.Data}}{{$m:=$d.Stored}}
-<p class="crumbs"><a href="/boox">{{t "Notebooks"}}</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> /</p>
-<div class="page-head"><h1>{{t "Audio Note Minutes"}} {{template "help" "boox.minutes"}}</h1>{{if $d.Has}}<div class="toolbar"><a class="button secondary" href="/boox/minutes/new?id={{$d.ID}}">{{if eq $m.State "ready"}}{{t "Update…"}}{{else}}{{t "Request again…"}}{{end}}</a></div>{{end}}</div>
-{{if not $d.Has}}<div class="card"><p class="empty">{{t "No Audio Note Minutes for this notebook yet."}}</p>
-<p>{{if $d.Recordings}}{{t "It has {{.Count}} recordings." $d.Recordings}}{{else}}{{t "It has no recordings, so minutes would come from handwriting alone."}}{{end}}</p>
-<p><a class="button" href="/boox/minutes/new?id={{$d.ID}}">{{t "Summarize this note…"}}</a></p></div>
+<p class="crumbs"><a href="/boox?selected={{$d.ID}}">{{t "Library"}}</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> /</p>
+<div id="minutes-state" data-live-region data-live-key="{{$m.State}}">
+{{if eq $m.State "queued" "processing"}}<div class="min-bar" role="status"><span class="tag tag-accent">{{t "In progress"}}</span>
+{{if $d.Steps}}<ol class="min-steps">{{range $d.Steps}}<li data-state="{{.State}}">{{if eq .State "done"}}{{icon "check-circle"}} {{end}}{{.Label}}{{if .Detail}} <span class="muted">· {{.Detail}}</span>{{end}}</li>{{end}}</ol>
+<span class="min-step-count">{{t "Step {{.Step}} of {{.Total}}" "Step" $d.Step "Total" (len $d.Steps)}}</span>{{else}}<span>{{t "Waiting to start."}}</span>{{end}}
+{{if $m.Topic}}<span class="min-prev">{{t "The minutes below are from the previous request."}}</span>{{end}}
+<form method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="cancel"><button class="btn btn-ghost">{{t "Cancel"}}</button></form></div>
+{{else if eq $m.State "failed"}}<div class="min-bar warn" role="status"><span class="tag tag-accent-2">{{t "Failed"}}</span><span class="min-bar-text">{{td $m.Detail}}</span>
+<a class="btn btn-ghost" href="/settings/models?section=minutes#minutes">{{t "Check settings"}}</a><form method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="retry"><button class="btn btn-secondary">{{t "Retry"}}</button></form></div>
+{{else if eq $m.State "cancelled"}}<div class="min-bar quiet" role="status"><span class="tag tag-neutral">{{t "Cancelled"}}</span><span class="min-bar-text">{{t "The last request was cancelled."}}</span>
+<form method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="retry"><button class="btn btn-secondary">{{t "Retry"}}</button></form></div>
+{{else if $d.Stale}}<div class="min-bar warn" role="status">{{icon "clock-counter-clockwise"}}<span class="min-bar-text">{{if $d.NewRecording}}{{t "A new recording arrived after these minutes were written."}}{{else}}{{t "The notebook or the summary instructions have changed since these minutes were written."}}{{end}}</span>
+<a class="btn btn-secondary" href="/boox/minutes/new?id={{$d.ID}}">{{t "Update…"}}</a></div>{{end}}
+</div>
+{{if not $d.Has}}<div class="min-none">
+<p class="min-kicker">Audio Note Minutes {{template "help" "boox.minutes"}}</p>
+<h1>{{t "No Minutes Yet"}}</h1>
+<p class="min-lede">{{if $d.Recordings}}{{t "This notebook has {{.Count}} recordings." $d.Recordings}}{{else}}{{t "This notebook has no recordings, so minutes would come from handwriting alone."}}{{end}} {{t "Minutes summarize what was said together with what you wrote: a topic, keywords, up to five key points and a conclusion."}}</p>
+<p><a class="btn btn-primary" href="/boox/minutes/new?id={{$d.ID}}">{{t "Summarize this note…"}}</a></p>
+{{if $d.Sources}}<h2 class="min-h">{{t "Recordings"}}</h2>
+{{range $d.Sources}}<article class="recording"><h3>{{.Title}}</h3>
+<p class="small muted">{{with index $d.OnPages .Key}}{{range $i, $n := .}}{{if $i}}, {{end}}<a href="/boox/notebook?id={{$d.ID}}&amp;page={{$n}}">{{t "On page {{.Number}}" "Number" $n}}</a>{{end}} · {{end}}{{with dayTime .RecordedAt}}{{.}} · {{end}}{{if .DurationMS}}{{clock .DurationMS}}{{end}}</p>
+<audio controls preload="none" src="/boox/minutes/audio?id={{$d.ID}}&amp;key={{.Key}}&amp;sha={{.SHA256}}">{{t "Your browser can't play this recording."}}</audio>
+</article>{{end}}{{end}}
+</div>
 {{else}}
-{{if eq $m.State "queued" "processing"}}<div class="callout" role="status"><p><span class="badge partial">{{t "In progress"}}</span> {{if $d.Progress}}{{$d.Progress}}{{else}}{{t "Waiting to start."}}{{end}}</p>{{if $m.Topic}}<p class="small">{{t "The minutes below are from the previous request."}}</p>{{end}}<form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="cancel"><button class="quiet">{{t "Cancel"}}</button></form></div>
-{{else if eq $m.State "failed" "cancelled"}}<div class="callout danger" role="status"><p><span class="badge bad">{{if eq $m.State "failed"}}{{t "Failed"}}{{else}}{{t "Cancelled"}}{{end}}</span> {{td $m.Detail}}</p><form class="inline" method="post" action="/boox/minutes/control"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="action" value="retry"><button class="secondary">{{t "Retry"}}</button></form></div>
-{{else if $d.Stale}}<p class="callout">{{t "The notebook or the summary instructions have changed since these minutes were written."}} <a href="/boox/minutes/new?id={{$d.ID}}">{{t "Update…"}}</a></p>{{end}}
-{{if $m.Topic}}<div class="reader-layout"><div>
-<section class="card minutes"><h2>{{$m.Topic}}</h2>
-<p class="tags" aria-label="{{t "Keywords"}}">{{range $d.Keywords}}{{if .Tag}}<a class="tag" href="/boox/tags?tag={{.Tag}}" title="{{t "A BOOX tag: see the pages that have it"}}">{{.Text}}</a>{{else}}<span class="tag new" title="{{t "Not a BOOX tag"}}">{{.Text}}</span>{{end}}{{end}}</p>{{if $d.TaggedKeywords}}<p class="small muted">{{t "Filled keywords are also BOOX tags; select one to see the pages that have it."}}</p>{{end}}
-<h3>{{t "Key Points"}}</h3><ol class="points">{{range $m.KeyPoints}}<li>{{.Text}} <span class="badge source">{{if eq .From "recording"}}{{t "Recording"}}{{else if eq .From "notes"}}{{t "Notes"}}{{else}}{{t "Recording + notes"}}{{end}}</span></li>{{end}}</ol>
-<h3>{{t "Conclusion"}}</h3><p>{{$m.Conclusion}}</p></section>
-</div><aside><section class="card"><h2>{{t "About These Minutes"}}</h2><dl class="meta">
+{{if $m.Topic}}<div class="min-head"><div>
+<p class="min-kicker">{{t "Minutes · {{.Title}}" "Title" $d.Title}} {{template "help" "boox.minutes"}}</p>
+<h1>{{$m.Topic}}</h1>
+{{if $d.Keywords}}<p class="tags min-keywords" aria-label="{{t "Keywords"}}">{{range $d.Keywords}}{{if .Tag}}<a class="tag tag-accent" href="/boox/tags?selected={{.Tag}}" title="{{t "A BOOX tag: see the pages that have it"}}">{{.Text}}</a>{{else}}<a class="tag tag-outline" href="/search?q={{.Text}}" title="{{t "Not a BOOX tag: search for it"}}">{{.Text}}</a>{{end}}{{end}}{{if $d.TaggedKeywords}} <span class="small muted">{{t "Filled keywords are BOOX tags"}}</span>{{end}}</p>{{end}}
+</div>{{if not (eq $m.State "queued" "processing")}}<a class="btn btn-secondary" href="/boox/minutes/new?id={{$d.ID}}">{{if eq $m.State "ready"}}{{t "Update…"}}{{else}}{{t "Request again…"}}{{end}}</a>{{end}}</div>
+<div class="min-layout"><div class="min-body">
+<h2 class="min-h">{{t "Key Points"}}</h2>
+<ol class="min-points">{{range $m.KeyPoints}}<li><span>{{.Text}}</span> <span class="tag tag-neutral">{{if eq .From "recording"}}{{t "Recording"}}{{else if eq .From "notes"}}{{t "Notes"}}{{else}}{{t "Recording + notes"}}{{end}}</span></li>{{end}}</ol>
+<h2 class="min-h">{{t "Conclusion"}}</h2>
+<p class="min-conclusion">{{$m.Conclusion}}</p>
+{{if $m.Recordings}}<h2 class="min-h">{{t "Recordings"}}</h2>
+{{range $m.Recordings}}<article class="recording"><h3>{{.Title}}</h3>
+<p class="small muted">{{with index $d.OnPages .Key}}{{range $i, $n := .}}{{if $i}}, {{end}}<a href="/boox/notebook?id={{$d.ID}}&amp;page={{$n}}">{{t "On page {{.Number}}" "Number" $n}}</a>{{end}}{{else}}{{t "Not on a page"}}{{end}} · {{with dayTime .RecordedAt}}{{.}} · {{end}}{{clock .DurationMS}}{{if .Language}} · {{.Language}}{{end}} · {{if eq .State "ready"}}{{t "Transcribed"}}{{else if eq .State "failed"}}{{t "Transcription failed: {{.Detail}}" "Detail" (td .Detail)}}{{else if eq .State "missing"}}{{t "Not transcribed"}}{{else}}{{t "Transcribing…"}}{{end}}</p>
+<audio controls preload="none" src="/boox/minutes/audio?id={{$d.ID}}&amp;key={{.Key}}&amp;sha={{.SHA256}}">{{t "Your browser can't play this recording."}}</audio>
+{{if .Segments}}<details><summary>{{t "Transcript"}}</summary><dl class="transcript">{{range .Segments}}<dt>{{clock .Start}}</dt><dd>{{.Text}}</dd>{{end}}</dl></details>{{else if .Text}}<details><summary>{{t "Transcript"}}</summary><p>{{.Text}}</p></details>{{end}}
+</article>{{end}}{{end}}
+</div>
+<aside class="min-side"><section><h2 class="min-side-h">{{t "About These Minutes"}}</h2><dl class="min-about">
 <dt>{{t "Notebook"}}</dt><dd>{{$m.Metadata.Title}}{{if $m.Metadata.Folder}} <span class="muted">{{t "in {{.Folder}}" "Folder" $m.Metadata.Folder}}</span>{{end}}</dd>
-<dt>{{t "Created"}}</dt><dd>{{utc $m.Metadata.Created}}</dd>
+{{with dayTime $m.Metadata.Created}}<dt>{{t "Created"}}</dt><dd>{{.}}</dd>{{end}}
 <dt>{{t "Pages"}}</dt><dd>{{t "{{.Done}} of {{.Total}} with handwriting text" "Done" $m.Metadata.PagesWithText "Total" $m.Metadata.PageCount}}</dd>
-<dt>{{t "Recordings"}}</dt><dd>{{len $m.Metadata.Recordings}}{{range $m.Metadata.Recordings}}<br>{{.Title}}: {{utc .RecordedAt}}, {{clock .DurationMS}}{{end}}</dd>
+<dt>{{t "Recordings"}}</dt><dd>{{range $i, $r := $m.Metadata.Recordings}}{{if $i}}<br>{{end}}{{$r.Title}}: {{with dayTime $r.RecordedAt}}{{.}}, {{end}}{{clock $r.DurationMS}}{{else}}{{t "None"}}{{end}}</dd>
 <dt>{{t "Written By"}}</dt><dd>{{if $m.Metadata.Transcriber}}{{t "{{.Model}}, from {{.Transcriber}} transcripts" "Model" $m.Model "Transcriber" $m.Metadata.Transcriber}}{{else}}{{$m.Model}}{{end}}</dd>
-<dt>{{t "Written"}}</dt><dd>{{if $m.FinishedAt.Valid}}{{utc $m.FinishedAt.Time}}{{else}}—{{end}}</dd>
+<dt>{{t "Written"}}</dt><dd>{{if $m.FinishedAt.Valid}}{{dayTime $m.FinishedAt.Time}}{{else}}—{{end}}</dd>
 </dl></section>
-{{if $d.Sendable}}<section class="card" id="send"><h2>{{t "On Your BOOX"}} {{template "help" "boox.minutesnote"}}</h2>
+{{if $d.Sendable}}<section id="send"><h2 class="min-side-h">{{t "On Your BOOX"}} {{template "help" "boox.minutesnote"}}</h2>
+<p class="small muted">{{if $d.AutoSend}}{{t "Automatic sending is on."}}{{else}}{{t "Automatic sending is off."}}{{end}} <a href="/settings/models?section=minutes#minutes">{{t "Change"}}</a></p>
 {{if and (eq $m.State "ready") $m.Detail}}<p class="callout danger" role="status">{{td $m.Detail}}</p>{{end}}
-{{with $d.Sent}}<p id="minutes-on-boox">{{if eq .Status "pending"}}<span class="badge partial">{{t "Sending"}}</span> {{t "“{{.Title}}” reaches your devices with their next sync." "Title" .Title}}
-{{else if eq .Status "failed"}}<span class="badge bad">{{t "Not sent"}}</span> {{t "“{{.Title}}” couldn't be sent ({{.Code}})." "Title" .Title "Code" .Code}}
-{{else if eq .Status "untouched"}}<span class="badge indexed">{{t "On your BOOX"}}</span> {{if $d.Folder}}{{t "“{{.Title}}” is in {{.Folder}}, sent {{.When}}." "Title" .Title "Folder" $d.Folder "When" (utc .At)}}{{else}}{{t "“{{.Title}}” is in the notebook root, sent {{.When}}." "Title" .Title "When" (utc .At)}}{{end}} {{t "It syncs like any other notebook; there's nothing more to do."}}
+{{with $d.Sent}}<p id="minutes-on-boox">{{if eq .Status "pending"}}<span class="tag tag-neutral">{{t "Sending"}}</span> {{t "“{{.Title}}” reaches your devices with their next sync." "Title" .Title}}
+{{else if eq .Status "failed"}}<span class="tag tag-accent-2">{{t "Not sent"}}</span> {{t "“{{.Title}}” couldn't be sent ({{.Code}})." "Title" .Title "Code" .Code}}
+{{else if eq .Status "untouched"}}<span class="tag tag-accent">{{t "On your BOOX"}}</span> {{if $d.Folder}}{{t "“{{.Title}}” is in {{.Folder}}, sent {{.When}}." "Title" .Title "Folder" $d.Folder "When" (dayTime .At)}}{{else}}{{t "“{{.Title}}” is in the notebook root, sent {{.When}}." "Title" .Title "When" (dayTime .At)}}{{end}} {{t "It syncs like any other notebook; there's nothing more to do."}}
 {{else if eq .Status "changed"}}{{t "“{{.Title}}” was edited on a device, so it's yours now. Sending again adds a separate note and leaves that one alone." "Title" .Title}}
 {{else}}{{t "“{{.Title}}” was deleted on a device. Sending again creates a new note." "Title" .Title}}{{end}}</p>{{end}}
 {{if not (and $d.Sent (eq $d.Sent.Status "pending"))}}{{$replace := and $d.Sent (eq $d.Sent.Status "untouched")}}
 {{if $replace}}<details class="more" id="minutes-replace"><summary>{{t "Replace It on Your BOOX"}}</summary>
-<p class="small muted">{{th "Rewrites the note with the minutes shown on this page, for example after you've updated them. It doesn't summarize anything again; that's <strong>Update</strong>, which appears when the minutes are out of date."}}</p>{{else if not $d.Sent}}<p class="small muted">{{t "Creates a text note beside the notebook. From then on it syncs to your devices like any other notebook."}}</p>{{end}}
+<p class="small muted">{{th "Rewrites the note with the minutes shown on this page, for example after you've updated them. It doesn't summarize anything again; that's <strong>Update</strong>, which appears when the minutes are out of date."}}</p>{{else if not $d.Sent}}<p class="small">{{t "Creates a text note beside the notebook. From then on it syncs to your devices like any other notebook."}}</p>{{end}}
 <form method="post" action="/boox/minutes/send"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="request" value="{{$d.SendRequest}}">
 <label class="confirm"><input type="checkbox" name="confirm" required> {{if $replace}}{{t "Replace “{{.Title}}” on every connected BOOX device with these minutes" "Title" $d.Sent.Title}}{{else if $d.Folder}}{{t "Create “{{.Title}}” in {{.Folder}} on every connected BOOX device" "Title" $d.NoteTitle "Folder" $d.Folder}}{{else}}{{t "Create “{{.Title}}” in the notebook root on every connected BOOX device" "Title" $d.NoteTitle}}{{end}}</label>
-<p><button class="secondary">{{if $replace}}{{t "Replace on BOOX"}}{{else}}{{t "Send to BOOX"}}{{end}}</button></p></form>{{if $replace}}</details>{{end}}{{end}}
-</section>{{end}}</aside></div>{{end}}
-{{if $m.Recordings}}<section class="card"><h2>{{t "Recordings"}}</h2>
+<p><button class="btn btn-secondary">{{if $replace}}{{t "Replace on BOOX"}}{{else}}{{t "Send to BOOX"}}{{end}}</button></p></form>{{if $replace}}</details>{{end}}{{end}}
+</section>{{end}}</aside></div>
+{{else}}<h1>Audio Note Minutes</h1>{{if $m.Recordings}}<h2 class="min-h">{{t "Recordings"}}</h2>
 {{range $m.Recordings}}<article class="recording"><h3>{{.Title}}</h3>
-<p class="small">{{with index $d.OnPages .Key}}{{range $i, $n := .}}{{if $i}}, {{end}}<a href="/boox/notebook?id={{$d.ID}}&amp;page={{$n}}">{{t "On page {{.Number}}" "Number" $n}}</a>{{end}}{{else}}{{t "Not on a page"}}{{end}}</p>
-<p class="small muted">{{if not .RecordedAt.IsZero}}{{t "Recorded {{.When}}" "When" (utc .RecordedAt)}} · {{end}}{{clock .DurationMS}}{{if .Language}} · {{.Language}}{{end}} · {{if eq .State "ready"}}{{t "Transcribed"}}{{else if eq .State "failed"}}{{t "Transcription failed: {{.Detail}}" "Detail" (td .Detail)}}{{else if eq .State "missing"}}{{t "Not transcribed"}}{{else}}{{t "Transcribing…"}}{{end}}</p>
+<p class="small muted">{{with index $d.OnPages .Key}}{{range $i, $n := .}}{{if $i}}, {{end}}<a href="/boox/notebook?id={{$d.ID}}&amp;page={{$n}}">{{t "On page {{.Number}}" "Number" $n}}</a>{{end}}{{else}}{{t "Not on a page"}}{{end}} · {{with dayTime .RecordedAt}}{{.}} · {{end}}{{clock .DurationMS}}{{if .Language}} · {{.Language}}{{end}} · {{if eq .State "ready"}}{{t "Transcribed"}}{{else if eq .State "failed"}}{{t "Transcription failed: {{.Detail}}" "Detail" (td .Detail)}}{{else if eq .State "missing"}}{{t "Not transcribed"}}{{else}}{{t "Transcribing…"}}{{end}}</p>
 <audio controls preload="none" src="/boox/minutes/audio?id={{$d.ID}}&amp;key={{.Key}}&amp;sha={{.SHA256}}">{{t "Your browser can't play this recording."}}</audio>
 {{if .Segments}}<details><summary>{{t "Transcript"}}</summary><dl class="transcript">{{range .Segments}}<dt>{{clock .Start}}</dt><dd>{{.Text}}</dd>{{end}}</dl></details>{{else if .Text}}<details><summary>{{t "Transcript"}}</summary><p>{{.Text}}</p></details>{{end}}
-</article>{{end}}</section>{{end}}
+</article>{{end}}{{end}}{{end}}
 {{end}}{{end}}

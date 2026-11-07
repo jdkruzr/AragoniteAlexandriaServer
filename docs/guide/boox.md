@@ -189,17 +189,23 @@ filters, folders, breadcrumbs, and pagination help narrow a larger library.
 1. Open **Library → Books → Upload books…**.
 2. Choose a destination, then **Choose files…** or **Choose folder…**. Select up
    to 1,000 files, with a maximum of 128 MiB per EPUB, PDF, MOBI or AZW3 book.
-3. Review the preview. The selected top-level folder and its subfolders become
-   native BOOX shelves. Matching names under the same parent reuse that shelf;
-   if multiple shelves match, choose one. Empty folders and unsupported files
-   are skipped.
+   You can also drop files or folders onto the box.
+3. Review the selection: each file with its format, size and status. The
+   selected top-level folder and its subfolders become native BOOX shelves.
+   Matching names under the same parent reuse that shelf; if multiple shelves
+   match, choose one. Empty folders and unsupported files are skipped. A file
+   with the same name and size as a book already on its shelf is marked
+   **Possibly already here**; it still uploads, and an identical book is never
+   added twice.
 4. Choose **Import books**. Two files transfer at a time. Each has its own status
    and retry; a failed file doesn't stop the others.
 
 Keep the page open during transfers. Its address preserves the import, and
 **Continue your last import** returns to it later. Reselect unfinished files or
 the original folder to resume; accepted files aren't transferred again. Changed
-files need a new import. The single-file form also works without JavaScript.
+files need a new import. The **Single-file upload** form works without
+JavaScript, with the same destination choice. When everything is published,
+**View in Library** opens Library → Books.
 
 **Published** means available in native sync. Tablets with reading sync enabled
 list the book and download its source when opened. Server storage does not prove

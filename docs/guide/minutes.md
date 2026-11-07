@@ -60,15 +60,17 @@ note…**.
 
 ## Reading the Minutes Page
 
-- **Topic, keywords, Key Points, Conclusion.** Each key point has a badge:
+- **Topic, keywords, Key Points, Conclusion.** The topic is the page's heading,
+  under "Minutes · *notebook*". Key points are numbered, and each has a tag:
   **Recording**, **Notes** or **Recording + notes**.
 - **Keyword chips.** A filled chip is also one of your BOOX tags; select it to
-  see the pages that have that tag. Plain chips aren't tags. Alexandria tells the
-  summary model about your tags, so a keyword that means the same as a tag
-  uses the tag's spelling.
-- **About These Minutes**: the notebook and folder, when it was created, how
-  many pages had handwriting text, each recording with its start time and
-  length, which models wrote it (**Written By**) and when (**Written**).
+  see the pages that have that tag. An outlined chip isn't a tag; selecting it
+  searches your library for it. Alexandria tells the summary model about your
+  tags, so a keyword that means the same as a tag uses the tag's spelling.
+- **About These Minutes** (the side column): the notebook and folder, when it
+  was created, how many pages had handwriting text, each recording with its
+  start time and length, which models wrote it (**Written By**) and when
+  (**Written**). Dates are in your time zone.
 - **Recordings**: each recording with a player, the page it sits on (**On page
   N** links to that page) or **Not on a page** if its chip was deleted, its
   status (**Transcribed**, **Transcribing…**, **Not transcribed**, or a
@@ -81,15 +83,20 @@ at what you wrote.
 ## Keeping Minutes Up to Date
 
 Minutes are marked **out of date** when a recording, a recognized page, the
-note's BOOX tags or the summary instructions change: "The notebook or the
-summary instructions have changed since these minutes were written."
-Updating is always your choice:
+note's BOOX tags or the summary instructions change. A bar at the top says so:
+"A new recording arrived after these minutes were written" when that's the
+reason, otherwise "The notebook or the summary instructions have changed since
+these minutes were written." Updating is always your choice:
 
 - **Update…** (top right when minutes are ready) opens the same review page.
   Unchanged recordings aren't transcribed again.
 - **Request again…** appears instead when the last request didn't finish.
-- **Cancel** stops minutes that are in progress; **Retry** restarts failed or
-  cancelled ones. While an update runs, the previous minutes stay visible.
+- While minutes are being written, the bar lists the steps (transcribing the
+  recordings, waiting for handwriting recognition, writing the minutes) and
+  which one is under way, and the page updates itself. **Cancel** stops it.
+  The previous minutes stay visible meanwhile.
+- When a request fails, the bar gives the reason, **Check settings** (Settings →
+  AI models) and **Retry**. A cancelled request offers **Retry** too.
 
 ## Sending Minutes to BOOX
 

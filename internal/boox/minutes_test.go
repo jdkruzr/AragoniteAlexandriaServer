@@ -206,7 +206,7 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 		t.Fatal("page recordings missing", nb.Code)
 	}
 	// "nebula" is the tag Nebula; "schedule" isn't a tag.
-	if body := page(); !strings.Contains(body, `<a class="tag" href="/boox/tags?tag=Nebula"`) || !strings.Contains(body, `<span class="tag new" title="Not a BOOX tag">schedule</span>`) {
+	if body := page(); !strings.Contains(body, `<a class="tag tag-accent" href="/boox/tags?selected=Nebula"`) || !strings.Contains(body, `<a class="tag tag-outline" href="/search?q=schedule" title="Not a BOOX tag: search for it">schedule</a>`) {
 		t.Fatal("keywords not matched with tags", body)
 	}
 	// Removing the note's tag makes the minutes out of date; library tags don't.
@@ -232,9 +232,10 @@ func TestNoteMinutesTranscribeSummarizeAndSearch(t *testing.T) {
 	if w.Code != http.StatusPartialContent || w.Body.String() != "ID3" || w.Header().Get("Content-Type") != "audio/mpeg" {
 		t.Fatal("audio range", w.Code, w.Body.String(), w.Header())
 	}
-	// A second recording makes the minutes stale; nothing regenerates by itself.
+	// A second recording makes the minutes stale, and says so; nothing
+	// regenerates by itself.
 	putNoteBlob(t, s, "resource/data/later.mp3", syntheticONY1(t, []byte("ID3 later")))
-	if body := page(); !strings.Contains(body, "have changed") {
+	if body := page(); !strings.Contains(body, "A new recording arrived after these minutes were written.") || strings.Contains(body, "have changed") {
 		t.Fatal("stale minutes not flagged")
 	}
 	if found, e := s.ProcessMinutes(ctx, client, summary, "synthetic-llm", "t1"); e != nil || found || uploads != 1 {
@@ -288,12 +289,27 @@ func TestNoteMinutesFailuresAndRetry(t *testing.T) {
 	if state != "queued" || detail != "queued" {
 		t.Fatal("retry", state, detail)
 	}
+	page := func() string {
+		w := httptest.NewRecorder()
+		s.minutesPage(w, httptest.NewRequest("GET", "/boox/minutes?id=note", nil))
+		if w.Code != 200 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		return w.Body.String()
+	}
+	// While it runs, the page shows its steps and updates itself.
+	if body := page(); !strings.Contains(body, `name="alexandria-live"`) || !strings.Contains(body, `<li data-state="active">Transcribe the recordings`) || !strings.Contains(body, "Step 1 of 3") {
+		t.Fatal("running minutes", body)
+	}
 	if e := s.ControlMinutes(ctx, "note", "cancel"); e != nil {
 		t.Fatal(e)
 	}
 	s.DB.QueryRowContext(ctx, `SELECT state FROM alexandria_note_minutes`).Scan(&state)
 	if state != "cancelled" {
 		t.Fatal("cancel", state)
+	}
+	if body := page(); strings.Contains(body, `name="alexandria-live"`) || !strings.Contains(body, "The last request was cancelled.") || !strings.Contains(body, `value="retry"`) {
+		t.Fatal("cancelled minutes", body)
 	}
 }
 

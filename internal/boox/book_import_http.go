@@ -2,6 +2,7 @@ package boox
 
 import (
 	"encoding/json"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/web"
 	"io"
 	"net/http"
@@ -16,10 +17,7 @@ func (s Service) bookImportHTTP(w http.ResponseWriter, r *http.Request) {
 			failure(e)
 			return
 		}
-		for n := range v.Items {
-			v.Items[n].Error = localizer.T(v.Items[n].Error)
-		}
-		reply(w, 200, v)
+		reply(w, 200, localizeImport(v, localizer))
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -118,10 +116,15 @@ func (s Service) bookImportHTTP(w http.ResponseWriter, r *http.Request) {
 		failure(e)
 		return
 	}
+	reply(w, 200, localizeImport(v, localizer))
+}
+
+// localizeImport translates the items' problems for the page.
+func localizeImport(v importView, l i18n.Localizer) importView {
 	for n := range v.Items {
 		if v.Items[n].Error != "" {
-			v.Items[n].Error = localizer.T(v.Items[n].Error)
+			v.Items[n].Error = l.T(v.Items[n].Error)
 		}
 	}
-	reply(w, 200, v)
+	return v
 }

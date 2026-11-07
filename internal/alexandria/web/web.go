@@ -63,7 +63,8 @@ var funcs = withFormats(template.FuncMap{
 	// kb rounds a byte count to whole kilobytes for display.
 	"kb": func(n int) int { return (n + 512) / 1024 },
 	// day is a list date in the owner's zone (see dayIn); bound per request.
-	"day": func(any) string { return "" },
+	"day":     func(any) string { return "" },
+	"dayTime": func(any) string { return "" },
 	"listJobStates": func() []string {
 		return []string{"queued", "processing", "ready", "blocked", "failed", "paused", "cancelled", "skipped"}
 	},
@@ -265,7 +266,8 @@ func (d Deps) renderTemplate(w http.ResponseWriter, r *http.Request, t *template
 		live, _ := strconv.Atoi(w.Header().Get("Refresh"))
 		w.Header().Del("Refresh")
 		loc := d.Localizer(r)
-		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc), "day": d.dayIn(r, loc)}).Funcs(formatFuncs(loc))
+		day, dayTime := d.dayIn(r, loc)
+		t.Funcs(template.FuncMap{"t": loc.T, "th": htmlT(loc), "td": detailIn(loc), "tip": tipIn(loc), "day": day, "dayTime": dayTime}).Funcs(formatFuncs(loc))
 		w.Header().Set("Content-Language", loc.Lang())
 		w.Header().Add("Vary", "Accept-Language")
 		p := page{SettingsSection: settingsSection(r), Lang: loc.Lang(), Live: live, SourceTab: sourceTab(r.URL.Path, section), NativeBOOX: d.Status.NativeBOOX, Title: pageTitle(loc, title), Section: section, Base: oauth.BaseURL(d.PublicURL, r), Data: data,

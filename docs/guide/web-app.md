@@ -99,9 +99,10 @@ BOOX tablets are covered in [Connect BOOX Tablets](boox.md).
 
 - **?** buttons beside headings open a short explanation. Each has a **Learn
   more** link into the guide.
-- **Help** (top right, and in the footer) opens the full in-app guide, with
-  sections from **Getting Started** to **Operator Notes**.
-- The footer shows the running version, handy when reporting a problem.
+- **Help** (the **?** at the top right) opens the full in-app guide: a menu of
+  sections from **Getting started** to **Operator notes** beside the text.
+- The Help menu and **Settings → Operator tools** show the running version,
+  handy when reporting a problem.
 
 ## Settings
 

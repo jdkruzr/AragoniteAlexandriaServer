@@ -73,7 +73,7 @@ func TestWebPagesRenderAndFormsRequireSameOrigin(t *testing.T) {
 		"/settings/calendar?events":                             "/caldav/user/calendars/events/",
 		"/calendar":                                             "Local calendar and task due dates.",
 		"/calendar?show=deleted":                                "Deleted Events",
-		"/help":                                                 "Handwriting recognition",
+		"/help":                                                 "Handwriting Recognition",
 		"/":                                                     "Nothing to do",
 	} {
 		got := b.do("GET", path, "", nil, true)

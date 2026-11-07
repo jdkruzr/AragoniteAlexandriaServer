@@ -26,7 +26,15 @@ templates in `internal/boox/*.go`, grafted into the same layout by
 - **BOOX minutes** (`/boox/minutes?id=`, review at `/boox/minutes/new`, audio at
   `/boox/minutes/audio`, sending at POST `/boox/minutes/send`) open from the Audio Note Minutes card in the notebook reader's side
   panel. BOOX pages allow `media-src 'self'` for the recording player. See
-  [Audio Note Minutes](note-minutes.md).
+  [Audio Note Minutes](note-minutes.md). While a request runs, the page sets
+  `Refresh: 5` and lists its steps in the `minutes-state` live region (keyed by
+  state, so finishing reloads the page once); stale minutes name a recording
+  they weren't written from (`newRecording`) when that's the cause.
+- **Upload books** (`/boox/books/upload`): `book-import.js` drives the import
+  API. Its preview marks `duplicate` files, whose file name (ignoring case) and
+  size match a stored book on the destination shelf; they still upload, and the
+  content check at publication decides. The form without script posts `folder`
+  and, for a shelf, goes through a one-file import (`uploadToShelf`).
 - **Calendar** (`/calendar`) has Day, Week, Month and Upcoming views
   (`view=`), all of them chips built from event occurrences and open tasks due
   (`calendarChip`). The Day grid runs 07:00–22:00 and grows to fit. The editor
@@ -49,6 +57,11 @@ templates in `internal/boox/*.go`, grafted into the same layout by
   wraps matches in private-use markers (`notes.MarkStart`/`MarkStop`, stripped
   from the stored text first); the template renders `markPart`s, so highlights
   never pass through as HTML. The JSON API (`/api/v1/search`) is unchanged.
+- **Help** (`/help`) is one page in the Settings columns: a sticky menu of
+  nine sections (`static/help.js` marks the one being read) and the text. Older
+  section ids (`client`, `boox`, `deleting`, `semantic`, `api`, `account`) stay
+  as subsection anchors, so every tip's "Learn more" still lands
+  (`TestHelpAnchorsAndMenu`).
 - **Settings** is one page per section, with a sticky nav (`settings-nav` in
   `layout.html`): Account (`/settings`), Devices (`/settings/devices`), AI
   models (`/settings/models`), Automatic processing (`/settings/automatic`),
@@ -128,7 +141,8 @@ their own `Funcs`.
 Notes for people and for agents (Claude, GPT Astra) inspecting or driving a
 deployment:
 
-- The footer and `<meta name="alexandria-version">` show the build. Compose
+- Help's menu, Settings → Operator tools and `<meta name="alexandria-version">`
+  show the build (there is no site footer). Compose
   builds pass `ALEXANDRIA_VERSION` (default `dev`) to `-ldflags -X …/web.Version`;
   set it to the commit when deploying, for example
   `ALEXANDRIA_VERSION=$(git rev-parse --short HEAD)`.

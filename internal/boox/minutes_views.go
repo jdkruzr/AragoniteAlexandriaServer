@@ -18,11 +18,19 @@ import (
 )
 
 type minutesView struct {
-	ID, Title, Progress string
+	ID, Title           string
 	Has, Stale, Enabled bool
-	Recordings          int
-	OnPages             map[string][]int // recording key → pages showing its chip
-	Stored              minutes.Stored
+	// NewRecording names the cause of stale minutes when it's a recording
+	// they weren't written from.
+	NewRecording bool
+	// Steps is a running request's progress.
+	Steps    []minutesStep
+	AutoSend bool
+	// Sources are the notebook's recordings, listed before any minutes exist.
+	Sources    []minutes.Source
+	Recordings int
+	OnPages    map[string][]int // recording key → pages showing its chip
+	Stored     minutes.Stored
 	// Sending to BOOX; Sendable is false for a deleted notebook.
 	Sendable                       bool
 	NoteTitle, Folder, SendRequest string
@@ -33,6 +41,19 @@ type minutesView struct {
 }
 
 type minutesKeyword struct{ Text, Tag string }
+
+// minutesStep is one stage of a running request: done, active or waiting.
+type minutesStep struct{ Label, Detail, State string }
+
+// Step is the active step's place: "Step 2 of 3".
+func (d minutesView) Step() int {
+	for i, st := range d.Steps {
+		if st.State == "active" {
+			return i + 1
+		}
+	}
+	return 0
+}
 
 var minutesTemplate = template.Must(template.New("minutes.html").Funcs(web.Funcs()).ParseFS(templateFS, "templates/minutes.html"))
 
@@ -62,7 +83,10 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 		s.failure(w, "minutesPage", e)
 		return
 	}
-	d := minutesView{ID: id, Title: n.Meta.Title, Has: has, Stored: stored, Enabled: s.Minutes.Enabled, Recordings: len(audioKeys(n)), OnPages: s.recordingPages(r.Context(), n)}
+	d := minutesView{ID: id, Title: n.Meta.Title, Has: has, Stored: stored, Enabled: s.Minutes.Enabled, AutoSend: s.Minutes.AutoSend, Recordings: len(audioKeys(n)), OnPages: s.recordingPages(r.Context(), n)}
+	if !has {
+		d.Sources = s.recordings(r.Context(), n)
+	}
 	if has && stored.Topic != "" && n.Meta.Status == 1 {
 		d.Sendable, d.NoteTitle, d.Folder, d.SendRequest = true, n.Meta.Title+"_Minutes", s.folderTitle(r.Context(), n.Meta.ParentUniqueID), uuid.NewString()
 		if d.Sent, e = s.sentMinutesNote(r.Context(), id); e != nil {
@@ -80,6 +104,7 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 			s.failure(w, "minutesPage", e)
 			return
 		}
+		d.NewRecording = d.Stale && newRecording(n, stored)
 	}
 	if has && len(stored.Keywords) > 0 {
 		known, e := s.libraryTags(r.Context(), 100000)
@@ -101,34 +126,71 @@ func (s Service) minutesPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if has && (stored.State == "queued" || stored.State == "processing") {
-		d.Progress = s.minutesProgress(r, n, stored)
+		d.Steps = s.minutesProgress(r, n, stored)
+		w.Header().Set("Refresh", "5") // live.js updates the page until it's done
 	}
 	s.renderPage(w, r, minutesTemplate, web.Verbatim(web.T(r, "Audio Note Minutes")+" · "+n.Meta.Title), d)
 }
 
-func (s Service) minutesProgress(r *http.Request, n notebookSnapshot, m minutes.Stored) string {
+// minutesProgress lists a running request's steps: transcribing the
+// recordings (when there are any), waiting for handwriting recognition, and
+// writing the minutes.
+func (s Service) minutesProgress(r *http.Request, n notebookSnapshot, m minutes.Stored) []minutesStep {
 	done := 0
 	for _, t := range m.Recordings {
 		if t.State == "ready" {
 			done++
 		}
 	}
-	if done < len(m.Recordings) {
-		return web.T(r, "Transcribing recordings: {{.Done}} of {{.Total}} done.", "Done", done, "Total", len(m.Recordings))
-	}
-	pages, e := s.pageTexts(r.Context(), n)
-	if e == nil {
-		waiting := 0
+	waiting := 0
+	if pages, e := s.pageTexts(r.Context(), n); e == nil {
 		for _, p := range pages {
 			if pending(p) {
 				waiting++
 			}
 		}
-		if waiting > 0 {
-			return web.T(r, "Waiting for handwriting recognition on {{.Count}} pages.", "Count", waiting)
+	}
+	steps := []minutesStep{
+		{Label: web.T(r, "Transcribe the recordings"), Detail: web.T(r, "Transcribing recordings: {{.Done}} of {{.Total}} done.", "Done", done, "Total", len(m.Recordings))},
+		{Label: web.T(r, "Recognize the handwriting"), Detail: web.T(r, "Waiting for handwriting recognition on {{.Count}} pages.", "Count", waiting)},
+		{Label: web.T(r, "Write the minutes"), Detail: web.T(r, "Writing the minutes.")},
+	}
+	if len(m.Recordings) == 0 {
+		steps = steps[1:]
+	}
+	active := len(steps) - 1
+	switch {
+	case done < len(m.Recordings):
+		active = 0
+	case waiting > 0:
+		active = len(steps) - 2
+	}
+	for i := range steps {
+		switch {
+		case i < active:
+			steps[i].State, steps[i].Detail = "done", ""
+		case i == active:
+			steps[i].State = "active"
+		default:
+			steps[i].State, steps[i].Detail = "waiting", ""
 		}
 	}
-	return web.T(r, "Writing the minutes.")
+	return steps
+}
+
+// newRecording reports whether the notebook has a recording the minutes
+// weren't written from.
+func newRecording(n notebookSnapshot, m minutes.Stored) bool {
+	used := map[string]bool{}
+	for _, t := range m.Recordings {
+		used[t.Key+"@"+t.SHA256] = true
+	}
+	for _, id := range recordingIDs(n) {
+		if !used[id] {
+			return true
+		}
+	}
+	return false
 }
 
 func (s Service) minutesRequestPage(w http.ResponseWriter, r *http.Request) {

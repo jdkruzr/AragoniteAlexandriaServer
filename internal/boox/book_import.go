@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"path"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxvisibility"
 )
 
 type importFile struct {
@@ -36,6 +39,11 @@ type importItem struct {
 	Error     string          `json:"error,omitempty"`
 	Operation string          `json:"operation,omitempty"`
 	Choices   []readingFolder `json:"choices,omitempty"`
+	// Duplicate flags a file whose name and size match a stored book on its
+	// destination shelf: a quick guess made before anything is sent. The file
+	// still uploads, and publishing checks the content, so an identical book
+	// is never added twice.
+	Duplicate bool `json:"duplicate,omitempty"`
 }
 type importView struct {
 	ID    string       `json:"id,omitempty"`
@@ -206,17 +214,55 @@ func (s Service) planBookImportFrom(ctx context.Context, db pg.Querier, req impo
 		}
 		v.Items = append(v.Items, i)
 	}
+	shelved, e := s.shelvedBooks(ctx, db, files)
+	if e != nil {
+		return importView{}, e
+	}
 	accepted := 0
 	for _, f := range files {
 		if f.State != "skipped" {
 			accepted++
 			f.ParentID = parents[path.Dir(f.Path)]
+			f.Duplicate = shelved[shelvedKey(f.ParentID, path.Base(f.Path), f.Size)]
 		}
 		v.Items = append(v.Items, f)
 	}
 	v.Ready = v.Ready && accepted > 0
 	return v, nil
 }
+
+// shelvedKey identifies a stored book by shelf ("" for none), file name
+// (ignoring case) and size.
+func shelvedKey(shelf, name string, size int64) string {
+	return shelf + "\x00" + strings.ToLower(name) + "\x00" + strconv.FormatInt(size, 10)
+}
+
+// shelvedBooks lists the stored books by shelvedKey, when any file could match.
+func (s Service) shelvedBooks(ctx context.Context, db pg.Querier, files []importItem) (map[string]bool, error) {
+	out := map[string]bool{}
+	if !slices.ContainsFunc(files, func(f importItem) bool { return f.State != "skipped" }) {
+		return out, nil
+	}
+	rows, e := db.QueryContext(ctx, `WITH stored AS MATERIALIZED (
+ SELECT split_part(l.native_key,'/',3) AS book,max(v.bytes) AS bytes FROM boox_blob_live l JOIN boox_blob_version v ON v.id=l.version_id
+ WHERE starts_with(l.native_key,$1||'/reader/') AND split_part(l.native_key,'/',4)='book' AND NOT v.deleted AND v.bytes>0 GROUP BY 1)
+ SELECT `+bookShelf+`,coalesce(p.body->>'name',''),stored.bytes FROM boox_projection p JOIN stored ON stored.book=p.body->>'uniqueId'
+ WHERE p.native_uid=$1 AND p.domain='reading' AND p.body->>'modeType'='4' AND `+booxvisibility.Reading("p"), s.uid())
+	if e != nil {
+		return nil, e
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var shelf, name string
+		var size int64
+		if e = rows.Scan(&shelf, &name, &size); e != nil {
+			return nil, e
+		}
+		out[shelvedKey(shelf, name, size)] = true
+	}
+	return out, rows.Err()
+}
+
 func (s Service) createBookImport(ctx context.Context, req importRequest) (importView, error) {
 	if _, e := uuid.Parse(req.RequestID); e != nil {
 		return importView{}, importProblem("Invalid import request.")

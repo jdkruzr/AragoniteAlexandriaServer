@@ -1,21 +1,24 @@
 {{define "content"}}{{$d:=.Data}}
-<p class="crumbs"><a href="/boox">{{t "Notebooks"}}</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">{{t "Audio Note Minutes"}}</a> /</p>
+<div class="min-review">
+<p class="crumbs"><a href="/boox?selected={{$d.ID}}">{{t "Library"}}</a> / <a href="/boox/notebook?id={{$d.ID}}">{{$d.Title}}</a> / <a href="/boox/minutes?id={{$d.ID}}">{{t "Minutes"}}</a> /</p>
 <h1>{{t "Summarize This Note"}} {{template "help" "boox.minutes"}}</h1>
-{{if not $d.Enabled}}<div class="callout"><p>{{th "Set up transcription and a summary model in <a href=\"/settings/models?section=minutes#minutes\">Settings → AI models</a> first."}}</p></div>{{else}}
+{{if not $d.Enabled}}<p class="callout">{{th "Set up transcription and a summary model in <a href=\"/settings/models?section=minutes#minutes\">Settings → AI models</a> first."}}</p>{{else}}
+<p class="lib-sub">{{t "Nothing is sent until you confirm at the bottom."}}</p>
 <form method="post" action="/boox/minutes/new"><input type="hidden" name="id" value="{{$d.ID}}"><input type="hidden" name="version" value="{{$d.Version}}"><input type="hidden" name="request" value="{{$d.Request}}">
-<section class="card"><h2>{{t "Recordings"}}</h2>
-{{if $d.Recordings}}<div class="table-scroll"><table><thead><tr><th>{{t "Recording"}}</th><th>{{t "Recorded"}}</th><th>{{t "Length"}}</th><th>{{t "Size"}}</th></tr></thead><tbody>
-{{range $d.Recordings}}<tr><td>{{.Title}}</td><td>{{utc .RecordedAt}}</td><td>{{if .DurationMS}}{{clock .DurationMS}}{{else}}—{{end}}</td><td>{{bytes .Bytes}}</td></tr>{{end}}
+<section><h2 class="min-h">{{t "Recordings"}}</h2>
+{{if $d.Recordings}}<div class="table-scroll"><table><thead><tr><th>{{t "Recording"}}</th><th>{{t "Recorded"}}</th><th class="num">{{t "Length"}}</th><th class="num">{{t "Size"}}</th></tr></thead><tbody>
+{{range $d.Recordings}}<tr><td>{{.Title}}</td><td>{{with dayTime .RecordedAt}}{{.}}{{else}}—{{end}}</td><td class="num">{{if .DurationMS}}{{clock .DurationMS}}{{else}}—{{end}}</td><td class="num">{{bytes .Bytes}}</td></tr>{{end}}
 </tbody></table></div>{{else}}<p class="muted">{{t "This notebook has no recordings. The minutes will come from handwriting alone."}}</p>{{end}}
 </section>
-<section class="card"><h2>{{t "Handwriting"}}</h2>
+<section><h2 class="min-h">{{t "Handwriting"}}</h2>
 <p>{{t "{{.Done}} of {{.Count}} pages have recognized text." "Done" $d.WithText "Count" $d.Pages}}{{if $d.InProgress}} {{t "{{.Count}} are being recognized now." $d.InProgress}}{{end}}</p>
 {{if $d.Missing}}{{if $d.RecognitionEnabled}}<label class="confirm"><input type="checkbox" name="recognize" checked> {{t "Recognize the {{.Count}} pages without text first" $d.Missing}}</label><p class="small muted">{{t "Sends those pages to your recognition provider. Provider charges may apply. Minutes wait until recognition finishes." $d.Missing}}</p>
 {{else}}<p class="small muted">{{th "{{.Count}} pages have no text and will be left out. Turn on recognition in <a href=\"/settings/models\">Settings → AI models</a> to include them." $d.Missing}}</p>{{end}}{{end}}
 </section>
-<section class="card"><h2>{{t "Send"}}</h2>
-<p>Transcription: <strong>{{$d.Transcriber}}</strong> {{t "· Summary:"}} <strong>{{$d.Summarizer}}</strong></p>
+<section><h2 class="min-h">{{t "Send"}}</h2>
+<p>{{th "Transcription: <strong>{{.Transcriber}}</strong> · Summary: <strong>{{.Summarizer}}</strong>" "Transcriber" $d.Transcriber "Summarizer" $d.Summarizer}} · <a href="/settings/models?section=minutes#minutes">{{t "Change"}}</a></p>
 <label class="confirm"><input type="checkbox" name="confirm" required> {{t "Send the recordings and this notebook's text to these providers"}}</label>
-{{if $d.AutoSend}}<p class="small muted">{{t "When they're ready, the minutes are also sent to your BOOX as “{{.Title}}”." "Title" (printf "%s_Minutes" $d.Title)}} <a href="/settings/models?section=minutes#minutes">{{t "Change this in Settings → AI models."}}</a></p>{{end}}
-<p><button>{{t "Summarize"}}</button></p>
-</section></form>{{end}}{{end}}
+<p class="small muted">{{t "Minutes stay on this server and become searchable. Your notebook is never changed."}} {{if $d.AutoSend}}{{t "When they're ready, the minutes are also sent to your BOOX as “{{.Title}}”." "Title" (printf "%s_Minutes" $d.Title)}}{{else}}{{t "You can send a copy to your BOOX afterwards."}}{{end}}</p>
+<p class="min-actions"><button class="btn btn-primary">{{t "Summarize"}}</button> <a class="btn btn-ghost" href="/boox/minutes?id={{$d.ID}}">{{t "Cancel"}}</a></p>
+</section></form>{{end}}
+</div>{{end}}

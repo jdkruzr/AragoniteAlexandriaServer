@@ -12,7 +12,24 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-02): **`search-23cfe8d728f3`**, app-only on schema **41**,
+Latest recorded deployment (2026-11-07): **`finish-3ec8747b0c6c`**, app-only on schema **41**,
+image `sha256:614fe9d6d4889f103e2b63f30413c899428e36b54f86b3ba64f84390fa06f2d4`, on top of
+**`search-23cfe8d728f3`**. Phase 7c, the last of the redesign: Audio Note Minutes has a status
+bar (running steps with "Step n of 3", updating itself while a request runs; failed with Check
+settings and Retry; cancelled with Retry; out of date naming a new recording when that's the
+cause), the topic as heading with keyword chips (BOOX tags filled, others search), numbered key
+points, and a side column (About these minutes in the owner's zone via the new `dayTime`, On your
+BOOX with the automatic-sending state). Upload Books has a drop zone and a selection table, flags
+files whose name and size match a stored book on the destination shelf ("Possibly already here";
+they still upload and publication's content check decides), and the form without script can
+choose a shelf (a one-file import). Help is one page in the Settings columns with nine sections,
+every old anchor kept. The site footer is gone; the version shows in Help and Operator tools.
+The kit also carries `database.Driver` from the single-connection test change (commit
+`a5e7a7f`), which has no effect in production. Live check: real minutes render (out of date,
+already sent, automatic sending on), Help's sections and anchors, the upload page's 46 shelves,
+the minutes review page, and no handler panics in the log.
+
+Before that (2026-11-02): **`search-23cfe8d728f3`**, app-only on schema **41**,
 image `sha256:e77701b3e25633d7f98cf3d92f988c1e004fca6e3cac285c1e635a7499e6f430`, on top of
 **`search-fedb40a4a7e5`** (image `sha256:42f93b4a0df68fe45718df12810a346135fcaeb67321f0a5833035ecaef3a5ef`),
 itself on top of **`calendar-952da26214e6`**. Phase 7b of the redesign: Search has type tabs with

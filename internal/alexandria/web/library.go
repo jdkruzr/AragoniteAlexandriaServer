@@ -80,19 +80,19 @@ func ReaderDetails(w http.ResponseWriter, r *http.Request) bool {
 	return err != nil || c.Value != "0"
 }
 
-// dayIn formats a date for lists in the owner's time zone: "Oct 26", with
-// the year when it isn't this year's. It takes Unix milliseconds or a
-// time.Time; zero and negative values are "". The zone is read once per page,
-// and only when a date is shown.
-func (d Deps) dayIn(r *http.Request, l i18n.Localizer) func(any) string {
+// dayIn formats dates in the owner's time zone: day gives "Oct 26", with the
+// year when it isn't this year's, and dayTime adds the time. Both take Unix
+// milliseconds or a time.Time; zero and negative values are "". The zone is
+// read once per page, and only when a date is shown.
+func (d Deps) dayIn(r *http.Request, l i18n.Localizer) (day, dayTime func(any) string) {
 	var once sync.Once
 	loc := time.UTC
-	return func(v any) string {
+	at := func(v any) (time.Time, bool) {
 		var t time.Time
 		switch x := v.(type) {
 		case int64:
 			if x <= 0 {
-				return ""
+				return t, false
 			}
 			t = time.UnixMilli(x)
 		case time.Time:
@@ -103,15 +103,31 @@ func (d Deps) dayIn(r *http.Request, l i18n.Localizer) func(any) string {
 			}
 		}
 		if t.IsZero() {
-			return ""
+			return t, false
 		}
 		once.Do(func() {
 			if d.DB != nil {
 				loc = settings.Zone(r.Context(), d.DB)
 			}
 		})
-		return dateWords{l}.shortDate(t.In(loc), time.Now().In(loc))
+		return t.In(loc), true
 	}
+	day = func(v any) string {
+		t, ok := at(v)
+		if !ok {
+			return ""
+		}
+		return dateWords{l}.shortDate(t, time.Now().In(loc))
+	}
+	// dayTime adds the time of day: "Oct 24, 14:02".
+	dayTime = func(v any) string {
+		t, ok := at(v)
+		if !ok {
+			return ""
+		}
+		return l.T("{{.Date}}, {{.Time}}", "Date", dateWords{l}.shortDate(t, time.Now().In(loc)), "Time", t.Format("15:04"))
+	}
+	return day, dayTime
 }
 
 // clientList is the Alexandria Client's Notebooks tab: every notebook, or

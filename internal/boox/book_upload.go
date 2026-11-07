@@ -347,6 +347,24 @@ type uploadBookView struct {
 	Folders                        []readingFolder
 }
 
+// uploadToShelf publishes one book onto a shelf, as a one-file import, so
+// the page works without script too.
+func (s Service) uploadToShelf(ctx context.Context, shelf, name string, raw []byte) (string, error) {
+	v, e := s.createBookImport(ctx, importRequest{RequestID: uuid.NewString(), Destination: shelf, Files: []importFile{{Path: name, Size: int64(len(raw))}}})
+	if e != nil {
+		return "", e
+	}
+	if !v.Ready {
+		for _, i := range v.Items {
+			if i.Error != "" {
+				return "", importProblem(i.Error)
+			}
+		}
+		return "", importProblem("This file cannot be uploaded in this import.")
+	}
+	return s.acceptImportFile(ctx, v.ID, name, raw)
+}
+
 func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 	data := uploadBookView{Folder: r.URL.Query().Get("folder")}
 	if r.Method == http.MethodPost {
@@ -370,11 +388,19 @@ func (s Service) uploadBookHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Could not read upload.", 400)
 			return
 		}
+		data.Folder = r.FormValue("folder")
 		if _, e = validateBook(header.Filename, raw); e != nil {
 			data.Error = e.Error()
 		} else {
-			id, err := s.QueueBook(r.Context(), header.Filename, raw)
-			if errors.Is(err, errBookEnrollment) || errors.Is(err, errBookRemoved) {
+			var id string
+			var err error
+			if data.Folder != "" {
+				id, err = s.uploadToShelf(r.Context(), data.Folder, header.Filename, raw)
+			} else {
+				id, err = s.QueueBook(r.Context(), header.Filename, raw)
+			}
+			var problem importProblem
+			if errors.Is(err, errBookEnrollment) || errors.Is(err, errBookRemoved) || errors.As(err, &problem) {
 				data.Error = err.Error()
 			} else if errors.Is(err, errBookConflict) {
 				data.Error = bookConflictMessage(err)

@@ -523,7 +523,9 @@ func TestNotebookGarbageCollectionVersusUpload(t *testing.T) {
 		t.Fatal("collector did not reach object")
 	}
 	uploaded := make(chan int, 1)
-	go func() { uploaded <- signed(t, pooled(s), c, "PUT", s.uid()+"/note/other/resource/a", "", body, false).Code }()
+	go func() {
+		uploaded <- signed(t, pooled(s), c, "PUT", s.uid()+"/note/other/resource/a", "", body, false).Code
+	}()
 	select {
 	case code := <-uploaded:
 		t.Fatalf("upload bypassed GC lock: %d", code)
