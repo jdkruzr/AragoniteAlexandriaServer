@@ -79,7 +79,7 @@ func previewPages() []previewPage {
 		{"calendar-month", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("month", nil, nil)},
 		{"calendar-upcoming", "calendar", "Calendar", "calendar", "/calendar", calendarPreview("upcoming", &calendarEditor{Mode: "recurring", Event: events.Event{ID: "s", Title: "Garden committee", Location: "Community hall"}, When: "Tue, Oct 27 · 18:00–19:30"}, nil)},
 		{"calendar-filters", "calendar", "Calendar", "calendar", "/calendar", func() map[string]any {
-			d := calendarPreview("week", &calendarEditor{Mode: "subscribed", Event: events.Event{Title: "Halloween", Detail: "Synthetic public holiday"}, When: "Sat, Oct 31 · All day", Snapshot: "Oct 19",
+			d := calendarPreview("week", &calendarEditor{Mode: "subscribed", Event: events.Event{Title: "Halloween", Detail: "Synthetic public holiday"}, Detail: "Synthetic public holiday", When: "Sat, Oct 31 · All day", Snapshot: "Oct 19",
 				Subscription: subscriptions.Subscription{Name: "School term dates", Color: "green", Enabled: true, ErrorCode: "http_404"}}, nil)
 			v := d["View"].(calendarView)
 			v.Filters, v.Filter = true, calendarFilter{Hidden: "tasks", Query: "garden"}

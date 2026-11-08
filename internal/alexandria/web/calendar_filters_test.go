@@ -137,6 +137,13 @@ func TestCalendarFiltersAndUpcoming(t *testing.T) {
 	if !strings.Contains(body, "Filter · on") {
 		t.Fatal("filter state not shown")
 	}
+	// Feed HTML is searched as the words it shows, not its tags.
+	if list = calendarSection(t, get("/calendar?view=upcoming&q=synthetic+tools+snacks", nil), "upcoming"); !strings.Contains(list, ">Subscribed event 0<") {
+		t.Fatal("feed description words not searchable", list)
+	}
+	if list = calendarSection(t, get("/calendar?view=upcoming&q=strong", nil), "upcoming"); strings.Contains(list, ">Subscribed event 0<") {
+		t.Fatal("feed markup matched a search", list)
+	}
 	// One choice for the whole site, kept in the browser; search and the date stay in the URL.
 	ret := "/calendar?view=week&date=2026-11-01&days=14&q=appointment"
 	old := &http.Cookie{Name: sourceCookie + "_grid", Value: "local"}

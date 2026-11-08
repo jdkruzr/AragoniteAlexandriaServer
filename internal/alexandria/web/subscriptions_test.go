@@ -31,7 +31,11 @@ func subscriptionFixture(t *testing.T) (Deps, string, string) {
 	today := midnight(time.Now(), loc)
 	body := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//synthetic//EN\r\nX-WR-TIMEZONE:America/Chicago\r\n"
 	for i := -1; i < 5; i++ {
-		body += fmt.Sprintf("BEGIN:VEVENT\r\nUID:imported-%d\r\nDTSTAMP:20261019T000000Z\r\nSUMMARY:Subscribed event %d\r\nDTSTART:%sT090000\r\nDURATION:PT1H\r\nDESCRIPTION:Synthetic public event\r\nURL:https://example.org/event\r\nEND:VEVENT\r\n", i, i, today.AddDate(0, 0, i).Format("20060102"))
+		detail := "Synthetic public event"
+		if i == 0 { // feeds often send HTML descriptions
+			detail = `<p>Bring <b>synthetic tools</b><br>and snacks</p><ul><li>Hall A</li></ul><a href="https://example.org/rsvp" onclick="x()">RSVP</a><script>alert(1)</script>`
+		}
+		body += fmt.Sprintf("BEGIN:VEVENT\r\nUID:imported-%d\r\nDTSTAMP:20261019T000000Z\r\nSUMMARY:Subscribed event %d\r\nDTSTART:%sT090000\r\nDURATION:PT1H\r\nDESCRIPTION:%s\r\nURL:https://example.org/event\r\nEND:VEVENT\r\n", i, i, today.AddDate(0, 0, i).Format("20060102"), detail)
 	}
 	body += "BEGIN:VEVENT\r\nUID:recurring\r\nDTSTAMP:20261019T000000Z\r\nSUMMARY:Subscribed recurring event\r\nDTSTART:20200101T093000\r\nDURATION:PT1H\r\nRRULE:FREQ=DAILY\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
 	parsed, err := subscriptions.Parse(ctx, []byte(body))
@@ -136,7 +140,9 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 		t.Fatal(err)
 	}
 	for lang, title := range map[string]string{"en": "Untitled event", "es": "Evento sin título"} {
-		if !strings.Contains(get("/calendar", lang, nil), title) {
+		// Upcoming always covers the next seven days; the default week view
+		// doesn't reach four days ahead late in the week.
+		if !strings.Contains(get("/calendar?view=upcoming", lang, nil), title) {
 			t.Fatal("missing localized untitled event", lang)
 		}
 	}
@@ -155,6 +161,9 @@ func TestSubscriptionPagesAndMutations(t *testing.T) {
 	body = get(detail, "en", nil)
 	if !strings.Contains(body, "Subscribed event 0") || !strings.Contains(body, "so it can&#39;t be edited here") || strings.Contains(body, `name="title"`) || !strings.Contains(calendarSection(t, body, "editor"), "view=week") {
 		t.Fatal(body)
+	}
+	if !strings.Contains(body, `<p class="event-detail">Bring <strong>synthetic tools</strong>`+"\nand snacks\n\n• Hall A\n"+`<a href="https://example.org/rsvp" rel="noopener noreferrer nofollow">RSVP</a></p>`) || strings.Contains(body, "&lt;p&gt;") || strings.Contains(body, "alert(1)") || strings.Contains(body, "onclick") {
+		t.Fatal("feed description not made readable", calendarSection(t, body, "editor"))
 	}
 	// Direct submissions cannot mutate the separate imported store, including
 	// attempts using a publisher UID and the internal scoped projection ID.

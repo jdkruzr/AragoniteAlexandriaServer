@@ -289,7 +289,10 @@ need a direct share/ICS link. The calendar must be publicly accessible.
 
 Subscribed events appear in every view with a flag and the calendar's colour.
 Selecting one opens its details, read-only, in the editor column: make changes
-at the source. The filter row shows or hides each subscription. Subscriptions do
+at the source. Many feeds write descriptions in HTML; Alexandria shows them as
+text with their paragraphs, lists, bold and italic, and keeps web and email
+links clickable. Nothing else from the feed's markup is shown, and the filter's
+search matches the words, not the tags. The filter row shows or hides each subscription. Subscriptions do
 not add events to Alexandria's writable CalDAV collection or its event API.
 
 Alexandria refreshes enabled subscriptions every 30 minutes. **Refresh now**

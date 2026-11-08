@@ -68,7 +68,7 @@
 <span class="tag tag-neutral">{{if eq $e.Mode "subscribed"}}<span class="sub-swatch calendar-source-{{$e.Subscription.Color}}"></span>{{$e.Subscription.Name}}{{else}}{{t "Local calendar"}}{{end}}</span>
 <p class="cal-ro-title">{{or $e.Event.Title (t "Untitled event")}}</p>
 {{if $e.When}}<p>{{$e.When}}</p>{{else}}<p>{{t "This occurrence is unavailable. It may have moved or been cancelled; return to the calendar to refresh."}}</p>{{end}}
-{{with $e.Event.Location}}<p class="lib-sub">{{.}}</p>{{end}}{{with $e.Event.Detail}}<p class="event-detail">{{.}}</p>{{end}}
+{{with $e.Event.Location}}<p class="lib-sub">{{.}}</p>{{end}}{{if eq $e.Mode "subscribed"}}{{with $e.Detail}}<p class="event-detail">{{.}}</p>{{end}}{{else}}{{with $e.Event.Detail}}<p class="event-detail">{{.}}</p>{{end}}{{end}}
 {{with $e.Event.URL}}<p><a href="{{.}}" rel="noreferrer">{{if eq $e.Mode "subscribed"}}{{t "Open source event"}}{{else}}{{t "Link"}}{{end}}</a></p>{{end}}
 <p class="lib-sub">{{if eq $e.Mode "subscribed"}}{{t "From a subscribed calendar, so it can't be edited here."}}{{else}}{{t "Recurring event. Edit this series in your CalDAV app."}}{{end}}</p>
 {{if and (eq $e.Mode "subscribed") $e.Subscription.ErrorCode}}<p class="notice">{{feedStatus $e.Subscription}} {{if $e.Snapshot}}{{t "Showing the {{.Date}} snapshot." "Date" $e.Snapshot}}{{else}}{{t "No calendar snapshot is available yet."}}{{end}}</p>{{end}}

@@ -12,7 +12,15 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-07): **`finish-3ec8747b0c6c`**, app-only on schema **41**,
+Latest recorded deployment (2026-11-07): **`feedhtml-5d327929553a`**, app-only on schema **41**,
+image `sha256:5ed7ad7fc0b4d0bba9c77faaf1d46770c76174da149f2be9705d5dba011125e5`, on top of
+**`finish-3ec8747b0c6c`**. Subscribed calendars' HTML descriptions (both live feeds use them:
+paragraphs, lists, links, a few tables) show in the event pane as readable text, rebuilt from
+scratch with only line breaks, bullets, bold, italic and checked http/https/mailto links
+(`rel="noopener noreferrer nofollow"`); the calendar filter searches the words, not the tags.
+The stored feed copy is unchanged, so rollback is the previous kit.
+
+Previous deployment (2026-11-07): **`finish-3ec8747b0c6c`**, app-only on schema **41**,
 image `sha256:614fe9d6d4889f103e2b63f30413c899428e36b54f86b3ba64f84390fa06f2d4`, on top of
 **`search-23cfe8d728f3`**. Phase 7c, the last of the redesign: Audio Note Minutes has a status
 bar (running steps with "Step n of 3", updating itself while a request runs; failed with Check

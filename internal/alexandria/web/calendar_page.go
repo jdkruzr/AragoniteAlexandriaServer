@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -98,7 +99,11 @@ func (d Deps) showCalendar(w http.ResponseWriter, r *http.Request, nav *http.Req
 		} else {
 			params = eventParams(o, nil, loc)
 		}
-		if !v.Filter.Matches(source, o.Event.Title, o.Event.Location, o.Event.Detail, name) {
+		detail := o.Event.Detail
+		if ok && v.Filter.Query != "" {
+			detail = feedPlain(detail)
+		}
+		if !v.Filter.Matches(source, o.Event.Title, o.Event.Location, detail, name) {
 			continue
 		}
 		c := calendarChip{Kind: "local", Icon: "calendar-blank", Title: o.Event.Title, When: words.when(o.Event, loc, now), Link: v.Link(params...), Recurring: o.Recurring, event: o.Event}
@@ -349,6 +354,7 @@ type calendarEditor struct {
 	Source       *NoteSource
 	When         string
 	Subscription subscriptions.Subscription
+	Detail       template.HTML // a subscribed event's description, made readable
 	Snapshot     string
 	Incomplete   bool
 	View         calendarView // set when shown, for its links
@@ -458,6 +464,7 @@ func (d Deps) subscribedEditor(ctx context.Context, q url.Values, loc *time.Loca
 	}
 	e, parseErr := events.FromSeries(subscriptions.EventID(sub.ID, q.Get("key")), blob, loc)
 	ed.Event = e
+	ed.Detail, _ = feedDetail(e.Detail)
 	if parseErr != nil {
 		ed.Incomplete = true
 		return ed, nil
