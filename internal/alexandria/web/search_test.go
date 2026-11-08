@@ -136,16 +136,7 @@ func TestSearchTabsHighlightsAndPaging(t *testing.T) {
 	}
 }
 
-func TestSearchMergesAndMarks(t *testing.T) {
-	hit := func(key string) searchHit { return searchHit{key: key} }
-	merged := fuse(searchList{Hits: []searchHit{hit("a1"), hit("a2"), hit("a3")}, Total: 7}, searchList{}, searchList{Hits: []searchHit{hit("c1")}, Total: 1})
-	var keys []string
-	for _, h := range merged.Hits {
-		keys = append(keys, h.key)
-	}
-	if !reflect.DeepEqual(keys, []string{"a1", "c1", "a2", "a3"}) || merged.Total != 8 {
-		t.Fatal(keys, merged.Total)
-	}
+func TestSearchMarks(t *testing.T) {
 	if got := markTerms("Garden gardens GARDENING ítem", []string{"garden", "gar", "ítem"}); !reflect.DeepEqual(got, []markPart{
 		{"Garden", true}, {" ", false}, {"garden", true}, {"s ", false}, {"GARDEN", true}, {"ING ", false}, {"ítem", true}}) {
 		t.Fatal(got)
@@ -153,11 +144,5 @@ func TestSearchMergesAndMarks(t *testing.T) {
 	start, stop := notes.MarkStart, notes.MarkStop
 	if got := parseMarks("a " + start + "hit" + stop + " b " + start + "open"); !reflect.DeepEqual(got, []markPart{{"a ", false}, {"hit", true}, {" b ", false}, {"open", true}}) {
 		t.Fatal(got)
-	}
-	if got := around("x "+strings.Repeat("filler ", 20)+"the budget line and "+strings.Repeat("more ", 20), []string{"budget"}, 30); !strings.HasPrefix(got, "…") || !strings.Contains(got, "budget") || !strings.HasSuffix(got, "…") {
-		t.Fatal(got)
-	}
-	if around("nothing here", []string{"budget"}, 30) != "" {
-		t.Fatal("no match should give no snippet")
 	}
 }

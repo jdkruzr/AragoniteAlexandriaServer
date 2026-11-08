@@ -12,11 +12,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/calendarview"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
-	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
 )
 
 func (d Deps) calendarPage(w http.ResponseWriter, r *http.Request) {
@@ -243,35 +242,13 @@ func calendarOpen(day string, params []string) string {
 // taskChips are the open tasks due within the windows. A due date without a
 // time of day is an all-day item.
 func (d Deps) taskChips(ctx context.Context, windows []events.Window, loc *time.Location, f calendarFilter) ([]calendarChip, error) {
-	list, err := tasksvc.NewTaskService(taskdb.NewStore(d.DB), nil).List(ctx)
+	due, err := calendarview.DueTasks(ctx, d.DB, windows, loc, func(title, detail string) bool { return f.Matches("tasks", title, detail) })
 	if err != nil {
 		return nil, err
 	}
 	var out []calendarChip
-	for _, t := range list {
-		if t.Deleted || t.DueAt == nil || t.Status == tasksvc.StatusCompleted || t.Status == tasksvc.StatusCancelled {
-			continue
-		}
-		detail := ""
-		if t.Detail != nil {
-			detail = *t.Detail
-		}
-		if !f.Matches("tasks", t.Title, detail) {
-			continue
-		}
-		due := t.DueAt.In(loc)
-		e := events.Event{ID: t.ID, Title: t.Title, Start: due, End: due}
-		if due.Hour() == 0 && due.Minute() == 0 && due.Second() == 0 {
-			e.AllDay = true
-			e.Start = time.Date(due.Year(), due.Month(), due.Day(), 0, 0, 0, 0, time.UTC)
-			e.End = e.Start.AddDate(0, 0, 1)
-		}
-		for _, w := range windows {
-			if events.Overlaps(e, w, loc) {
-				out = append(out, calendarChip{Kind: "task", Icon: "check-square", Title: t.Title, Link: taskView{Sort: "due", Dir: "asc"}.Editing(t.ID), event: e})
-				break
-			}
-		}
+	for _, t := range due {
+		out = append(out, calendarChip{Kind: "task", Icon: "check-square", Title: t.Task.Title, Link: taskView{Sort: "due", Dir: "asc"}.Editing(t.Task.ID), event: t.Event})
 	}
 	return out, nil
 }
@@ -290,49 +267,12 @@ type occurrenceSet struct {
 // collectOccurrences expands local events and the visible, enabled
 // subscriptions over the windows. visible takes "local" or a subscription ID.
 func (d Deps) collectOccurrences(ctx context.Context, r *http.Request, loc *time.Location, windows []events.Window, visible func(string) bool) (occurrenceSet, error) {
-	set := occurrenceSet{Imported: map[string]subscriptions.Imported{}, Calendars: []calendarSource{}}
-	var records []events.Event
-	if visible("local") {
-		var err error
-		if records, err = events.NewStore(d.DB).Candidates(ctx, windows); err != nil {
-			return set, err
-		}
-	}
-	ss := subscriptions.Store{DB: d.DB}
-	all, err := ss.List(ctx)
+	got, err := calendarview.Collect(ctx, d.DB, loc, windows, visible, d.Localizer(r).T("Untitled event"))
 	if err != nil {
-		return set, err
+		return occurrenceSet{}, err
 	}
-	selected := []string{}
-	for _, s := range all {
-		v := visible(s.ID)
-		set.Calendars = append(set.Calendars, calendarSource{s, v})
-		if s.Enabled && v {
-			selected = append(selected, s.ID)
-		}
-	}
-	incoming, issues, err := ss.Read(ctx, selected, loc)
-	if err != nil {
-		return set, err
-	}
-	local := eventIDs(records)
-	for _, v := range incoming {
-		set.Imported[v.Event.ID] = v
-		records = append(records, v.Event)
-	}
-	expansion := events.Expand(ctx, records, windows, loc)
-	for i := range expansion.Incomplete {
-		if v, ok := set.Imported[expansion.Incomplete[i].ID]; ok {
-			title := expansion.Incomplete[i].Title
-			if title == "" {
-				title = d.Localizer(r).T("Untitled event")
-			}
-			expansion.Incomplete[i].Title = v.Name + ": " + title
-		}
-	}
-	set.Occurrences, set.Incomplete = expansion.Occurrences, append(expansion.Incomplete, issues...)
-	set.Sources = d.noteSources(ctx, "event", local)
-	return set, nil
+	return occurrenceSet{Occurrences: got.Occurrences, Imported: got.Imported, Incomplete: got.Incomplete, Calendars: got.Calendars,
+		Sources: d.noteSources(ctx, "event", got.Local)}, nil
 }
 
 func eventIDs(list []events.Event) []string {

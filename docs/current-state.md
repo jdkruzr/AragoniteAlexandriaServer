@@ -12,7 +12,18 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-08): **`mcpauth-29dab811587c`**, migration **0042**,
+Latest recorded deployment (2026-11-08): **`extract-06eaa4da6505`**, app-only on schema **42**,
+image `sha256:4b98876671ee417f7cb0f343115eb4efac21f8eddc3c6ea28d399984316fe7d5`, on top of
+**`mcpauth-29dab811587c`**. Second step of the MCP rework, with no visible change: what the
+calendar shows for some dates (local and subscribed events expanded, open tasks due, the BOOX pages
+note actions made items from) moved into `internal/alexandria/calendarview`, and Search's ranking
+by type (notebook titles, page text, books and highlights, tasks; fused, sorted, snippets filled)
+into `internal/alexandria/searchview`, so MCP can use the same answers. The web keeps its labels,
+icons and highlighting. Live check: 25 search and calendar pages (every type, sort, mode and
+source, all calendar views, Today) fetched with a throwaway read token before and after the deploy
+were byte-for-byte identical; token revoked; no panics or 5xx.
+
+Previous deployment (2026-11-08): **`mcpauth-29dab811587c`**, migration **0042**,
 image `sha256:f226154e07b5fd81d74dc5ffaeb287fc98f8ae3a96a552ef78c62c056bdba959`, on top of
 **`feedhtml-5d327929553a`**. First step of the MCP rework: API tokens carry a scope, read or full.
 A read token is offered only the MCP tools that read (a direct call to a write tool fails), and
@@ -27,7 +38,7 @@ and revoked; full token 19 tools, read token 9; read-token create_task refused w
 written; read CalDAV PUT 403, PROPFIND 207; REST search 200, task POST 403; no panics or 5xx.
 Rollback: `rollback-schema.sh` (revokes read tokens, drops the columns) then `rollback.sh`.
 
-Previous deployment (2026-11-07): **`feedhtml-5d327929553a`**, app-only on schema **41**,
+Before that (2026-11-07): **`feedhtml-5d327929553a`**, app-only on schema **41**,
 image `sha256:5ed7ad7fc0b4d0bba9c77faaf1d46770c76174da149f2be9705d5dba011125e5`, on top of
 **`finish-3ec8747b0c6c`**. Subscribed calendars' HTML descriptions (both live feeds use them:
 paragraphs, lists, links, a few tables) show in the event pane as readable text, rebuilt from

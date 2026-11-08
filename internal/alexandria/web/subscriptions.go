@@ -5,16 +5,15 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/calendarview"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
 )
 
 const subscriptionSettings = "/settings/calendar?section=subscriptions#subscriptions"
 const sourceCookie = "alexandria_calendar_sources"
 
-type calendarSource struct {
-	Subscription subscriptions.Subscription
-	Visible      bool
-}
+// calendarSource is a subscription and whether the viewer shows it.
+type calendarSource = calendarview.Calendar
 
 func (d Deps) subscriptionRoutes(mux *http.ServeMux) {
 	store := subscriptions.Store{DB: d.DB}
