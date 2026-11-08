@@ -284,11 +284,11 @@ func TestMCPOverHTTPRequiresAPIAuthentication(t *testing.T) {
 	if got := send(initialize, full); got.Code != 200 || !strings.Contains(got.Body.String(), "aragonite-alexandria") {
 		t.Fatalf("MCP initialize: %d %s", got.Code, got.Body)
 	}
-	if got := send(list, full); got.Code != 200 || !strings.Contains(got.Body.String(), `"create_task"`) || !strings.Contains(got.Body.String(), `"search_notes"`) {
+	if got := send(list, full); got.Code != 200 || !strings.Contains(got.Body.String(), `"create_task"`) || !strings.Contains(got.Body.String(), `"search"`) {
 		t.Fatalf("full tools: %d %s", got.Code, got.Body)
 	}
 	got := send(list, read)
-	if got.Code != 200 || !strings.Contains(got.Body.String(), `"search_notes"`) {
+	if got.Code != 200 || !strings.Contains(got.Body.String(), `"search"`) {
 		t.Fatalf("read tools: %d %s", got.Code, got.Body)
 	}
 	for _, name := range []string{"create_task", "edit_text_box", "purge_deleted_tasks", "create_event", "delete_event"} {

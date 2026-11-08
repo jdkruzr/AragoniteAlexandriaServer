@@ -158,7 +158,8 @@ ready, the problem shows on the minutes page, and **Send to BOOX** tries again.
 Ready minutes appear in [Search](search-and-tags.md) as **Minutes**, linking to
 the minutes page; the topic, keywords, key points, conclusion and transcripts
 are all searchable. [Assistants](assistants.md) connected over MCP can read
-them with the `get_note_minutes` tool, with or without transcripts.
+them with the `get_minutes` tool, with or without transcripts, and find them
+with `list_minutes`.
 
 ## Editing the Instructions
 

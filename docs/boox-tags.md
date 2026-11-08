@@ -45,7 +45,7 @@ Firmware facts are from the decompiled Notes app in `~/booxreverse`.
   page whose handwriting never says it, but doesn't push it above pages that
   discuss the term at length (live: the page tagged "mulch" ranks 13th of 49).
   Tags are not part of the page text, so tagging never re-embeds a page. A tag only makes a page findable once the page has recognized text.
-  Search results (web and MCP `search_notes`) list each page's tags.
+  Search results (web and MCP `search`) list each page's tags.
 - **Web**: BOOX → **Tags** (`/boox/tags`) lists every tag with its page and notebook counts
   (common and orphaned tags show "Not on any page"); `/boox/tags?tag=…` lists
   the live pages that carry it (matched without regard to case, like the device's

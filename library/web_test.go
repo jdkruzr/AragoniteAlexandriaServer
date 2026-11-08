@@ -352,7 +352,7 @@ func TestOAuthReadScopeIssuesANamedReadToken(t *testing.T) {
 	}
 	list := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
 	got := b.do("POST", "/mcp", list, map[string]string{"Authorization": "Bearer " + issued.AccessToken, "Content-Type": "application/json", "Accept": "application/json, text/event-stream"}, false)
-	if got.Code != 200 || !strings.Contains(got.Body.String(), `"search_notes"`) || strings.Contains(got.Body.String(), `"create_task"`) {
+	if got.Code != 200 || !strings.Contains(got.Body.String(), `"search"`) || strings.Contains(got.Body.String(), `"create_task"`) {
 		t.Fatalf("read OAuth tools: %d %s", got.Code, got.Body)
 	}
 	// A token made by hand in Settings can be read only too.

@@ -6,8 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -15,8 +19,10 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/identity"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskdb"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/testenv"
 )
 
@@ -33,8 +39,78 @@ type ocr struct{}
 func (ocr) Recognize(context.Context, []byte, string) (string, error) { return "harvest calendar", nil }
 func (ocr) Model() string                                             { return "fake" }
 
-func setup(t *testing.T) (*sql.DB, *mcp.ClientSession) {
+// fakeBOOX stands in for a BOOX library; the boox package tests the real one.
+type fakeBOOX struct{ notebooks int }
+
+func (f fakeBOOX) Notebooks(_ context.Context, nf boox.NotebookFilter) ([]boox.NotebookInfo, int, error) {
+	var out []boox.NotebookInfo
+	for i := nf.Offset; i < min(f.notebooks, nf.Offset+nf.Limit); i++ {
+		out = append(out, boox.NotebookInfo{ID: fmt.Sprintf("bx%02d", i), Title: fmt.Sprintf("Field notes %d", i), Kind: "Handwritten note", Pages: 3, ModifiedAt: 1760000000000})
+	}
+	return out, f.notebooks, nil
+}
+func (fakeBOOX) Notebook(_ context.Context, id string) (boox.NotebookDetail, error) {
+	if id != "bx00" {
+		return boox.NotebookDetail{}, boox.ErrNotFound
+	}
+	return boox.NotebookDetail{NotebookInfo: boox.NotebookInfo{ID: id, Title: "Field notes 0", Kind: "Handwritten note", Pages: 2}, Recognized: 1, Tags: []string{"birds"},
+		PageStates: []boox.PageText{{Number: 1, State: "ready", Tags: []string{"birds"}, HasActions: true}, {Number: 2}}}, nil
+}
+func (fakeBOOX) PageTexts(_ context.Context, id string, from, to int) (boox.NotebookText, error) {
+	if id != "bx00" {
+		return boox.NotebookText{}, boox.ErrNotFound
+	}
+	out := boox.NotebookText{ID: id, Title: "Field notes 0", Total: 2}
+	for _, p := range []boox.PageText{{Number: 1, State: "ready", Text: "a heron at dawn", Model: "m", RecognizedAt: time.Now()}, {Number: 2, State: "failed", Detail: "too faint"}} {
+		if p.Number >= from && (to == 0 || p.Number <= to) {
+			out.Pages = append(out.Pages, p)
+		}
+	}
+	return out, nil
+}
+func (fakeBOOX) PageImage(_ context.Context, id string, num, edge int) ([]byte, error) {
+	if id != "bx00" || num > 2 || edge != imageEdge {
+		return nil, boox.ErrNotFound
+	}
+	return []byte{0xff, 0xd8, 0xff}, nil
+}
+func (fakeBOOX) Tags(context.Context) ([]boox.TagCount, error) {
+	return []boox.TagCount{{Tag: "birds", Pages: 1, Notebooks: 1}}, nil
+}
+func (fakeBOOX) TaggedPages(_ context.Context, tag string) (boox.TagCount, []boox.TaggedPage, error) {
+	if !strings.EqualFold(tag, "birds") {
+		return boox.TagCount{}, nil, boox.ErrNotFound
+	}
+	return boox.TagCount{Tag: "birds", Pages: 1, Notebooks: 1}, []boox.TaggedPage{{NotebookID: "bx00", Notebook: "Field notes 0", PageID: "p1", Number: 1, Snippet: "a heron"}}, nil
+}
+func (fakeBOOX) Books(_ context.Context, f boox.BookFilter) ([]boox.Book, int, error) {
+	if f.Status != "" && f.Status != "reading" {
+		return nil, 0, nil
+	}
+	return []boox.Book{{NativeID: "nat1", ID: "u#nat1", Title: "Birds of Texas", Authors: "A. Author", Status: "In Progress", Percent: "40%", Stored: true}}, 1, nil
+}
+func (fakeBOOX) Book(_ context.Context, id string) (boox.Book, error) {
+	if id != "u#nat1" {
+		return boox.Book{}, boox.ErrNotFound
+	}
+	return boox.Book{NativeID: "nat1", ID: id, Title: "Birds of Texas", InkPages: 2, Notes: []boox.BookNote{{Kind: "Highlight", Quote: "the heron waits", Page: "12"}}}, nil
+}
+func (fakeBOOX) MinutesList(_ context.Context, state string, offset, limit int) ([]boox.MinutesInfo, int, error) {
+	return []boox.MinutesInfo{{NotebookID: "nbm", Notebook: "Standup", State: "ready", Topic: "Comet schedule", Updated: time.Now()}}, 1, nil
+}
+func (fakeBOOX) MinutesStale(_ context.Context, id string) (bool, error) { return id == "nbm", nil }
+
+type options struct {
+	booxLibrary BOOXLibrary
+	readOnly    bool
+}
+
+func setup(t *testing.T, opts ...options) (*sql.DB, *mcp.ClientSession) {
 	t.Helper()
+	var o options
+	if len(opts) > 0 {
+		o = opts[0]
+	}
 	db := testenv.Database(t).DB
 	if err := identity.EnsureSite(ctx, db); err != nil {
 		t.Fatal(err)
@@ -63,8 +139,8 @@ func setup(t *testing.T) (*sql.DB, *mcp.ClientSession) {
 		t.Fatal(err)
 	}
 	conn := testenv.Request(t, db) // one connection, as production gives a request
-	server := NewServer(Deps{DB: conn, Search: notes.Searcher{DB: conn}, PublicURL: "https://library.example",
-		Tasks: tasksvc.NewTaskService(taskdb.NewStore(db), nil)})
+	server := NewServer(Deps{DB: conn, Search: notes.Searcher{DB: conn}, PublicURL: "https://library.example", Version: "test-1",
+		Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil), BOOX: o.booxLibrary, ReadOnly: o.readOnly})
 	st, ct := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(ctx, st, nil); err != nil {
 		t.Fatal(err)
@@ -77,13 +153,44 @@ func setup(t *testing.T) (*sql.DB, *mcp.ClientSession) {
 	return db, session
 }
 
-func call(t *testing.T, s *mcp.ClientSession, name string, args map[string]any) *mcp.CallToolResult {
+// call runs a tool that must succeed and decodes its structured result.
+func call(t *testing.T, s *mcp.ClientSession, name string, args map[string]any, out any) string {
 	t.Helper()
 	r, err := s.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(name, err)
 	}
-	return r
+	if r.IsError {
+		t.Fatalf("%s %v: %s", name, args, textOf(r))
+	}
+	if out != nil {
+		raw, _ := json.Marshal(r.StructuredContent)
+		reset(out)
+		if err := json.Unmarshal(raw, out); err != nil {
+			t.Fatal(name, string(raw), err)
+		}
+	}
+	return textOf(r)
+}
+
+// reset zeroes a result before decoding into it, so fields the reply leaves
+// out don't keep an earlier call's values.
+func reset(out any) {
+	v := reflect.ValueOf(out).Elem()
+	v.Set(reflect.Zero(v.Type()))
+}
+
+// refuse runs a tool that must fail, and returns its message.
+func refuse(t *testing.T, s *mcp.ClientSession, name string, args map[string]any) string {
+	t.Helper()
+	r, err := s.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+	if err != nil {
+		return err.Error()
+	}
+	if !r.IsError {
+		t.Fatalf("%s %v succeeded: %s", name, args, textOf(r))
+	}
+	return textOf(r)
 }
 
 func textOf(r *mcp.CallToolResult) string {
@@ -96,155 +203,197 @@ func textOf(r *mcp.CallToolResult) string {
 	return b.String()
 }
 
-func TestToolsMatchUltraBridgeSurface(t *testing.T) {
-	_, s := setup(t)
-	tools, err := s.ListTools(ctx, nil)
+var (
+	readTools  = []string{"get_book", "get_event", "get_notebook", "get_page_image", "get_task", "list_books", "list_events", "list_notebooks", "list_tasks", "read_pages", "recognition_status", "search"}
+	booxTools  = []string{"get_minutes", "get_tag", "list_minutes", "list_tags"}
+	writeTools = []string{"clear_completed_tasks", "complete_task", "create_event", "create_task", "delete_event", "delete_task", "edit_text_box", "update_event", "update_task"}
+)
+
+func toolNames(t *testing.T, s *mcp.ClientSession) ([]string, []*mcp.Tool) {
+	t.Helper()
+	list, err := s.ListTools(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var names []string
-	for _, tool := range tools.Tools {
-		names = append(names, tool.Name)
+	for _, tl := range list.Tools {
+		names = append(names, tl.Name)
 	}
-	for _, want := range []string{"search_notes", "get_note_minutes", "get_note_pages", "get_note_image", "list_text_boxes", "edit_text_box",
-		"list_tasks", "get_task", "create_task", "update_task", "complete_task", "delete_task", "purge_completed_tasks", "purge_deleted_tasks"} {
-		if !strings.Contains(strings.Join(names, ","), want) {
-			t.Fatalf("missing %s in %v", want, names)
-		}
-	}
+	slices.Sort(names)
+	return names, list.Tools
 }
 
-func TestSearchPagesImageAndTextBoxEdit(t *testing.T) {
-	db, s := setup(t)
-	r := call(t, s, "search_notes", map[string]any{"query": "garlic"})
-	key := "forestnote://" + nb + "/" + page
-	if r.IsError || !strings.Contains(textOf(r), key) || !strings.Contains(textOf(r), "https://library.example/files/forestnote?notebook=") {
-		t.Fatalf("search: %s", textOf(r))
-	}
-	r = call(t, s, "get_note_pages", map[string]any{"note_path": "forestnote://" + nb})
-	if r.IsError || !strings.Contains(textOf(r), "harvest calendar\nplant garlic") {
-		t.Fatalf("pages: %s", textOf(r))
-	}
-	r = call(t, s, "get_note_image", map[string]any{"note_path": key, "page": 0})
-	if r.IsError || len(r.Content) != 1 {
-		t.Fatalf("image: %+v", r)
-	}
-	if img, ok := r.Content[0].(*mcp.ImageContent); !ok || img.MIMEType != "image/jpeg" || len(img.Data) < 100 {
-		t.Fatal("not a JPEG page image")
-	}
-	r = call(t, s, "list_text_boxes", map[string]any{"notebook_id": nb})
-	if r.IsError || !strings.Contains(textOf(r), box) {
-		t.Fatalf("boxes: %s", textOf(r))
-	}
-	r = call(t, s, "edit_text_box", map[string]any{"box_id": box, "text": "plant shallots"})
-	if r.IsError {
-		t.Fatalf("edit: %s", textOf(r))
-	}
-	var text, site string
-	if err := db.QueryRow(`SELECT t.text, t.lww_site_id FROM fn_text_box t WHERE id=$1`, box).Scan(&text, &site); err != nil || text != "plant shallots" {
-		t.Fatal(text, err)
-	}
-	var server string
-	if err := db.QueryRow(`SELECT site_id FROM sync_site`).Scan(&server); err != nil || site != server {
-		t.Fatal("edit not authored by the server site")
-	}
-	var dirty int
-	if err := db.QueryRow(`SELECT count(*) FROM alexandria_page_dirty WHERE page_id=$1`, page).Scan(&dirty); err != nil || dirty != 1 {
-		t.Fatal("edited page not queued for re-indexing")
-	}
-	if r = call(t, s, "edit_text_box", map[string]any{"box_id": "00000000000000000000000NOPE", "text": "x"}); !r.IsError {
-		t.Fatal("editing a missing box succeeded")
-	}
-	if r = call(t, s, "get_note_pages", map[string]any{"note_path": "/not/forestnote"}); !r.IsError {
-		t.Fatal("non-ForestNote path accepted")
-	}
+func sorted(lists ...[]string) []string {
+	out := slices.Concat(lists...)
+	slices.Sort(out)
+	return out
 }
 
-func TestTaskToolsLifecycle(t *testing.T) {
-	db, s := setup(t)
-	r := call(t, s, "create_task", map[string]any{"title": "Prune the figs", "due_at": "2026-11-01T09:00:00Z", "priority": "1",
-		"categories": []string{"garden"}, "comment": "before frost"})
-	if r.IsError || !strings.Contains(textOf(r), "Created:") {
-		t.Fatalf("create: %s", textOf(r))
-	}
-	var id string
-	if err := db.QueryRow(`SELECT task_id FROM alexandria_tasks`).Scan(&id); err != nil {
-		t.Fatal(err)
-	}
-	r = call(t, s, "get_task", map[string]any{"id": id})
-	if text := textOf(r); r.IsError || !strings.Contains(text, "Categories: garden") || !strings.Contains(text, "Comment: before frost") || !strings.Contains(text, "Priority: 1") {
-		t.Fatalf("get: %s", text)
-	}
-	for args, want := range map[string]string{
-		`{"status":"needs_action","category":"garden"}`:       "1 task(s)",
-		`{"due_before":"2026-10-01T00:00:00Z"}`:               "No tasks match",
-		`{"priority":"1","due_after":"2026-10-15T00:00:00Z"}`: "1 task(s)",
+func TestToolsByScopeAndSource(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		o    options
+		want []string
+	}{
+		{"client only, full", options{}, sorted(readTools, writeTools)},
+		{"BOOX, full", options{booxLibrary: fakeBOOX{}}, sorted(readTools, booxTools, writeTools)},
+		{"BOOX, read only", options{booxLibrary: fakeBOOX{}, readOnly: true}, sorted(readTools, booxTools)},
 	} {
-		var m map[string]any
-		_ = json.Unmarshal([]byte(args), &m)
-		if r = call(t, s, "list_tasks", m); !strings.Contains(textOf(r), want) {
-			t.Fatalf("list %s: %s", args, textOf(r))
-		}
-	}
-	if r = call(t, s, "list_tasks", map[string]any{"status": "someday"}); !r.IsError {
-		t.Fatal("bad status accepted")
-	}
-	if r = call(t, s, "update_task", map[string]any{"id": id, "title": "Prune the old figs", "clear_priority": true}); r.IsError || !strings.Contains(textOf(r), "Prune the old figs") {
-		t.Fatalf("update: %s", textOf(r))
-	}
-	if r = call(t, s, "update_task", map[string]any{"id": id}); !r.IsError {
-		t.Fatal("empty update accepted")
-	}
-	if r = call(t, s, "complete_task", map[string]any{"id": id}); r.IsError {
-		t.Fatalf("complete: %s", textOf(r))
-	}
-	if r = call(t, s, "purge_completed_tasks", map[string]any{}); !strings.Contains(textOf(r), "Soft-deleted 1 completed") {
-		t.Fatalf("purge completed: %s", textOf(r))
-	}
-	if r = call(t, s, "list_tasks", map[string]any{"include_deleted": true}); !strings.Contains(textOf(r), "(deleted") {
-		t.Fatalf("trash: %s", textOf(r))
-	}
-	if r = call(t, s, "purge_deleted_tasks", map[string]any{}); !strings.Contains(textOf(r), "0 task(s); 1 skipped") {
-		t.Fatalf("purge deleted: %s", textOf(r))
-	}
-	if r = call(t, s, "get_task", map[string]any{"id": "missing"}); !r.IsError {
-		t.Fatal("missing task found")
+		t.Run(c.name, func(t *testing.T) {
+			_, s := setup(t, c.o)
+			names, tools := toolNames(t, s)
+			if !slices.Equal(names, c.want) {
+				t.Fatalf("tools\n got %v\nwant %v", names, c.want)
+			}
+			for _, tl := range tools {
+				a := tl.Annotations
+				if tl.Title == "" || a == nil || a.Title == "" || a.OpenWorldHint == nil || *a.OpenWorldHint || tl.OutputSchema == nil || tl.Description == "" {
+					t.Fatalf("%s lacks a title, annotations, description or output schema: %+v", tl.Name, tl)
+				}
+				write := slices.Contains(writeTools, tl.Name)
+				if a.ReadOnlyHint == write || write && a.DestructiveHint == nil {
+					t.Fatalf("%s hints don't say whether it writes: %+v", tl.Name, a)
+				}
+				if strings.HasPrefix(tl.Name, "delete_") && !*a.DestructiveHint {
+					t.Fatalf("%s isn't marked destructive", tl.Name)
+				}
+			}
+			init := s.InitializeResult()
+			if init.ServerInfo.Version != "test-1" || init.Instructions == "" {
+				t.Fatalf("server info: %+v", init)
+			}
+		})
 	}
 }
 
-func TestSearchNotesBOOXSourceAndLinks(t *testing.T) {
-	db, client := setup(t)
-	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('test#book','1-test','reading','','test','{"uniqueId":"book","modeType":4,"title":"garlic cultivation","status":0}')`); err != nil {
-		t.Fatal(err)
+func TestSearchAndClientNotebooks(t *testing.T) {
+	_, s := setup(t)
+	var found searchOutput
+	call(t, s, "search", map[string]any{"query": "harvest"}, &found)
+	if found.Counts["pages"] != 1 || len(found.Results) != 1 {
+		t.Fatalf("search: %+v", found)
 	}
-	result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "search_notes", Arguments: map[string]any{"query": "cultivat", "source": "boox"}})
-	if err != nil || result.IsError {
-		t.Fatal("MCP BOOX query", result, err)
+	hit := found.Results[0]
+	if hit.Kind != "page" || hit.Notebook != "client:"+nb || hit.Page != 1 || hit.Title != "Garden" || !strings.HasPrefix(hit.URL, "https://library.example/") || strings.ContainsAny(hit.Snippet, "\x01\x02") {
+		t.Fatalf("hit: %+v", hit)
 	}
-	raw, err := json.Marshal(result.StructuredContent)
-	if err != nil {
-		t.Fatal(err)
+	call(t, s, "search", map[string]any{"query": "garden", "type": "notebooks"}, &found)
+	if len(found.Results) != 1 || found.Results[0].Kind != "notebook" || found.Results[0].Notebook != "client:"+nb {
+		t.Fatalf("notebook titles: %+v", found)
 	}
-	var out searchNotesOutput
-	if err = json.Unmarshal(raw, &out); err != nil || out.Count != 1 {
-		t.Fatal("MCP source filter", string(raw), err)
+	if msg := refuse(t, s, "search", map[string]any{"query": "x", "source": "boox"}); !strings.Contains(msg, "BOOX isn't set up") {
+		t.Fatal(msg)
 	}
-	hit := out.Results[0]
-	if hit.SourceType != "boox" || !strings.Contains(hit.DetailURL, "/boox/reading?record=test%23book") || hit.ImageToolHint != "" {
-		t.Fatal("misleading BOOX tool link", hit)
+	refuse(t, s, "search", map[string]any{"query": "x", "sort": "sideways"})
+
+	var list listNotebooksOutput
+	call(t, s, "list_notebooks", nil, &list)
+	if list.Source != "client" || list.Total != 1 || list.Notebooks[0].Notebook != "client:"+nb || list.Notebooks[0].Pages != 1 {
+		t.Fatalf("list: %+v", list)
 	}
-	result, err = client.CallTool(ctx, &mcp.CallToolParams{Name: "search_notes", Arguments: map[string]any{"query": "garlic", "sources": []string{"boox", "client"}}})
-	if err != nil || result.IsError {
-		t.Fatal(err)
+	refuse(t, s, "list_notebooks", map[string]any{"kind": "text"})
+
+	var nbOut notebookOutput
+	call(t, s, "get_notebook", map[string]any{"notebook": "client:" + nb}, &nbOut)
+	if nbOut.Title != "Garden" || nbOut.PageCount != 1 || len(nbOut.Pages) != 1 || nbOut.Pages[0].Recognition != "ready" {
+		t.Fatalf("notebook: %+v", nbOut)
 	}
-	raw, _ = json.Marshal(result.StructuredContent)
-	if err = json.Unmarshal(raw, &out); err != nil || out.Count != 2 {
-		t.Fatal("global MCP", string(raw), err)
+	if msg := refuse(t, s, "get_notebook", map[string]any{"notebook": nb}); !strings.Contains(msg, "client:<id>") {
+		t.Fatal("bare id:", msg)
+	}
+
+	var pages readPagesOutput
+	text := call(t, s, "read_pages", map[string]any{"notebook": "client:" + nb}, &pages)
+	if len(pages.Pages) != 1 || !strings.HasPrefix(pages.Pages[0].Text, "harvest calendar") || len(pages.Pages[0].TextBoxes) != 1 || pages.Pages[0].TextBoxes[0].ID != box || !strings.Contains(text, "plant garlic") {
+		t.Fatalf("read: %+v %s", pages, text)
+	}
+	refuse(t, s, "read_pages", map[string]any{"notebook": "client:" + nb, "pages": "2-1"})
+
+	r, err := s.CallTool(ctx, &mcp.CallToolParams{Name: "get_page_image", Arguments: map[string]any{"notebook": "client:" + nb, "page": 1}})
+	if err != nil || r.IsError {
+		t.Fatal(err, textOf(r))
+	}
+	img, ok := r.Content[0].(*mcp.ImageContent)
+	if !ok || img.MIMEType != "image/jpeg" || len(img.Data) < 100 {
+		t.Fatalf("image: %+v", r.Content)
+	}
+	refuse(t, s, "get_page_image", map[string]any{"notebook": "client:" + nb, "page": 2})
+
+	var edited editTextBoxOutput
+	call(t, s, "edit_text_box", map[string]any{"id": box, "text": "plant shallots"}, &edited)
+	call(t, s, "read_pages", map[string]any{"notebook": "client:" + nb, "pages": "1"}, &pages)
+	if pages.Pages[0].TextBoxes[0].Text != "plant shallots" {
+		t.Fatalf("edit: %+v", pages)
 	}
 }
 
-func TestNoteMinutesSearchAndTool(t *testing.T) {
-	db, client := setup(t)
+func TestBOOXTools(t *testing.T) {
+	_, s := setup(t, options{booxLibrary: fakeBOOX{notebooks: 30}})
+	var list listNotebooksOutput
+	call(t, s, "list_notebooks", map[string]any{"limit": 500}, &list)
+	if list.Source != "boox" || list.Total != 30 || len(list.Notebooks) != 30 || list.NextCursor != "" {
+		t.Fatalf("limit clamp: %d %q", len(list.Notebooks), list.NextCursor)
+	}
+	list = listNotebooksOutput{}
+	call(t, s, "list_notebooks", map[string]any{"limit": 20}, &list)
+	if len(list.Notebooks) != 20 || list.NextCursor != "20" || list.Notebooks[0].Notebook != "boox:bx00" {
+		t.Fatalf("page one: %+v", list.NextCursor)
+	}
+	cursor := list.NextCursor
+	list = listNotebooksOutput{}
+	call(t, s, "list_notebooks", map[string]any{"limit": 20, "cursor": cursor}, &list)
+	if len(list.Notebooks) != 10 || list.NextCursor != "" || list.Notebooks[0].Notebook != "boox:bx20" {
+		t.Fatalf("page two: %+v", list)
+	}
+	refuse(t, s, "list_notebooks", map[string]any{"cursor": "abc"})
+
+	var nbOut notebookOutput
+	call(t, s, "get_notebook", map[string]any{"notebook": "boox:bx00"}, &nbOut)
+	if len(nbOut.Pages) != 2 || !nbOut.Pages[0].NoteActions || nbOut.Pages[1].Recognition != "none" || nbOut.URL != "https://library.example/boox/notebook?id=bx00" {
+		t.Fatalf("BOOX notebook: %+v", nbOut)
+	}
+	var pages readPagesOutput
+	call(t, s, "read_pages", map[string]any{"notebook": "boox:bx00", "pages": "2"}, &pages)
+	if len(pages.Pages) != 1 || pages.Pages[0].Page != 2 || pages.Pages[0].Problem != "too faint" {
+		t.Fatalf("BOOX page 2: %+v", pages)
+	}
+	r, err := s.CallTool(ctx, &mcp.CallToolParams{Name: "get_page_image", Arguments: map[string]any{"notebook": "boox:bx00", "page": 2}})
+	if err != nil || r.IsError || len(r.Content) != 2 {
+		t.Fatal(err, r)
+	}
+	if msg := refuse(t, s, "get_page_image", map[string]any{"notebook": "boox:bx00", "page": 9}); !strings.Contains(msg, "no page 9") {
+		t.Fatal(msg)
+	}
+
+	var tags listTagsOutput
+	call(t, s, "list_tags", nil, &tags)
+	var tag tagOutput
+	call(t, s, "get_tag", map[string]any{"tag": "BIRDS"}, &tag)
+	if len(tags.Tags) != 1 || len(tag.PagesWithTag) != 1 || tag.PagesWithTag[0].Notebook != "boox:bx00" {
+		t.Fatalf("tags: %+v %+v", tags, tag)
+	}
+	refuse(t, s, "get_tag", map[string]any{"tag": "fish"})
+
+	var books listBooksOutput
+	call(t, s, "list_books", map[string]any{"status": "reading"}, &books)
+	if books.Total != 1 || books.Books[0].Book != "boox:u#nat1" || books.Books[0].Progress != "40%" {
+		t.Fatalf("books: %+v", books)
+	}
+	var book bookOutput
+	call(t, s, "get_book", map[string]any{"book": "boox:u#nat1"}, &book)
+	if len(book.Notes) != 1 || book.Notes[0].Kind != "highlight" || book.Notes[0].Location != "page 12" || !strings.HasSuffix(book.AnnotatedPDF, "annotated.pdf?book=nat1") {
+		t.Fatalf("book: %+v", book)
+	}
+
+	var mins listMinutesOutput
+	call(t, s, "list_minutes", nil, &mins)
+	if mins.Total != 1 || mins.Minutes[0].Notebook != "boox:nbm" {
+		t.Fatalf("minutes list: %+v", mins)
+	}
+}
+
+func TestMinutes(t *testing.T) {
+	db, s := setup(t, options{booxLibrary: fakeBOOX{}})
 	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('nbm','1-a','notebook','1','test','{"uniqueId":"nbm","title":"Standup","type":1,"status":1,"pageNameList":[]}')`); err != nil {
 		t.Fatal(err)
 	}
@@ -255,23 +404,170 @@ func TestNoteMinutesSearchAndTool(t *testing.T) {
  VALUES('boox','nbm',gen_random_uuid(),'ready','[{"key":"resource/data/a.mp3","sha256":"s","title":"Recording1","recorded_at":"2026-10-13T21:50:41Z","duration_ms":61000}]','Comet schedule','["comet","launch","delay","week"]','[{"text":"Launch slips a week.","from":"recording"}]','Plan for next week.','{"title":"Standup","page_count":0,"recordings":[]}','synthetic-llm','h',now())`); err != nil {
 		t.Fatal(err)
 	}
-	r := call(t, client, "search_notes", map[string]any{"query": "comet", "source": "boox"})
-	if r.IsError || !strings.Contains(textOf(r), "boox-minutes:nbm") || !strings.Contains(textOf(r), "/boox/minutes?id=nbm") {
-		t.Fatalf("minutes search: %s", textOf(r))
+	var found searchOutput
+	call(t, s, "search", map[string]any{"query": "comet", "source": "boox"}, &found)
+	if len(found.Results) == 0 || found.Results[0].Kind != "minutes" || found.Results[0].Notebook != "boox:nbm" {
+		t.Fatalf("minutes search: %+v", found)
 	}
-	r = call(t, client, "get_note_minutes", map[string]any{"note_path": "boox-minutes:nbm"})
-	text := textOf(r)
-	if r.IsError || !strings.Contains(text, "Topic: Comet schedule") || !strings.Contains(text, "[recording]") || !strings.Contains(text, "the comet launch slips a week") || !strings.Contains(text, "2026-10-13T21:50:41Z") {
-		t.Fatalf("minutes tool: %s", text)
+	var m getMinutesOutput
+	text := call(t, s, "get_minutes", map[string]any{"notebook": "boox:nbm"}, &m)
+	if m.Topic != "Comet schedule" || !m.OutOfDate || len(m.Recordings) != 1 || m.Recordings[0].Seconds != 61 || !strings.Contains(text, "the comet launch slips a week") || !strings.Contains(text, "[recording]") {
+		t.Fatalf("minutes: %+v\n%s", m, text)
 	}
-	r = call(t, client, "get_note_minutes", map[string]any{"note_path": "nbm", "include_transcripts": false})
-	if r.IsError || strings.Contains(textOf(r), "slips a week\n") {
-		t.Fatalf("transcripts not omitted: %s", textOf(r))
+	m = getMinutesOutput{}
+	call(t, s, "get_minutes", map[string]any{"notebook": "boox:nbm", "include_transcripts": false}, &m)
+	if m.Recordings[0].Text != "" {
+		t.Fatal("transcripts not left out")
 	}
+	refuse(t, s, "get_minutes", map[string]any{"notebook": "client:" + nb})
 	if _, err := db.ExecContext(ctx, `UPDATE boox_projection SET body=jsonb_set(body,'{status}','0') WHERE document_id='nbm'`); err != nil {
 		t.Fatal(err)
 	}
-	if r = call(t, client, "get_note_minutes", map[string]any{"note_path": "nbm"}); !r.IsError {
-		t.Fatal("deleted notebook's minutes returned")
+	refuse(t, s, "get_minutes", map[string]any{"notebook": "boox:nbm"})
+}
+
+func TestSearchFindsBOOXReading(t *testing.T) {
+	db, s := setup(t, options{booxLibrary: fakeBOOX{}})
+	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('test#book','1-test','reading','','test','{"uniqueId":"book","modeType":4,"title":"garlic cultivation","status":0}')`); err != nil {
+		t.Fatal(err)
 	}
+	var found searchOutput
+	call(t, s, "search", map[string]any{"query": "cultivat", "source": "boox"}, &found)
+	if len(found.Results) != 1 || found.Results[0].Kind != "book" || found.Results[0].Book != "boox:test#book" || !strings.Contains(found.Results[0].URL, "/boox/reading?selected=test%23book") {
+		t.Fatalf("reading: %+v", found)
+	}
+	call(t, s, "search", map[string]any{"query": "garlic"}, &found)
+	if found.Counts["all"] != 2 {
+		t.Fatalf("both sources: %+v", found.Counts)
+	}
+	call(t, s, "search", map[string]any{"query": "garlic", "created_after": "2999-01-01"}, &found)
+	if len(found.Results) != 0 {
+		t.Fatalf("created_after: %+v", found.Results)
+	}
+}
+
+func TestTaskLifecycle(t *testing.T) {
+	db, s := setup(t)
+	var created taskOutput
+	call(t, s, "create_task", map[string]any{"title": "Water the figs", "due": "2026-11-20", "categories": []string{"garden"}, "priority": "3"}, &created)
+	id := created.Task.ID
+	if created.Task.Due != "2026-11-20" || created.Task.Status != "open" || !strings.Contains(created.Task.URL, "edit="+id) {
+		t.Fatalf("created: %+v", created.Task)
+	}
+	call(t, s, "create_task", map[string]any{"title": "From ink"}, &created)
+	inked := created.Task.ID
+	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_note_action_item(source,notebook_id,page_id,color,fingerprint,kind,item_id) VALUES('boox','bx00','p1','red','f','task',$1)`, inked); err != nil {
+		t.Fatal(err)
+	}
+	var list listTasksOutput
+	call(t, s, "list_tasks", nil, &list)
+	if list.Total != 2 || list.Tasks[0].ID != id {
+		t.Fatalf("dated first: %+v", list)
+	}
+	call(t, s, "list_tasks", map[string]any{"from_notebook": "boox:bx00"}, &list)
+	if list.Total != 1 || list.Tasks[0].ID != inked || list.Tasks[0].From == nil || list.Tasks[0].From.Notebook != "boox:bx00" {
+		t.Fatalf("from notebook: %+v", list)
+	}
+	call(t, s, "list_tasks", map[string]any{"due_after": "2026-11-21"}, &list)
+	if list.Total != 0 {
+		t.Fatalf("due_after: %+v", list)
+	}
+	call(t, s, "list_tasks", map[string]any{"category": "garden", "priority": "3"}, &list)
+	if list.Total != 1 {
+		t.Fatalf("category and priority: %+v", list)
+	}
+	var updated taskOutput
+	call(t, s, "update_task", map[string]any{"id": id, "due": "", "done": true}, &updated)
+	if updated.Task.Status != "done" || updated.Task.Due != "" || updated.Task.Completed == "" {
+		t.Fatalf("done: %+v", updated.Task)
+	}
+	call(t, s, "update_task", map[string]any{"id": id, "done": false}, &updated)
+	if updated.Task.Status != "open" {
+		t.Fatalf("reopened: %+v", updated.Task)
+	}
+	refuse(t, s, "update_task", map[string]any{"id": id})
+	refuse(t, s, "update_task", map[string]any{"id": "nope", "title": "x"})
+	call(t, s, "complete_task", map[string]any{"id": id}, &updated)
+	var cleared clearedOutput
+	call(t, s, "clear_completed_tasks", nil, &cleared)
+	if cleared.Cleared != 1 {
+		t.Fatalf("cleared: %+v", cleared)
+	}
+	call(t, s, "delete_task", map[string]any{"id": inked}, nil)
+	call(t, s, "list_tasks", map[string]any{"status": "all"}, &list)
+	if list.Total != 0 {
+		t.Fatalf("all gone: %+v", list)
+	}
+}
+
+func TestCalendarMatchesTheWeb(t *testing.T) {
+	db, s := setup(t)
+	if err := settings.Set(ctx, db, settings.TimeZone, "UTC", false); err != nil {
+		t.Fatal(err)
+	}
+	loc := time.UTC
+	today := time.Now().In(loc)
+	day := func(n int) string { return today.AddDate(0, 0, n).Format("2006-01-02") }
+	// A weekly series that began a month ago still shows this week.
+	start := time.Date(today.Year(), today.Month(), today.Day(), 15, 0, 0, 0, time.UTC).AddDate(0, 0, -28)
+	blob := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nBEGIN:VEVENT\r\nUID:weekly\r\nDTSTAMP:20260101T000000Z\r\nDTSTART:" + start.Format("20060102T150405Z") +
+		"\r\nDTEND:" + start.Add(time.Hour).Format("20060102T150405Z") + "\r\nRRULE:FREQ=WEEKLY\r\nSUMMARY:Choir\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_events(event_id,title,start_at,end_at,all_day,tzid,ical_blob,created_at,updated_at) VALUES('weekly','Choir',$1,$2,false,'UTC',$3,1,1)`,
+		start, start.Add(time.Hour), blob); err != nil {
+		t.Fatal(err)
+	}
+	feed := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nBEGIN:VEVENT\r\nUID:meetup\r\nDTSTAMP:20260101T000000Z\r\nDTSTART;VALUE=DATE:" + today.AddDate(0, 0, 2).Format("20060102") +
+		"\r\nSUMMARY:Robot meetup\r\nDESCRIPTION:<p>Bring <b>parts</b></p>\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_calendar_subscription(id,name,color,feed_url,last_success) VALUES('s1','Makerspace','blue','https://feed.example/x.ics',now())`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_calendar_import(subscription_id,uid,series_key,ical_blob) VALUES('s1','meetup','meetup',$1)`, feed); err != nil {
+		t.Fatal(err)
+	}
+	call(t, s, "create_task", map[string]any{"title": "Return library books", "due": day(3)}, nil)
+	var made eventOutput
+	call(t, s, "create_event", map[string]any{"title": "Dentist", "start": day(1) + "T09:30"}, &made)
+
+	var list eventListOutput
+	text := call(t, s, "list_events", map[string]any{"from": day(0), "to": day(7)}, &list)
+	kinds := map[string]eventRow{}
+	for _, e := range list.Events {
+		kinds[e.Title] = e
+	}
+	choir, meetup, books, dentist := kinds["Choir"], kinds["Robot meetup"], kinds["Return library books"], kinds["Dentist"]
+	if !choir.Recurring || !choir.ReadOnly || meetup.Calendar != "Makerspace" || !meetup.ReadOnly || meetup.Detail != "Bring parts" ||
+		books.Kind != "task_due" || books.Start != day(3) || dentist.Calendar != "Local" || dentist.ReadOnly {
+		t.Fatalf("week:\n%s\n%+v", text, list.Events)
+	}
+	call(t, s, "list_events", map[string]any{"from": day(0), "to": day(7), "include_tasks": false}, &list)
+	for _, e := range list.Events {
+		if e.Kind == "task_due" {
+			t.Fatal("task shown when left out")
+		}
+	}
+	if msg := refuse(t, s, "update_event", map[string]any{"id": "weekly", "title": "x"}); !strings.Contains(msg, "repeating") {
+		t.Fatal(msg)
+	}
+	if msg := refuse(t, s, "delete_event", map[string]any{"id": meetup.ID}); !strings.Contains(msg, "subscribed") {
+		t.Fatal(msg)
+	}
+	refuse(t, s, "list_events", map[string]any{"from": day(0), "to": day(400)})
+	var updated eventOutput
+	call(t, s, "update_event", map[string]any{"id": made.Event.ID, "start": day(1) + "T10:00"}, &updated)
+	if !strings.Contains(updated.Event.Start, "T10:00") || !strings.Contains(updated.Event.End, "T11:00") {
+		t.Fatalf("moved: %+v", updated.Event)
+	}
+	call(t, s, "delete_event", map[string]any{"id": made.Event.ID}, nil)
+	refuse(t, s, "get_event", map[string]any{"id": made.Event.ID})
+}
+
+func TestRecognitionStatus(t *testing.T) {
+	_, s := setup(t)
+	var out recognitionOutput
+	call(t, s, "recognition_status", nil, &out)
+	if out.Working == nil || out.Attention == nil || !strings.HasSuffix(out.URL, "/jobs") {
+		t.Fatalf("status: %+v", out)
+	}
+	call(t, s, "recognition_status", map[string]any{"notebook": "client:" + nb}, &out)
+	refuse(t, s, "recognition_status", map[string]any{"notebook": "nope"})
 }

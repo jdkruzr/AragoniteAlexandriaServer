@@ -324,25 +324,8 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		limit = 12
 		v.Listing.Offset = 0
 	}
-	const membership = `EXISTS(SELECT 1 FROM boox_projection m JOIN boox_projection f ON f.document_id=m.native_uid||'#'||(m.body->>'libraryUniqueId') WHERE m.native_uid=p.native_uid AND m.domain='reading' AND m.body->>'modeType'='5' AND coalesce(m.body->>'status','0')='0' AND m.body->>'documentUniqueId'=p.body->>'uniqueId' AND f.domain='reading' AND f.native_uid=p.native_uid AND f.body->>'modeType'='3' AND coalesce(f.body->>'status','0')='0' AND ($4='unfiled' OR m.body->>'libraryUniqueId'=$4))`
-	rows, e := s.DB.QueryContext(r.Context(), readingAssets+`SELECT p.document_id,p.body,coalesce(a.stored,false),coalesce(a.cover,''),'',count(*) OVER() FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId' WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p")+` AND ($2<>'' AND p.document_id=$2 OR $2='' AND p.body->>'modeType'='4' AND ($3 NOT IN ('stored','metadata') OR $3='stored' AND coalesce(a.stored,false) OR $3='metadata' AND NOT coalesce(a.stored,false)) AND ($4='' OR $4='unfiled' AND NOT `+membership+` OR $4<>'unfiled' AND `+membership+`) AND ($5='' OR strpos(lower(coalesce(p.body->>'title',p.body->>'name','')||' '||coalesce(p.body->>'authors','')),lower($5))>0) AND ($6='' OR p.body->>'readingStatus'=$6) AND ($3<>'stats' OR (p.body->>'lastAccess' ~ '^[0-9]{1,15}$' AND p.body->>'lastAccess'<>'0'))) ORDER BY `+order+` LIMIT $7 OFFSET $8`, s.uid(), v.Record, v.View, v.Folder, v.Query, v.Status, limit, v.Listing.Offset)
-	if e != nil {
-		s.failure(w, "reading", e)
-		return
-	}
-	for rows.Next() {
-		var raw []byte
-		var id, cover, shelf string
-		var stored bool
-		if e = rows.Scan(&id, &raw, &stored, &cover, &shelf, &v.Listing.Total); e != nil {
-			break
-		}
-		v.Items = append(v.Items, readingRow(id, raw, stored, cover, shelf, paths))
-	}
-	if e == nil {
-		e = rows.Err()
-	}
-	rows.Close()
+	v.Items, v.Listing.Total, e = s.readingRows(ctx, readingListQuery{Record: v.Record, View: v.View, Folder: v.Folder, Query: v.Query, Status: v.Status,
+		Order: order, Limit: limit, Offset: v.Listing.Offset}, paths)
 	if e != nil {
 		s.failure(w, "reading", e)
 		return
@@ -352,7 +335,7 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if v.Record != "" && len(v.Items) == 1 && v.Items[0].Kind == "Book" {
-		rows, e = s.DB.QueryContext(r.Context(), `SELECT document_id,body FROM boox_projection p WHERE native_uid=$1 AND body->>'documentId'=$2 AND body->>'modeType' IN ('1','2') AND `+booxvisibility.Reading("p")+` ORDER BY `+listview.State{Sort: "created", Order: "asc"}.NativeOrder(), s.uid(), v.Items[0].NativeID)
+		rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,body FROM boox_projection p WHERE native_uid=$1 AND body->>'documentId'=$2 AND body->>'modeType' IN ('1','2') AND `+booxvisibility.Reading("p")+` ORDER BY `+listview.State{Sort: "created", Order: "asc"}.NativeOrder(), s.uid(), v.Items[0].NativeID)
 		if e != nil {
 			s.failure(w, "readingDetails", e)
 			return
@@ -383,6 +366,39 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	q.Set("layout", v.Layout)
 	v.Listing.Finish(q, "/boox/reading", v.Listing.Total)
 	s.renderPage(w, r, readingTemplate, "BOOX Reading", v)
+}
+
+// readingMembership is true when a book is on shelf $4 ("unfiled" for any).
+const readingMembership = `EXISTS(SELECT 1 FROM boox_projection m JOIN boox_projection f ON f.document_id=m.native_uid||'#'||(m.body->>'libraryUniqueId') WHERE m.native_uid=p.native_uid AND m.domain='reading' AND m.body->>'modeType'='5' AND coalesce(m.body->>'status','0')='0' AND m.body->>'documentUniqueId'=p.body->>'uniqueId' AND f.domain='reading' AND f.native_uid=p.native_uid AND f.body->>'modeType'='3' AND coalesce(f.body->>'status','0')='0' AND ($4='unfiled' OR m.body->>'libraryUniqueId'=$4))`
+
+// readingListQuery selects reading records: one by document ID (Record), or
+// books in a view ("stored", "metadata", "all" or "stats"), on a shelf
+// ("unfiled" for none), matching Query, with a reading Status ("0" new, "1"
+// reading, "2" finished), in Order (SQL), paged.
+type readingListQuery struct {
+	Record, View, Folder, Query, Status, Order string
+	Limit, Offset                              int
+}
+
+// readingRows lists the reading records a query selects, with the total.
+func (s Service) readingRows(ctx context.Context, q readingListQuery, paths map[string]string) ([]readingItem, int, error) {
+	rows, e := s.DB.QueryContext(ctx, readingAssets+`SELECT p.document_id,p.body,coalesce(a.stored,false),coalesce(a.cover,''),'',count(*) OVER() FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId' WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p")+` AND ($2<>'' AND p.document_id=$2 OR $2='' AND p.body->>'modeType'='4' AND ($3 NOT IN ('stored','metadata') OR $3='stored' AND coalesce(a.stored,false) OR $3='metadata' AND NOT coalesce(a.stored,false)) AND ($4='' OR $4='unfiled' AND NOT `+readingMembership+` OR $4<>'unfiled' AND `+readingMembership+`) AND ($5='' OR strpos(lower(coalesce(p.body->>'title',p.body->>'name','')||' '||coalesce(p.body->>'authors','')),lower($5))>0) AND ($6='' OR p.body->>'readingStatus'=$6) AND ($3<>'stats' OR (p.body->>'lastAccess' ~ '^[0-9]{1,15}$' AND p.body->>'lastAccess'<>'0'))) ORDER BY `+q.Order+` LIMIT $7 OFFSET $8`, s.uid(), q.Record, q.View, q.Folder, q.Query, q.Status, q.Limit, q.Offset)
+	if e != nil {
+		return nil, 0, e
+	}
+	defer rows.Close()
+	var out []readingItem
+	total := 0
+	for rows.Next() {
+		var raw []byte
+		var id, cover, shelf string
+		var stored bool
+		if e = rows.Scan(&id, &raw, &stored, &cover, &shelf, &total); e != nil {
+			return nil, 0, e
+		}
+		out = append(out, readingRow(id, raw, stored, cover, shelf, paths))
+	}
+	return out, total, rows.Err()
 }
 
 // bookShelf selects the shelf a book is on (BOOX keeps one), "" if none.

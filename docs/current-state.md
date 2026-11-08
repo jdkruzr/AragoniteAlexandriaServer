@@ -12,7 +12,22 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-08): **`extract-06eaa4da6505`**, app-only on schema **42**,
+Latest recorded deployment (2026-11-08): **`mcptools-cc9822da4690`**, app-only on schema **42**,
+image `sha256:8a3004dffa645175f8194339a91585cfb74665308d682f04b41e0743baf49e75`, on top of
+**`extract-06eaa4da6505`**. The redesigned MCP surface replaces the UltraBridge-era tools: 16 read
+tools (`search`, `list_notebooks`, `get_notebook`, `read_pages`, `get_page_image`, `list_tags`,
+`get_tag`, `list_books`, `get_book`, `list_minutes`, `get_minutes`, `recognition_status`,
+`list_tasks`, `get_task`, `list_events`, `get_event`) and 9 write tools (task and event changes,
+`clear_completed_tasks`, `edit_text_box`; `purge_deleted_tasks` is gone). BOOX notebooks, page text
+and pictures, tags, books with highlights and annotated-PDF links, and minutes are reachable for the
+first time; `list_events` matches the web calendar (repeating events expanded, subscribed calendars,
+task due dates). Every tool has a title, read/write/destructive hints and an output schema; refs are
+`boox:<id>`/`client:<id>`, lists page by cursor, times are in the owner's zone. Live check with
+throwaway tokens (revoked): full 25 tools, read 16; search, BOOX notebook/page/image (0.3 s), tags,
+books and highlights, minutes, recognition status, 7-day calendar (14 subscribed items, read-only),
+open tasks with sources; a task and an event made, changed and deleted; no panics or 5xx.
+
+Previous deployment (2026-11-08): **`extract-06eaa4da6505`**, app-only on schema **42**,
 image `sha256:4b98876671ee417f7cb0f343115eb4efac21f8eddc3c6ea28d399984316fe7d5`, on top of
 **`mcpauth-29dab811587c`**. Second step of the MCP rework, with no visible change: what the
 calendar shows for some dates (local and subscribed events expanded, open tasks due, the BOOX pages
@@ -23,7 +38,7 @@ icons and highlighting. Live check: 25 search and calendar pages (every type, so
 source, all calendar views, Today) fetched with a throwaway read token before and after the deploy
 were byte-for-byte identical; token revoked; no panics or 5xx.
 
-Previous deployment (2026-11-08): **`mcpauth-29dab811587c`**, migration **0042**,
+Before that (2026-11-08): **`mcpauth-29dab811587c`**, migration **0042**,
 image `sha256:f226154e07b5fd81d74dc5ffaeb287fc98f8ae3a96a552ef78c62c056bdba959`, on top of
 **`feedhtml-5d327929553a`**. First step of the MCP rework: API tokens carry a scope, read or full.
 A read token is offered only the MCP tools that read (a direct call to a write tool fails), and

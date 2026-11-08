@@ -127,10 +127,6 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 	// Forms return here without the one-time queued notice.
 	q.Del("queued")
 	d.Return = notebookReturn("/boox?" + q.Encode())
-	status := "1"
-	if d.Deleted {
-		status = "0"
-	}
 	d.Listing = listview.Parse(r.URL.Query())
 	d.All = d.Folder == "" && r.URL.Query().Get("view") != "folders"
 	d.Category = r.URL.Query().Get("category")
@@ -147,32 +143,11 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	offset := d.Listing.Offset
-	rows, e := s.DB.QueryContext(r.Context(), `SELECT document_id,revision,body,
- coalesce((SELECT f.body->>'title' FROM boox_projection f WHERE f.document_id=p.body->>'parentUniqueId' AND f.native_uid=p.native_uid),''),
- CASE WHEN body->>'type'='0' THEN (SELECT count(*) FROM boox_projection c WHERE c.native_uid=p.native_uid AND c.domain='notebook' AND c.body->>'parentUniqueId'=p.document_id AND c.body->>'type'='1' AND c.body->>'status'='1') ELSE 0 END,
- count(*) OVER() FROM boox_projection p WHERE `+notebookPredicate+` AND native_uid=$1 AND body->>'status'=$2 AND (NOT $7 OR body->>'type'='1') AND (body->>'type'='0' OR $8='all' OR $8='handwritten' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') IN ('0','3') OR $8='text' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND body->>'activeScene'='1' OR $8='reading' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='1' OR $8='other' AND (coalesce(body#>>'{association,associationType}',body->>'associationType','0') NOT IN ('0','1') OR coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') NOT IN ('0','1','3'))) AND ($3<>'' AND strpos(lower(coalesce(body->>'title','')),lower($3))>0 OR $3='' AND ($7 OR $5 OR coalesce(body->>'parentUniqueId','')=$4)) ORDER BY `+d.Listing.NativeOrder()+` LIMIT 60 OFFSET $6`, s.uid(), status, d.Query, d.Folder, d.Deleted, offset, d.All, d.Category)
+	var e error
+	d.Entries, d.Listing.Total, e = s.notebookRows(r.Context(), notebookListQuery{Deleted: d.Deleted, Query: d.Query, Folder: d.Folder, All: d.All,
+		Category: d.Category, Order: d.Listing.NativeOrder(), Limit: 60, Offset: offset})
 	if e != nil {
 		s.failure(w, "notebooks", e)
-		return
-	}
-	for rows.Next() {
-		var v notebookEntry
-		var id, revision, folderTitle string
-		var children int
-		var raw []byte
-		if e = rows.Scan(&id, &revision, &raw, &folderTitle, &children, &d.Listing.Total); e != nil {
-			break
-		}
-		if v, e = parseNotebookEntry(id, revision, raw); e != nil {
-			break
-		}
-		v.FolderTitle, v.Notebooks = folderTitle, children
-		d.Entries = append(d.Entries, v)
-	}
-	re := rows.Err()
-	rows.Close()
-	if e != nil || re != nil {
-		s.failure(w, "notebooks", errors.New("notebook inventory read failed"))
 		return
 	}
 	if len(d.Entries) == 0 && offset > 0 {
@@ -218,6 +193,52 @@ func (s Service) notebooks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.renderPage(w, r, libraryTemplate, "BOOX Notebooks", d)
+}
+
+// notebookListQuery selects notebooks and folders for a listing: in Trash or
+// not, by title, in one folder or all, by kind, in Order (SQL), paged.
+type notebookListQuery struct {
+	Deleted, All                   bool
+	Query, Folder, Category, Order string
+	Limit, Offset                  int
+}
+
+// notebookRows lists the notebooks (and, in a folder, the folders) a query
+// selects, with the total.
+func (s Service) notebookRows(ctx context.Context, q notebookListQuery) ([]notebookEntry, int, error) {
+	status := "1"
+	if q.Deleted {
+		status = "0"
+	}
+	rows, e := s.DB.QueryContext(ctx, `SELECT document_id,revision,body,
+ coalesce((SELECT f.body->>'title' FROM boox_projection f WHERE f.document_id=p.body->>'parentUniqueId' AND f.native_uid=p.native_uid),''),
+ CASE WHEN body->>'type'='0' THEN (SELECT count(*) FROM boox_projection c WHERE c.native_uid=p.native_uid AND c.domain='notebook' AND c.body->>'parentUniqueId'=p.document_id AND c.body->>'type'='1' AND c.body->>'status'='1') ELSE 0 END,
+ count(*) OVER() FROM boox_projection p WHERE `+notebookPredicate+` AND native_uid=$1 AND body->>'status'=$2 AND (NOT $7 OR body->>'type'='1') AND (body->>'type'='0' OR $8='all' OR $8='handwritten' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') IN ('0','3') OR $8='text' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND body->>'activeScene'='1' OR $8='reading' AND coalesce(body#>>'{association,associationType}',body->>'associationType','0')='1' OR $8='other' AND (coalesce(body#>>'{association,associationType}',body->>'associationType','0') NOT IN ('0','1') OR coalesce(body#>>'{association,associationType}',body->>'associationType','0')='0' AND coalesce(body->>'activeScene','0') NOT IN ('0','1','3'))) AND ($3<>'' AND strpos(lower(coalesce(body->>'title','')),lower($3))>0 OR $3='' AND ($7 OR $5 OR coalesce(body->>'parentUniqueId','')=$4)) ORDER BY `+q.Order+` LIMIT $9 OFFSET $6`, s.uid(), status, q.Query, q.Folder, q.Deleted, q.Offset, q.All, q.Category, q.Limit)
+	if e != nil {
+		return nil, 0, e
+	}
+	var out []notebookEntry
+	total := 0
+	for rows.Next() {
+		var v notebookEntry
+		var id, revision, folderTitle string
+		var children int
+		var raw []byte
+		if e = rows.Scan(&id, &revision, &raw, &folderTitle, &children, &total); e != nil {
+			break
+		}
+		if v, e = parseNotebookEntry(id, revision, raw); e != nil {
+			break
+		}
+		v.FolderTitle, v.Notebooks = folderTitle, children
+		out = append(out, v)
+	}
+	re := rows.Err()
+	rows.Close()
+	if e != nil || re != nil {
+		return nil, 0, errors.New("notebook inventory read failed")
+	}
+	return out, total, nil
 }
 
 type assetBinding struct {

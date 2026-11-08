@@ -1,4 +1,4 @@
-package web
+package calendarview
 
 import (
 	"strings"
@@ -28,7 +28,7 @@ func TestFeedDetail(t *testing.T) {
 		{"a whole document wrapper", "<html><head><title>Event</title></head><body><h2>Title</h2>Body</body></html>", "Title\n\nBody", "Title\n\nBody"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			got, plain := feedDetail(c.in)
+			got, plain := FeedDetail(c.in)
 			if string(got) != c.html || plain != c.plain {
 				t.Fatalf("\nhtml  %q\nwant  %q\nplain %q\nwant  %q", got, c.html, plain, c.plain)
 			}
@@ -47,7 +47,7 @@ func TestFeedDetailWritesOnlyItsOwnTags(t *testing.T) {
 		`<iframe src="https://x.example"></iframe><textarea><b>z</b></textarea>`,
 		`<b>` + strings.Repeat("<i>", 500) + "deep",
 	} {
-		got, _ := feedDetail(in)
+		got, _ := FeedDetail(in)
 		rest := string(got)
 		for _, allowed := range []string{"<strong>", "</strong>", "<em>", "</em>", "</a>"} {
 			rest = strings.ReplaceAll(rest, allowed, "")
@@ -73,7 +73,7 @@ func TestFeedDetailWritesOnlyItsOwnTags(t *testing.T) {
 }
 
 func TestFeedDetailLimit(t *testing.T) {
-	got, _ := feedDetail("<p>" + strings.Repeat("x", feedDetailLimit*2))
+	got, _ := FeedDetail("<p>" + strings.Repeat("x", feedDetailLimit*2))
 	if len(got) > feedDetailLimit {
 		t.Fatal("description not bounded", len(got))
 	}

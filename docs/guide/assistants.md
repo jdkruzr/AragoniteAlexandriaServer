@@ -2,8 +2,10 @@
 
 MCP (Model Context Protocol) is a standard way for AI assistants to use
 outside tools. Alexandria Server includes an MCP server, so an assistant such
-as Claude can search your notes, read pages and minutes, edit Alexandria Client
-text boxes, and manage your tasks and calendar, all on your say-so. "What did I
+as Claude can search your notes, read and look at pages from your BOOX and the
+Alexandria Client, read your books' highlights and your minutes, edit
+Alexandria Client text boxes, and manage your tasks and calendar, all on your
+say-so. "What did I
 write about the irrigation budget last month?" becomes a question the
 assistant can actually answer.
 
@@ -95,46 +97,47 @@ has it can read your library.
 ## The Tools
 
 The assistant decides which tools to call; you'll usually see each call in
-its interface.
+its interface. A few conventions make them work together:
 
-### Notes and Search
+- Notebooks and books are named `boox:<id>` or `client:<id>`, and pages by
+  number, starting at 1. Search results and lists give these, so the
+  assistant can open what it found.
+- Lists come 20 at a time (up to 100 when asked), with a cursor for more.
+- Times are in your time zone (**Settings → Calendar & tasks**).
+- Every result includes its web address, so the assistant can point you to
+  the same thing in the web app.
+- Clients are told which tools only read and which change something, so
+  they can ask before a change.
+
+### Reading (every token)
 
 | Tool | What it does |
 |---|---|
-| `search_notes` | Searches Alexandria Client pages, recognized BOOX pages (including their BOOX tags), reading text, and Audio Note Minutes with their transcripts. Can use words only or words and meaning, and narrow to one source. Results include BOOX tags and web links. |
-| `get_note_pages` | Returns the text of every page in an Alexandria Client notebook, or of one page. |
-| `get_note_image` | Returns the rendered image of an Alexandria Client page, so the assistant can look at the handwriting itself. |
-| `get_note_minutes` | Returns a BOOX note's Audio Note Minutes: topic, keywords, key points, conclusion, recording details and, unless turned off, the transcripts. |
-| `list_text_boxes` | Lists the editable text boxes in an Alexandria Client notebook, with their current text. |
+| `search` | Searches everything, as the web **Search** page does: notebook titles, recognized and typed page text from both sources, BOOX tags, Audio Note Minutes and transcripts, books, highlights and annotations, and tasks. Counts by type; narrows to a type, a source, words only, a sort, or dates. |
+| `list_notebooks` | Lists BOOX or Alexandria Client notebooks: all of them, or one folder; by title, by kind (BOOX), or the tablet's Trash (BOOX). |
+| `get_notebook` | Describes a notebook: each page's recognition state and tags, which pages note actions made tasks or events from, recordings and minutes, and changes waiting for the tablet. |
+| `read_pages` | Reads the recognized text of all pages, one page or a range (up to 50 pages at a time); a BOOX text note returns its typed text. Alexandria Client pages also list their text boxes. |
+| `get_page_image` | Returns a picture of a page, from either source, so the assistant can read the handwriting itself or see a drawing. |
+| `list_tags`, `get_tag` | BOOX tags with how often they're used, and the pages carrying one. |
+| `list_books`, `get_book` | Books from either source, by shelf, reading status, title or author (BOOX); one book with its highlights and bookmarks, or Client annotations with text recognized from handwriting. A stored BOOX PDF with handwriting links to the annotated download. |
+| `list_minutes`, `get_minutes` | BOOX notebooks with Audio Note Minutes, and the minutes themselves: topic, key points, conclusion, whether they're out of date, and the transcripts unless turned off. |
+| `recognition_status` | How recognition is going: notebooks in progress (pages done of total) and pages that failed, were blocked or were skipped, with the reason. |
+| `list_tasks`, `get_task` | Tasks, open ones by default, by due date, category, priority or the notebook they were made from. Each says which notebook page it came from. |
+| `list_events`, `get_event` | What's on the calendar between two dates, as the web calendar shows it: your events (repeating ones expanded), subscribed calendars, and open tasks due then. |
+
+### Changing (tokens and approvals with **Read and change**)
+
+| Tool | What it does |
+|---|---|
+| `create_task`, `update_task` | Adds a task, or changes the fields given. `update_task` can also complete or reopen it. |
+| `complete_task` | Marks a task done. |
+| `delete_task` | Moves a task to Deleted Tasks, where you can restore it. |
+| `clear_completed_tasks` | Moves every completed task to Deleted Tasks, like **Clear completed** on Today. |
+| `create_event`, `update_event` | Adds an event, or changes the fields given (moving the start keeps the length). Repeating events and subscribed calendars can't be changed here. |
+| `delete_event` | Moves an event to Deleted Events, where you can restore it. |
 | `edit_text_box` | Replaces the text of an Alexandria Client text box. The change syncs to your devices on their next sync; a newer edit on a device wins. |
 
-The page, image and text-box tools work on Alexandria Client notebooks. BOOX
-pages are reached through `search_notes` (which returns their text and a web
-link) and `get_note_minutes`; Alexandria never changes BOOX notebooks.
-
-### Tasks
-
-| Tool | What it does |
-|---|---|
-| `list_tasks` | Lists tasks, optionally by status, due date range, source notebook, category or priority. |
-| `get_task` | Fetches one task with all its details. |
-| `create_task` | Creates a task; only the title is required. |
-| `update_task` | Changes only the fields given. |
-| `complete_task` | Marks a task done. |
-| `delete_task` | Moves a task to Deleted Tasks. |
-| `purge_completed_tasks` | Moves every completed task to Deleted Tasks. |
-| `purge_deleted_tasks` | Permanently erases deleted tasks older than a number of days (30 by default). Irreversible. |
-
-### Calendar
-
-| Tool | What it does |
-|---|---|
-| `list_events` | Lists events in a date range (from now onward by default), in your time zone. |
-| `get_event` | Fetches one event. |
-| `create_event` | Creates a timed or all-day event, with optional location, notes and link. |
-| `update_event` | Changes only the fields given; moving the start keeps the length unless an end is given. |
-| `delete_event` | Moves an event to Deleted Events, where you can restore it. |
-
+Nothing permanently erases anything, and no tool changes a BOOX notebook.
 Tasks and events the assistant creates appear in the web app and reach your
 CalDAV apps on their next sync. See [Tasks and Calendar](tasks-and-calendar.md).
 
@@ -166,6 +169,7 @@ approve it again. Changing your account password does not revoke tokens.
 | "unauthorized" with a username and password | MCP takes tokens only | Create a token, or let the client sign in through the browser. |
 | The assistant says it has no tool to add a task | The token or approval is **Read only** | Approve again choosing **Read and change**, or create a token without **Read only**. |
 | "This token can only read." from CalDAV or the API | The token is **Read only** | Use a token with full access for that app. |
-| The assistant can't open a BOOX page image | Page and image tools only work on Alexandria Client notebooks | Ask it to use `search_notes` or `get_note_minutes` for BOOX content. |
+| The assistant says a page picture is busy | Page pictures are drawn one at a time, after the web app's own | Ask again in a moment. |
+| The assistant's tool list looks out of date | The client remembers tools from an earlier version | Reconnect it, or refresh its tools. |
 | Search returns nothing for handwriting you know is there | The page hasn't been recognized | See [Search Your Library](search-and-tags.md). |
 | A created task shows the wrong day | Time zone not set | Set it in **Settings → Calendar & tasks**. |

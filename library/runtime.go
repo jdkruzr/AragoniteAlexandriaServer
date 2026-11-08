@@ -317,8 +317,9 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var booxWork web.BOOXWorkFunc
 	var booxDevices func(context.Context) (web.BOOXDevices, error)
 	var booxOperator func(context.Context) (web.BOOXOperator, error)
+	var native *boox.Service
 	if r.cfg.NativeBOOX != nil {
-		native := boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil}
+		native = &boox.Service{Logger: r.cfg.Logger, Config: *r.cfg.NativeBOOX, DB: conn, Objects: r.objects, LibraryID: r.cfg.ID, RecognitionEnabled: pages.OCR != nil}
 		if err := native.ResolveIdentity(req.Context()); err != nil {
 			http.Error(w, "native identity unavailable", http.StatusServiceUnavailable)
 			return
@@ -397,7 +398,14 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	mux.Handle("GET /api/v1/search", searcher.Handler())
 	mcp := admittedHandler(func() http.Handler {
-		return mcptools.Handler(mcptools.Deps{DB: conn, Search: searcher, PublicURL: r.cfg.PublicURL, Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil)})
+		d := mcptools.Deps{DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Version: web.Version,
+			Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil)}
+		if native != nil {
+			library := *native
+			library.Minutes, library.Actions = minutesConfig(providerSnapshot), r.actionsConfig(providerSnapshot)
+			d.BOOX = library
+		}
+		return mcptools.Handler(d)
 	})
 	mux.Handle("/mcp", mcp)
 	mux.Handle("/mcp/", mcp)

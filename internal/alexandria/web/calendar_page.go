@@ -100,7 +100,7 @@ func (d Deps) showCalendar(w http.ResponseWriter, r *http.Request, nav *http.Req
 		}
 		detail := o.Event.Detail
 		if ok && v.Filter.Query != "" {
-			detail = feedPlain(detail)
+			detail = calendarview.FeedPlain(detail)
 		}
 		if !v.Filter.Matches(source, o.Event.Title, o.Event.Location, detail, name) {
 			continue
@@ -404,7 +404,7 @@ func (d Deps) subscribedEditor(ctx context.Context, q url.Values, loc *time.Loca
 	}
 	e, parseErr := events.FromSeries(subscriptions.EventID(sub.ID, q.Get("key")), blob, loc)
 	ed.Event = e
-	ed.Detail, _ = feedDetail(e.Detail)
+	ed.Detail, _ = calendarview.FeedDetail(e.Detail)
 	if parseErr != nil {
 		ed.Incomplete = true
 		return ed, nil

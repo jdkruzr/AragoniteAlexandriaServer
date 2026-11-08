@@ -486,13 +486,22 @@ its existing lease/version and text-hash checks. Source history stays separate.
 The shared `alexandria_search_live` view supplies current content and source-aware
 result metadata. Global web, JSON API and MCP search embed a query once across
 selected sources and combine keyword/vector ranks. BOOX reading keyword matches
-also retain the existing case-insensitive substring behavior for titles and text. `source=client` (or the API/MCP
+also retain the existing case-insensitive substring behavior for titles and text. `source=client` (or the API
 alias `forestnote`) and `source=boox` narrow results; omitted scope searches both.
 The legacy Go `Searcher.Search` method remains client-only; `SearchScoped` is the
 shared entry point. An unavailable embedding provider falls back to keyword search.
-Client reading annotations and BOOX notebook-title matches remain supplemental
-keyword-only web results. BOOX result links resolve stable page IDs on navigation.
-MCP BOOX results use web links rather than advertising client-only image tools.
+Client reading annotations and BOOX notebook-title matches are supplemental
+keyword-only results. BOOX result links resolve stable page IDs on navigation.
+The web Search page and MCP's `search` tool share `searchview`, which ranks each
+type (notebook titles, page text, books and highlights, tasks), fuses them by
+reciprocal rank and fills snippets; each presents the plain results its own way.
+
+MCP (`internal/alexandria/mcptools`) names notebooks and books `boox:<id>` or
+`client:<id>` and pages by number. BOOX tools read through `boox.Service`
+wrappers (`internal/boox/mcp.go`) over the same queries as the web pages; page
+images wait for the Library thumbnail slot, never the Reader's. The calendar
+tool uses `calendarview`, as the web calendar and Today do. A read-scoped token
+is offered only the tools that read.
 
 The upgrade backfills only already available text. It neither enables embeddings
 nor enqueues handwriting recognition. Existing active/building generations receive

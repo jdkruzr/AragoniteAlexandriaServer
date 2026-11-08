@@ -1,4 +1,4 @@
-package web
+package calendarview
 
 import (
 	"html"
@@ -13,7 +13,7 @@ import (
 )
 
 // Subscribed calendars often put HTML in event descriptions (paragraphs,
-// lists, links), which escaped as text reads like source code. feedDetail
+// lists, links), which escaped as text reads like source code. FeedDetail
 // turns it into readable text. The output is built from scratch: only
 // line breaks, bullets, <strong>, <em> and checked links are ever written,
 // and every piece of feed text is escaped, so a feed can't add markup.
@@ -28,9 +28,9 @@ var feedEntity = regexp.MustCompile(`&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z
 // feedDetailLimit bounds the work for one description.
 const feedDetailLimit = 64 << 10
 
-// feedDetail returns a subscribed event's description as safe HTML for the
+// FeedDetail returns a subscribed event's description as safe HTML for the
 // event pane, plus the same words as plain text for the calendar filter.
-func feedDetail(s string) (template.HTML, string) {
+func FeedDetail(s string) (template.HTML, string) {
 	if len(s) > feedDetailLimit {
 		s = s[:feedDetailLimit]
 	}
@@ -45,9 +45,9 @@ func feedDetail(s string) (template.HTML, string) {
 	return template.HTML(w.out.String()), strings.TrimSpace(w.plain.String())
 }
 
-// feedPlain is feedDetail's plain text alone.
-func feedPlain(s string) string {
-	_, plain := feedDetail(s)
+// FeedPlain is FeedDetail's plain text alone.
+func FeedPlain(s string) string {
+	_, plain := FeedDetail(s)
 	return plain
 }
 

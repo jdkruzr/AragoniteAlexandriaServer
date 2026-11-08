@@ -116,9 +116,10 @@ Ready minutes of live notebooks are indexed as `alexandria_note_content` source
 carry weight B, and the body holds points, conclusion and transcripts. They're
 embedded with everything else, and the result links to the minutes page.
 
-MCP `get_note_minutes` takes a `boox-minutes:<id>` path or notebook ID and
-returns the structured minutes, metadata and transcripts
-(`include_transcripts=false` omits them). Deleted notebooks return nothing.
+MCP `get_minutes` takes a notebook reference (`boox:<id>`) and returns the
+structured minutes, whether they're out of date, metadata and transcripts
+(`include_transcripts=false` omits them); `list_minutes` lists the notebooks
+that have them. Deleted notebooks return nothing.
 
 ## Send to BOOX
 

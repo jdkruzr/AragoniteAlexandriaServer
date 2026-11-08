@@ -6,81 +6,68 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/calendarview"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/events"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/settings"
 )
 
 type listEventsInput struct {
-	From string `json:"from,omitempty"`
-	To   string `json:"to,omitempty"`
+	From         string `json:"from,omitempty" jsonschema:"first day (YYYY-MM-DD) or time (RFC 3339); default today"`
+	To           string `json:"to,omitempty" jsonschema:"day or time to stop before; default 14 days after from, at most 366"`
+	IncludeTasks *bool  `json:"include_tasks,omitempty" jsonschema:"include open tasks due in the range (default true)"`
 }
 
 type eventIDInput struct {
-	ID string `json:"id"`
+	ID string `json:"id" jsonschema:"an event id from list_events"`
 }
 
 type eventInput struct {
 	ID       string `json:"id,omitempty"`
 	Title    string `json:"title,omitempty"`
-	Start    string `json:"start,omitempty"`
-	End      string `json:"end,omitempty"`
-	Date     string `json:"date,omitempty"`
-	EndDate  string `json:"end_date,omitempty"`
+	Start    string `json:"start,omitempty" jsonschema:"RFC 3339, or YYYY-MM-DDTHH:MM in the owner's time zone"`
+	End      string `json:"end,omitempty" jsonschema:"default one hour after start; moving start keeps the length"`
+	Date     string `json:"date,omitempty" jsonschema:"YYYY-MM-DD for an all-day event"`
+	EndDate  string `json:"end_date,omitempty" jsonschema:"last day of an all-day event, inclusive"`
 	Location string `json:"location,omitempty"`
 	Detail   string `json:"detail,omitempty"`
 	URL      string `json:"url,omitempty"`
 }
 
-type mcpEvent struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Start    string `json:"start"`
-	End      string `json:"end"`
-	AllDay   bool   `json:"all_day,omitempty"`
-	TimeZone string `json:"time_zone,omitempty"`
-	Location string `json:"location,omitempty"`
-	Detail   string `json:"detail,omitempty"`
-	URL      string `json:"url,omitempty"`
+type eventRow struct {
+	Kind       string      `json:"kind" jsonschema:"event, or task_due for a task's due date"`
+	ID         string      `json:"id" jsonschema:"event id, or task id for task_due"`
+	Title      string      `json:"title"`
+	Start      string      `json:"start" jsonschema:"RFC 3339, or YYYY-MM-DD when all day"`
+	End        string      `json:"end,omitempty" jsonschema:"last day, inclusive, when all day"`
+	AllDay     bool        `json:"all_day,omitempty"`
+	Location   string      `json:"location,omitempty"`
+	Detail     string      `json:"detail,omitempty"`
+	Link       string      `json:"link,omitempty"`
+	Calendar   string      `json:"calendar" jsonschema:"Local, Tasks, or a subscribed calendar's name"`
+	Recurring  bool        `json:"recurring,omitempty"`
+	ReadOnly   bool        `json:"read_only,omitempty" jsonschema:"subscribed and repeating events can't be changed here"`
+	Occurrence string      `json:"occurrence,omitempty" jsonschema:"which repetition of a repeating event"`
+	From       *taskSource `json:"from,omitempty" jsonschema:"the notebook page note actions made it from"`
+	URL        string      `json:"url"`
 }
 
 type eventListOutput struct {
-	Count  int        `json:"count"`
-	Events []mcpEvent `json:"events"`
+	From       string     `json:"from"`
+	To         string     `json:"to"`
+	TimeZone   string     `json:"time_zone"`
+	Events     []eventRow `json:"events"`
+	Incomplete []string   `json:"incomplete,omitempty" jsonschema:"events that couldn't be shown completely, and why"`
 }
 
 type eventOutput struct {
-	Event mcpEvent `json:"event"`
-}
-
-func toMCPEvent(e events.Event, loc *time.Location) mcpEvent {
-	m := mcpEvent{ID: e.ID, Title: e.Title, AllDay: e.AllDay, Location: e.Location, Detail: e.Detail, URL: e.URL}
-	if e.AllDay {
-		m.Start, m.End = e.Start.Format("2006-01-02"), e.LastDay().Format("2006-01-02")
-	} else {
-		m.Start, m.End, m.TimeZone = e.Start.In(loc).Format(time.RFC3339), e.End.In(loc).Format(time.RFC3339), loc.String()
-	}
-	return m
-}
-
-func formatMCPEvent(m mcpEvent) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "ID: %s\nTitle: %s\n", m.ID, m.Title)
-	if m.AllDay {
-		fmt.Fprintf(&b, "All day: %s – %s\n", m.Start, m.End)
-	} else {
-		fmt.Fprintf(&b, "Start: %s\nEnd: %s\n", m.Start, m.End)
-	}
-	for _, f := range [][2]string{{"Location", m.Location}, {"URL", m.URL}, {"Detail", m.Detail}} {
-		if f[1] != "" {
-			fmt.Fprintf(&b, "%s: %s\n", f[0], f[1])
-		}
-	}
-	return b.String()
+	Event eventRow `json:"event"`
 }
 
 // apply sets an input's times and fields on an event. Times are RFC3339 or
@@ -140,110 +127,232 @@ func (in eventInput) apply(e *events.Event, loc *time.Location, create bool) err
 	return nil
 }
 
-func registerEventTools(server *mcp.Server, d Deps) {
+// eventRow describes a local event or an occurrence of one.
+func (d Deps) eventRow(e events.Event, loc *time.Location) eventRow {
+	r := eventRow{Kind: "event", ID: e.ID, Title: e.Title, AllDay: e.AllDay, Location: e.Location, Detail: e.Detail, Link: e.URL, Calendar: "Local",
+		ReadOnly: events.Protected(e), URL: d.link("/calendar?view=day&date=" + e.Start.In(loc).Format("2006-01-02") + "&edit=" + url.QueryEscape(e.ID))}
+	if e.AllDay {
+		r.Start, r.End = e.Start.Format("2006-01-02"), e.LastDay().Format("2006-01-02")
+		r.URL = d.link("/calendar?view=day&date=" + e.Start.Format("2006-01-02") + "&edit=" + url.QueryEscape(e.ID))
+	} else {
+		r.Start, r.End = e.Start.In(loc).Format(time.RFC3339), e.End.In(loc).Format(time.RFC3339)
+	}
+	return r
+}
+
+func formatEvent(r eventRow) string {
+	var b strings.Builder
+	if r.AllDay {
+		fmt.Fprintf(&b, "%s", r.Start)
+		if r.End != r.Start {
+			fmt.Fprintf(&b, " to %s", r.End)
+		}
+		b.WriteString(" (all day)")
+	} else if r.Kind == "task_due" {
+		fmt.Fprintf(&b, "%s", r.Start)
+	} else {
+		fmt.Fprintf(&b, "%s to %s", r.Start, r.End)
+	}
+	fmt.Fprintf(&b, ": %s [%s", r.Title, r.Calendar)
+	if r.Kind == "task_due" {
+		fmt.Fprintf(&b, ", task %s", r.ID)
+	} else {
+		fmt.Fprintf(&b, ", id %s", r.ID)
+	}
+	if r.Recurring {
+		b.WriteString(", repeats")
+	}
+	if r.ReadOnly {
+		b.WriteString(", read-only")
+	}
+	b.WriteString("]\n")
+	if r.Location != "" {
+		fmt.Fprintf(&b, "  At: %s\n", r.Location)
+	}
+	if r.Detail != "" {
+		fmt.Fprintf(&b, "  %s\n", clip(r.Detail, 300))
+	}
+	return b.String()
+}
+
+func registerEvents(server *mcp.Server, d Deps) {
 	if d.DB == nil {
 		return
 	}
 	store := events.NewStore(d.DB)
-	zone := func(ctx context.Context) *time.Location { return settings.Zone(ctx, d.DB) }
-	mcp.AddTool[listEventsInput, any](server, &mcp.Tool{
-		Name: "list_events",
-		Description: "List calendar events (the CalDAV calendar beside the task list). Optional from / to bound the range " +
-			"(RFC3339 or YYYY-MM-DD; default from = now, open-ended). Times are shown in the owner's time zone.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEventsInput) (*mcp.CallToolResult, any, error) {
-		loc := zone(ctx)
-		bound := func(v string, def time.Time) (time.Time, error) {
-			if v == "" {
-				return def, nil
+	add(server, d, tool{name: "list_events", title: "What's on the calendar",
+		description: "List what's on the calendar between two dates, as the web calendar shows it: local events (repeating ones expanded), " +
+			"subscribed calendars, and open tasks due then. Times are in the owner's time zone."},
+		func(ctx context.Context, in listEventsInput) (string, eventListOutput, error) {
+			loc := d.zone(ctx)
+			now := time.Now().In(loc)
+			from := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+			var err error
+			if in.From != "" {
+				if from, err = day(in.From, loc); err != nil {
+					return "", eventListOutput{}, errors.New("from must be YYYY-MM-DD or RFC 3339")
+				}
 			}
-			if t, err := time.Parse(time.RFC3339, v); err == nil {
-				return t, nil
+			to := from.AddDate(0, 0, 14)
+			if in.To != "" {
+				if to, err = day(in.To, loc); err != nil {
+					return "", eventListOutput{}, errors.New("to must be YYYY-MM-DD or RFC 3339")
+				}
 			}
-			return time.ParseInLocation("2006-01-02", v, loc)
-		}
-		from, err := bound(in.From, time.Now())
-		if err != nil {
-			return nil, nil, fmt.Errorf("from must be RFC3339 or YYYY-MM-DD")
-		}
-		to, err := bound(in.To, time.Time{})
-		if err != nil {
-			return nil, nil, fmt.Errorf("to must be RFC3339 or YYYY-MM-DD")
-		}
-		list, err := store.Range(ctx, from, to)
-		if err != nil {
-			return nil, nil, err
-		}
-		out := eventListOutput{Events: []mcpEvent{}}
-		var b strings.Builder
-		for i, e := range list {
-			m := toMCPEvent(e, loc)
-			out.Events = append(out.Events, m)
-			fmt.Fprintf(&b, "--- %d ---\n%s\n", i+1, formatMCPEvent(m))
-		}
-		out.Count = len(out.Events)
-		text := fmt.Sprintf("%d event(s):\n\n%s", out.Count, b.String())
-		if out.Count == 0 {
-			text = "No events in that range.\n"
-		}
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}, StructuredContent: out}, out, nil
-	})
-	one := func(e events.Event, prefix string, loc *time.Location) (*mcp.CallToolResult, any, error) {
-		m := toMCPEvent(e, loc)
-		out := eventOutput{Event: m}
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: prefix + formatMCPEvent(m)}}, StructuredContent: out}, out, nil
-	}
-	mcp.AddTool[eventIDInput, any](server, &mcp.Tool{Name: "get_event", Description: "Fetch one calendar event by id."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in eventIDInput) (*mcp.CallToolResult, any, error) {
+			if !to.After(from) {
+				return "", eventListOutput{}, errors.New("to must be after from")
+			}
+			if to.Sub(from) > 366*24*time.Hour {
+				return "", eventListOutput{}, errors.New("ask for at most 366 days at a time")
+			}
+			windows := []events.Window{{From: from, To: to}}
+			set, err := calendarview.Collect(ctx, d.DB, loc, windows, func(string) bool { return true }, "Untitled event")
+			if err != nil {
+				return "", eventListOutput{}, err
+			}
+			sources := calendarview.NoteSources(ctx, d.DB, "event", set.Local)
+			out := eventListOutput{From: from.In(loc).Format(time.RFC3339), To: to.In(loc).Format(time.RFC3339), TimeZone: loc.String(), Events: []eventRow{}}
+			type dated struct {
+				at  time.Time
+				row eventRow
+			}
+			var rows []dated
+			for _, o := range set.Occurrences {
+				r := d.eventRow(o.Event, loc)
+				r.Recurring = o.Recurring
+				if o.Recurring {
+					r.Occurrence, r.ReadOnly = o.Identity, true
+				}
+				if v, ok := set.Imported[o.Event.ID]; ok {
+					r.Calendar, r.ReadOnly, r.Detail = v.Name, true, calendarview.FeedPlain(o.Event.Detail)
+					r.URL = d.link("/calendar?view=day&date=" + o.Event.Start.In(loc).Format("2006-01-02") + "&sub=" + url.QueryEscape(v.SubscriptionID) + "&key=" + url.QueryEscape(v.Key))
+				} else if s, ok := sources[o.Event.ID]; ok {
+					r.From = &taskSource{Source: sourceBOOX, Notebook: ref(sourceBOOX, s.NotebookID), Title: s.Notebook, Page: s.Page, URL: d.link(s.URL())}
+				}
+				at := o.Event.Start
+				if o.Event.AllDay {
+					at = time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, loc)
+				}
+				rows = append(rows, dated{at, r})
+			}
+			if in.IncludeTasks == nil || *in.IncludeTasks {
+				due, err := calendarview.DueTasks(ctx, d.DB, windows, loc, nil)
+				if err != nil {
+					return "", eventListOutput{}, err
+				}
+				for _, t := range due {
+					r := eventRow{Kind: "task_due", ID: t.Task.ID, Title: t.Task.Title, Calendar: "Tasks", AllDay: t.Event.AllDay, URL: d.link(taskPath(t.Task.ID))}
+					at := t.Event.Start
+					if t.Event.AllDay {
+						r.Start, r.End = at.Format("2006-01-02"), at.Format("2006-01-02")
+						at = time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, loc)
+					} else {
+						r.Start = at.In(loc).Format(time.RFC3339)
+					}
+					rows = append(rows, dated{at, r})
+				}
+			}
+			slices.SortStableFunc(rows, func(a, b dated) int { return a.at.Compare(b.at) })
+			var b strings.Builder
+			fmt.Fprintf(&b, "%d items from %s to %s (%s).\n", len(rows), from.In(loc).Format("2006-01-02"), to.In(loc).Format("2006-01-02"), loc)
+			for _, r := range rows {
+				out.Events = append(out.Events, r.row)
+				b.WriteString("- " + formatEvent(r.row))
+			}
+			for _, i := range set.Incomplete {
+				out.Incomplete = append(out.Incomplete, i.Title+": "+i.Reason)
+			}
+			return b.String(), out, nil
+		})
+
+	add(server, d, tool{name: "get_event", title: "Read an event", description: "Read one local calendar event by id."},
+		func(ctx context.Context, in eventIDInput) (string, eventOutput, error) {
 			e, err := store.Get(ctx, in.ID)
-			if errors.Is(err, events.ErrNotFound) {
-				return nil, nil, fmt.Errorf("event not found: %s", in.ID)
-			} else if err != nil {
-				return nil, nil, err
+			if err != nil {
+				return "", eventOutput{}, eventErr(in.ID, err)
 			}
-			return one(e, "", zone(ctx))
-		})
-	mcp.AddTool[eventInput, any](server, &mcp.Tool{
-		Name: "create_event",
-		Description: "Create a calendar event. Requires title and either start (RFC3339, or YYYY-MM-DDTHH:MM in the owner's time zone; " +
-			"end optional, default one hour) or date (YYYY-MM-DD, all-day; end_date optional, inclusive). location, detail and url are optional. " +
-			"It appears in CalDAV calendar apps on their next sync.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in eventInput) (*mcp.CallToolResult, any, error) {
-		loc := zone(ctx)
-		e := events.Event{}
-		if err := in.apply(&e, loc, true); err != nil {
-			return nil, nil, err
-		}
-		if err := store.Create(ctx, &e); err != nil {
-			return nil, nil, err
-		}
-		return one(e, "Created:\n", loc)
-	})
-	mcp.AddTool[eventInput, any](server, &mcp.Tool{
-		Name:        "update_event",
-		Description: "Change a calendar event by id. Only the fields given change; giving start (or date) moves it, keeping its length unless end is given.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in eventInput) (*mcp.CallToolResult, any, error) {
-		loc := zone(ctx)
-		e, err := store.Get(ctx, in.ID)
-		if errors.Is(err, events.ErrNotFound) {
-			return nil, nil, fmt.Errorf("event not found: %s", in.ID)
-		} else if err != nil {
-			return nil, nil, err
-		}
-		if err := in.apply(&e, loc, false); err != nil {
-			return nil, nil, err
-		}
-		if err := store.Update(ctx, &e); err != nil {
-			return nil, nil, err
-		}
-		return one(e, "Updated:\n", loc)
-	})
-	mcp.AddTool[eventIDInput, any](server, &mcp.Tool{Name: "delete_event", Description: "Move a calendar event to Deleted Events (it can be restored on the Calendar page)."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in eventIDInput) (*mcp.CallToolResult, any, error) {
-			if err := store.Delete(ctx, in.ID); errors.Is(err, events.ErrNotFound) {
-				return nil, nil, fmt.Errorf("event not found: %s", in.ID)
-			} else if err != nil {
-				return nil, nil, err
+			r := d.eventRow(e, d.zone(ctx))
+			if s, ok := calendarview.NoteSources(ctx, d.DB, "event", []string{e.ID})[e.ID]; ok {
+				r.From = &taskSource{Source: sourceBOOX, Notebook: ref(sourceBOOX, s.NotebookID), Title: s.Notebook, Page: s.Page, URL: d.link(s.URL())}
 			}
-			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "Deleted event " + in.ID + "\n"}}}, nil, nil
+			return formatEvent(r), eventOutput{Event: r}, nil
 		})
+
+	add(server, d, tool{name: "create_event", title: "Add an event", write: true,
+		description: "Add a local calendar event: a title and either start (end defaults to an hour later) or date for an all-day event " +
+			"(end_date for several days). It reaches CalDAV calendar apps on their next sync."},
+		func(ctx context.Context, in eventInput) (string, eventOutput, error) {
+			loc := d.zone(ctx)
+			if strings.TrimSpace(in.Title) == "" {
+				return "", eventOutput{}, errors.New("title is required")
+			}
+			e := events.Event{}
+			if err := in.apply(&e, loc, true); err != nil {
+				return "", eventOutput{}, err
+			}
+			if err := store.Create(ctx, &e); err != nil {
+				return "", eventOutput{}, err
+			}
+			r := d.eventRow(e, loc)
+			return "Added: " + formatEvent(r), eventOutput{Event: r}, nil
+		})
+
+	add(server, d, tool{name: "update_event", title: "Change an event", write: true, idempotent: true,
+		description: "Change a local event: only the fields given change; moving start keeps its length unless end is given. Repeating events " +
+			"and subscribed calendars can't be changed here."},
+		func(ctx context.Context, in eventInput) (string, eventOutput, error) {
+			loc := d.zone(ctx)
+			previous, err := editable(ctx, store, in.ID)
+			if err != nil {
+				return "", eventOutput{}, err
+			}
+			e := previous
+			if err := in.apply(&e, loc, false); err != nil {
+				return "", eventOutput{}, err
+			}
+			if err := store.UpdateOrdinary(ctx, &e, previous); err != nil {
+				return "", eventOutput{}, eventErr(in.ID, err)
+			}
+			r := d.eventRow(e, loc)
+			return "Updated: " + formatEvent(r), eventOutput{Event: r}, nil
+		})
+
+	add(server, d, tool{name: "delete_event", title: "Delete an event", write: true, destructive: true, idempotent: true,
+		description: "Move a local event to Deleted Events, where the owner can restore it on the Calendar page."},
+		func(ctx context.Context, in eventIDInput) (string, eventOutput, error) {
+			previous, err := editable(ctx, store, in.ID)
+			if err != nil {
+				return "", eventOutput{}, err
+			}
+			if err := store.DeleteOrdinary(ctx, previous); err != nil {
+				return "", eventOutput{}, eventErr(in.ID, err)
+			}
+			r := d.eventRow(previous, d.zone(ctx))
+			return "Deleted: " + formatEvent(r), eventOutput{Event: r}, nil
+		})
+}
+
+// editable reads a local event that may be changed here.
+func editable(ctx context.Context, store *events.Store, id string) (events.Event, error) {
+	if strings.HasPrefix(id, "subscription:") {
+		return events.Event{}, errors.New("events from a subscribed calendar can't be changed")
+	}
+	e, err := store.Get(ctx, id)
+	if err != nil {
+		return events.Event{}, eventErr(id, err)
+	}
+	if events.Protected(e) {
+		return events.Event{}, errors.New("this is a repeating event (or one this server can't safely rewrite); change it in a CalDAV calendar app")
+	}
+	return e, nil
+}
+
+func eventErr(id string, err error) error {
+	switch {
+	case errors.Is(err, events.ErrNotFound):
+		return fmt.Errorf("no event %s", id)
+	case errors.Is(err, events.ErrChanged):
+		return fmt.Errorf("event %s changed meanwhile; read it again", id)
+	}
+	return err
 }

@@ -94,26 +94,11 @@ func (s Service) tagsPage(w http.ResponseWriter, r *http.Request) {
 	if d.Tag == "" {
 		d.Tag = strings.TrimSpace(q.Get("tag"))
 	}
-	rows, err := s.DB.QueryContext(r.Context(), `SELECT t.content,count(DISTINCT (t.notebook_id,t.page_id)) FILTER (WHERE n.document_id IS NOT NULL),count(DISTINCT t.notebook_id) FILTER (WHERE n.document_id IS NOT NULL)
-	 FROM boox_tag t LEFT JOIN boox_search_notebooks n ON n.document_id=t.notebook_id GROUP BY t.content ORDER BY 2 DESC,lower(t.content)`)
-	if err != nil {
+	var err error
+	if d.Tags, err = s.tagSummaries(r.Context()); err != nil {
 		s.failure(w, "tagsPage", err)
 		return
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var t tagSummary
-		if err := rows.Scan(&t.Content, &t.Pages, &t.Notebooks); err != nil {
-			s.failure(w, "tagsPage", err)
-			return
-		}
-		d.Tags = append(d.Tags, t)
-	}
-	if err := rows.Err(); err != nil {
-		s.failure(w, "tagsPage", err)
-		return
-	}
-	rows.Close()
 	if d.Tag != "" {
 		// Tags match without regard to case, like the device's tag search.
 		for i, t := range d.Tags {
@@ -127,6 +112,26 @@ func (s Service) tagsPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.renderPage(w, r, tagsTemplate, "BOOX Tags", d)
+}
+
+// tagSummaries lists every tag with its live pages and notebooks, most
+// used first.
+func (s Service) tagSummaries(ctx context.Context) ([]tagSummary, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT t.content,count(DISTINCT (t.notebook_id,t.page_id)) FILTER (WHERE n.document_id IS NOT NULL),count(DISTINCT t.notebook_id) FILTER (WHERE n.document_id IS NOT NULL)
+	 FROM boox_tag t LEFT JOIN boox_search_notebooks n ON n.document_id=t.notebook_id GROUP BY t.content ORDER BY 2 DESC,lower(t.content)`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []tagSummary
+	for rows.Next() {
+		var t tagSummary
+		if err := rows.Scan(&t.Content, &t.Pages, &t.Notebooks); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
 }
 
 // taggedPages lists the live pages carrying a tag, by notebook then page.
