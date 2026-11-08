@@ -19,10 +19,12 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/i18n"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/minutes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/oauth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/providers"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/recognition"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/relay"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/subscriptions"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/listing"
 )
 
@@ -107,7 +109,9 @@ func previewPages() []previewPage {
 		{"settings-search-building", "settings-search", "Search by meaning", "settings", "/settings/search", providerPreview(building)},
 		{"settings-calendar", "settings-calendar", "Calendar & tasks", "settings", "/settings/calendar", map[string]any{"Collection": "Tasks", "EventsCollection": "Calendar", "DueMode": "preserve", "ServerZone": "America/Chicago",
 			"Subscriptions": []subscriptions.Subscription{{ID: "s1", Name: "Synthetic holidays", Color: "blue", Enabled: true, LastSuccess: &now}}, "SubscriptionColors": subscriptions.Colors}},
-		{"settings-api", "settings-api", "API & MCP", "settings", "/settings/api", map[string]any{"NewToken": "alx_synthetic_token_value", "NewLabel": "Synthetic script", "Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", Created: now}}}},
+		{"settings-api", "settings-api", "API & MCP", "settings", "/settings/api", map[string]any{"NewToken": "alx_synthetic_token_value", "NewLabel": "Synthetic script", "NewReadOnly": true, "OAuthLabel": oauth.TokenLabel,
+			"Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", ReadOnly: true, Created: now}, {Hash: "h2", Label: "Synthetic assistant", OAuth: true, Created: now, LastUsed: &now}, {Hash: "h3", Label: oauth.TokenLabel, OAuth: true, Created: now}}}},
+		{"authorize", "authorize", "Allow Access?", "", "/authorize", map[string]any{"Request": oauth.Request{ClientName: "Synthetic assistant", RedirectURI: "https://assistant.example/callback", Scope: auth.ScopeRead}, "Query": "synthetic"}},
 		{"settings-operator", "settings-operator", "Operator tools", "settings", "/settings/operator", func() map[string]any {
 			m := providerPreview(provider)
 			m["Operator"] = operatorView{SyncDevices: []relay.Device{{SiteID: "01SYNTHETIC", Name: "Synthetic tablet", Enrolled: true, LastSeenMs: now.UnixMilli()}},

@@ -305,6 +305,66 @@ func TestOAuthConsentIssuesAnMCPToken(t *testing.T) {
 	}
 }
 
+// The owner can grant an app read-only access; the token is named after
+// the app and offers only the tools that read.
+func TestOAuthReadScopeIssuesANamedReadToken(t *testing.T) {
+	r, db, _ := fixture(t)
+	r.cfg.PublicURL = "https://library.example"
+	b := browser{t, r}
+	var meta map[string]any
+	if got := b.do("GET", "/.well-known/oauth-protected-resource/mcp", "", nil, false); got.Code != 200 || json.Unmarshal(got.Body.Bytes(), &meta) != nil || fmt.Sprint(meta["scopes_supported"]) != "[read full]" {
+		t.Fatalf("resource metadata: %d %s", got.Code, got.Body)
+	}
+	reg := b.do("POST", "/register", `{"client_name":"Reader Bot","redirect_uris":["https://bot.example/cb"]}`, nil, false)
+	var client struct {
+		ClientID string `json:"client_id"`
+	}
+	if reg.Code != 201 || json.Unmarshal(reg.Body.Bytes(), &client) != nil {
+		t.Fatalf("register: %d %s", reg.Code, reg.Body)
+	}
+	verifier := "another-sufficiently-long-pkce-verifier-for-this-test-987"
+	sum := sha256.Sum256([]byte(verifier))
+	query := url.Values{"response_type": {"code"}, "client_id": {client.ClientID}, "redirect_uri": {"https://bot.example/cb"}, "scope": {"read"},
+		"code_challenge": {base64.RawURLEncoding.EncodeToString(sum[:])}, "code_challenge_method": {"S256"}}.Encode()
+	consent := b.do("GET", "/authorize?"+query, "", nil, true)
+	if consent.Code != 200 || !strings.Contains(consent.Body.String(), `value="read" checked`) {
+		t.Fatalf("consent doesn't preselect read: %d %s", consent.Code, consent.Body)
+	}
+	same := map[string]string{"Sec-Fetch-Site": "same-origin"}
+	allowed := b.do("POST", "/authorize", url.Values{"query": {query}, "decision": {"allow"}, "scope": {"read"}}.Encode(), same, true)
+	location, _ := url.Parse(allowed.Header().Get("Location"))
+	tok := b.do("POST", "/token", url.Values{"grant_type": {"authorization_code"}, "code": {location.Query().Get("code")}, "client_id": {client.ClientID},
+		"redirect_uri": {"https://bot.example/cb"}, "code_verifier": {verifier}}.Encode(), nil, false)
+	var issued struct {
+		AccessToken string `json:"access_token"`
+		Scope       string `json:"scope"`
+	}
+	if tok.Code != 200 || json.Unmarshal(tok.Body.Bytes(), &issued) != nil || issued.Scope != "read" {
+		t.Fatalf("token: %d %s", tok.Code, tok.Body)
+	}
+	var label, scope, clientID string
+	if err := db.QueryRow(`SELECT label, scope, oauth_client_id FROM alexandria_api_tokens WHERE oauth_client_id IS NOT NULL`).Scan(&label, &scope, &clientID); err != nil || label != "Reader Bot" || scope != "read" || clientID != client.ClientID {
+		t.Fatal(label, scope, clientID, err)
+	}
+	settings := b.do("GET", "/settings/api", "", nil, true)
+	if !strings.Contains(settings.Body.String(), "Reader Bot (approved here)") || !strings.Contains(settings.Body.String(), "Read only") {
+		t.Fatalf("settings: %s", settings.Body)
+	}
+	list := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
+	got := b.do("POST", "/mcp", list, map[string]string{"Authorization": "Bearer " + issued.AccessToken, "Content-Type": "application/json", "Accept": "application/json, text/event-stream"}, false)
+	if got.Code != 200 || !strings.Contains(got.Body.String(), `"search_notes"`) || strings.Contains(got.Body.String(), `"create_task"`) {
+		t.Fatalf("read OAuth tools: %d %s", got.Code, got.Body)
+	}
+	// A token made by hand in Settings can be read only too.
+	made := b.do("POST", "/settings/tokens/create", "label=Laptop&scope=read", same, true)
+	if made.Code != 200 || !strings.Contains(made.Body.String(), "It can read but not change anything.") {
+		t.Fatalf("create read token: %d %s", made.Code, made.Body)
+	}
+	if err := db.QueryRow(`SELECT scope FROM alexandria_api_tokens WHERE label='Laptop'`).Scan(&scope); err != nil || scope != "read" {
+		t.Fatal(scope, err)
+	}
+}
+
 func TestDevicesPageListsAndRevokes(t *testing.T) {
 	r, db, _ := fixture(t)
 	b := browser{t, r}

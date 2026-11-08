@@ -118,7 +118,7 @@ a phone). A successful save shows **✓** and what changed beside its button.
 | **Note actions** | Which pen colors make tasks or events, and their instructions. See [Note Actions](note-actions.md). |
 | **Search by meaning** | Status, index building and coverage. See [Search Your Library](search-and-tags.md). |
 | **Calendar & tasks** | CalDAV addresses, collection names, time zone, due-date handling and calendar subscriptions. See [Tasks and Calendar](tasks-and-calendar.md). |
-| **API & MCP** | The MCP address and API tokens. A new token is shown once, on this page. See [Connect an AI Assistant](assistants.md). |
+| **API & MCP** | The MCP address and API tokens, each marked **Read only** or **Read and change**. A new token is shown once, on this page. See [Connect an AI Assistant](assistants.md). |
 
 **Operator tools**, at the foot of the list, gathers maintenance you won't need
 day to day: clearing a Client device's sync position, the BOOX record browser

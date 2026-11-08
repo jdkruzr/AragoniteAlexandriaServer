@@ -208,7 +208,8 @@ func (d Deps) calendarSettings(ctx context.Context, data map[string]any) error {
 }
 
 func (d Deps) tokens(ctx context.Context, data map[string]any) error {
-	rows, err := d.DB.QueryContext(ctx, `SELECT token_hash, label, created_at, last_used_at FROM alexandria_api_tokens WHERE revoked_at IS NULL ORDER BY created_at DESC`)
+	rows, err := d.DB.QueryContext(ctx, `SELECT token_hash, label, created_at, last_used_at, scope='read', oauth_client_id IS NOT NULL OR label=$1
+		FROM alexandria_api_tokens WHERE revoked_at IS NULL ORDER BY created_at DESC`, oauth.TokenLabel)
 	if err != nil {
 		return err
 	}
@@ -216,7 +217,7 @@ func (d Deps) tokens(ctx context.Context, data map[string]any) error {
 	var tokens []apiToken
 	for rows.Next() {
 		var t apiToken
-		if err := rows.Scan(&t.Hash, &t.Label, &t.Created, &t.LastUsed); err != nil {
+		if err := rows.Scan(&t.Hash, &t.Label, &t.Created, &t.LastUsed, &t.ReadOnly, &t.OAuth); err != nil {
 			return err
 		}
 		tokens = append(tokens, t)

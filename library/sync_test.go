@@ -14,6 +14,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/generation"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/taskattach"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/wire"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 )
 
 func deviceKey(seed string) (token, hash string) {
@@ -241,24 +242,107 @@ func TestNoteSearchRouteUsesAPIAuthentication(t *testing.T) {
 }
 
 func TestMCPOverHTTPRequiresAPIAuthentication(t *testing.T) {
-	r, _, _ := fixture(t)
-	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}`
-	send := func(auth bool) *httptest.ResponseRecorder {
+	r, db, _ := fixture(t)
+	full, err := CreateToken(context.Background(), db, "full test token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := auth.NewStore(db).CreateScopedToken(context.Background(), "read test token", auth.ScopeRead, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	revoked, err := CreateToken(context.Background(), db, "revoked test token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE alexandria_api_tokens SET revoked_at=now() WHERE label='revoked test token'`); err != nil {
+		t.Fatal(err)
+	}
+	initialize := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}`
+	list := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
+	send := func(body, authz string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json, text/event-stream")
-		if auth {
+		if authz == "basic" {
 			req.SetBasicAuth("author", "a-long-test-password")
+		} else if authz != "" {
+			req.Header.Set("Authorization", "Bearer "+authz)
 		}
 		out := httptest.NewRecorder()
 		r.ServeHTTP(out, req)
 		return out
 	}
-	if got := send(false); got.Code != 401 {
-		t.Fatalf("anonymous MCP: %d", got.Code)
+	// No token, the account password, or a revoked token: the OAuth
+	// challenge, so a client knows how to sign in (again).
+	for name, authz := range map[string]string{"anonymous": "", "password": "basic", "revoked": revoked, "mistyped": "alexandria_nope"} {
+		got := send(initialize, authz)
+		if got.Code != 401 || !strings.Contains(got.Header().Get("WWW-Authenticate"), "Bearer resource_metadata=") {
+			t.Fatalf("%s MCP: %d %v", name, got.Code, got.Header())
+		}
 	}
-	if got := send(true); got.Code != 200 || !strings.Contains(got.Body.String(), "aragonite-alexandria") {
+	if got := send(initialize, full); got.Code != 200 || !strings.Contains(got.Body.String(), "aragonite-alexandria") {
 		t.Fatalf("MCP initialize: %d %s", got.Code, got.Body)
+	}
+	if got := send(list, full); got.Code != 200 || !strings.Contains(got.Body.String(), `"create_task"`) || !strings.Contains(got.Body.String(), `"search_notes"`) {
+		t.Fatalf("full tools: %d %s", got.Code, got.Body)
+	}
+	got := send(list, read)
+	if got.Code != 200 || !strings.Contains(got.Body.String(), `"search_notes"`) {
+		t.Fatalf("read tools: %d %s", got.Code, got.Body)
+	}
+	for _, name := range []string{"create_task", "edit_text_box", "purge_deleted_tasks", "create_event", "delete_event"} {
+		if strings.Contains(got.Body.String(), `"`+name+`"`) {
+			t.Fatalf("read token sees %s", name)
+		}
+	}
+	call := `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_task","arguments":{"title":"sneaky"}}}`
+	if got := send(call, read); !strings.Contains(got.Body.String(), "error") {
+		t.Fatalf("read token called create_task: %d %s", got.Code, got.Body)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT count(*) FROM alexandria_tasks WHERE title='sneaky'`).Scan(&n); err != nil || n != 0 {
+		t.Fatal("read token created a task", n, err)
+	}
+}
+
+func TestReadTokenCannotChangeThroughRESTOrCalDAV(t *testing.T) {
+	r, db, _ := fixture(t)
+	read, err := auth.NewStore(db).CreateScopedToken(context.Background(), "read test token", auth.ScopeRead, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := func(method, path, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+read)
+		if method == "PUT" {
+			req.Header.Set("Content-Type", "text/calendar")
+		}
+		if method == "PROPFIND" {
+			req.Header.Set("Depth", "0")
+			req.Header.Set("Content-Type", "application/xml")
+		}
+		out := httptest.NewRecorder()
+		r.ServeHTTP(out, req)
+		return out
+	}
+	vtodo := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nBEGIN:VTODO\r\nUID:task-r\r\nSUMMARY:Nope\r\n" +
+		"DTSTAMP:20261001T000000Z\r\nSTATUS:NEEDS-ACTION\r\nEND:VTODO\r\nEND:VCALENDAR\r\n"
+	if got := call("PUT", "/caldav/user/calendars/tasks/task-r.ics", vtodo); got.Code != 403 {
+		t.Fatalf("read CalDAV PUT: %d %s", got.Code, got.Body)
+	}
+	propfind := `<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>`
+	if got := call("PROPFIND", "/caldav/user/calendars/tasks/", propfind); got.Code != 207 {
+		t.Fatalf("read CalDAV PROPFIND: %d %s", got.Code, got.Body)
+	}
+	if got := call("GET", "/api/v1/search?q=figs", ""); got.Code != 200 {
+		t.Fatalf("read REST GET: %d %s", got.Code, got.Body)
+	}
+	if got := call("POST", "/api/v1/tasks", `{"title":"Nope"}`); got.Code != 403 {
+		t.Fatalf("read REST POST: %d %s", got.Code, got.Body)
+	}
+	if got := call("POST", "/settings/tokens/create", "label=escalate"); got.Code != 403 {
+		t.Fatalf("read token made a token: %d %s", got.Code, got.Body)
 	}
 }
 

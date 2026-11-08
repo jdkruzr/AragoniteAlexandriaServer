@@ -73,20 +73,51 @@ func (s *Store) ChangePassword(ctx context.Context, username, current, next stri
 	return nil
 }
 
+// ErrInvalidToken is a bearer token that is unknown or revoked.
+var ErrInvalidToken = errors.New("invalid bearer token")
+
 var ErrPasswordPolicy = errors.New("Use at least 12 characters and at most 72 UTF-8 bytes.")
 var ErrCurrentPassword = errors.New("Current password is incorrect or has changed. Reload and try again.")
 
+// Scope is what a request may do: ScopeFull changes things, ScopeRead only
+// looks. Password sign-ins are always full.
+type Scope string
+
+const (
+	ScopeFull Scope = "full"
+	ScopeRead Scope = "read"
+)
+
+// ParseScope accepts "read" or "full"; anything else is full.
+func ParseScope(v string) Scope {
+	if strings.TrimSpace(v) == string(ScopeRead) {
+		return ScopeRead
+	}
+	return ScopeFull
+}
+
+// CreateToken issues a full-access token.
 func (s *Store) CreateToken(ctx context.Context, label string) (string, error) {
+	return s.CreateScopedToken(ctx, label, ScopeFull, "")
+}
+
+// CreateScopedToken issues a token with a scope; oauthClient names the
+// registered OAuth client that asked for it ("" for tokens made by hand).
+func (s *Store) CreateScopedToken(ctx context.Context, label string, scope Scope, oauthClient string) (string, error) {
 	label = strings.TrimSpace(label)
 	if label == "" {
 		return "", fmt.Errorf("token label is required")
+	}
+	if scope != ScopeRead {
+		scope = ScopeFull
 	}
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
 	}
 	token := "alexandria_" + base64.RawURLEncoding.EncodeToString(raw)
-	_, err := s.db.ExecContext(ctx, `INSERT INTO alexandria_api_tokens(token_hash,label) VALUES($1,$2)`, tokenHash(token), label)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO alexandria_api_tokens(token_hash,label,scope,oauth_client_id) VALUES($1,$2,$3,NULLIF($4,''))`,
+		tokenHash(token), label, string(scope), oauthClient)
 	if err != nil {
 		return "", err
 	}
@@ -94,42 +125,78 @@ func (s *Store) CreateToken(ctx context.Context, label string) (string, error) {
 }
 
 func (s *Store) Authenticate(ctx context.Context, username, password, bearer string) (string, error) {
+	identity, _, err := s.AuthenticateScoped(ctx, username, password, bearer)
+	return identity, err
+}
+
+// AuthenticateScoped checks a bearer token or a password and reports the
+// request's scope.
+func (s *Store) AuthenticateScoped(ctx context.Context, username, password, bearer string) (string, Scope, error) {
 	if bearer != "" {
-		result, err := s.db.ExecContext(ctx, `UPDATE alexandria_api_tokens SET last_used_at=now()
-			WHERE token_hash=$1 AND revoked_at IS NULL`, tokenHash(bearer))
+		var scope string
+		err := s.db.QueryRowContext(ctx, `UPDATE alexandria_api_tokens SET last_used_at=now()
+			WHERE token_hash=$1 AND revoked_at IS NULL RETURNING scope`, tokenHash(bearer)).Scan(&scope)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", ErrInvalidToken
+		}
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
-		if n, _ := result.RowsAffected(); n == 1 {
-			return "token", nil
-		}
-		return "", errors.New("invalid bearer token")
+		return "token", ParseScope(scope), nil
 	}
 	var hash string
 	if err := s.db.QueryRowContext(ctx, `SELECT password_hash FROM alexandria_users WHERE username=$1`, username).Scan(&hash); err != nil {
-		return "", errors.New("invalid credentials")
+		return "", "", errors.New("invalid credentials")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-		return "", errors.New("invalid credentials")
+		return "", "", errors.New("invalid credentials")
 	}
-	return username, nil
+	return username, ScopeFull, nil
+}
+
+// Bearer returns the request's bearer token, or "".
+func Bearer(r *http.Request) string {
+	if value := r.Header.Get("Authorization"); strings.HasPrefix(value, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(value, "Bearer "))
+	}
+	return ""
 }
 
 func (s *Store) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var username, password, bearer string
-		if value := r.Header.Get("Authorization"); strings.HasPrefix(value, "Bearer ") {
-			bearer = strings.TrimSpace(strings.TrimPrefix(value, "Bearer "))
-		} else {
+		var username, password string
+		bearer := Bearer(r)
+		if bearer == "" {
 			username, password, _ = r.BasicAuth()
 		}
-		identity, err := s.Authenticate(r.Context(), username, password, bearer)
+		identity, scope, err := s.AuthenticateScoped(r.Context(), username, password, bearer)
 		if err != nil {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(WithIdentity(r.Context(), identity)))
+		next.ServeHTTP(w, r.WithContext(WithScope(WithIdentity(r.Context(), identity), scope)))
+	})
+}
+
+// SafeMethod reports a method that only reads.
+func SafeMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, "PROPFIND", "REPORT":
+		return true
+	}
+	return false
+}
+
+// ReadOnlyGuard refuses changes from a read-scoped request. exempt names
+// paths that enforce the scope themselves (MCP registers no write tools).
+func ReadOnlyGuard(next http.Handler, exempt func(path string) bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if ScopeOf(r.Context()) == ScopeRead && !SafeMethod(r.Method) && (exempt == nil || !exempt(r.URL.Path)) {
+			http.Error(w, "This token can only read.", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -139,6 +206,22 @@ func Identity(ctx context.Context) string {
 }
 
 type identityKey struct{}
+
+type scopeKey struct{}
+
+// WithScope binds the scope of an already verified request.
+func WithScope(ctx context.Context, scope Scope) context.Context {
+	return context.WithValue(ctx, scopeKey{}, scope)
+}
+
+// ScopeOf is the request's scope; requests without one (hosted sign-in,
+// owner pages) are full.
+func ScopeOf(ctx context.Context) Scope {
+	if scope, _ := ctx.Value(scopeKey{}).(Scope); scope == ScopeRead {
+		return ScopeRead
+	}
+	return ScopeFull
+}
 
 func tokenHash(token string) string {
 	sum := sha256.Sum256([]byte(token))

@@ -370,8 +370,10 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		oauth.PublicHandler(conn, r.cfg.PublicURL).ServeHTTP(w, req)
 		return
 	}
-	if (req.URL.Path == "/mcp" || strings.HasPrefix(req.URL.Path, "/mcp/")) && req.Header.Get("Authorization") == "" {
-		// Lets an MCP client discover how to obtain a token (OAuth).
+	if mcpPath(req.URL.Path) && (req.Header.Get("Authorization") == "" || r.cfg.Authenticate == nil && auth.Bearer(req) == "") {
+		// Lets an MCP client discover how to obtain a token (OAuth). MCP
+		// takes tokens only: the account password never sits in an
+		// assistant's configuration.
 		oauth.Challenge(r.cfg.PublicURL, w, req)
 		return
 	}
@@ -426,8 +428,27 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		mux.ServeHTTP(w, req)
 		return
 	}
-	auth.NewStore(conn).Middleware(mux).ServeHTTP(w, req)
+	guarded := auth.ReadOnlyGuard(mux, mcpPath)
+	if mcpPath(req.URL.Path) {
+		// A revoked or mistyped token gets the OAuth challenge, so the
+		// client knows to sign in again.
+		identity, scope, err := auth.NewStore(conn).AuthenticateScoped(req.Context(), "", "", auth.Bearer(req))
+		if errors.Is(err, auth.ErrInvalidToken) {
+			oauth.Challenge(r.cfg.PublicURL, w, req)
+			return
+		} else if err != nil {
+			http.Error(w, "Sign-in is unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		guarded.ServeHTTP(w, req.WithContext(auth.WithScope(auth.WithIdentity(req.Context(), identity), scope)))
+		return
+	}
+	auth.NewStore(conn).Middleware(guarded).ServeHTTP(w, req)
 }
+
+// mcpPath reports the MCP endpoint, which enforces token scopes by offering
+// read-scoped clients only the tools that read.
+func mcpPath(path string) bool { return path == "/mcp" || strings.HasPrefix(path, "/mcp/") }
 
 // account approves enrollment only. Bearer tokens (operator API or device
 // keys) are never enrollment authority.

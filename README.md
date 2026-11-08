@@ -79,7 +79,7 @@ pages it was made on, with a player right on the page.
 A built-in [MCP](https://modelcontextprotocol.io) server lets Claude and
 other MCP clients search your notes, read pages and minutes, edit text boxes,
 and manage tasks and calendar events. Each client signs in with OAuth or an
-API token you can revoke.
+API token you can revoke, and each can be limited to read only.
 
 ### Also
 

@@ -373,6 +373,8 @@ func (d Deps) deviceRoutes(mux *http.ServeMux) {
 
 type apiToken struct {
 	Hash, Label      string
+	ReadOnly         bool // a read-scoped token
+	OAuth            bool // issued through the consent page
 	Created          time.Time
 	LastUsed, Revoke *time.Time
 }
@@ -462,13 +464,14 @@ func (d Deps) settingsRoutes(mux *http.ServeMux) {
 		if label == "" {
 			label = "MCP client"
 		}
-		token, err := auth.NewStore(d.DB).CreateToken(r.Context(), label)
+		scope := auth.ParseScope(r.FormValue("scope"))
+		token, err := auth.NewStore(d.DB).CreateScopedToken(r.Context(), label, scope, "")
 		if err != nil {
 			d.fail(w, err)
 			return
 		}
 		// Shown exactly once, never stored in plain text or put in a URL.
-		d.settingsPage(w, r, "api", nil, map[string]any{"NewToken": token, "NewLabel": label})
+		d.settingsPage(w, r, "api", nil, map[string]any{"NewToken": token, "NewLabel": label, "NewReadOnly": scope == auth.ScopeRead})
 	})
 	mux.HandleFunc("POST /settings/tokens/revoke", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := d.DB.ExecContext(r.Context(), `UPDATE alexandria_api_tokens SET revoked_at=now() WHERE token_hash=$1 AND revoked_at IS NULL`, r.FormValue("token_hash")); err != nil {
@@ -503,6 +506,7 @@ func (d Deps) authorizeRoutes(mux *http.ServeMux) {
 			return
 		}
 		target := oauth.Deny(req)
+		req.Scope = auth.ParseScope(r.FormValue("scope"))
 		if r.FormValue("decision") == "allow" {
 			if target, err = oauth.Approve(r.Context(), d.DB, req); err != nil {
 				d.fail(w, err)

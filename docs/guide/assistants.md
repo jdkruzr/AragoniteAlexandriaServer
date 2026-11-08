@@ -26,8 +26,16 @@ assistant can actually answer.
 | Approve in the browser (OAuth) | Claude on the web and other clients that support MCP sign-in | The assistant opens an **Allow Access?** page on your server; you sign in and select **Allow**. |
 | API token | Claude Code, scripts, and clients without MCP sign-in | You create a token and paste it into the client as a bearer token. |
 
-Either way, the assistant gets the same access: it can search and read your
-notebooks and books, edit text boxes, and manage tasks and events.
+Either way you choose how much the assistant may do:
+
+| Access | The assistant can |
+|---|---|
+| **Read only** | Search and read your notebooks, books, minutes, tasks and calendar. Tools that change anything aren't offered to it at all, and the token can't change anything through CalDAV or the REST API either. |
+| **Read and change** | Also create, change, complete and delete tasks and events, and edit Alexandria Client text boxes. |
+
+MCP takes tokens only. Your account password works for the web app and
+CalDAV, but not at the MCP address, so it never ends up in an assistant's
+settings.
 
 ## Connect Claude on the Web
 
@@ -35,25 +43,28 @@ notebooks and books, edit text boxes, and manage tasks and events.
    Connectors).
 2. Give it a name such as "Alexandria" and enter your MCP address,
    `https://alexandria.example.com/mcp`. No client ID or secret is needed.
-3. Claude sends you to your server. Sign in if asked, read the **Allow
-   Access?** page (it names the app and where you'll be sent back to), and
-   select **Allow**.
+3. Claude sends you to your server. Sign in if asked, then read the **Allow
+   Access?** page. It names the app and where you'll be sent back to. Choose
+   **Read only** or **Read and change** (an app that asks for read access
+   only arrives with **Read only** already chosen), and select **Allow**.
 4. Back in Claude, the connector shows Alexandria's tools. Turn it on in a
    conversation and ask away.
 
-The approval appears in your token list as **Claude (approved here)**. Every
-approval made through this page shows under that name, whichever app asked.
+The approval appears in your token list under the app's name, for example
+**Claude (approved here)**, with its access. Approvals made before November
+2026 show as **Claude (approved here)** whichever app asked.
 
 ## Connect With an API Token
 
 ### Create a Token
 
 1. Go to **Settings → API & MCP**.
-2. Under **API and MCP Access**, type what the token is for into **What is
-   this token for?** (for example "Claude Code on laptop").
-3. Select **Create token**.
-4. Copy the token from the **New API Token** page. It starts with
-   `alexandria_` and is shown only once. Select **Done**.
+2. Type what the token is for into **New token** (for example "Claude Code
+   on laptop").
+3. Tick **Read only** if the assistant should only look.
+4. Select **Create token**.
+5. Copy the token from the panel that appears. It starts with `alexandria_`
+   and is shown only once.
 
 An operator can also create one from the command line, from
 `deploy/compose`:
@@ -62,7 +73,8 @@ An operator can also create one from the command line, from
 docker compose run --rm --no-deps migrate create-token --label "Claude Code"
 ```
 
-It prints the token. (Use `podman compose` if that's your setup.)
+It prints a token with full access. (Use `podman compose` if that's your
+setup.)
 
 ### Claude Code
 
@@ -150,7 +162,10 @@ approve it again. Changing your account password does not revoke tokens.
 |---|---|---|
 | Claude on the web can't connect or times out | The server isn't reachable from the internet over HTTPS | Put it behind a public HTTPS proxy; see [Put Alexandria Behind HTTPS](https-proxy.md). |
 | The approval page sends you back to the wrong address, or sign-in fails partway | Alexandria is working out its own address wrong, usually behind a proxy that doesn't send `X-Forwarded-Proto` | Set `ALEXANDRIA_PUBLIC_URL=https://alexandria.example.com` in `deploy/compose/.env` and restart the `alexandria` service. The **MCP address** in Settings should then show the HTTPS address. |
-| "unauthorized" with a token | The token was mistyped, revoked, or sent without `Bearer ` | Check the header is exactly `Authorization: Bearer alexandria_…`; create a new token if it was revoked. |
+| "unauthorized" with a token | The token was mistyped, revoked, or sent without `Bearer ` | Check the header is exactly `Authorization: Bearer alexandria_…`; create a new token if it was revoked. Clients that sign in through the browser are asked to approve again. |
+| "unauthorized" with a username and password | MCP takes tokens only | Create a token, or let the client sign in through the browser. |
+| The assistant says it has no tool to add a task | The token or approval is **Read only** | Approve again choosing **Read and change**, or create a token without **Read only**. |
+| "This token can only read." from CalDAV or the API | The token is **Read only** | Use a token with full access for that app. |
 | The assistant can't open a BOOX page image | Page and image tools only work on Alexandria Client notebooks | Ask it to use `search_notes` or `get_note_minutes` for BOOX content. |
 | Search returns nothing for handwriting you know is there | The page hasn't been recognized | See [Search Your Library](search-and-tags.md). |
 | A created task shows the wrong day | Time zone not set | Set it in **Settings → Calendar & tasks**. |

@@ -25,8 +25,15 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 )
 
-// TokenLabel marks API tokens issued through OAuth.
+// TokenLabel marked API tokens issued through OAuth before tokens recorded
+// their client; Settings still shows those as approved here.
 const TokenLabel = "Claude-OAuth"
+
+// unnamedClient labels a token for a client that registered without a name.
+const unnamedClient = "OAuth app"
+
+// scopes are the OAuth scopes a client may ask for: read looks, full changes.
+var scopes = []string{string(auth.ScopeRead), string(auth.ScopeFull)}
 
 var ErrInvalid = errors.New("invalid authorization request")
 
@@ -54,13 +61,14 @@ func PublicHandler(db pg.DB, public string) http.Handler {
 		base := BaseURL(public, r)
 		switch {
 		case r.Method == http.MethodGet && (r.URL.Path == "/.well-known/oauth-protected-resource" || r.URL.Path == "/.well-known/oauth-protected-resource/mcp"):
-			writeJSON(w, 200, map[string]any{"resource": base + "/mcp", "authorization_servers": []string{base}})
+			writeJSON(w, 200, map[string]any{"resource": base + "/mcp", "authorization_servers": []string{base},
+				"scopes_supported": scopes, "bearer_methods_supported": []string{"header"}})
 		case r.Method == http.MethodGet && r.URL.Path == "/.well-known/oauth-authorization-server":
 			writeJSON(w, 200, map[string]any{
 				"issuer": base, "authorization_endpoint": base + "/authorize", "token_endpoint": base + "/token",
 				"registration_endpoint": base + "/register", "response_types_supported": []string{"code"},
 				"grant_types_supported": []string{"authorization_code"}, "token_endpoint_auth_methods_supported": []string{"none"},
-				"code_challenge_methods_supported": []string{"S256"},
+				"code_challenge_methods_supported": []string{"S256"}, "scopes_supported": scopes,
 			})
 		case r.Method == http.MethodPost && r.URL.Path == "/register":
 			register(db, w, r)
@@ -135,15 +143,36 @@ func register(db pg.DB, w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, response)
 }
 
-// Request is a validated authorization request awaiting consent.
+// Request is a validated authorization request awaiting consent. Scope is
+// what the client asked for; the owner's choice on the consent page wins.
 type Request struct {
 	ClientID, ClientName, RedirectURI, State, Challenge string
+	Scope                                               auth.Scope
+}
+
+// requestedScope reads an OAuth scope list: read alone means read, anything
+// else (including nothing) means full.
+func requestedScope(v string) auth.Scope {
+	read := false
+	for _, s := range strings.Fields(v) {
+		switch s {
+		case string(auth.ScopeFull):
+			return auth.ScopeFull
+		case string(auth.ScopeRead):
+			read = true
+		}
+	}
+	if read {
+		return auth.ScopeRead
+	}
+	return auth.ScopeFull
 }
 
 // Validate checks an authorization request: response_type=code, a registered
 // client with an exactly matching redirect URI, and PKCE S256.
 func Validate(ctx context.Context, db pg.Querier, q url.Values) (Request, error) {
-	req := Request{ClientID: q.Get("client_id"), RedirectURI: q.Get("redirect_uri"), State: q.Get("state"), Challenge: q.Get("code_challenge")}
+	req := Request{ClientID: q.Get("client_id"), RedirectURI: q.Get("redirect_uri"), State: q.Get("state"), Challenge: q.Get("code_challenge"),
+		Scope: requestedScope(q.Get("scope"))}
 	if req.RedirectURI == "" || req.ClientID == "" || q.Get("response_type") != "code" ||
 		q.Get("code_challenge_method") != "S256" || req.Challenge == "" || len(req.Challenge) > 128 {
 		return req, ErrInvalid
@@ -169,8 +198,12 @@ func Approve(ctx context.Context, db pg.Querier, req Request) (string, error) {
 	if _, err := db.ExecContext(ctx, `DELETE FROM alexandria_oauth_codes WHERE expires_at < now()`); err != nil {
 		return "", err
 	}
-	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_oauth_codes(code_hash,client_id,redirect_uri,code_challenge,expires_at) VALUES($1,$2,$3,$4,now()+$5::interval)`,
-		hex.EncodeToString(sum[:]), req.ClientID, req.RedirectURI, req.Challenge, "5 minutes"); err != nil {
+	scope := auth.ScopeFull
+	if req.Scope == auth.ScopeRead {
+		scope = auth.ScopeRead
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_oauth_codes(code_hash,client_id,redirect_uri,code_challenge,scope,expires_at) VALUES($1,$2,$3,$4,$5,now()+$6::interval)`,
+		hex.EncodeToString(sum[:]), req.ClientID, req.RedirectURI, req.Challenge, string(scope), "5 minutes"); err != nil {
 		return "", err
 	}
 	return redirect(req, url.Values{"code": {code}}), nil
@@ -203,11 +236,11 @@ func token(db pg.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sum := sha256.Sum256([]byte(r.FormValue("code")))
-	var clientID, redirectURI, challenge string
+	var clientID, redirectURI, challenge, scope string
 	var live bool
 	// Single use: the code is deleted whether or not the rest checks out.
-	err := db.QueryRowContext(r.Context(), `DELETE FROM alexandria_oauth_codes WHERE code_hash=$1 RETURNING client_id, redirect_uri, code_challenge, expires_at > now()`,
-		hex.EncodeToString(sum[:])).Scan(&clientID, &redirectURI, &challenge, &live)
+	err := db.QueryRowContext(r.Context(), `DELETE FROM alexandria_oauth_codes WHERE code_hash=$1 RETURNING client_id, redirect_uri, code_challenge, scope, expires_at > now()`,
+		hex.EncodeToString(sum[:])).Scan(&clientID, &redirectURI, &challenge, &scope, &live)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && !live) {
 		oauthError(w, 400, "invalid_grant", "invalid or expired authorization code")
 		return
@@ -220,13 +253,26 @@ func token(db pg.DB, w http.ResponseWriter, r *http.Request) {
 		oauthError(w, 400, "invalid_grant", "authorization code binding or PKCE verification failed")
 		return
 	}
-	issued, err := auth.NewStore(db).CreateToken(r.Context(), TokenLabel)
+	var name string
+	if err := db.QueryRowContext(r.Context(), `SELECT client_name FROM alexandria_oauth_clients WHERE client_id=$1`, clientID).Scan(&name); err != nil {
+		oauthError(w, 500, "server_error", "token exchange failed")
+		return
+	}
+	label := strings.TrimSpace(name)
+	if label == "" {
+		label = unnamedClient
+	}
+	if len(label) > 100 {
+		label = label[:100]
+	}
+	granted := auth.ParseScope(scope)
+	issued, err := auth.NewStore(db).CreateScopedToken(r.Context(), strings.ToValidUTF8(label, ""), granted, clientID)
 	if err != nil {
 		oauthError(w, 500, "server_error", "token exchange failed")
 		return
 	}
 	w.Header().Set("Pragma", "no-cache")
-	writeJSON(w, 200, map[string]any{"access_token": issued, "token_type": "Bearer", "expires_in": 315360000})
+	writeJSON(w, 200, map[string]any{"access_token": issued, "token_type": "Bearer", "expires_in": 315360000, "scope": string(granted)})
 }
 
 // ValidRedirectURI allows HTTPS, or HTTP on a loopback host, without fragments.

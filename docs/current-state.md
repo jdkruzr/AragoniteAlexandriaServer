@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-10-30. Work continues on `main`. The Server port resumed on
+Updated 2026-11-08. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -12,7 +12,22 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-07): **`feedhtml-5d327929553a`**, app-only on schema **41**,
+Latest recorded deployment (2026-11-08): **`mcpauth-29dab811587c`**, migration **0042**,
+image `sha256:f226154e07b5fd81d74dc5ffaeb287fc98f8ae3a96a552ef78c62c056bdba959`, on top of
+**`feedhtml-5d327929553a`**. First step of the MCP rework: API tokens carry a scope, read or full.
+A read token is offered only the MCP tools that read (a direct call to a write tool fails), and
+CalDAV and the REST API answer its writes with 403. The OAuth consent page asks "What may it do?"
+(Read only / Read and change; a client asking for `scope=read` arrives with Read only chosen),
+and the issued token is named after the registered client ("<app> (approved here)"; older
+approvals still show as Claude). Settings → API & MCP has a Read only box and shows each token's
+access. `/mcp` takes tokens only: no token, the account password, or a revoked or mistyped token
+all get the Bearer `resource_metadata` challenge. Live check with throwaway tokens made and used
+on the server (values never printed), then revoked: challenges 401 for anonymous, Basic, mistyped
+and revoked; full token 19 tools, read token 9; read-token create_task refused with no task
+written; read CalDAV PUT 403, PROPFIND 207; REST search 200, task POST 403; no panics or 5xx.
+Rollback: `rollback-schema.sh` (revokes read tokens, drops the columns) then `rollback.sh`.
+
+Previous deployment (2026-11-07): **`feedhtml-5d327929553a`**, app-only on schema **41**,
 image `sha256:5ed7ad7fc0b4d0bba9c77faaf1d46770c76174da149f2be9705d5dba011125e5`, on top of
 **`finish-3ec8747b0c6c`**. Subscribed calendars' HTML descriptions (both live feeds use them:
 paragraphs, lists, links, a few tables) show in the event pane as readable text, rebuilt from
@@ -20,7 +35,7 @@ scratch with only line breaks, bullets, bold, italic and checked http/https/mail
 (`rel="noopener noreferrer nofollow"`); the calendar filter searches the words, not the tags.
 The stored feed copy is unchanged, so rollback is the previous kit.
 
-Previous deployment (2026-11-07): **`finish-3ec8747b0c6c`**, app-only on schema **41**,
+Before that (2026-11-07): **`finish-3ec8747b0c6c`**, app-only on schema **41**,
 image `sha256:614fe9d6d4889f103e2b63f30413c899428e36b54f86b3ba64f84390fa06f2d4`, on top of
 **`search-23cfe8d728f3`**. Phase 7c, the last of the redesign: Audio Note Minutes has a status
 bar (running steps with "Step n of 3", updating itself while a request runs; failed with Check

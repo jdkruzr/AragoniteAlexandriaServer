@@ -23,6 +23,7 @@ import (
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/pg"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/tasksvc"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/auth"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/fnpath"
 )
 
@@ -34,13 +35,23 @@ type Deps struct {
 	PublicURL string
 	// Tasks is nil when this library has no task service.
 	Tasks tasksvc.TaskService
+	// ReadOnly offers only the tools that read (a read-scoped token).
+	ReadOnly bool
 }
+
+// writeTools change the library; a read-scoped client never sees them.
+var writeTools = []string{"edit_text_box", "create_task", "update_task", "complete_task", "delete_task",
+	"purge_completed_tasks", "purge_deleted_tasks", "create_event", "update_event", "delete_event"}
 
 var schemas = mcp.NewSchemaCache()
 
 // Handler serves MCP over streamable HTTP for one admitted request.
 func Handler(d Deps) http.Handler {
-	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return NewServer(d) },
+	return mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
+		d := d
+		d.ReadOnly = d.ReadOnly || auth.ScopeOf(r.Context()) == auth.ScopeRead
+		return NewServer(d)
+	},
 		&mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true})
 }
 
@@ -49,6 +60,9 @@ func NewServer(d Deps) *mcp.Server {
 	registerNoteTools(s, d)
 	registerTaskTools(s, d)
 	registerEventTools(s, d)
+	if d.ReadOnly {
+		s.RemoveTools(writeTools...)
+	}
 	return s
 }
 
