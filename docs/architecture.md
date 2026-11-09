@@ -500,8 +500,11 @@ MCP (`internal/alexandria/mcptools`) names notebooks and books `boox:<id>` or
 `client:<id>` and pages by number. BOOX tools read through `boox.Service`
 wrappers (`internal/boox/mcp.go`) over the same queries as the web pages; page
 images wait for the Library thumbnail slot, never the Reader's. The calendar
-tool uses `calendarview`, as the web calendar and Today do. A read-scoped token
-is offered only the tools that read.
+tool uses `calendarview`, as the web calendar and Today do. Action tools reuse
+the web's own paths: `recognize` queues through the recognition catalog and
+`Store.Queue`, `request_minutes`/`cancel_minutes` through `RequestMinutes` and
+`ControlMinutes`, and `create_boox_note` through `QueueTextNote`, which only
+ever adds a notebook. A read-scoped token is offered only the tools that read.
 
 The upgrade backfills only already available text. It neither enables embeddings
 nor enqueues handwriting recognition. Existing active/building generations receive

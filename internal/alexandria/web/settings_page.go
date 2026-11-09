@@ -223,7 +223,37 @@ func (d Deps) tokens(ctx context.Context, data map[string]any) error {
 		tokens = append(tokens, t)
 	}
 	data["Tokens"], data["OAuthLabel"] = tokens, oauth.TokenLabel
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	rows.Close()
+	changes, err := d.assistantChanges(ctx, 20)
+	data["Changes"] = changes
+	return err
+}
+
+// assistantChange is one change an assistant made over MCP.
+type assistantChange struct {
+	At                 time.Time
+	Client, Tool, Text string
+}
+
+// assistantChanges lists the latest changes assistants made, newest first.
+func (d Deps) assistantChanges(ctx context.Context, limit int) ([]assistantChange, error) {
+	rows, err := d.DB.QueryContext(ctx, `SELECT at,client,tool,result FROM alexandria_mcp_change ORDER BY at DESC,id DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []assistantChange
+	for rows.Next() {
+		var c assistantChange
+		if err := rows.Scan(&c.At, &c.Client, &c.Tool, &c.Text); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 func (d Deps) providerSettings(ctx context.Context, tab string, override *providers.View, data map[string]any) error {

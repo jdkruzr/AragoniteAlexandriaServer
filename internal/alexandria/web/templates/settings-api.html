@@ -18,5 +18,13 @@
 {{else}}<li class="empty">{{t "No tokens yet."}}</li>{{end}}</ul>
 {{with ($.Group "api")}}{{if .Saved}}<p>{{template "saved" .}}</p>{{end}}{{end}}
 </section>
+<section class="set-group" id="changes">
+<h2>{{t "Recent changes by assistants"}}</h2>
+<p class="set-desc">{{t "Everything an assistant changed through MCP: tasks, events, text boxes, recognition, minutes and new BOOX notes, with the app that did it. Kept for 90 days."}}</p>
+<ul class="set-rows">{{range $d.Changes}}
+<li class="set-row"><div class="set-row-main"><span class="set-row-title">{{.Text}}</span>
+<span class="set-row-sub">{{if .Client}}{{.Client}}{{else}}{{t "An app"}}{{end}} · <code>{{.Tool}}</code> · {{.At.Local.Format "2006-01-02 15:04"}}</span></div></li>
+{{else}}<li class="empty">{{t "No changes yet."}}</li>{{end}}</ul>
+</section>
 </div></div>
 {{end}}

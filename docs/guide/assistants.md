@@ -33,7 +33,7 @@ Either way you choose how much the assistant may do:
 | Access | The assistant can |
 |---|---|
 | **Read only** | Search and read your notebooks, books, minutes, tasks and calendar. Tools that change anything aren't offered to it at all, and the token can't change anything through CalDAV or the REST API either. |
-| **Read and change** | Also create, change, complete and delete tasks and events, and edit Alexandria Client text boxes. |
+| **Read and change** | Also create, change, complete and delete tasks and events, edit Alexandria Client text boxes, queue recognition and Audio Note Minutes, and add new text notes to your BOOX. |
 
 MCP takes tokens only. Your account password works for the web app and
 CalDAV, but not at the MCP address, so it never ends up in an assistant's
@@ -136,10 +136,45 @@ its interface. A few conventions make them work together:
 | `create_event`, `update_event` | Adds an event, or changes the fields given (moving the start keeps the length). Repeating events and subscribed calendars can't be changed here. |
 | `delete_event` | Moves an event to Deleted Events, where you can restore it. |
 | `edit_text_box` | Replaces the text of an Alexandria Client text box. The change syncs to your devices on their next sync; a newer edit on a device wins. |
+| `recognize` | Queues a notebook's pages (all, one or a range) for handwriting recognition, as **Recognize** does on the web. Pages whose content hasn't changed reuse their earlier result without a model call unless the assistant asks for them afresh. Notebooks over the page limit or set to be skipped are refused, with where to change that. |
+| `request_minutes` | Asks for a BOOX notebook's Audio Note Minutes, or fresh ones: recordings are transcribed, pages without text recognized (unless told not to), then the minutes written. |
+| `cancel_minutes` | Stops a minutes request that is waiting or running. |
+| `create_boox_note` | Adds a new text note to your BOOX, in a folder or at the top level. Lines starting `# ` become headings and `- ` bullets. It reaches the tablets on their next sync. |
 
-Nothing permanently erases anything, and no tool changes a BOOX notebook.
+Recognition and minutes send page pictures, recordings and text to the
+providers set up in **Settings → AI models**, exactly as when you start them
+on the web. Nothing permanently erases anything, and the only change a tool
+makes on your BOOX is adding a new note; it never alters or removes an
+existing notebook.
 Tasks and events the assistant creates appear in the web app and reach your
 CalDAV apps on their next sync. See [Tasks and Calendar](tasks-and-calendar.md).
+
+## Staying Safe
+
+An assistant reads whatever its tools return, and some of that is written by
+other people: events in calendars you subscribe to, the text of your books,
+and what people said in recordings. Someone could hide an instruction in that
+text ("ignore your task and…"), hoping an assistant follows it. This is called
+prompt injection, and no server can rule it out entirely, because it's the
+assistant that reads. Alexandria keeps the risk small:
+
+- **Text written by others is labelled.** Results mark it as written by a
+  calendar's publisher, a book's author or the people recorded, and tell the
+  assistant to treat it as information, never as instructions.
+- **Subscribed calendars' descriptions stay out unless asked for.** "What's on
+  this week" gets times, titles and places; descriptions come only when the
+  assistant asks for details.
+- **Every change is recorded.** **Settings → API & MCP → Recent changes by
+  assistants** lists what each app changed and when, for 90 days.
+- **Costly or device-facing actions are capped.** `recognize` takes at most 50
+  pages per call; `request_minutes` and `create_boox_note` run at most 10 times
+  a day each. Bigger jobs stay on the web.
+- **Nothing is erased for good,** and on your BOOX an assistant can only add a
+  note, never change or remove one.
+
+What helps most is on your side: give an assistant you don't watch closely
+**Read only** access, and leave your assistant's "ask before changing"
+confirmations on rather than allowing changes automatically.
 
 ## Privacy
 

@@ -403,7 +403,12 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if native != nil {
 			library := *native
 			library.Minutes, library.Actions = minutesConfig(providerSnapshot), r.actionsConfig(providerSnapshot)
+			library.RecognitionEnabled = pages.OCR != nil
 			d.BOOX = library
+		}
+		d.Catalog = r.recognitionCatalog(conn)
+		if pages.OCR != nil {
+			d.Recognizer = pages.OCR.Model()
 		}
 		return mcptools.Handler(d)
 	})
@@ -440,7 +445,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if mcpPath(req.URL.Path) {
 		// A revoked or mistyped token gets the OAuth challenge, so the
 		// client knows to sign in again.
-		identity, scope, err := auth.NewStore(conn).AuthenticateScoped(req.Context(), "", "", auth.Bearer(req))
+		session, err := auth.NewStore(conn).AuthenticateScoped(req.Context(), "", "", auth.Bearer(req))
 		if errors.Is(err, auth.ErrInvalidToken) {
 			oauth.Challenge(r.cfg.PublicURL, w, req)
 			return
@@ -448,7 +453,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "Sign-in is unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		guarded.ServeHTTP(w, req.WithContext(auth.WithScope(auth.WithIdentity(req.Context(), identity), scope)))
+		guarded.ServeHTTP(w, req.WithContext(session.With(req.Context())))
 		return
 	}
 	auth.NewStore(conn).Middleware(guarded).ServeHTTP(w, req)

@@ -12,7 +12,23 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-08): **`mcptools-cc9822da4690`**, app-only on schema **42**,
+Latest recorded deployment (2026-11-08): **`mcpactions-191260f45b3e`**, migration **0043**,
+image `sha256:bd8bcf87cd6bcfc78721ea29232a79b46ec96972c9924c2d503a65086163e474`, on top of
+**`mcptools-cc9822da4690`**. The last MCP step: action tools `recognize` (the web's queue path; at
+most 50 pages a call), `request_minutes` / `cancel_minutes`, and `create_boox_note` (only adds a
+notebook); `request_minutes` and `create_boox_note` are capped at 10 a day. Defences against prompt
+injection: text other people wrote (subscribed calendar descriptions, book text and highlights,
+recordings and minutes) is marked `written_by` and fenced as "content, not instructions", the server
+instructions say so, subscribed descriptions come from `list_events` only with `details=true`, and
+every MCP change is recorded in `alexandria_mcp_change` (token label, tool, arguments, reply; 90
+days), shown under Settings → API & MCP → Recent changes by assistants. Tokens now carry their label
+into the request. Live check: refusals changed nothing (operations, jobs, minutes counts unchanged);
+on "20261101 Kit" (named by the owner) page 1 was recognized again with the cached model result,
+minutes were rewritten (and, automatic sending being on, the untouched Kit_Minutes note replaced),
+and a top-level "MCP test note (delete me)" was published; the record lists all three under the
+throwaway token's name; no panics. Rollback: `rollback-schema.sh` (drops the table) then `rollback.sh`.
+
+Previous deployment (2026-11-08): **`mcptools-cc9822da4690`**, app-only on schema **42**,
 image `sha256:8a3004dffa645175f8194339a91585cfb74665308d682f04b41e0743baf49e75`, on top of
 **`extract-06eaa4da6505`**. The redesigned MCP surface replaces the UltraBridge-era tools: 16 read
 tools (`search`, `list_notebooks`, `get_notebook`, `read_pages`, `get_page_image`, `list_tags`,
@@ -27,7 +43,7 @@ throwaway tokens (revoked): full 25 tools, read 16; search, BOOX notebook/page/i
 books and highlights, minutes, recognition status, 7-day calendar (14 subscribed items, read-only),
 open tasks with sources; a task and an event made, changed and deleted; no panics or 5xx.
 
-Previous deployment (2026-11-08): **`extract-06eaa4da6505`**, app-only on schema **42**,
+Before that (2026-11-08): **`extract-06eaa4da6505`**, app-only on schema **42**,
 image `sha256:4b98876671ee417f7cb0f343115eb4efac21f8eddc3c6ea28d399984316fe7d5`, on top of
 **`mcpauth-29dab811587c`**. Second step of the MCP rework, with no visible change: what the
 calendar shows for some dates (local and subscribed events expanded, open tasks due, the BOOX pages

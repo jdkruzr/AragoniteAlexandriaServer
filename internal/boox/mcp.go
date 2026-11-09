@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/image/draw"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/booxpage"
@@ -496,4 +497,81 @@ func (s Service) MinutesStale(ctx context.Context, id string) (bool, error) {
 		return false, e
 	}
 	return s.minutesStale(ctx, n, tags)
+}
+
+// MinutesRequested is what a minutes request set going.
+type MinutesRequested struct {
+	Title      string
+	Recordings int
+	// Pages counts the notebook's pages; Missing those without text yet,
+	// queued for recognition when asked and recognition is set up.
+	Pages, Missing int
+	Recognizing    bool
+}
+
+// RequestNotebookMinutes asks for a notebook's Audio Note Minutes (again):
+// its recordings are transcribed, pages without text optionally recognized,
+// then the minutes written. It reads the notebook as it is now.
+func (s Service) RequestNotebookMinutes(ctx context.Context, id string, recognize bool) (MinutesRequested, error) {
+	n, e := s.notebookSnapshot(ctx, id)
+	if errors.Is(e, sql.ErrNoRows) {
+		return MinutesRequested{}, ErrNotFound
+	}
+	if e != nil {
+		return MinutesRequested{}, e
+	}
+	pages, e := s.pageTexts(ctx, n)
+	if e != nil {
+		return MinutesRequested{}, e
+	}
+	out := MinutesRequested{Title: n.Meta.Title, Recordings: len(audioKeys(n)), Pages: len(pages), Recognizing: recognize && s.RecognitionEnabled}
+	for _, p := range pages {
+		if missing(p) {
+			out.Missing++
+		}
+	}
+	return out, s.RequestMinutes(ctx, id, uuid.NewString(), n.Version, recognize, s.Minutes)
+}
+
+// CancelNotebookMinutes stops a minutes request that is waiting or running;
+// false when there was none.
+func (s Service) CancelNotebookMinutes(ctx context.Context, id string) (bool, error) {
+	var state string
+	e := s.DB.QueryRowContext(ctx, `SELECT state FROM alexandria_note_minutes WHERE source='boox' AND notebook_id=$1`, id).Scan(&state)
+	if errors.Is(e, sql.ErrNoRows) {
+		return false, nil
+	}
+	if e != nil {
+		return false, e
+	}
+	if state != "queued" && state != "processing" {
+		return false, nil
+	}
+	return true, s.ControlMinutes(ctx, id, "cancel")
+}
+
+// NoteFolder is a BOOX folder a new note can go in, titled with its path.
+type NoteFolder struct{ ID, Path string }
+
+// NoteFolders lists the folders, root first.
+func (s Service) NoteFolders(ctx context.Context) ([]NoteFolder, error) {
+	all, e := s.moveFolders(ctx)
+	out := make([]NoteFolder, 0, len(all))
+	for _, f := range all {
+		if f.ID != "" {
+			out = append(out, NoteFolder{ID: f.ID, Path: f.Title})
+		}
+	}
+	return out, e
+}
+
+// CreateTextNote queues a new BOOX text note in a folder ("" for the top
+// level). Lines starting "# " are headings, "- " bullets, and "**Label**
+// text" labelled lines. It returns the operation that publishes it; the note
+// reaches the tablets on their next sync. No existing notebook changes.
+func (s Service) CreateTextNote(ctx context.Context, folder, title, text string) (string, error) {
+	if len(text) > 200<<10 {
+		return "", errors.New("the text is too long for one note (at most 200 KB)")
+	}
+	return s.QueueTextNote(ctx, TextNote{Parent: folder, Title: title, Blocks: textBlocks(text), Request: uuid.NewString()})
 }

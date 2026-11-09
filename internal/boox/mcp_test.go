@@ -6,6 +6,7 @@ import (
 	"errors"
 	"image"
 	_ "image/jpeg"
+	"strings"
 	"testing"
 	"time"
 )
@@ -145,5 +146,62 @@ func TestMCPMinutesList(t *testing.T) {
 	}
 	if stale, e := s.MinutesStale(ctx, "n"); e != nil || stale {
 		t.Fatal("failed minutes aren't stale", stale, e)
+	}
+}
+
+func TestMCPMinutesRequestAndCancel(t *testing.T) {
+	s := indexFixture(t)
+	ctx := context.Background()
+	putNoteBlob(t, s, "resource/data/rec.mp3", syntheticONY1(t, []byte("ID3 body")))
+	if _, e := s.RequestNotebookMinutes(ctx, "note", true); e == nil {
+		t.Fatal("requested without providers")
+	}
+	s.Minutes = MinutesConfig{Enabled: true, Identity: "t"}
+	r, e := s.RequestNotebookMinutes(ctx, "note", true)
+	if e != nil || r.Recordings != 1 || r.Recognizing {
+		t.Fatalf("request %+v %v", r, e)
+	}
+	var state string
+	if e = s.DB.QueryRowContext(ctx, `SELECT state FROM alexandria_note_minutes WHERE source='boox' AND notebook_id='note'`).Scan(&state); e != nil || state != "queued" {
+		t.Fatal("not queued", state, e)
+	}
+	if done, e := s.CancelNotebookMinutes(ctx, "note"); e != nil || !done {
+		t.Fatal("cancel", done, e)
+	}
+	if done, e := s.CancelNotebookMinutes(ctx, "note"); e != nil || done {
+		t.Fatal("cancelled twice", done, e)
+	}
+	if done, e := s.CancelNotebookMinutes(ctx, "never-asked"); e != nil || done {
+		t.Fatal("cancelled nothing", done, e)
+	}
+	if _, e = s.RequestNotebookMinutes(ctx, "missing", true); !errors.Is(e, ErrNotFound) {
+		t.Fatal("unknown notebook", e)
+	}
+}
+
+func TestMCPCreateTextNote(t *testing.T) {
+	s := testService(t)
+	ctx := context.Background()
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_identity SET native_uid=$1 WHERE id=1`, s.uid()); e != nil {
+		t.Fatal(e)
+	}
+	previewFixture(t, s)
+	folders, e := s.NoteFolders(ctx)
+	if e != nil || len(folders) != 1 || folders[0].ID != "work" || folders[0].Path != "Synthetic work folder" {
+		t.Fatal("folders", folders, e)
+	}
+	id, e := s.CreateTextNote(ctx, "work", "Synthetic plan", "# Day one\n- pack")
+	if e != nil {
+		t.Fatal(e)
+	}
+	var kind, title, parent string
+	if e = s.DB.QueryRowContext(ctx, `SELECT kind,payload->>'title',coalesce(payload#>>'{record,parentUniqueId}',payload::text) FROM boox_operation WHERE id=$1`, id).Scan(&kind, &title, &parent); e != nil || kind != "create_text_note" || title != "Synthetic plan" || !strings.Contains(parent, "work") {
+		t.Fatal("queued note", kind, title, parent, e)
+	}
+	if again, e := s.CreateTextNote(ctx, "work", "Synthetic plan", "# Day one\n- pack"); e != nil || again == id {
+		t.Fatal("a second request is a second note", again, e)
+	}
+	if _, e = s.CreateTextNote(ctx, "missing", "x", "y"); !errors.Is(e, errTextNoteFolder) {
+		t.Fatal("missing folder", e)
 	}
 }

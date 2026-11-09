@@ -110,7 +110,9 @@ func previewPages() []previewPage {
 		{"settings-calendar", "settings-calendar", "Calendar & tasks", "settings", "/settings/calendar", map[string]any{"Collection": "Tasks", "EventsCollection": "Calendar", "DueMode": "preserve", "ServerZone": "America/Chicago",
 			"Subscriptions": []subscriptions.Subscription{{ID: "s1", Name: "Synthetic holidays", Color: "blue", Enabled: true, LastSuccess: &now}}, "SubscriptionColors": subscriptions.Colors}},
 		{"settings-api", "settings-api", "API & MCP", "settings", "/settings/api", map[string]any{"NewToken": "alx_synthetic_token_value", "NewLabel": "Synthetic script", "NewReadOnly": true, "OAuthLabel": oauth.TokenLabel,
-			"Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", ReadOnly: true, Created: now}, {Hash: "h2", Label: "Synthetic assistant", OAuth: true, Created: now, LastUsed: &now}, {Hash: "h3", Label: oauth.TokenLabel, OAuth: true, Created: now}}}},
+			"Tokens": []apiToken{{Hash: "h", Label: "Synthetic script", ReadOnly: true, Created: now}, {Hash: "h2", Label: "Synthetic assistant", OAuth: true, Created: now, LastUsed: &now}, {Hash: "h3", Label: oauth.TokenLabel, OAuth: true, Created: now}},
+			"Changes": []assistantChange{{At: now, Client: "Synthetic assistant", Tool: "create_task", Text: "Added: Water the synthetic figs (id t1): open, due 2026-11-20"},
+				{At: now.Add(-time.Hour), Client: "Synthetic assistant", Tool: "recognize", Text: "Queued 12 pages of Synthetic notes (pages 1–12) for recognition with synthetic-ocr."}}}},
 		{"authorize", "authorize", "Allow Access?", "", "/authorize", map[string]any{"Request": oauth.Request{ClientName: "Synthetic assistant", RedirectURI: "https://assistant.example/callback", Scope: auth.ScopeRead}, "Query": "synthetic"}},
 		{"settings-operator", "settings-operator", "Operator tools", "settings", "/settings/operator", func() map[string]any {
 			m := providerPreview(provider)

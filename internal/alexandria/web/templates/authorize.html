@@ -7,7 +7,7 @@
   <fieldset>
     <legend>{{t "What may it do?"}}</legend>
     <label class="check"><input type="radio" name="scope" value="read" {{if eq (print $d.Request.Scope) "read"}}checked{{end}}> {{t "Read only: search and read your notebooks, books, minutes, tasks and calendar."}}</label>
-    <label class="check"><input type="radio" name="scope" value="full" {{if ne (print $d.Request.Scope) "read"}}checked{{end}}> {{t "Read and change: also manage tasks and events, and edit text boxes."}}</label>
+    <label class="check"><input type="radio" name="scope" value="full" {{if ne (print $d.Request.Scope) "read"}}checked{{end}}> {{t "Read and change: also manage tasks and events, edit text boxes, queue recognition and minutes, and add new notes to your BOOX."}}</label>
   </fieldset>
   <div class="consent-actions"><button name="decision" value="allow" class="btn btn-primary">{{t "Allow"}}</button>
   <button name="decision" value="deny" class="btn btn-ghost">{{t "Don't Allow"}}</button></div>

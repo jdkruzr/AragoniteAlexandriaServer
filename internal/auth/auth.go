@@ -125,33 +125,57 @@ func (s *Store) CreateScopedToken(ctx context.Context, label string, scope Scope
 }
 
 func (s *Store) Authenticate(ctx context.Context, username, password, bearer string) (string, error) {
-	identity, _, err := s.AuthenticateScoped(ctx, username, password, bearer)
-	return identity, err
+	session, err := s.AuthenticateScoped(ctx, username, password, bearer)
+	return session.Identity, err
 }
 
-// AuthenticateScoped checks a bearer token or a password and reports the
-// request's scope.
-func (s *Store) AuthenticateScoped(ctx context.Context, username, password, bearer string) (string, Scope, error) {
+// Session is who a request is: an account, or "token" with the token's
+// scope and label.
+type Session struct {
+	Identity string
+	Scope    Scope
+	Label    string
+}
+
+// AuthenticateScoped checks a bearer token or a password.
+func (s *Store) AuthenticateScoped(ctx context.Context, username, password, bearer string) (Session, error) {
 	if bearer != "" {
-		var scope string
+		var scope, label string
 		err := s.db.QueryRowContext(ctx, `UPDATE alexandria_api_tokens SET last_used_at=now()
-			WHERE token_hash=$1 AND revoked_at IS NULL RETURNING scope`, tokenHash(bearer)).Scan(&scope)
+			WHERE token_hash=$1 AND revoked_at IS NULL RETURNING scope,label`, tokenHash(bearer)).Scan(&scope, &label)
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", "", ErrInvalidToken
+			return Session{}, ErrInvalidToken
 		}
 		if err != nil {
-			return "", "", err
+			return Session{}, err
 		}
-		return "token", ParseScope(scope), nil
+		return Session{Identity: "token", Scope: ParseScope(scope), Label: label}, nil
 	}
 	var hash string
 	if err := s.db.QueryRowContext(ctx, `SELECT password_hash FROM alexandria_users WHERE username=$1`, username).Scan(&hash); err != nil {
-		return "", "", errors.New("invalid credentials")
+		return Session{}, errors.New("invalid credentials")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-		return "", "", errors.New("invalid credentials")
+		return Session{}, errors.New("invalid credentials")
 	}
-	return username, ScopeFull, nil
+	return Session{Identity: username, Scope: ScopeFull}, nil
+}
+
+// With binds a verified session to a request's context.
+func (v Session) With(ctx context.Context) context.Context {
+	ctx = WithScope(WithIdentity(ctx, v.Identity), v.Scope)
+	if v.Label != "" {
+		ctx = context.WithValue(ctx, labelKey{}, v.Label)
+	}
+	return ctx
+}
+
+type labelKey struct{}
+
+// TokenLabel names the token a request came with ("" for none).
+func TokenLabel(ctx context.Context) string {
+	label, _ := ctx.Value(labelKey{}).(string)
+	return label
 }
 
 // Bearer returns the request's bearer token, or "".
@@ -169,13 +193,13 @@ func (s *Store) Middleware(next http.Handler) http.Handler {
 		if bearer == "" {
 			username, password, _ = r.BasicAuth()
 		}
-		identity, scope, err := s.AuthenticateScoped(r.Context(), username, password, bearer)
+		session, err := s.AuthenticateScoped(r.Context(), username, password, bearer)
 		if err != nil {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Aragonite Alexandria Server"`)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(WithScope(WithIdentity(r.Context(), identity), scope)))
+		next.ServeHTTP(w, r.WithContext(session.With(r.Context())))
 	})
 }
 
