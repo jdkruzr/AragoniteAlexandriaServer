@@ -130,6 +130,12 @@ type options struct {
 	recognizer  string
 }
 
+// cachedOCR is the first setup's recognition of the sample page.
+var cachedOCR struct {
+	hash, text, model string
+	revision          int64
+}
+
 func setup(t *testing.T, opts ...options) (*sql.DB, *mcp.ClientSession) {
 	t.Helper()
 	var o options
@@ -160,8 +166,23 @@ func setup(t *testing.T, opts ...options) (*sql.DB, *mcp.ClientSession) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Rendering the page for recognition is slow under the race detector, so
+	// only the first setup does it; later ones start from its cached result,
+	// which the pipeline reuses for the same input.
+	if cachedOCR.hash != "" {
+		if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_page_ocr(page_id,input_hash,text,model,config_revision) VALUES($1,$2,$3,$4,$5)`,
+			page, cachedOCR.hash, cachedOCR.text, cachedOCR.model, cachedOCR.revision); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if _, err := (notes.Pipeline{OCR: ocr{}}).Step(ctx, db); err != nil {
 		t.Fatal(err)
+	}
+	if cachedOCR.hash == "" {
+		if err := db.QueryRowContext(ctx, `SELECT input_hash,text,model,config_revision FROM alexandria_page_ocr WHERE page_id=$1`, page).
+			Scan(&cachedOCR.hash, &cachedOCR.text, &cachedOCR.model, &cachedOCR.revision); err != nil {
+			t.Fatal(err)
+		}
 	}
 	conn := testenv.Request(t, db) // one connection, as production gives a request
 	server := NewServer(Deps{DB: conn, Search: notes.Searcher{DB: conn}, PublicURL: "https://library.example", Version: "test-1",
