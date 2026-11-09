@@ -16,6 +16,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/notes"
+	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/alexandria/searchview"
 	"github.com/jdkruzr/AragoniteAlexandriaServer/internal/boox"
 )
 
@@ -31,7 +32,7 @@ const (
 
 type listNotebooksInput struct {
 	Source         string `json:"source,omitempty" jsonschema:"boox or client; default boox when this library has BOOX"`
-	Folder         string `json:"folder,omitempty" jsonschema:"a folder id from a previous listing; default every notebook, flat"`
+	Folder         string `json:"folder,omitempty" jsonschema:"a folder to list: its folder_id or path, such as Work / 2026 (any case); default every notebook, flat"`
 	Query          string `json:"query,omitempty" jsonschema:"only notebooks whose title contains this"`
 	Kind           string `json:"kind,omitempty" jsonschema:"BOOX only: all (default), handwritten, text, reading or other"`
 	Sort           string `json:"sort,omitempty" jsonschema:"modified (default), created, name or pages"`
@@ -57,9 +58,16 @@ type notebookRow struct {
 
 type listNotebooksOutput struct {
 	Source     string        `json:"source"`
+	Folder     string        `json:"folder,omitempty" jsonschema:"the folder listed, by path"`
 	Total      int           `json:"total"`
 	Notebooks  []notebookRow `json:"notebooks"`
+	Folders    []folderRow   `json:"folders,omitempty" jsonschema:"on the first page of a flat listing: every folder of the source, for folder here and in search"`
 	NextCursor string        `json:"next_cursor,omitempty"`
+}
+
+type folderRow struct {
+	FolderID string `json:"folder_id"`
+	Path     string `json:"path"`
 }
 
 type notebookInput struct {
@@ -190,8 +198,9 @@ var clientSorts = map[string]string{"": "modified", "modified": "modified", "cre
 
 func registerNotebooks(s *mcp.Server, d Deps) {
 	add(s, d, tool{name: "list_notebooks", title: "List notebooks",
-		description: "List notebooks from one source, BOOX or the Alexandria Client, newest first by default: every notebook flat, or one folder " +
-			"(its folders first). Filter by title, and for BOOX by kind or the tablet's Trash."},
+		description: "List notebooks from one source, BOOX or the Alexandria Client, newest first by default: every notebook flat (the first page " +
+			"also lists every folder with its path and folder_id), or one folder by path or id (its folders first). Filter by title, and for BOOX " +
+			"by kind or the tablet's Trash."},
 		func(ctx context.Context, in listNotebooksInput) (string, listNotebooksOutput, error) {
 			source, err := d.source(in.Source)
 			if err != nil {
@@ -217,6 +226,24 @@ func registerNotebooks(s *mcp.Server, d Deps) {
 			}
 			loc := d.zone(ctx)
 			out := listNotebooksOutput{Source: source, Notebooks: []notebookRow{}}
+			search := searchview.Searcher{DB: d.DB, Objects: d.Objects, Search: d.Search}
+			if in.Folder != "" {
+				f, err := findFolder(ctx, search, d.BOOX != nil, source, in.Folder)
+				if err != nil {
+					return "", listNotebooksOutput{}, err
+				}
+				in.Folder, out.Folder = f.ID, f.Path
+			} else if p.offset == 0 && !in.IncludeDeleted {
+				all, err := search.Folders(ctx, d.BOOX != nil)
+				if err != nil {
+					return "", listNotebooksOutput{}, err
+				}
+				for _, f := range all {
+					if f.Source == source {
+						out.Folders = append(out.Folders, folderRow{FolderID: f.ID, Path: f.Path})
+					}
+				}
+			}
 			if source == sourceBOOX {
 				listSort := map[string]string{"modified": "", "created": "created", "name": "name", "pages": "pages"}[sort]
 				rows, total, err := d.BOOX.Notebooks(ctx, boox.NotebookFilter{Folder: in.Folder, Query: strings.TrimSpace(in.Query), Kind: in.Kind,
@@ -267,7 +294,11 @@ func registerNotebooks(s *mcp.Server, d Deps) {
 				out.NextCursor = p.next(len(shown), len(entries))
 			}
 			var b strings.Builder
-			fmt.Fprintf(&b, "%d in all (%s).\n", out.Total, source)
+			if out.Folder != "" {
+				fmt.Fprintf(&b, "%d in %s (%s).\n", out.Total, out.Folder, source)
+			} else {
+				fmt.Fprintf(&b, "%d in all (%s).\n", out.Total, source)
+			}
 			for _, r := range out.Notebooks {
 				if r.Folder != "" {
 					fmt.Fprintf(&b, "- Folder %q (folder_id %s): %d notebooks\n", r.Title, r.Folder, r.Notebooks)
@@ -278,6 +309,12 @@ func registerNotebooks(s *mcp.Server, d Deps) {
 					fmt.Fprintf(&b, ", in %s", r.InFolder)
 				}
 				fmt.Fprintf(&b, ", modified %s\n", r.Modified)
+			}
+			if len(out.Folders) > 0 {
+				b.WriteString("\nFolders (pass the path or folder_id as folder, here or in search):\n")
+				for _, f := range out.Folders {
+					fmt.Fprintf(&b, "- %s (folder_id %s)\n", f.Path, f.FolderID)
+				}
 			}
 			b.WriteString(more(out.NextCursor))
 			return b.String(), out, nil

@@ -12,7 +12,14 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-09): **`foldersearch-369036c34153`**, app-only on schema **43**,
+Latest recorded deployment (2026-11-09): **`folderlist-73ba8e7331b8`**, app-only on schema **43**,
+image `sha256:42596ffd02a01f261d12e72d818968a072b84345ed4e959dbb84c7d9264c675e`, on top of
+**`foldersearch-369036c34153`**: MCP `list_notebooks` takes a folder by path or id (as `search` does) and
+refuses an unknown one; the first page of a flat listing lists every folder with its path and folder_id,
+which the folder errors of `search`, `list_notebooks` and `create_boox_note` now point to. Live check: four
+BOOX folders listed with ids; "Moffitt", "moffitt" and its id each list its 813 notebooks; "Moffit" refused.
+
+Previous deployment (2026-11-09): **`foldersearch-369036c34153`**, app-only on schema **43**,
 image `sha256:ac35d47b5ccc8718f0c765fb3025181fbdc9c386cfeb9f30efd3d7b80484e9a9`, on top of
 **`webfixes2-fb840458efba`**: search can be kept to a folder and the folders inside it. Web Search has an
 **All folders** menu (`folder=boox:<id>` / `client:<id>`; changing source drops it, an unknown one is

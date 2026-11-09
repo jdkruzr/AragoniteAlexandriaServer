@@ -210,7 +210,7 @@ func findFolder(ctx context.Context, search searchview.Searcher, nativeBOOX bool
 	}
 	switch {
 	case len(found) == 0:
-		return searchview.FolderChoice{}, fmt.Errorf("no folder %q; list_notebooks shows folders and their folder_id", name)
+		return searchview.FolderChoice{}, fmt.Errorf("no folder %q; list_notebooks without a folder lists every folder by path and folder_id", name)
 	case len(found) > 1:
 		return searchview.FolderChoice{}, fmt.Errorf("both sources have a folder %q; say source boox or client", name)
 	}

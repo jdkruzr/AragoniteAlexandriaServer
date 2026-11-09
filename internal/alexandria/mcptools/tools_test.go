@@ -543,6 +543,21 @@ func TestSearchWithinFolder(t *testing.T) {
 		t.Fatal(msg)
 	}
 	refuse(t, s, "search", map[string]any{"query": "zeppelin", "folder": "Work", "source": "client"})
+
+	// list_notebooks names the folders search takes, and takes them the same way.
+	var list listNotebooksOutput
+	text := call(t, s, "list_notebooks", map[string]any{"source": "boox"}, &list)
+	if len(list.Folders) != 2 || list.Folders[0] != (folderRow{FolderID: "fw", Path: "Work"}) || list.Folders[1] != (folderRow{FolderID: "fd", Path: "Work / 2026"}) ||
+		!strings.Contains(text, "- Work / 2026 (folder_id fd)") {
+		t.Fatalf("folders: %+v\n%s", list.Folders, text)
+	}
+	text = call(t, s, "list_notebooks", map[string]any{"source": "boox", "folder": "work / 2026"}, &list)
+	if list.Folder != "Work / 2026" || len(list.Folders) != 0 || !strings.Contains(text, " in Work / 2026 (boox).") {
+		t.Fatalf("by path: %+v\n%s", list, text)
+	}
+	if msg := refuse(t, s, "list_notebooks", map[string]any{"source": "boox", "folder": "Moffit"}); !strings.Contains(msg, "lists every folder") {
+		t.Fatal(msg)
+	}
 }
 
 func TestTaskLifecycle(t *testing.T) {

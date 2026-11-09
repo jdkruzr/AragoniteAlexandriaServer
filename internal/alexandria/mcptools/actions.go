@@ -56,7 +56,7 @@ type cancelMinutesOutput struct {
 type createNoteInput struct {
 	Title  string `json:"title"`
 	Text   string `json:"text" jsonschema:"the note's text; lines starting '# ' become headings, '- ' bullets, and '**Label** text' labelled lines"`
-	Folder string `json:"folder,omitempty" jsonschema:"a BOOX folder id (list_notebooks gives folder_id) or path such as Work / 2026; default the top level"`
+	Folder string `json:"folder,omitempty" jsonschema:"a BOOX folder's path such as Work / 2026, or its folder_id (list_notebooks lists both); default the top level"`
 }
 
 type createNoteOutput struct {
@@ -194,7 +194,7 @@ func registerActions(s *mcp.Server, d Deps) {
 					}
 				}
 				if !found {
-					return "", createNoteOutput{}, fmt.Errorf("no BOOX folder %q; list_notebooks shows folders and their folder_id", in.Folder)
+					return "", createNoteOutput{}, fmt.Errorf("no BOOX folder %q; list_notebooks without a folder lists every folder by path and folder_id", in.Folder)
 				}
 			}
 			op, err := d.BOOX.CreateTextNote(ctx, folder, title, in.Text)
