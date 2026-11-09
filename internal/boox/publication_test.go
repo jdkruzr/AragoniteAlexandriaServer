@@ -25,9 +25,16 @@ func (s *fencedPublicationOwner) Put(ctx context.Context, key, ct string, r io.R
 	}
 	// Object binding now holds ownership throughout PUT. Simulate a competing
 	// owner change with a bounded wait instead of deadlocking an inline callback.
+	// It runs in a transaction that is always rolled back: a cancel that reaches
+	// the server only after the fence is released must not let it land.
 	attempt, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
 	defer cancel()
-	_, e := s.db.ExecContext(attempt, `UPDATE boox_identity SET native_uid='different-owner' WHERE id=1`)
+	tx, e := s.db.BeginTx(context.Background(), nil)
+	if e != nil {
+		s.t.Fatal(e)
+	}
+	defer tx.Rollback()
+	_, e = tx.ExecContext(attempt, `UPDATE boox_identity SET native_uid='different-owner' WHERE id=1`)
 	if e == nil || attempt.Err() == nil {
 		s.t.Fatal("owner change bypassed publication fence", e)
 	}
