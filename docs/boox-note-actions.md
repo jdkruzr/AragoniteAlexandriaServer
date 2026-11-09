@@ -21,7 +21,13 @@ events. The events live in a new CalDAV calendar beside Tasks.
   page also has a **Find actions** button that reads older ink.
 - The calendar is two-way over CalDAV, like Tasks.
 - The pipeline has two steps: the OCR model transcribes an image of the
-  colored ink alone, then the summary model returns JSON items.
+  colored ink alone, then the summary model returns JSON items. The page's own
+  recognized text (`boox_page_index.text`, at most 6000 runes) goes with it as
+  context for correcting misread words; items and their `source` still come
+  from the colored ink alone. Ink saved within 15 minutes waits (30-second
+  requeues, no attempt counted) while its page is queued or processing for
+  recognition; after that it is read without the page. Ink read alone had
+  turned "Reply on Lumen thread" into "Reply to current thread".
 
 ## How It Works
 

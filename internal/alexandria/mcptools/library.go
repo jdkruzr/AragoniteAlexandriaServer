@@ -457,6 +457,7 @@ func (d Deps) clientBook(b books.LibraryBook, loc *time.Location) bookRow {
 func registerBOOXOnly(s *mcp.Server, d Deps) {
 	add(s, d, tool{name: "list_tags", title: "List BOOX tags",
 		description: "List the tags put on BOOX pages with the lasso's Tag action, most used first, with how many pages and notebooks carry each. " +
+			"A tag is the text the lasso selected, so some are long or close variants of others. " +
 			"Searching for a tag also finds its pages."},
 		func(ctx context.Context, _ emptyInput) (string, listTagsOutput, error) {
 			tags, err := d.BOOX.Tags(ctx)
@@ -468,7 +469,7 @@ func registerBOOXOnly(s *mcp.Server, d Deps) {
 			fmt.Fprintf(&b, "%d tags.\n", len(tags))
 			for _, t := range tags {
 				out.Tags = append(out.Tags, tagRow{Tag: t.Tag, Pages: t.Pages, Notebooks: t.Notebooks, URL: d.link(tagPath(t.Tag))})
-				fmt.Fprintf(&b, "- %s: %d pages in %d notebooks\n", t.Tag, t.Pages, t.Notebooks)
+				fmt.Fprintf(&b, "- %s: %d pages in %d notebooks\n", clip(t.Tag, 120), t.Pages, t.Notebooks)
 			}
 			return b.String(), out, nil
 		})
@@ -484,7 +485,7 @@ func registerBOOXOnly(s *mcp.Server, d Deps) {
 			}
 			out := tagOutput{tagRow: tagRow{Tag: t.Tag, Pages: t.Pages, Notebooks: t.Notebooks, URL: d.link(tagPath(t.Tag))}, PagesWithTag: []taggedPageRow{}}
 			var b strings.Builder
-			fmt.Fprintf(&b, "%s: %d pages in %d notebooks\n", t.Tag, t.Pages, t.Notebooks)
+			fmt.Fprintf(&b, "%s: %d pages in %d notebooks\n", clip(t.Tag, 120), t.Pages, t.Notebooks)
 			for _, p := range pages {
 				out.PagesWithTag = append(out.PagesWithTag, taggedPageRow{Notebook: ref(sourceBOOX, p.NotebookID), Title: p.Notebook, Page: p.Number, Snippet: p.Snippet,
 					URL: d.link(notebookPath(sourceBOOX, p.NotebookID, p.Number, ""))})

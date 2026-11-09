@@ -28,6 +28,7 @@ type searchInput struct {
 
 type searchHit struct {
 	Kind     string   `json:"kind" jsonschema:"page, minutes, notebook, book, highlight, bookmark, annotation or task"`
+	Match    string   `json:"match" jsonschema:"words (it has the query's words) or meaning (among the pages nearest the query in meaning, which may not be about it)"`
 	Source   string   `json:"source,omitempty"`
 	Title    string   `json:"title"`
 	Snippet  string   `json:"snippet,omitempty"`
@@ -45,6 +46,7 @@ type searchHit struct {
 type searchOutput struct {
 	Query      string         `json:"query"`
 	Counts     map[string]int `json:"counts" jsonschema:"matches of each type (notebooks, pages, books, tasks) and all"`
+	ByMeaning  int            `json:"by_meaning" jsonschema:"how many of all were found by meaning alone: the nearest pages, a fixed number however relevant"`
 	Results    []searchHit    `json:"results"`
 	NextCursor string         `json:"next_cursor,omitempty"`
 }
@@ -55,7 +57,9 @@ func registerSearch(s *mcp.Server, d Deps) {
 	add(s, d, tool{name: "search", title: "Search the library",
 		description: "Search everything: notebook titles, recognized and typed page text (BOOX and Alexandria Client), BOOX tags, Audio Note Minutes " +
 			"and their transcripts, books, highlights and annotations, and tasks. Results are ranked as on the web Search page and counted by type. " +
-			"Each result names what to open next: a notebook reference and page, a book reference, or a task id."},
+			"Each result names what to open next: a notebook reference and page, a book reference, or a task id. With meaning on (the default), " +
+			"the pages nearest the query in meaning are added even when they lack its words; those are marked match=meaning and are best read " +
+			"as suggestions. For names, part numbers and vendors, mode=words is more precise."},
 		func(ctx context.Context, in searchInput) (string, searchOutput, error) {
 			q := strings.TrimSpace(in.Query)
 			if q == "" || len(q) > 256 {
@@ -111,6 +115,7 @@ func registerSearch(s *mcp.Server, d Deps) {
 			for _, t := range searchview.Types[1:] {
 				out.Counts[t] = lists[t].Total
 				out.Counts["all"] += lists[t].Total
+				out.ByMeaning += lists[t].Meaning
 			}
 			var shown searchview.List
 			if in.Type == "all" {
@@ -131,7 +136,12 @@ func registerSearch(s *mcp.Server, d Deps) {
 				return "", searchOutput{}, err
 			}
 			var b strings.Builder
-			fmt.Fprintf(&b, "%d matches (%d notebooks, %d pages, %d books and highlights, %d tasks).\n", out.Counts["all"], out.Counts["notebooks"], out.Counts["pages"], out.Counts["books"], out.Counts["tasks"])
+			fmt.Fprintf(&b, "%d matches (%d notebooks, %d pages, %d books and highlights, %d tasks)", out.Counts["all"], out.Counts["notebooks"], out.Counts["pages"], out.Counts["books"], out.Counts["tasks"])
+			if out.ByMeaning > 0 {
+				fmt.Fprintf(&b, "; %d of them are only near the query in meaning (marked \"by meaning\"), which says little about relevance: "+
+					"those are always the closest pages, about the query or not", out.ByMeaning)
+			}
+			b.WriteString(".\n")
 			for i, h := range page {
 				r := d.searchHit(h, loc)
 				out.Results = append(out.Results, r)
@@ -146,6 +156,9 @@ func registerSearch(s *mcp.Server, d Deps) {
 					fmt.Fprintf(&b, " (%s)", r.Book)
 				case r.Task != "":
 					fmt.Fprintf(&b, " (task %s)", r.Task)
+				}
+				if r.Match == "meaning" {
+					b.WriteString(", by meaning")
 				}
 				if r.Snippet != "" {
 					snippet := clip(r.Snippet, 300)
@@ -170,7 +183,10 @@ func registerSearch(s *mcp.Server, d Deps) {
 
 // searchHit describes a match for an assistant: what it is and how to open it.
 func (d Deps) searchHit(h searchview.Hit, loc *time.Location) searchHit {
-	r := searchHit{Kind: string(h.Kind), Source: h.Source, Title: h.Title, Snippet: searchview.Plain(h.Snippet), Tags: h.Tags, Created: ms(h.CreatedAt, loc), URL: d.link(h.URL)}
+	r := searchHit{Kind: string(h.Kind), Match: "words", Source: h.Source, Title: h.Title, Snippet: searchview.Plain(h.Snippet), Tags: h.Tags, Created: ms(h.CreatedAt, loc), URL: d.link(h.URL)}
+	if h.Live != nil && !h.Live.Lexical {
+		r.Match = "meaning"
+	}
 	switch h.Kind {
 	case searchview.KindPage, searchview.KindMinutes:
 		r.Notebook, r.Title = ref(h.Live.Source, h.Live.NotebookID), h.Live.NotebookName

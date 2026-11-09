@@ -1,7 +1,9 @@
 // Package noteactions turns handwriting the owner wrote in an assigned pen
 // color into tasks or calendar events. The ink is recognized on its own (one
 // color, nothing else on the page), then a text model splits it into
-// passages and returns one item per passage as JSON. This package holds the
+// passages and returns one item per passage as JSON. The page's own
+// recognized text, when there is any, goes with it as context, since ink
+// read alone is read worse. This package holds the
 // prompts, the response contract and the passage fingerprint; the BOOX
 // worker (internal/boox/note_actions.go) does the rest.
 package noteactions
@@ -77,7 +79,14 @@ type Input struct {
 	Written time.Time
 	Zone    *time.Location
 	Text    string
+	// PageText is the whole page recognized on its own, all colors, when
+	// there is any. Read with the page around it, the colored ink is often
+	// clearer than recognized alone; it is context only.
+	PageText string
 }
+
+// MaxPageText bounds the page context in runes.
+const MaxPageText = 6000
 
 // Prompt is the user message.
 func Prompt(in Input) string {
@@ -90,8 +99,17 @@ func Prompt(in Input) string {
 		written = time.Now()
 	}
 	w := written.In(zone)
-	return fmt.Sprintf("NOTEBOOK: %s, page %d\nPAGE DATE: %s (%s)\nTIME ZONE: %s\n\nRECOGNIZED TEXT\n%s\n",
+	prompt := fmt.Sprintf("NOTEBOOK: %s, page %d\nPAGE DATE: %s (%s)\nTIME ZONE: %s\n\nRECOGNIZED TEXT\n%s\n",
 		orDash(in.Notebook), in.Page, w.Format("2006-01-02"), w.Weekday(), zone.String(), strings.TrimSpace(in.Text))
+	if page := strings.TrimSpace(in.PageText); page != "" {
+		if r := []rune(page); len(r) > MaxPageText {
+			page = string(r[:MaxPageText]) + "…"
+		}
+		prompt += "\nWHOLE PAGE\nThe same page recognized separately, with every ink color. It may read some words of the recognized text " +
+			"better: use it only to correct misread words in titles and details. Make items only from the recognized text above, and " +
+			"quote \"source\" from the recognized text above.\n" + page + "\n"
+	}
+	return prompt
 }
 
 func orDash(s string) string {

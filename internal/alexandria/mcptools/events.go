@@ -171,8 +171,9 @@ func formatEvent(r eventRow) string {
 	if r.Location != "" {
 		fmt.Fprintf(&b, "  At: %s\n", r.Location)
 	}
+	writeFrom(&b, r.From)
 	if r.Detail != "" {
-		detail := clip(r.Detail, 300)
+		detail := clipLines(r.Detail, 300, "  ")
 		if r.WrittenBy != "" {
 			detail = outside(r.WrittenBy, detail)
 		}
@@ -238,6 +239,7 @@ func registerEvents(server *mcp.Server, d Deps) {
 					r.URL = d.link("/calendar?view=day&date=" + o.Event.Start.In(loc).Format("2006-01-02") + "&sub=" + url.QueryEscape(v.SubscriptionID) + "&key=" + url.QueryEscape(v.Key))
 				} else if s, ok := sources[o.Event.ID]; ok {
 					r.From = &taskSource{Source: sourceBOOX, Notebook: ref(sourceBOOX, s.NotebookID), Title: s.Notebook, Page: s.Page, URL: d.link(s.URL())}
+					r.Detail = withoutMadeFrom(r.Detail)
 				}
 				at := o.Event.Start
 				if o.Event.AllDay {
@@ -284,6 +286,7 @@ func registerEvents(server *mcp.Server, d Deps) {
 			r := d.eventRow(e, d.zone(ctx))
 			if s, ok := calendarview.NoteSources(ctx, d.DB, "event", []string{e.ID})[e.ID]; ok {
 				r.From = &taskSource{Source: sourceBOOX, Notebook: ref(sourceBOOX, s.NotebookID), Title: s.Notebook, Page: s.Page, URL: d.link(s.URL())}
+				r.Detail = withoutMadeFrom(r.Detail)
 			}
 			return formatEvent(r), eventOutput{Event: r}, nil
 		})

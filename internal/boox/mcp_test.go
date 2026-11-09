@@ -16,6 +16,8 @@ func TestMCPNotebooksPagesAndTags(t *testing.T) {
 	s := testService(t)
 	previewFixture(t, s)
 	putTag(t, s, "tag-bird", "n", "p1", "Birds", 0)
+	putTag(t, s, "tag-lasso", "n", "p1", "Synthetic lasso\nover two lines", 0)
+	putTag(t, s, "tag-gone", "missing-notebook", "p", "Orphan", 0)
 	ctx := context.Background()
 
 	list, total, e := s.Notebooks(ctx, NotebookFilter{Limit: 20})
@@ -40,7 +42,7 @@ func TestMCPNotebooksPagesAndTags(t *testing.T) {
 
 	d, e := s.Notebook(ctx, "n")
 	if e != nil || d.Title != "Synthetic preview note" || d.Recognized != 1 || len(d.PageStates) != 2 || d.PageStates[0].State != "ready" ||
-		d.PageStates[0].Text != "" || len(d.PageStates[0].Tags) != 1 || d.PageStates[1].State != "" {
+		d.PageStates[0].Text != "" || len(d.PageStates[0].Tags) != 2 || d.PageStates[1].State != "" {
 		t.Fatalf("detail %+v %v", d, e)
 	}
 	if _, e = s.Notebook(ctx, "no-such-note"); !errors.Is(e, ErrNotFound) {
@@ -56,8 +58,13 @@ func TestMCPNotebooksPagesAndTags(t *testing.T) {
 	}
 
 	tags, e := s.Tags(ctx)
-	if e != nil || len(tags) != 1 || tags[0].Tag != "Birds" || tags[0].Pages != 1 {
+	// A tag left on no live page isn't listed.
+	if e != nil || len(tags) != 2 || tags[0].Tag != "Birds" || tags[0].Pages != 1 || tags[1].Tag != "Synthetic lasso\nover two lines" {
 		t.Fatal("tags", tags, e)
+	}
+	// A lasso tag over several lines can be named on one.
+	if tag, _, e := s.TaggedPages(ctx, " synthetic LASSO over  two lines"); e != nil || tag.Tag != "Synthetic lasso\nover two lines" || tag.Pages != 1 {
+		t.Fatal("loose tag", tag, e)
 	}
 	tag, pages, e := s.TaggedPages(ctx, "birds")
 	if e != nil || tag.Tag != "Birds" || len(pages) != 1 || pages[0].Number != 1 || pages[0].Snippet != "Synthetic text" {

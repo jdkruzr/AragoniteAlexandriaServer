@@ -325,9 +325,13 @@ func (s Searcher) Snippets(ctx context.Context, query string, results []Result) 
 	}
 	for i := range results {
 		sn := found[results[i].NoteKey]
-		if results[i].Lexical && strings.Contains(sn.headline, MarkStart) {
+		matched := results[i].Lexical && strings.Contains(sn.headline, MarkStart)
+		switch {
+		case results[i].Kind == "Minutes":
+			results[i].Snippet = minutesSnippet(sn.text, sn.headline, matched)
+		case matched:
 			results[i].Snippet = sn.headline
-		} else {
+		default:
 			results[i].Snippet = excerpt(sn.text, 200)
 		}
 	}
@@ -403,6 +407,22 @@ func (s Searcher) enrich(ctx context.Context, results []Result) error {
 		}
 	}
 	return nil
+}
+
+// minutesSnippet leads with what the minutes are about (their topic, the
+// first line), then the passage the words matched in, which is often in a
+// recording's transcript. Without a word match it is their start.
+func minutesSnippet(text, headline string, matched bool) string {
+	if !matched {
+		return excerpt(text, 200)
+	}
+	topic, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
+	topic = excerpt(topic, 120)
+	plain := strings.Join(strings.Fields(strings.NewReplacer(MarkStart, "", MarkStop, "").Replace(headline)), " ")
+	if topic == "" || strings.HasPrefix(plain, strings.TrimSuffix(topic, "…")) {
+		return headline
+	}
+	return topic + " — " + headline
 }
 
 func excerpt(s string, max int) string {

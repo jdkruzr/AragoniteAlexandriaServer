@@ -9,6 +9,11 @@ summary model to make one item per passage, and adds the results to
 [Tasks and Calendar](tasks-and-calendar.md), each with a link back to the page
 it came from. Your notebook is never changed.
 
+Ink read on its own is read less well than the whole page, so the summary model
+also gets the page's own recognized text and uses it to fix misread words in
+titles and details. Items still come only from the colored ink. Ink you've just
+written waits up to 15 minutes for its page to be recognized first.
+
 ![A BOOX page with red and sky blue ink, and the Note Actions card listing what it made](../images/boox-notebook.png)
 
 ## What You Need First

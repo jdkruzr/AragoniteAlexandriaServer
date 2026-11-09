@@ -30,6 +30,11 @@ handwriting never says the word.
 | **Books & highlights** | BOOX books, highlights and bookmarks from NeoReader; Alexandria Client books (by title or author) and their annotations. | BOOX: words, and meaning when it's on. Client: exact words |
 | **Tasks** | Tasks whose title or details contain every word. Deleted tasks are left out; finished ones are marked **Done**. | Exact words |
 
+A **_Minutes** note sent to your BOOX says the same as the minutes it carries,
+so when both match, only the minutes are listed. A minutes result's snippet
+starts with its topic, then the passage that matched, which is often in a
+recording's transcript.
+
 BOOX tags count as words on the page they're on (see below). Nothing is
 searchable on a BOOX page until it has recognized text. If a search misses a
 page you know is there, check its recognition state first.

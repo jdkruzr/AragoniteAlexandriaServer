@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -291,4 +292,39 @@ func clip(s string, n int) string {
 		return string(r[:n]) + "…"
 	}
 	return s
+}
+
+// clipLines shortens text for the text rendering as clip does, but keeps its
+// line breaks, indenting the lines after the first.
+func clipLines(s string, n int, indent string) string {
+	var lines []string
+	for _, l := range strings.Split(s, "\n") {
+		if l = strings.Join(strings.Fields(l), " "); l != "" {
+			lines = append(lines, l)
+		}
+	}
+	s = strings.Join(lines, "\n")
+	if r := []rune(s); len(r) > n {
+		s = string(r[:n]) + "…"
+	}
+	return strings.ReplaceAll(s, "\n", "\n"+indent)
+}
+
+// madeFrom is the line note actions end a task's or event's detail with,
+// naming the page it came from.
+var madeFrom = regexp.MustCompile(`(?:\A|\n)[ \t]*From [^\n]*, page \d+\.\s*\z`)
+
+// withoutMadeFrom drops that line, for results that name the page in from.
+func withoutMadeFrom(s string) string { return strings.TrimSpace(madeFrom.ReplaceAllString(s, "")) }
+
+// writeFrom adds the "From" line naming the notebook page an item came from.
+func writeFrom(b *strings.Builder, f *taskSource) {
+	if f == nil {
+		return
+	}
+	fmt.Fprintf(b, "  From %s", f.Title)
+	if f.Page > 0 {
+		fmt.Fprintf(b, ", page %d", f.Page)
+	}
+	fmt.Fprintf(b, " (%s)\n", f.Notebook)
 }

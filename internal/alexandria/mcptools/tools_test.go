@@ -432,7 +432,7 @@ func TestMinutes(t *testing.T) {
 	if _, err := db.ExecContext(ctx, `INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('nbm','1-a','notebook','1','test','{"uniqueId":"nbm","title":"Standup","type":1,"status":1,"pageNameList":[]}')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_transcription(source,notebook_id,resource_key,sha256,state,text,duration_ms) VALUES('boox','nbm','resource/data/a.mp3','s','ready','the comet launch slips a week',61000)`); err != nil {
+	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_transcription(source,notebook_id,resource_key,sha256,state,text,duration_ms) VALUES('boox','nbm','resource/data/a.mp3','s','ready','the comet launch slips a week because of the nebula filter',61000)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_note_minutes(source,notebook_id,request_id,state,recordings,topic,keywords,key_points,conclusion,metadata,model,input_hash,finished_at)
@@ -441,8 +441,40 @@ func TestMinutes(t *testing.T) {
 	}
 	var found searchOutput
 	call(t, s, "search", map[string]any{"query": "comet", "source": "boox"}, &found)
-	if len(found.Results) == 0 || found.Results[0].Kind != "minutes" || found.Results[0].Notebook != "boox:nbm" {
+	if len(found.Results) == 0 || found.Results[0].Kind != "minutes" || found.Results[0].Notebook != "boox:nbm" || found.Results[0].Match != "words" {
 		t.Fatalf("minutes search: %+v", found)
+	}
+	// A match in a transcript still leads with what the minutes are about.
+	call(t, s, "search", map[string]any{"query": "nebula", "source": "boox"}, &found)
+	if len(found.Results) != 1 || !strings.HasPrefix(found.Results[0].Snippet, "Comet schedule") || !strings.Contains(found.Results[0].Snippet, "nebula filter") {
+		t.Fatalf("transcript match: %+v", found.Results)
+	}
+	// The _Minutes note sent to BOOX says the same; it isn't listed beside them.
+	for _, q := range []string{
+		`INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES('nbc','1-a','notebook','1','test','{"uniqueId":"nbc","title":"Standup_Minutes","type":1,"status":1,"pageNameList":["c1"]}')`,
+		`INSERT INTO boox_page_index(notebook_id,page_id,page_number,state,text,input_version) VALUES('nbc','c1',1,'ready','Comet schedule. Launch slips a week.','synthetic')`,
+	} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	copies := func() (n int) {
+		call(t, s, "search", map[string]any{"query": "comet", "source": "boox", "mode": "words"}, &found)
+		for _, r := range found.Results {
+			if r.Notebook == "boox:nbc" {
+				n++
+			}
+		}
+		return n
+	}
+	if n := copies(); n != 1 {
+		t.Fatalf("an ordinary note is listed: %d %+v", n, found.Results)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO boox_operation(id,idempotency_key,kind,document_id,expected_revision,payload,state) VALUES(gen_random_uuid(),'synthetic-copy','create_text_note','nbc','','{"minutesOf":"nbm"}','published')`); err != nil {
+		t.Fatal(err)
+	}
+	if n := copies(); n != 0 || found.Counts["pages"] != 1 {
+		t.Fatalf("minutes copy listed: %d %+v", n, found)
 	}
 	var m getMinutesOutput
 	text := call(t, s, "get_minutes", map[string]any{"notebook": "boox:nbm"}, &m)
@@ -489,10 +521,17 @@ func TestTaskLifecycle(t *testing.T) {
 	if created.Task.Due != "2026-11-20" || created.Task.Status != "open" || !strings.Contains(created.Task.URL, "edit="+id) {
 		t.Fatalf("created: %+v", created.Task)
 	}
-	call(t, s, "create_task", map[string]any{"title": "From ink"}, &created)
+	call(t, s, "create_task", map[string]any{"title": "Ink task", "detail": "from the synthetic vendor\nwith rack 4\n\nFrom Synthetic Sync, page 1."}, &created)
 	inked := created.Task.ID
 	if _, err := db.ExecContext(ctx, `INSERT INTO alexandria_note_action_item(source,notebook_id,page_id,color,fingerprint,kind,item_id) VALUES('boox','bx00','p1','red','f','task',$1)`, inked); err != nil {
 		t.Fatal(err)
+	}
+	// The page it came from is named once, in from; the detail keeps its lines.
+	var got taskOutput
+	text := call(t, s, "get_task", map[string]any{"id": inked}, &got)
+	if got.Task.Detail != "from the synthetic vendor\nwith rack 4" || strings.Contains(text, "Synthetic Sync") ||
+		!strings.Contains(text, "  from the synthetic vendor\n  with rack 4\n") || strings.Count(text, "From ") != 1 {
+		t.Fatalf("made from a page: %+v\n%s", got.Task, text)
 	}
 	var list listTasksOutput
 	call(t, s, "list_tasks", nil, &list)
@@ -512,9 +551,9 @@ func TestTaskLifecycle(t *testing.T) {
 		t.Fatalf("category and priority: %+v", list)
 	}
 	var updated taskOutput
-	call(t, s, "update_task", map[string]any{"id": id, "due": "", "done": true}, &updated)
-	if updated.Task.Status != "done" || updated.Task.Due != "" || updated.Task.Completed == "" {
-		t.Fatalf("done: %+v", updated.Task)
+	text = call(t, s, "update_task", map[string]any{"id": id, "due": "", "done": true}, &updated)
+	if updated.Task.Status != "done" || updated.Task.Due != "" || updated.Task.Completed == "" || !strings.Contains(text, ": done "+updated.Task.Completed) {
+		t.Fatalf("done: %+v\n%s", updated.Task, text)
 	}
 	call(t, s, "update_task", map[string]any{"id": id, "done": false}, &updated)
 	if updated.Task.Status != "open" {

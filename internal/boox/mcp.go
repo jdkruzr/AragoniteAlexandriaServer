@@ -293,12 +293,15 @@ type TagCount struct {
 	Pages, Notebooks int
 }
 
-// Tags lists every BOOX tag, most used first.
+// Tags lists the BOOX tags on live pages, most used first.
 func (s Service) Tags(ctx context.Context) ([]TagCount, error) {
 	all, e := s.tagSummaries(ctx)
 	out := make([]TagCount, 0, len(all))
 	for _, t := range all {
-		out = append(out, TagCount{Tag: t.Content, Pages: t.Pages, Notebooks: t.Notebooks})
+		// Tags left only on deleted notebooks or removed pages lead nowhere.
+		if t.Pages > 0 {
+			out = append(out, TagCount{Tag: t.Content, Pages: t.Pages, Notebooks: t.Notebooks})
+		}
 	}
 	return out, e
 }
@@ -309,16 +312,18 @@ type TaggedPage struct {
 	Number                                int
 }
 
-// TaggedPages lists a tag's live pages (any case), with the tag as stored;
-// ErrNotFound when no tag matches.
+// TaggedPages lists a tag's live pages, with the tag as stored; ErrNotFound
+// when no tag matches. Case and runs of spaces or line breaks don't matter, so
+// a tag made from a lasso selection over several lines can be named on one.
 func (s Service) TaggedPages(ctx context.Context, tag string) (TagCount, []TaggedPage, error) {
 	all, e := s.tagSummaries(ctx)
 	if e != nil {
 		return TagCount{}, nil, e
 	}
 	var found *tagSummary
+	loose := func(s string) string { return strings.Join(strings.Fields(s), " ") }
 	for i, t := range all {
-		if strings.EqualFold(t.Content, strings.TrimSpace(tag)) {
+		if strings.EqualFold(loose(t.Content), loose(tag)) {
 			found = &all[i]
 			break
 		}

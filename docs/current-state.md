@@ -12,7 +12,19 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-08): **`mcpactions-191260f45b3e`**, migration **0043**,
+Latest recorded deployment (2026-11-09): **`webfixes-a7bde4b11518`**, app-only on schema **43**,
+image `sha256:792fae837f817837bc94381e806c18e7de471424dbf31a8b3d142c37b2d43930`, on top of
+**`mcpactions-191260f45b3e`**. Fixes from web Claude's review of the MCP surface: note actions give the
+summary model the page's own recognized text to correct misread colored ink (fresh ink waits up to 15
+minutes for its page's recognition; red ink read alone had made "Reply on Lumen thread" into "Reply to
+current thread"); search drops a sent `_Minutes` note's pages when its minutes match too (web and MCP),
+minutes snippets lead with their topic, and MCP marks hits found only by meaning (`match`, `by_meaning`);
+MCP task and event text names the source page once and keeps detail line breaks, done tasks show when;
+MCP `list_tags` hides tags on no live page and `get_tag` ignores line breaks. Live check (throwaway token):
+all of the above as described, 18 files changed, readyz 200, anonymous 401, no panics; the misread task
+was renamed "Reply on Lumen thread" with the owner's OK and now matches "Lumen".
+
+Previous deployment (2026-11-08): **`mcpactions-191260f45b3e`**, migration **0043**,
 image `sha256:bd8bcf87cd6bcfc78721ea29232a79b46ec96972c9924c2d503a65086163e474`, on top of
 **`mcptools-cc9822da4690`**. The last MCP step: action tools `recognize` (the web's queue path; at
 most 50 pages a call), `request_minutes` / `cancel_minutes`, and `create_boox_note` (only adds a

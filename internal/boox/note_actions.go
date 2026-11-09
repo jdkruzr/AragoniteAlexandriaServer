@@ -154,9 +154,15 @@ func (s Service) FindActions(ctx context.Context, id string, num int) (int, erro
 	return s.noteInk(ctx, id, ids[num-1], inkSummary(p), true)
 }
 
+// noteActionContextWait is how long after the ink was saved a note action
+// waits for the page's own recognition, to read the ink in context; after
+// it, the ink is read alone.
+const noteActionContextWait = "15 minutes"
+
 // ProcessNoteActions performs one leased note action: recognize the colored
-// ink alone, ask the summary model for items, and create the ones this page
-// hasn't produced before. Items are never changed afterwards.
+// ink alone, ask the summary model for items (with the page's own recognized
+// text, when there is any, to correct misread words), and create the ones this
+// page hasn't produced before. Items are never changed afterwards.
 func (s Service) ProcessNoteActions(ctx context.Context, ocr notes.OCR, summary noteactions.Completer) (bool, error) {
 	var id, page, color, action, oldInput, oldText string
 	var attempts int
@@ -248,6 +254,20 @@ func (s Service) ProcessNoteActions(ctx context.Context, ocr notes.OCR, summary 
 	if text == "" {
 		return finish("ready", "The colored ink had no readable text.", input, text, ocr.Model())
 	}
+	// The whole page, recognized with its context, reads the colored ink
+	// better than the ink alone. Ink just written waits a little for it.
+	var pageText string
+	var pending bool
+	e = s.DB.QueryRowContext(ctx, `SELECT coalesce(text,''),coalesce(state IN ('queued','processing') AND $3::timestamptz > now()-$4::interval,false)
+ FROM boox_page_index WHERE notebook_id=$1 AND page_id=$2`, id, page, saved, noteActionContextWait).Scan(&pageText, &pending)
+	if e != nil && !errors.Is(e, sql.ErrNoRows) {
+		return true, e
+	}
+	if pending {
+		_, e = s.DB.ExecContext(ctx, `UPDATE alexandria_note_action SET state='queued',detail=$5,next_at=now()+interval '30 seconds',lease_token='',lease_until=NULL,updated_at=now()`+where,
+			id, page, color, token, "Waiting for the page to be recognized, to read the colored ink in context.")
+		return true, e
+	}
 	zone := settings.Zone(ctx, s.DB)
 	written := time.Now()
 	if saved.Valid {
@@ -257,7 +277,7 @@ func (s Service) ProcessNoteActions(ctx context.Context, ocr notes.OCR, summary 
 	if action == "event" {
 		instructions = s.Actions.EventInstructions
 	}
-	items, e := noteactions.Extract(ctx, summary, action, instructions, noteactions.Input{Notebook: n.Meta.Title, Page: num, Written: written, Zone: zone, Text: text})
+	items, e := noteactions.Extract(ctx, summary, action, instructions, noteactions.Input{Notebook: n.Meta.Title, Page: num, Written: written, Zone: zone, Text: text, PageText: pageText})
 	if errors.Is(e, noteactions.ErrFormat) {
 		return retry("The summary model's answer didn't follow the note action format.", false)
 	}

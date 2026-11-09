@@ -153,6 +153,7 @@ func (d Deps) taskRows(ctx context.Context, list []tasksvc.Task, loc *time.Locat
 		}
 		if s, ok := sources[t.ID]; ok {
 			r.From = &taskSource{Source: sourceBOOX, Notebook: ref(sourceBOOX, s.NotebookID), Title: s.Notebook, Page: s.Page, URL: d.link(s.URL())}
+			r.Detail = withoutMadeFrom(r.Detail)
 		} else if fn := t.ForestNote; fn != nil && fn.NotebookID != "" {
 			r.From = &taskSource{Source: sourceClient, Notebook: ref(sourceClient, fn.NotebookID), Title: fn.NotebookName,
 				URL: d.link(notebookPath(sourceClient, fn.NotebookID, 0, fn.PageID))}
@@ -165,6 +166,9 @@ func (d Deps) taskRows(ctx context.Context, list []tasksvc.Task, loc *time.Locat
 func formatTask(r taskRow) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s (id %s): %s", r.Title, r.ID, r.Status)
+	if r.Completed != "" {
+		fmt.Fprintf(&b, " %s", r.Completed)
+	}
 	if r.Due != "" {
 		fmt.Fprintf(&b, ", due %s", r.Due)
 	}
@@ -175,18 +179,12 @@ func formatTask(r taskRow) string {
 		fmt.Fprintf(&b, ", categories %s", strings.Join(r.Categories, ", "))
 	}
 	b.WriteString("\n")
-	if r.From != nil {
-		fmt.Fprintf(&b, "  From %s", r.From.Title)
-		if r.From.Page > 0 {
-			fmt.Fprintf(&b, ", page %d", r.From.Page)
-		}
-		fmt.Fprintf(&b, " (%s)\n", r.From.Notebook)
-	}
+	writeFrom(&b, r.From)
 	if r.Detail != "" {
-		fmt.Fprintf(&b, "  %s\n", clip(r.Detail, 400))
+		fmt.Fprintf(&b, "  %s\n", clipLines(r.Detail, 400, "  "))
 	}
 	if r.Comment != "" {
-		fmt.Fprintf(&b, "  Comment: %s\n", clip(r.Comment, 400))
+		fmt.Fprintf(&b, "  Comment: %s\n", clipLines(r.Comment, 400, "  "))
 	}
 	return b.String()
 }

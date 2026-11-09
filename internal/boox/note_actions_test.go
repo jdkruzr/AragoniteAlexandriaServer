@@ -44,9 +44,13 @@ func colorShapeZip(t *testing.T, shapes ...*pb.ShapeInfoProto) []byte {
 	return out.Bytes()
 }
 
-type actionsModel struct{ tasks, events string }
+type actionsModel struct {
+	tasks, events string
+	prompts       []string
+}
 
-func (m *actionsModel) Complete(_ context.Context, system, _ string, _ int) (string, error) {
+func (m *actionsModel) Complete(_ context.Context, system, prompt string, _ int) (string, error) {
+	m.prompts = append(m.prompts, prompt)
 	if strings.Contains(system, `"end_time"`) {
 		return m.events, nil
 	}
@@ -130,6 +134,42 @@ func TestNoteActionsMakeItemsOnce(t *testing.T) {
 	}
 	if n := count(`SELECT count(*) FROM alexandria_note_action_item`); n != 3 {
 		t.Fatalf("ledger = %d", n)
+	}
+	// Fresh ink waits for the page's own recognition, then is read with it.
+	exec := func(q string) {
+		t.Helper()
+		if _, e := s.DB.ExecContext(ctx, q); e != nil {
+			t.Fatal(e)
+		}
+	}
+	exec(`UPDATE boox_page_index SET state='queued',text='Reply on synthetic Lumen thread' WHERE notebook_id='note'`)
+	exec(`UPDATE alexandria_note_action SET state='queued',next_at=now(),page_saved_at=now() WHERE color='red'`)
+	model.prompts = nil
+	if found, e := s.ProcessNoteActions(ctx, ocr, model); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	var state string
+	var later bool
+	if e := s.DB.QueryRowContext(ctx, `SELECT state,detail,next_at>now() FROM alexandria_note_action WHERE color='red'`).Scan(&state, &detail, &later); e != nil ||
+		state != "queued" || !strings.Contains(detail, "Waiting for the page") || !later || len(model.prompts) != 0 {
+		t.Fatalf("fresh ink: %s %q later=%v prompts=%d %v", state, detail, later, len(model.prompts), e)
+	}
+	exec(`UPDATE boox_page_index SET state='ready' WHERE notebook_id='note'`)
+	exec(`UPDATE alexandria_note_action SET next_at=now() WHERE color='red'`)
+	if found, e := s.ProcessNoteActions(ctx, ocr, model); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	if len(model.prompts) != 1 || !strings.Contains(model.prompts[0], "WHOLE PAGE") || !strings.Contains(model.prompts[0], "Reply on synthetic Lumen thread") {
+		t.Fatalf("prompts %q", model.prompts)
+	}
+	// Ink saved long ago doesn't wait for a page that is still queued.
+	exec(`UPDATE boox_page_index SET state='queued' WHERE notebook_id='note'`)
+	exec(`UPDATE alexandria_note_action SET state='queued',next_at=now(),page_saved_at=now()-interval '1 hour' WHERE color='red'`)
+	if found, e := s.ProcessNoteActions(ctx, ocr, model); e != nil || !found {
+		t.Fatal(found, e)
+	}
+	if e := s.DB.QueryRowContext(ctx, `SELECT state FROM alexandria_note_action WHERE color='red'`).Scan(&state); e != nil || state != "ready" || len(model.prompts) != 2 {
+		t.Fatalf("old ink: %s prompts=%d %v", state, len(model.prompts), e)
 	}
 	// Ink written before note actions started is left alone automatically.
 	if e := settings.Set(ctx, s.DB, settings.NoteActionsSince, time.Now().Add(time.Hour).UTC().Format(time.RFC3339), false); e != nil {

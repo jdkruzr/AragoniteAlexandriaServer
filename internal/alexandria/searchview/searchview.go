@@ -86,6 +86,9 @@ type Hit struct {
 type List struct {
 	Hits  []Hit
 	Total int
+	// Meaning is how many of Hits were found by meaning alone: the nearest
+	// pages to the query, not pages that have its words.
+	Meaning int
 }
 
 // Query is a search.
@@ -138,10 +141,17 @@ func (s Searcher) All(ctx context.Context, q Query) (map[string]List, error) {
 		}
 		pages.Hits = append(pages.Hits, Hit{Kind: kind, Source: r.Source, ID: r.NoteKey, Title: r.NotebookName, URL: r.URL, CreatedAt: r.CreatedAt, position: r.Position, Live: r})
 	}
+	if scope != "client" {
+		if err = s.dropMinutesCopies(ctx, &pages); err != nil {
+			return nil, err
+		}
+	}
+	pages.Meaning = meaningOnly(pages.Hits)
 	reading, err := s.readingHits(ctx, ranking)
 	if err != nil {
 		return nil, err
 	}
+	reading.Meaning = meaningOnly(reading.Hits)
 	var notebooks []List
 	if scope != "client" {
 		list, err := s.booxNotebooks(ctx, terms)
@@ -169,6 +179,54 @@ func (s Searcher) All(ctx context.Context, q Query) (map[string]List, error) {
 	return map[string]List{"notebooks": Fuse(notebooks...), "pages": pages, "books": Fuse(parts...), "tasks": tasks}, nil
 }
 
+// meaningOnly counts the hits found by meaning alone.
+func meaningOnly(hits []Hit) int {
+	n := 0
+	for _, h := range hits {
+		if h.Live != nil && !h.Live.Lexical {
+			n++
+		}
+	}
+	return n
+}
+
+// dropMinutesCopies leaves out the pages of a "_Minutes" note sent to BOOX
+// when the minutes it carries are among the matches: it says the same thing.
+func (s Searcher) dropMinutesCopies(ctx context.Context, pages *List) error {
+	minutes := map[string]bool{}
+	for _, h := range pages.Hits {
+		if h.Kind == KindMinutes {
+			minutes[h.Live.NotebookID] = true
+		}
+	}
+	if len(minutes) == 0 {
+		return nil
+	}
+	rows, err := s.DB.QueryContext(ctx, `SELECT DISTINCT document_id,payload->>'minutesOf' FROM boox_operation
+	 WHERE kind='create_text_note' AND coalesce(payload->>'minutesOf','')<>''`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	copyOf := map[string]string{}
+	for rows.Next() {
+		var note, of string
+		if err = rows.Scan(&note, &of); err != nil {
+			return err
+		}
+		copyOf[note] = of
+	}
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	before := len(pages.Hits)
+	pages.Hits = slices.DeleteFunc(pages.Hits, func(h Hit) bool {
+		return h.Kind == KindPage && h.Source == "boox" && minutes[copyOf[h.Live.NotebookID]]
+	})
+	pages.Total -= before - len(pages.Hits)
+	return nil
+}
+
 // Fuse merges ranked lists by reciprocal rank (k = 60). Each match is in one
 // list, so this interleaves them: every list's first match, then every
 // list's second, earlier lists first.
@@ -182,6 +240,7 @@ func Fuse(lists ...List) List {
 	out := List{}
 	for i, list := range lists {
 		out.Total += list.Total
+		out.Meaning += list.Meaning
 		for rank, hit := range list.Hits {
 			all = append(all, scored{hit, 1 / (60 + float64(rank+1)), i})
 		}
