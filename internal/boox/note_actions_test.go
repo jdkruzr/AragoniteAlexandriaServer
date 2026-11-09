@@ -142,7 +142,7 @@ func TestNoteActionsMakeItemsOnce(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
-	exec(`UPDATE boox_page_index SET state='queued',text='Reply on synthetic Lumen thread' WHERE notebook_id='note'`)
+	exec(`UPDATE boox_page_index SET state='queued',text='Reply on synthetic Zephyr thread' WHERE notebook_id='note'`)
 	exec(`UPDATE alexandria_note_action SET state='queued',next_at=now(),page_saved_at=now() WHERE color='red'`)
 	model.prompts = nil
 	if found, e := s.ProcessNoteActions(ctx, ocr, model); e != nil || !found {
@@ -159,7 +159,7 @@ func TestNoteActionsMakeItemsOnce(t *testing.T) {
 	if found, e := s.ProcessNoteActions(ctx, ocr, model); e != nil || !found {
 		t.Fatal(found, e)
 	}
-	if len(model.prompts) != 1 || !strings.Contains(model.prompts[0], "WHOLE PAGE") || !strings.Contains(model.prompts[0], "Reply on synthetic Lumen thread") {
+	if len(model.prompts) != 1 || !strings.Contains(model.prompts[0], "WHOLE PAGE") || !strings.Contains(model.prompts[0], "Reply on synthetic Zephyr thread") {
 		t.Fatalf("prompts %q", model.prompts)
 	}
 	// Ink saved long ago doesn't wait for a page that is still queued.

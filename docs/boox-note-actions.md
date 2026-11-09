@@ -27,7 +27,8 @@ events. The events live in a new CalDAV calendar beside Tasks.
   from the colored ink alone. Ink saved within 15 minutes waits (30-second
   requeues, no attempt counted) while its page is queued or processing for
   recognition; after that it is read without the page. Ink read alone had
-  turned "Reply on Lumen thread" into "Reply to current thread".
+  misread a project name in a short to-do line that the whole page read
+  correctly.
 
 ## How It Works
 

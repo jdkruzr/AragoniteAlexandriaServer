@@ -16,8 +16,9 @@ Latest recorded deployment (2026-11-09): **`folderlist-73ba8e7331b8`**, app-only
 image `sha256:42596ffd02a01f261d12e72d818968a072b84345ed4e959dbb84c7d9264c675e`, on top of
 **`foldersearch-369036c34153`**: MCP `list_notebooks` takes a folder by path or id (as `search` does) and
 refuses an unknown one; the first page of a flat listing lists every folder with its path and folder_id,
-which the folder errors of `search`, `list_notebooks` and `create_boox_note` now point to. Live check: four
-BOOX folders listed with ids; "Moffitt", "moffitt" and its id each list its 813 notebooks; "Moffit" refused.
+which the folder errors of `search`, `list_notebooks` and `create_boox_note` now point to. Live check: the
+library's BOOX folders listed with ids; one found by its path, the path in another case, and its id, each
+listing the same notebooks; a misspelled path refused.
 
 Previous deployment (2026-11-09): **`foldersearch-369036c34153`**, app-only on schema **43**,
 image `sha256:ac35d47b5ccc8718f0c765fb3025181fbdc9c386cfeb9f30efd3d7b80484e9a9`, on top of
@@ -26,8 +27,9 @@ image `sha256:ac35d47b5ccc8718f0c765fb3025181fbdc9c386cfeb9f30efd3d7b80484e9a9`,
 ignored); MCP `search` takes `folder` as a folder_id or path. The folder's notebooks go into the live
 query itself (`notes.Searcher.Rank` `within`, also the semantic candidates), so matches by meaning come
 from inside it; notebook titles and tasks made from those notebooks are narrowed too, and books are left
-out. Live check (read token): "Dell" 63 pages everywhere = Moffitt 61 + Personal 2; web menu lists the
-four BOOX folders and marks the chosen one; unknown folders refused over MCP; no panics.
+out. Live check (read token): for two words, the page count everywhere equals the sum over the top-level
+folders; the web menu lists the BOOX folders and marks the chosen one; unknown folders refused over MCP;
+no panics.
 
 Previous deployment (2026-11-09): **`webfixes2-fb840458efba`**, app-only on schema **43**,
 image `sha256:0183c901a2cce15b85041af183bf89724d674279d78484b69cb690c8f3af6d27`, on top of
@@ -39,13 +41,13 @@ Previous deployment (2026-11-09): **`webfixes-a7bde4b11518`**, app-only on schem
 image `sha256:792fae837f817837bc94381e806c18e7de471424dbf31a8b3d142c37b2d43930`, on top of
 **`mcpactions-191260f45b3e`**. Fixes from web Claude's review of the MCP surface: note actions give the
 summary model the page's own recognized text to correct misread colored ink (fresh ink waits up to 15
-minutes for its page's recognition; red ink read alone had made "Reply on Lumen thread" into "Reply to
-current thread"); search drops a sent `_Minutes` note's pages when its minutes match too (web and MCP),
+minutes for its page's recognition; red ink read alone had misread a project name in a short to-do line,
+which the whole page read correctly); search drops a sent `_Minutes` note's pages when its minutes match too (web and MCP),
 minutes snippets lead with their topic, and MCP marks hits found only by meaning (`match`, `by_meaning`);
 MCP task and event text names the source page once and keeps detail line breaks, done tasks show when;
 MCP `list_tags` hides tags on no live page and `get_tag` ignores line breaks. Live check (throwaway token):
 all of the above as described, 18 files changed, readyz 200, anonymous 401, no panics; the misread task
-was renamed "Reply on Lumen thread" with the owner's OK and now matches "Lumen".
+was retitled with the owner's OK and now matches a search for the project name.
 
 Previous deployment (2026-11-08): **`mcpactions-191260f45b3e`**, migration **0043**,
 image `sha256:bd8bcf87cd6bcfc78721ea29232a79b46ec96972c9924c2d503a65086163e474`, on top of
@@ -58,8 +60,8 @@ instructions say so, subscribed descriptions come from `list_events` only with `
 every MCP change is recorded in `alexandria_mcp_change` (token label, tool, arguments, reply; 90
 days), shown under Settings → API & MCP → Recent changes by assistants. Tokens now carry their label
 into the request. Live check: refusals changed nothing (operations, jobs, minutes counts unchanged);
-on "20261101 Kit" (named by the owner) page 1 was recognized again with the cached model result,
-minutes were rewritten (and, automatic sending being on, the untouched Kit_Minutes note replaced),
+on a notebook the owner named, page 1 was recognized again with the cached model result,
+minutes were rewritten (and, automatic sending being on, its untouched _Minutes note replaced),
 and a top-level "MCP test note (delete me)" was published; the record lists all three under the
 throwaway token's name; no panics. Rollback: `rollback-schema.sh` (drops the table) then `rollback.sh`.
 

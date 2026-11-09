@@ -62,13 +62,13 @@ func TestPromptHasDateAndZone(t *testing.T) {
 }
 
 func TestPromptAddsWholePageOnlyWhenThere(t *testing.T) {
-	in := Input{Notebook: "Stand-up", Page: 2, Written: time.Date(2026, 11, 2, 9, 0, 0, 0, time.UTC), Text: "Reply do Current thread"}
+	in := Input{Notebook: "Synthetic stand-up", Page: 2, Written: time.Date(2026, 11, 2, 9, 0, 0, 0, time.UTC), Text: "Reply do Zephr thread"}
 	if p := Prompt(in); strings.Contains(p, "WHOLE PAGE") {
 		t.Fatalf("page context without page text:\n%s", p)
 	}
-	in.PageText = "Orientation today.\nReply on Lumen thread"
+	in.PageText = "Synthetic orientation notes.\nReply on Zephyr thread"
 	p := Prompt(in)
-	if !strings.Contains(p, "WHOLE PAGE") || !strings.Contains(p, "Reply on Lumen thread") || strings.Index(p, "RECOGNIZED TEXT") > strings.Index(p, "WHOLE PAGE") {
+	if !strings.Contains(p, "WHOLE PAGE") || !strings.Contains(p, "Reply on Zephyr thread") || strings.Index(p, "RECOGNIZED TEXT") > strings.Index(p, "WHOLE PAGE") {
 		t.Fatalf("prompt:\n%s", p)
 	}
 	in.PageText = strings.Repeat("x", MaxPageText+50)

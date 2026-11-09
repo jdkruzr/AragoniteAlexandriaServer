@@ -555,7 +555,7 @@ func TestSearchWithinFolder(t *testing.T) {
 	if list.Folder != "Work / 2026" || len(list.Folders) != 0 || !strings.Contains(text, " in Work / 2026 (boox).") {
 		t.Fatalf("by path: %+v\n%s", list, text)
 	}
-	if msg := refuse(t, s, "list_notebooks", map[string]any{"source": "boox", "folder": "Moffit"}); !strings.Contains(msg, "lists every folder") {
+	if msg := refuse(t, s, "list_notebooks", map[string]any{"source": "boox", "folder": "Wrok"}); !strings.Contains(msg, "lists every folder") {
 		t.Fatal(msg)
 	}
 }
