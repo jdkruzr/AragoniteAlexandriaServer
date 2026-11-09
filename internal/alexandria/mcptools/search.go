@@ -17,6 +17,7 @@ type searchInput struct {
 	Query  string `json:"query" jsonschema:"words to find"`
 	Type   string `json:"type,omitempty" jsonschema:"all (default), notebooks (titles), pages (page text and minutes), books (books, highlights and annotations) or tasks"`
 	Source string `json:"source,omitempty" jsonschema:"all (default), boox or client; tasks follow the notebook they came from"`
+	Folder string `json:"folder,omitempty" jsonschema:"only notebooks in this folder and the folders inside it, and tasks made from them: a folder_id from list_notebooks or a path such as Work / 2026; books are left out"`
 	Mode   string `json:"mode,omitempty" jsonschema:"meaning (default: words and meaning, when search by meaning is set up) or words (exact words only)"`
 	Sort   string `json:"sort,omitempty" jsonschema:"best (default), newest, oldest or title"`
 	// Created bounds compare when each match was created.
@@ -45,6 +46,7 @@ type searchHit struct {
 
 type searchOutput struct {
 	Query      string         `json:"query"`
+	Folder     string         `json:"folder,omitempty" jsonschema:"the folder searched, as source: path"`
 	Counts     map[string]int `json:"counts" jsonschema:"matches of each type (notebooks, pages, books, tasks) and all"`
 	ByMeaning  int            `json:"by_meaning" jsonschema:"how many of all were found by meaning alone: the nearest pages, a fixed number however relevant"`
 	Results    []searchHit    `json:"results"`
@@ -107,11 +109,19 @@ func registerSearch(s *mcp.Server, d Deps) {
 				}
 			}
 			search := searchview.Searcher{DB: d.DB, Objects: d.Objects, Search: d.Search}
-			lists, err := search.All(ctx, searchview.Query{Text: q, Words: in.Mode == "words", Source: source, NativeBOOX: d.BOOX != nil, UntitledBook: "Untitled book"})
+			query := searchview.Query{Text: q, Words: in.Mode == "words", Source: source, NativeBOOX: d.BOOX != nil, UntitledBook: "Untitled book"}
+			out := searchOutput{Query: q, Counts: map[string]int{}, Results: []searchHit{}}
+			if in.Folder != "" {
+				f, err := findFolder(ctx, search, d.BOOX != nil, source, in.Folder)
+				if err != nil {
+					return "", searchOutput{}, err
+				}
+				query.Folder, out.Folder = &searchview.Folder{Source: f.Source, ID: f.ID}, f.Source+": "+f.Path
+			}
+			lists, err := search.All(ctx, query)
 			if err != nil {
 				return "", searchOutput{}, err
 			}
-			out := searchOutput{Query: q, Counts: map[string]int{}, Results: []searchHit{}}
 			for _, t := range searchview.Types[1:] {
 				out.Counts[t] = lists[t].Total
 				out.Counts["all"] += lists[t].Total
@@ -136,6 +146,9 @@ func registerSearch(s *mcp.Server, d Deps) {
 				return "", searchOutput{}, err
 			}
 			var b strings.Builder
+			if out.Folder != "" {
+				fmt.Fprintf(&b, "In %s (and its folders): ", out.Folder)
+			}
 			fmt.Fprintf(&b, "%d matches (%d notebooks, %d pages, %d books and highlights, %d tasks)", out.Counts["all"], out.Counts["notebooks"], out.Counts["pages"], out.Counts["books"], out.Counts["tasks"])
 			if out.ByMeaning > 0 {
 				fmt.Fprintf(&b, "; %d of them are only near the query in meaning (marked \"by meaning\"), which says little about relevance: "+
@@ -179,6 +192,29 @@ func registerSearch(s *mcp.Server, d Deps) {
 			b.WriteString(more(out.NextCursor))
 			return b.String(), out, nil
 		})
+}
+
+// findFolder finds a folder by id or path (any case), within a source when
+// one is given.
+func findFolder(ctx context.Context, search searchview.Searcher, nativeBOOX bool, source, name string) (searchview.FolderChoice, error) {
+	all, err := search.Folders(ctx, nativeBOOX)
+	if err != nil {
+		return searchview.FolderChoice{}, err
+	}
+	name = strings.Join(strings.Fields(name), " ")
+	var found []searchview.FolderChoice
+	for _, f := range all {
+		if (source == "" || f.Source == source) && (f.ID == name || strings.EqualFold(f.Path, name)) {
+			found = append(found, f)
+		}
+	}
+	switch {
+	case len(found) == 0:
+		return searchview.FolderChoice{}, fmt.Errorf("no folder %q; list_notebooks shows folders and their folder_id", name)
+	case len(found) > 1:
+		return searchview.FolderChoice{}, fmt.Errorf("both sources have a folder %q; say source boox or client", name)
+	}
+	return found[0], nil
 }
 
 // searchHit describes a match for an assistant: what it is and how to open it.

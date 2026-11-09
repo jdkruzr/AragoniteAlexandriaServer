@@ -344,7 +344,6 @@
   "Note actions & minutes": "Acciones de notas y actas",
   "Note actions need automatic recognition and a summary model; see <a href=\"/settings/actions\">Settings → Note actions</a>.": "Las acciones de notas necesitan el reconocimiento automático y un modelo de resumen; consulta <a href=\"/settings/actions\">Ajustes → Acciones de notas</a>.",
   "Note actions turn ink in two BOOX pen colours into tasks and calendar events, each linking back to its page. Red makes tasks and sky blue makes events; you can swap or turn off either. Alexandria reads that colour's ink when the page is recognized, and the reader's side panel shows what each page made.": "Las acciones de notas convierten la tinta de dos colores de lápiz de BOOX en tareas y eventos del calendario, cada uno enlazado a su página. El rojo crea tareas y el azul celeste eventos; puedes intercambiarlos o desactivar cualquiera. Alexandria lee la tinta de ese color cuando se reconoce la página, y el panel lateral del lector muestra lo que creó cada página.",
-  "Notebook titles and recognized page text from both sources, typed BOOX text notes, Audio Note Minutes, books and highlights, and tasks. Pages that were never recognized can only be found by title. The tabs split results by kind; All mixes them, best first.": "Títulos de cuadernos y texto de páginas reconocidas de ambas fuentes, notas de texto escritas en BOOX, Audio Note Minutes, libros y resaltados, y tareas. Las páginas que nunca se reconocieron solo se pueden encontrar por título. Las pestañas separan los resultados por tipo; Todas los mezcla, los mejores primero.",
   "Notebook titles, recognized and typed pages, books, highlights, minutes and tasks.": "Títulos de cuadernos, páginas reconocidas y escritas con teclado, libros, resaltados, actas y tareas.",
   "Notebooks in the tablets' trash": "Cuadernos en la papelera de las tabletas",
   "Notebooks over the limit": "Cuadernos por encima del límite",
@@ -1956,5 +1955,7 @@
   "Recent changes by assistants": "Cambios recientes de asistentes",
   "Everything an assistant changed through MCP: tasks, events, text boxes, recognition, minutes and new BOOX notes, with the app that did it. Kept for 90 days.": "Todo lo que un asistente cambió mediante MCP: tareas, eventos, cuadros de texto, reconocimiento, actas y notas nuevas de BOOX, con la aplicación que lo hizo. Se guarda 90 días.",
   "An app": "Una aplicación",
-  "No changes yet.": "Aún no hay cambios."
+  "No changes yet.": "Aún no hay cambios.",
+  "Notebook titles and recognized page text from both sources, typed BOOX text notes, Audio Note Minutes, books and highlights, and tasks. Pages that were never recognized can only be found by title. The tabs split results by kind; All mixes them, best first. Choose a folder to search only it and the folders inside it; books are left out then.": "Títulos de cuadernos y texto de páginas reconocidas de ambas fuentes, notas de texto escritas en BOOX, Audio Note Minutes, libros y resaltados, y tareas. Las páginas que nunca se reconocieron solo se pueden encontrar por título. Las pestañas separan los resultados por tipo; Todas los mezcla, los mejores primero. Elige una carpeta para buscar solo en ella y en las carpetas que contiene; entonces se omiten los libros.",
+  "Only {{.Path}} and the folders inside it.": "Solo {{.Path}} y las carpetas que contiene."
 }

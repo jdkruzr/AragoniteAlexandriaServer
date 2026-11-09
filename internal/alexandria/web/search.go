@@ -46,10 +46,11 @@ type searchTab struct {
 	Current          bool
 }
 
-// searchState is the page's URL state.
+// searchState is the page's URL state. Folder is "boox:<id>" or
+// "client:<id>", and implies its source.
 type searchState struct {
-	Query, Type, Mode, Source string
-	Order                     searchorder.Order
+	Query, Type, Mode, Source, Folder string
+	Order                             searchorder.Order
 }
 
 func (s searchState) values() url.Values {
@@ -62,6 +63,9 @@ func (s searchState) values() url.Values {
 	}
 	if s.Source != "" {
 		v.Set("source", s.Source)
+	}
+	if s.Folder != "" {
+		v.Set("folder", s.Folder)
 	}
 	if s.Order != searchorder.Relevance {
 		v.Set("sort", string(s.Order))
@@ -77,7 +81,8 @@ func (s searchState) Link(key, value string) string {
 	case "mode":
 		s.Mode = value
 	case "source":
-		s.Source = value
+		// Another source has other folders.
+		s.Source, s.Folder = value, ""
 	}
 	return "/search?" + s.values().Encode()
 }
@@ -85,10 +90,41 @@ func (s searchState) Link(key, value string) string {
 func (d Deps) searchRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /search", func(w http.ResponseWriter, r *http.Request) {
 		values := r.URL.Query()
-		s := searchState{Query: strings.TrimSpace(values.Get("q")), Type: values.Get("type"), Mode: values.Get("mode"), Source: values.Get("source"), Order: searchorder.Parse(values.Get("sort"))}
+		s := searchState{Query: strings.TrimSpace(values.Get("q")), Type: values.Get("type"), Mode: values.Get("mode"), Source: values.Get("source"),
+			Folder: values.Get("folder"), Order: searchorder.Parse(values.Get("sort"))}
 		if len(s.Query) > 256 || (s.Source != "" && s.Source != "client" && s.Source != "boox") || (s.Source == "boox" && !d.Status.NativeBOOX) {
 			http.Error(w, "Invalid search query or source.", 400)
 			return
+		}
+		search := searchview.Searcher{DB: d.DB, Objects: d.Objects, Search: d.Search}
+		folders, err := search.Folders(r.Context(), d.Status.NativeBOOX)
+		if err != nil {
+			d.fail(w, err)
+			return
+		}
+		// The folder menu lists the chosen source's folders, or both.
+		var choices []folderChoice
+		var folder *searchview.Folder
+		var folderPath string
+		sources := map[string]bool{}
+		for _, f := range folders {
+			sources[f.Source] = true
+		}
+		for _, f := range folders {
+			if s.Source != "" && f.Source != s.Source {
+				continue
+			}
+			c := folderChoice{Value: f.Source + ":" + f.ID, Path: f.Path}
+			if len(sources) > 1 && s.Source == "" {
+				c.Source = map[string]string{"boox": "BOOX", "client": "Alexandria Client"}[f.Source]
+			}
+			if c.Value == s.Folder {
+				c.Current, folder, folderPath = true, &searchview.Folder{Source: f.Source, ID: f.ID}, f.Path
+			}
+			choices = append(choices, c)
+		}
+		if s.Folder != "" && folder == nil {
+			s.Folder = "" // gone, or another source's: search everywhere
 		}
 		if !slices.Contains(searchTypes, s.Type) {
 			s.Type = "all"
@@ -97,12 +133,11 @@ func (d Deps) searchRoutes(mux *http.ServeMux) {
 			s.Mode = ""
 		}
 		data := map[string]any{"State": s, "Semantic": d.Status.Embedding != "", "BOOX": d.Status.NativeBOOX, "Sorts": searchSorts,
-			"DateSort": s.Order == "created_asc" || s.Order == "created_desc"}
+			"DateSort": s.Order == "created_asc" || s.Order == "created_desc", "Folders": choices, "FolderPath": folderPath}
 		if s.Query != "" {
 			l := d.Localizer(r)
-			search := searchview.Searcher{DB: d.DB, Objects: d.Objects, Search: d.Search}
 			lists, err := search.All(r.Context(), searchview.Query{Text: s.Query, Words: s.Mode == "keyword", Source: s.Source,
-				NativeBOOX: d.Status.NativeBOOX, UntitledBook: l.T("Untitled book")})
+				NativeBOOX: d.Status.NativeBOOX, UntitledBook: l.T("Untitled book"), Folder: folder})
 			if err != nil {
 				d.fail(w, err)
 				return
@@ -145,6 +180,12 @@ func (d Deps) searchRoutes(mux *http.ServeMux) {
 		}
 		d.render(w, r, "search", "Search", "search", data)
 	})
+}
+
+// folderChoice is one entry of the folder menu.
+type folderChoice struct {
+	Value, Path, Source string
+	Current             bool
 }
 
 // searchTypeLabels name the tabs; the template translates them.

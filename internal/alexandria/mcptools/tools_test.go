@@ -513,6 +513,38 @@ func TestSearchFindsBOOXReading(t *testing.T) {
 	}
 }
 
+func TestSearchWithinFolder(t *testing.T) {
+	db, s := setup(t, options{booxLibrary: fakeBOOX{}})
+	for _, q := range []string{
+		`INSERT INTO boox_projection(document_id,revision,domain,native_type,native_uid,body) VALUES
+ ('fw','1-a','notebook','0','test','{"uniqueId":"fw","type":0,"status":1,"title":"Work","parentUniqueId":""}'),
+ ('fd','1-a','notebook','0','test','{"uniqueId":"fd","type":0,"status":1,"title":"2026","parentUniqueId":"fw"}'),
+ ('in','1-a','notebook','1','test','{"uniqueId":"in","type":1,"status":1,"title":"Synthetic plan","parentUniqueId":"fd","pageNameList":["p1"]}'),
+ ('out','1-a','notebook','1','test','{"uniqueId":"out","type":1,"status":1,"title":"Synthetic other","parentUniqueId":"","pageNameList":["p1"]}')`,
+		`INSERT INTO boox_page_index(notebook_id,page_id,page_number,state,text,input_version) VALUES
+ ('in','p1',1,'ready','zeppelin hangar checklist','synthetic'),('out','p1',1,'ready','zeppelin museum trip','synthetic')`,
+	} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var found searchOutput
+	call(t, s, "search", map[string]any{"query": "zeppelin"}, &found)
+	if found.Counts["pages"] != 2 {
+		t.Fatalf("everywhere: %+v", found.Counts)
+	}
+	for _, folder := range []string{"work", "fw", "Work  /  2026", "fd"} {
+		text := call(t, s, "search", map[string]any{"query": "zeppelin", "folder": folder}, &found)
+		if found.Counts["pages"] != 1 || found.Results[0].Notebook != "boox:in" || !strings.HasPrefix(text, "In boox: Work") {
+			t.Fatalf("folder %q: %+v\n%s", folder, found, text)
+		}
+	}
+	if msg := refuse(t, s, "search", map[string]any{"query": "zeppelin", "folder": "Nowhere"}); !strings.Contains(msg, "list_notebooks") {
+		t.Fatal(msg)
+	}
+	refuse(t, s, "search", map[string]any{"query": "zeppelin", "folder": "Work", "source": "client"})
+}
+
 func TestTaskLifecycle(t *testing.T) {
 	db, s := setup(t)
 	var created taskOutput

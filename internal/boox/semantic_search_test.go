@@ -139,6 +139,20 @@ func TestBOOXSemanticLifecycleAndSharedQuery(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "Synthetic client notebook") || !strings.Contains(w.Body.String(), "Synthetic semantic notebook") || calls.Load() != before+1 {
 		t.Fatal("global web search", w.Code, calls.Load()-before)
 	}
+	// Kept to one notebook, matches by meaning come only from it, and
+	// reading records, in no notebook, drop out.
+	ranked, err := search.Rank(ctx, "verdant ecosystems", 50, true, "", []string{"semantic-note"})
+	if err != nil || len(ranked.Pages) == 0 || len(ranked.Reading) != 0 {
+		t.Fatal("within one notebook", ranked, err)
+	}
+	for _, r := range ranked.Pages {
+		if r.NotebookID != "semantic-note" {
+			t.Fatal("outside the notebook", r)
+		}
+	}
+	if ranked, err = search.Rank(ctx, "verdant ecosystems", 50, true, "", []string{}); err != nil || len(ranked.Pages)+len(ranked.Reading) != 0 {
+		t.Fatal("within no notebooks", ranked, err)
+	}
 	// Sorting and an out-of-range page still embed the query only once; all
 	// result sources share the same candidates and current-source validation.
 	for _, order := range []searchorder.Order{"title_asc", "title_desc", "created_asc", "created_desc"} {

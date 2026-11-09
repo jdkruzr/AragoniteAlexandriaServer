@@ -136,6 +136,86 @@ func TestSearchTabsHighlightsAndPaging(t *testing.T) {
 	}
 }
 
+func TestSearchWithinFolder(t *testing.T) {
+	db := testenv.Database(t).DB
+	for _, sql := range []string{
+		// BOOX: Work holds Deep, which holds one comet notebook; Home holds another.
+		`INSERT INTO boox_projection(document_id,revision,domain,native_type,body) VALUES
+ ('work','1-a','notebook','0','{"uniqueId":"work","type":0,"status":1,"title":"Work","parentUniqueId":""}'),
+ ('deep','1-a','notebook','0','{"uniqueId":"deep","type":0,"status":1,"title":"Deep","parentUniqueId":"work"}'),
+ ('home','1-a','notebook','0','{"uniqueId":"home","type":0,"status":1,"title":"Home","parentUniqueId":""}'),
+ ('na','1-a','notebook','1','{"uniqueId":"na","type":1,"status":1,"title":"Comet log","parentUniqueId":"deep","pageNameList":["p1"]}'),
+ ('nb','1-a','notebook','1','{"uniqueId":"nb","type":1,"status":1,"title":"Comet diary","parentUniqueId":"home","pageNameList":["p1"]}')`,
+		`INSERT INTO boox_page_index(notebook_id,page_id,page_number,state,text,input_version) VALUES
+ ('na','p1',1,'ready','the comet orbit widens','synthetic'),('nb','p1',1,'ready','a comet tail at dusk','synthetic')`,
+		`INSERT INTO alexandria_tasks(task_id,title,detail,status,due_time,created_at,updated_at,deleted,forestnote_notebook_id) VALUES
+ ('ta','Comet follow-up',NULL,'needsAction',0,1,1,false,NULL),('tb','Comet photos',NULL,'needsAction',0,1,1,false,NULL)`,
+		`INSERT INTO alexandria_note_action_item(source,notebook_id,page_id,color,fingerprint,kind,item_id) VALUES
+ ('boox','na','p1','red','f','task','ta'),('boox','nb','p1','red','f','task','tb')`,
+		// Client: Projects holds one comet notebook; another is loose; a book isn't in any folder.
+		`INSERT INTO fn_folder(id,name,lww_wall_ts,lww_op_seq,lww_site_id) VALUES('cf','Projects',1,1,'test')`,
+		`INSERT INTO fn_notebook(id,name,folder_id,created_at,lww_wall_ts,lww_op_seq,lww_site_id) VALUES
+ ('cn','Comet notes','cf',1700000000000,1,1,'test'),('cl','Comet loose',NULL,1700000000000,1,1,'test')`,
+		`INSERT INTO fn_page(id,notebook_id,sort_order,lww_wall_ts,lww_op_seq,lww_site_id) VALUES('cp','cn',0,1,1,'test'),('lp','cl',0,1,1,'test')`,
+		`INSERT INTO alexandria_note_content(note_key,page,body_text,source) VALUES
+ ('forestnote://cn/cp',0,'A client comet page.','forestnote'),('forestnote://cl/lp',0,'A loose comet page.','forestnote')`,
+		`INSERT INTO fn_reader_book(id,asset_id,byte_length,media_type,metadata_json,lww_op_ts,lww_op_seq,lww_site_id) VALUES('cb','asset',1,'application/epub+zip','{"version":1,"title":"Comet Atlas","creators":["P. Planter"]}',1,1,'test')`,
+	} {
+		if _, err := db.Exec(sql); err != nil {
+			t.Fatal(err)
+		}
+	}
+	conn := testenv.Request(t, db)
+	h := Handler(Deps{DB: conn, Search: notes.Searcher{DB: conn}, Status: Status{NativeBOOX: true}})
+	get := func(path string) string {
+		t.Helper()
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 200 {
+			t.Fatalf("%s: HTTP %d %s", path, w.Code, w.Body.String())
+		}
+		return w.Body.String()
+	}
+	counts := regexp.MustCompile(`>(All|Notebooks|Pages|Books &amp; highlights|Tasks) <span class="seg-count">(\d+)</span>`)
+	tabs := func(body string) string {
+		var out []string
+		for _, m := range counts.FindAllStringSubmatch(body, -1) {
+			out = append(out, m[1]+" "+m[2])
+		}
+		return strings.Join(out, ", ")
+	}
+	body := get("/search?q=comet")
+	if got := tabs(body); got != "All 11, Notebooks 4, Pages 4, Books &amp; highlights 1, Tasks 2" {
+		t.Fatal("everywhere", got)
+	}
+	for _, want := range []string{`<option value="">All folders</option>`, `<option value="boox:work" >BOOX · Work</option>`,
+		`<option value="boox:deep" >BOOX · Work / Deep</option>`, `<option value="client:cf" >Alexandria Client · Projects</option>`} {
+		if !strings.Contains(body, want) {
+			t.Fatal("folder menu lacks", want)
+		}
+	}
+	// A folder takes in the folders inside it, and the tasks made there; books are in no folder.
+	body = get("/search?q=comet&folder=boox:work")
+	if got := tabs(body); got != "All 3, Notebooks 1, Pages 1, Books &amp; highlights 0, Tasks 1" || !strings.Contains(body, "Only Work and the folders inside it.") ||
+		!strings.Contains(body, `<option value="boox:work" selected>`) || !strings.Contains(body, "</mark> follow-up") || strings.Contains(body, "</mark> photos") {
+		t.Fatal("BOOX folder", tabs(body))
+	}
+	if got := tabs(get("/search?q=comet&folder=client:cf")); got != "All 2, Notebooks 1, Pages 1, Books &amp; highlights 0, Tasks 0" {
+		t.Fatal("Client folder", got)
+	}
+	// Changing the source lets go of the folder; one that isn't there searches everywhere.
+	body = get("/search?q=comet&folder=boox:work")
+	if !strings.Contains(body, `href="/search?q=comet&amp;source=client"`) {
+		t.Fatal("source link keeps the folder")
+	}
+	if got := tabs(get("/search?q=comet&folder=boox:nope")); got != "All 11, Notebooks 4, Pages 4, Books &amp; highlights 1, Tasks 2" {
+		t.Fatal("missing folder", got)
+	}
+	if body = get("/search?q=comet&source=client&folder=boox:work"); strings.Contains(body, "Only Work") || strings.Contains(body, "boox:work") {
+		t.Fatal("another source's folder")
+	}
+}
+
 func TestSearchMarks(t *testing.T) {
 	if got := markTerms("Garden gardens GARDENING ítem", []string{"garden", "gar", "ítem"}); !reflect.DeepEqual(got, []markPart{
 		{"Garden", true}, {" ", false}, {"garden", true}, {"s ", false}, {"GARDEN", true}, {"ING ", false}, {"ítem", true}}) {

@@ -113,7 +113,7 @@ its interface. A few conventions make them work together:
 
 | Tool | What it does |
 |---|---|
-| `search` | Searches everything, as the web **Search** page does: notebook titles, recognized and typed page text from both sources, BOOX tags, Audio Note Minutes and transcripts, books, highlights and annotations, and tasks. Counts by type; narrows to a type, a source, words only, a sort, or dates. Pages found only by meaning are marked as such: they're always the closest pages, about the query or not. |
+| `search` | Searches everything, as the web **Search** page does: notebook titles, recognized and typed page text from both sources, BOOX tags, Audio Note Minutes and transcripts, books, highlights and annotations, and tasks. Counts by type; narrows to a type, a source, a folder (with the folders inside it), words only, a sort, or dates. Pages found only by meaning are marked as such: they're always the closest pages, about the query or not. |
 | `list_notebooks` | Lists BOOX or Alexandria Client notebooks: all of them, or one folder; by title, by kind (BOOX), or the tablet's Trash (BOOX). |
 | `get_notebook` | Describes a notebook: each page's recognition state and tags, which pages note actions made tasks or events from, recordings and minutes, and changes waiting for the tablet. |
 | `read_pages` | Reads the recognized text of all pages, one page or a range (up to 50 pages at a time); a BOOX text note returns its typed text. Alexandria Client pages also list their text boxes. |

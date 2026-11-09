@@ -7,6 +7,7 @@ package searchview
 import (
 	"cmp"
 	"context"
+	"errors"
 	"net/url"
 	"slices"
 	"strings"
@@ -103,6 +104,9 @@ type Query struct {
 	NativeBOOX bool
 	// UntitledBook names an annotation's book that has no title.
 	UntitledBook string
+	// Folder, when set, keeps matches to the notebooks in it and its
+	// folders, and to tasks made from them; books are in no folder.
+	Folder *Folder
 }
 
 // Searcher searches one library.
@@ -128,7 +132,18 @@ func (s Searcher) All(ctx context.Context, q Query) (map[string]List, error) {
 	if !q.NativeBOOX {
 		scope = "client"
 	}
-	ranking, err := s.Search.Rank(ctx, q.Text, Cap, !q.Words, scope)
+	var within []string // nil: every notebook
+	if q.Folder != nil {
+		if q.Folder.Source == "boox" && !q.NativeBOOX || q.Folder.Source != "boox" && q.Folder.Source != "client" {
+			return nil, ErrFolder
+		}
+		scope = q.Folder.Source
+		var err error
+		if within, err = s.folderNotebooks(ctx, *q.Folder); err != nil {
+			return nil, err
+		}
+	}
+	ranking, err := s.Search.Rank(ctx, q.Text, Cap, !q.Words, scope, within)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +169,7 @@ func (s Searcher) All(ctx context.Context, q Query) (map[string]List, error) {
 	reading.Meaning = meaningOnly(reading.Hits)
 	var notebooks []List
 	if scope != "client" {
-		list, err := s.booxNotebooks(ctx, terms)
+		list, err := s.booxNotebooks(ctx, terms, within)
 		if err != nil {
 			return nil, err
 		}
@@ -162,17 +177,24 @@ func (s Searcher) All(ctx context.Context, q Query) (map[string]List, error) {
 	}
 	parts := []List{reading}
 	if scope != "boox" {
-		list, err := s.clientNotebooks(ctx, terms)
+		list, err := s.clientNotebooks(ctx, terms, within)
 		if err != nil {
 			return nil, err
 		}
 		notebooks = append(notebooks, list)
-		if parts, err = s.clientBooks(ctx, q, terms, parts); err != nil {
-			return nil, err
+		if within == nil {
+			if parts, err = s.clientBooks(ctx, q, terms, parts); err != nil {
+				return nil, err
+			}
 		}
 	}
-	// Tasks aren't in a source's library, so only the chosen source narrows them.
-	tasks, err := s.tasks(ctx, terms, q.Source)
+	// Tasks aren't in a source's library, so only the chosen source (or
+	// folder) narrows them.
+	source := q.Source
+	if q.Folder != nil {
+		source = scope
+	}
+	tasks, err := s.tasks(ctx, terms, source, within)
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +247,17 @@ func (s Searcher) dropMinutesCopies(ctx context.Context, pages *List) error {
 	})
 	pages.Total -= before - len(pages.Hits)
 	return nil
+}
+
+// ErrFolder means a search named a folder of a source it can't search.
+var ErrFolder = errors.New("no such folder to search")
+
+// nonNil passes an absent list as an empty array, not NULL.
+func nonNil(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
 }
 
 // Fuse merges ranked lists by reciprocal rank (k = 60). Each match is in one
@@ -396,14 +429,15 @@ func titleRank(title string) string {
 	return `lower(` + title + `)=array_to_string($1::text[],' ') DESC,starts_with(lower(` + title + `),$1[1]) DESC,length(` + title + `)`
 }
 
-// booxNotebooks matches BOOX notebook titles containing every term.
-func (s Searcher) booxNotebooks(ctx context.Context, terms []string) (List, error) {
+// booxNotebooks matches BOOX notebook titles containing every term, among
+// within when it isn't nil.
+func (s Searcher) booxNotebooks(ctx context.Context, terms []string, within []string) (List, error) {
 	out := List{}
 	title := `coalesce(p.body->>'title','')`
 	rows, err := s.DB.QueryContext(ctx, `SELECT p.document_id,coalesce(nullif(p.body->>'title',''),'Untitled'),coalesce(`+searchorder.NativeCreatedSQL("p")+`,0),
  coalesce(p.body->>'activeScene','')='1',jsonb_array_length(boox_search_page_ids(p.body->'pageNameList')),count(*) OVER()
- FROM boox_projection p WHERE `+booxvisibility.Notebook("p")+` AND `+termsSQL(title)+`
- ORDER BY `+titleRank(title)+`,p.document_id LIMIT $2`, terms, Cap)
+ FROM boox_projection p WHERE `+booxvisibility.Notebook("p")+` AND `+termsSQL(title)+` AND ($3::boolean IS NOT TRUE OR p.document_id=ANY($4::text[]))
+ ORDER BY `+titleRank(title)+`,p.document_id LIMIT $2`, terms, Cap, within != nil, nonNil(within))
 	if err != nil {
 		return out, err
 	}
@@ -419,14 +453,15 @@ func (s Searcher) booxNotebooks(ctx context.Context, terms []string) (List, erro
 	return out, rows.Err()
 }
 
-// clientNotebooks matches Client notebook names containing every term.
-func (s Searcher) clientNotebooks(ctx context.Context, terms []string) (List, error) {
+// clientNotebooks matches Client notebook names containing every term,
+// among within when it isn't nil.
+func (s Searcher) clientNotebooks(ctx context.Context, terms []string, within []string) (List, error) {
 	out := List{}
 	title := `coalesce(n.name,'')`
 	rows, err := s.DB.QueryContext(ctx, `SELECT n.id,coalesce(nullif(n.name,''),'Untitled'),CASE WHEN n.created_at>0 THEN n.created_at ELSE 0 END,
  (SELECT count(*) FROM fn_page p WHERE p.notebook_id=n.id AND p.deleted_at IS NULL),count(*) OVER()
- FROM fn_notebook n WHERE n.deleted_at IS NULL AND `+termsSQL(title)+`
- ORDER BY `+titleRank(title)+`,n.id LIMIT $2`, terms, Cap)
+ FROM fn_notebook n WHERE n.deleted_at IS NULL AND `+termsSQL(title)+` AND ($3::boolean IS NOT TRUE OR n.id=ANY($4::text[]))
+ ORDER BY `+titleRank(title)+`,n.id LIMIT $2`, terms, Cap, within != nil, nonNil(within))
 	if err != nil {
 		return out, err
 	}
@@ -508,17 +543,19 @@ func (s Searcher) clientBooks(ctx context.Context, q Query, terms []string, part
 
 // tasks matches tasks whose title or details have every term, titles first.
 // A task belongs to BOOX or the Client when a note action or Client page
-// made it.
-func (s Searcher) tasks(ctx context.Context, terms []string, scope string) (List, error) {
+// made it; with within, only tasks made from those notebooks count.
+func (s Searcher) tasks(ctx context.Context, terms []string, scope string, within []string) (List, error) {
 	out := List{}
 	text := `coalesce(t.title,'')||' '||coalesce(t.detail,'')`
 	rows, err := s.DB.QueryContext(ctx, `SELECT t.task_id,coalesce(t.title,''),coalesce(t.detail,''),t.status IN ('completed','cancelled'),t.due_time,t.created_at,count(*) OVER()
  FROM alexandria_tasks t WHERE NOT t.deleted AND `+termsSQL(text)+`
  AND ($2='' OR $2='client' AND t.forestnote_notebook_id IS NOT NULL
   OR $2='boox' AND EXISTS(SELECT 1 FROM alexandria_note_action_item i WHERE i.kind='task' AND i.item_id=t.task_id))
+ AND ($4::boolean IS NOT TRUE OR t.forestnote_notebook_id=ANY($5::text[]) AND $2='client'
+  OR $2='boox' AND EXISTS(SELECT 1 FROM alexandria_note_action_item i WHERE i.kind='task' AND i.item_id=t.task_id AND i.notebook_id=ANY($5::text[])))
  ORDER BY `+termsSQL(`coalesce(t.title,'')`)+` DESC,
   ts_rank(setweight(to_tsvector('simple',coalesce(t.title,'')),'A')||setweight(to_tsvector('simple',coalesce(t.detail,'')),'C'),plainto_tsquery('simple',array_to_string($1::text[],' '))) DESC,
-  t.updated_at DESC,t.task_id LIMIT $3`, terms, scope, Cap)
+  t.updated_at DESC,t.task_id LIMIT $3`, terms, scope, Cap, within != nil, nonNil(within))
 	if err != nil {
 		return out, err
 	}

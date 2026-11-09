@@ -12,7 +12,17 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-09): **`webfixes2-fb840458efba`**, app-only on schema **43**,
+Latest recorded deployment (2026-11-09): **`foldersearch-369036c34153`**, app-only on schema **43**,
+image `sha256:ac35d47b5ccc8718f0c765fb3025181fbdc9c386cfeb9f30efd3d7b80484e9a9`, on top of
+**`webfixes2-fb840458efba`**: search can be kept to a folder and the folders inside it. Web Search has an
+**All folders** menu (`folder=boox:<id>` / `client:<id>`; changing source drops it, an unknown one is
+ignored); MCP `search` takes `folder` as a folder_id or path. The folder's notebooks go into the live
+query itself (`notes.Searcher.Rank` `within`, also the semantic candidates), so matches by meaning come
+from inside it; notebook titles and tasks made from those notebooks are narrowed too, and books are left
+out. Live check (read token): "Dell" 63 pages everywhere = Moffitt 61 + Personal 2; web menu lists the
+four BOOX folders and marks the chosen one; unknown folders refused over MCP; no panics.
+
+Previous deployment (2026-11-09): **`webfixes2-fb840458efba`**, app-only on schema **43**,
 image `sha256:0183c901a2cce15b85041af183bf89724d674279d78484b69cb690c8f3af6d27`, on top of
 **`webfixes-a7bde4b11518`**: a minutes snippet whose match starts within the topic no longer repeats it,
 and MCP detail text keeps at most 6 lines (a CalDAV app's JSON settings task had spilled ~20). Checked

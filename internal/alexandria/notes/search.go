@@ -82,7 +82,7 @@ func (s Searcher) SearchPage(ctx context.Context, query string, limit, offset in
 	if query == "" {
 		return []Result{}, 0, nil
 	}
-	raw, err := s.semantic(ctx, query, hybrid, scope)
+	raw, err := s.semantic(ctx, query, hybrid, scope, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -101,7 +101,7 @@ func (s Searcher) SearchPage(ctx context.Context, query string, limit, offset in
 	results := []Result{}
 	total := 0
 	for {
-		rows, queryErr := s.DB.QueryContext(ctx, sql, query, scope, raw, limit, offset, lexicalWeight, vectorWeight, rrfK, vectorOnlyMinRunes)
+		rows, queryErr := s.DB.QueryContext(ctx, sql, query, scope, raw, limit, offset, lexicalWeight, vectorWeight, rrfK, vectorOnlyMinRunes, false, []string{})
 		if queryErr != nil {
 			return nil, 0, queryErr
 		}
@@ -136,13 +136,14 @@ func (s Searcher) SearchPage(ctx context.Context, query string, limit, offset in
 }
 
 // The live search query, shared by SearchPage and Rank. Its parameters are
-// $1 the query, $2 the source ("" for both), $3 the semantic candidates and
-// $6–$9 the fusion constants; callers use $4 and $5 for paging.
+// $1 the query, $2 the source ("" for both), $3 the semantic candidates,
+// $6–$9 the fusion constants, and $10 and $11 whether matches are kept to
+// the notebooks listed in $11; callers use $4 and $5 for paging.
 const (
 	liveWith = `WITH q AS (SELECT phraseto_tsquery('simple',$1) || plainto_tsquery('simple',$1) AS query),
  lexical AS MATERIALIZED (
   SELECT c.note_key,row_number() OVER(ORDER BY ts_rank_cd(c.search_document,q.query) DESC,c.note_key) AS rank
-  FROM alexandria_search_live c CROSS JOIN q WHERE ($2='' OR c.source=$2) AND
+  FROM alexandria_search_live c CROSS JOIN q WHERE ($2='' OR c.source=$2) AND ` + liveWithin + ` AND
   (c.search_document @@ q.query OR c.source='boox' AND c.kind='Reading' AND strpos(lower(c.body_text),lower($1))>0)
  ), semantic AS (SELECT * FROM jsonb_to_recordset($3::jsonb) AS wanted(key text,hash text,rank integer,runes integer))`
 	liveScore = `coalesce($6::float8/($8::float8+l.rank),0)+coalesce($7::float8/($8::float8+s.rank),0)`
@@ -153,8 +154,10 @@ const (
  LEFT JOIN fn_notebook n ON c.source='client' AND n.id=c.notebook_id
  LEFT JOIN fn_page cp ON c.source='client' AND cp.id=c.page_id
  LEFT JOIN boox_projection p ON c.source='boox' AND p.document_id=c.notebook_id
- WHERE ($2='' OR c.source=$2) AND (l.note_key IS NOT NULL OR s.key IS NOT NULL AND
+ WHERE ($2='' OR c.source=$2) AND ` + liveWithin + ` AND (l.note_key IS NOT NULL OR s.key IS NOT NULL AND
   (NOT EXISTS(SELECT 1 FROM lexical) OR s.runes >= $9))`
+	// liveWithin keeps matches to the listed notebooks, when asked to.
+	liveWithin = `($10::boolean IS NOT TRUE OR c.notebook_id=ANY($11::text[]))`
 	// livePosition orders a notebook's pages.
 	livePosition = "CASE WHEN c.source='client' THEN cp.sort_order ELSE c.page_number END"
 )
@@ -167,7 +170,7 @@ var liveCreated = `CASE WHEN c.source='client' THEN CASE WHEN n.created_at>0 THE
 // embedder, or it can't be reached (search then degrades to words alone).
 // Candidates keep their text hashes, so the live query rechecks visibility
 // and text after this potentially slow call.
-func (s Searcher) semantic(ctx context.Context, query string, hybrid bool, scope string) ([]byte, error) {
+func (s Searcher) semantic(ctx context.Context, query string, hybrid bool, scope string, within []string) ([]byte, error) {
 	type candidate struct {
 		Key   string `json:"key"`
 		Hash  string `json:"hash"`
@@ -186,8 +189,8 @@ func (s Searcher) semantic(ctx context.Context, query string, hybrid bool, scope
 			}
 			rows, err := s.DB.QueryContext(ctx, `SELECT c.note_key,md5(c.body_text),c.body_text,min(e.embedding <=> $1::vector) AS distance
     FROM `+table+` e JOIN alexandria_search_live c ON c.note_key=e.note_key AND c.page=e.page
-    WHERE `+filter+` AND e.dimensions=$3 AND ($5='' OR c.source=$5)
-    GROUP BY c.note_key,c.body_text ORDER BY distance,c.note_key LIMIT $4`, vectorLiteral(vector), identity, len(vector), candidates, scope)
+    WHERE `+filter+` AND e.dimensions=$3 AND ($5='' OR c.source=$5) AND ($6::boolean IS NOT TRUE OR c.notebook_id=ANY($7::text[]))
+    GROUP BY c.note_key,c.body_text ORDER BY distance,c.note_key LIMIT $4`, vectorLiteral(vector), identity, len(vector), candidates, scope, within != nil, nonNil(within))
 			if err != nil {
 				return nil, err
 			}
@@ -245,7 +248,9 @@ type Ranking struct {
 
 // Rank ranks matches as SearchPage does by relevance, keeping the best limit
 // of each group, without snippets; Snippets adds them to the ones shown.
-func (s Searcher) Rank(ctx context.Context, query string, limit int, hybrid bool, scope string) (Ranking, error) {
+// A non-nil within keeps matches to those notebooks (BOOX document or Client
+// notebook IDs); reading records are in no notebook, so it leaves them out.
+func (s Searcher) Rank(ctx context.Context, query string, limit int, hybrid bool, scope string, within []string) (Ranking, error) {
 	var out Ranking
 	if scope != "" && scope != "client" && scope != "boox" {
 		return out, fmt.Errorf("invalid search source")
@@ -257,7 +262,7 @@ func (s Searcher) Rank(ctx context.Context, query string, limit int, hybrid bool
 	if query == "" {
 		return out, nil
 	}
-	raw, err := s.semantic(ctx, query, hybrid, scope)
+	raw, err := s.semantic(ctx, query, hybrid, scope, within)
 	if err != nil {
 		return out, err
 	}
@@ -267,7 +272,7 @@ func (s Searcher) Rank(ctx context.Context, query string, limit int, hybrid bool
    coalesce((`+liveCreated+`),0) AS created,coalesce(`+livePosition+`,0) AS position,
    row_number() OVER(PARTITION BY c.kind='Reading' ORDER BY `+liveScore+` DESC,c.note_key) AS rn,
    count(*) OVER(PARTITION BY c.kind='Reading') AS total`+liveFrom+`) ranked
- WHERE rn>$5::bigint AND rn<=$5::bigint+$4::bigint ORDER BY kind='Reading',rn`, query, scope, raw, limit, 0, lexicalWeight, vectorWeight, rrfK, vectorOnlyMinRunes)
+ WHERE rn>$5::bigint AND rn<=$5::bigint+$4::bigint ORDER BY kind='Reading',rn`, query, scope, raw, limit, 0, lexicalWeight, vectorWeight, rrfK, vectorOnlyMinRunes, within != nil, nonNil(within))
 	if err != nil {
 		return out, err
 	}
@@ -424,6 +429,14 @@ func minutesSnippet(text, headline string, matched bool) string {
 		return headline
 	}
 	return topic + " — " + headline
+}
+
+// nonNil passes an absent list as an empty array, not NULL.
+func nonNil(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
 }
 
 func excerpt(s string, max int) string {

@@ -54,6 +54,10 @@ page you know is there, check its recognition state first.
 5. Optional, when BOOX is set up: narrow to **BOOX** or **Alexandria Client**
    with the switch on the right. A task belongs to a source when a note action
    or a Client page made it; tasks you added yourself only show under **All**.
+6. Optional: choose a folder from the **All folders** menu to search only the
+   notebooks in it and in the folders inside it, and the tasks made from them.
+   Books aren't in folders, so they're left out. Changing the source switch
+   goes back to all folders.
 
 Each result shows its kind, a title that links to the page, notebook, book or
 task (for example "Garden plans, p. 3"), a snippet with your words

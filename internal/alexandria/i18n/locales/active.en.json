@@ -675,7 +675,6 @@
   "Notebook page": "Notebook page",
   "Notebook root": "Notebook root",
   "Notebook title": "Notebook title",
-  "Notebook titles and recognized page text from both sources, typed BOOX text notes, Audio Note Minutes, books and highlights, and tasks. Pages that were never recognized can only be found by title. The tabs split results by kind; All mixes them, best first.": "Notebook titles and recognized page text from both sources, typed BOOX text notes, Audio Note Minutes, books and highlights, and tasks. Pages that were never recognized can only be found by title. The tabs split results by kind; All mixes them, best first.",
   "Notebook titles, recognized and typed pages, books, highlights, minutes and tasks.": "Notebook titles, recognized and typed pages, books, highlights, minutes and tasks.",
   "Notebook was deleted; recognition cancelled.": "Notebook was deleted; recognition cancelled.",
   "Notebook unavailable.": "Notebook unavailable.",
@@ -1874,5 +1873,7 @@
   "Recent changes by assistants": "Recent changes by assistants",
   "Everything an assistant changed through MCP: tasks, events, text boxes, recognition, minutes and new BOOX notes, with the app that did it. Kept for 90 days.": "Everything an assistant changed through MCP: tasks, events, text boxes, recognition, minutes and new BOOX notes, with the app that did it. Kept for 90 days.",
   "An app": "An app",
-  "No changes yet.": "No changes yet."
+  "No changes yet.": "No changes yet.",
+  "Notebook titles and recognized page text from both sources, typed BOOX text notes, Audio Note Minutes, books and highlights, and tasks. Pages that were never recognized can only be found by title. The tabs split results by kind; All mixes them, best first. Choose a folder to search only it and the folders inside it; books are left out then.": "Notebook titles and recognized page text from both sources, typed BOOX text notes, Audio Note Minutes, books and highlights, and tasks. Pages that were never recognized can only be found by title. The tabs split results by kind; All mixes them, best first. Choose a folder to search only it and the folders inside it; books are left out then.",
+  "Only {{.Path}} and the folders inside it.": "Only {{.Path}} and the folders inside it."
 }
