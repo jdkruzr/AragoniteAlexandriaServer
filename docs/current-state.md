@@ -12,7 +12,13 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-09): **`webfixes-a7bde4b11518`**, app-only on schema **43**,
+Latest recorded deployment (2026-11-09): **`webfixes2-fb840458efba`**, app-only on schema **43**,
+image `sha256:0183c901a2cce15b85041af183bf89724d674279d78484b69cb690c8f3af6d27`, on top of
+**`webfixes-a7bde4b11518`**: a minutes snippet whose match starts within the topic no longer repeats it,
+and MCP detail text keeps at most 6 lines (a CalDAV app's JSON settings task had spilled ~20). Checked
+live with a throwaway token; no panics.
+
+Previous deployment (2026-11-09): **`webfixes-a7bde4b11518`**, app-only on schema **43**,
 image `sha256:792fae837f817837bc94381e806c18e7de471424dbf31a8b3d142c37b2d43930`, on top of
 **`mcpactions-191260f45b3e`**. Fixes from web Claude's review of the MCP surface: note actions give the
 summary model the page's own recognized text to correct misread colored ink (fresh ink waits up to 15

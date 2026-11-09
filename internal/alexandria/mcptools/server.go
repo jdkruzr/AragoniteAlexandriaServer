@@ -295,13 +295,18 @@ func clip(s string, n int) string {
 }
 
 // clipLines shortens text for the text rendering as clip does, but keeps its
-// line breaks, indenting the lines after the first.
+// line breaks (up to maxLines lines), indenting the lines after the first.
 func clipLines(s string, n int, indent string) string {
+	const maxLines = 6
 	var lines []string
 	for _, l := range strings.Split(s, "\n") {
 		if l = strings.Join(strings.Fields(l), " "); l != "" {
 			lines = append(lines, l)
 		}
+	}
+	if len(lines) > maxLines {
+		// The rest joins the last line, so the length limit still applies.
+		lines = append(lines[:maxLines-1], strings.Join(lines[maxLines-1:], " "))
 	}
 	s = strings.Join(lines, "\n")
 	if r := []rune(s); len(r) > n {

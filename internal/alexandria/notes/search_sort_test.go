@@ -90,3 +90,18 @@ func TestSearchSortsBeforePaginationAndKeepsUnknownDatesLast(t *testing.T) {
 		t.Fatal(results[:3], err)
 	}
 }
+
+func TestMinutesSnippetLeadsWithTopicOnce(t *testing.T) {
+	text := "Synthetic rack planning and network checks\nKey point.\ntranscript: the switch arrives on Friday"
+	if got := minutesSnippet(text, "the "+MarkStart+"switch"+MarkStop+" arrives on Friday", true); got != "Synthetic rack planning and network checks — the "+MarkStart+"switch"+MarkStop+" arrives on Friday" {
+		t.Fatalf("transcript match: %q", got)
+	}
+	// A match starting partway into the topic doesn't repeat it.
+	head := "rack " + MarkStart + "planning" + MarkStop + " and network checks Key point."
+	if got := minutesSnippet(text, head, true); got != head {
+		t.Fatalf("topic match: %q", got)
+	}
+	if got := minutesSnippet(text, "", false); !strings.HasPrefix(got, "Synthetic rack planning") {
+		t.Fatalf("no match: %q", got)
+	}
+}

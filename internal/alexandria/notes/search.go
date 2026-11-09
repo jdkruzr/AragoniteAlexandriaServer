@@ -418,8 +418,9 @@ func minutesSnippet(text, headline string, matched bool) string {
 	}
 	topic, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
 	topic = excerpt(topic, 120)
-	plain := strings.Join(strings.Fields(strings.NewReplacer(MarkStart, "", MarkStop, "").Replace(headline)), " ")
-	if topic == "" || strings.HasPrefix(plain, strings.TrimSuffix(topic, "…")) {
+	plain := []rune(strings.Join(strings.Fields(strings.NewReplacer(MarkStart, "", MarkStop, "").Replace(headline)), " "))
+	// A passage that starts within the topic already says what they're about.
+	if topic == "" || strings.Contains(strings.TrimSuffix(topic, "…"), string(plain[:min(len(plain), 24)])) {
 		return headline
 	}
 	return topic + " — " + headline
