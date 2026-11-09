@@ -82,29 +82,28 @@ through pcmanfm onto their `eBooks/<Author>` shelves):
 
 | Book | Candidates | Mini C result |
 |---|---|---|
-| *A Forbidden Alchemy* | one live record with 3 highlights | New book at 1/326; the 3 highlights appeared after accepting the reader's sync prompt; the download matched the upload's SHA-256 |
-| *The Bone Shard Daughter* | data only on a removed record (667/668), plus an in-place-converted record | New book at 667/668; the converted record stayed retired and left the file view |
-| *The Bone Shard Emperor* | live record at 204/657 with 2 bookmarks | New book opened at 205/661 on chapter 17; both bookmarks arrived after accepting the sync prompt |
+| *Book A* | one live record with 3 highlights | New book at 1/326; the 3 highlights appeared after accepting the reader's sync prompt; the download matched the upload's SHA-256 |
+| *Book B* | data only on a removed record (667/668), plus an in-place-converted record | New book at 667/668; the converted record stayed retired and left the file view |
+| *Book C* | live record at 204/657 with 2 bookmarks | New book opened at 205/661 on chapter 17; both bookmarks arrived after accepting the sync prompt |
 
 **Opening the file from the cloud account brings the old record back.** Tapping
-*The Bone Shard Daughter* in the Mini C's Cloud Storage → `jtd` view downloaded it and
+*Book B* in the Mini C's Cloud Storage → account view downloaded it and
 revived the removed record at that NetDisk path (`status` 1 → 0, progress kept, rejoined
-the `jtd` cloud shelf), and the tablet pushed that as a new revision. The stored book was
+the account's cloud shelf), and the tablet pushed that as a new revision. The stored book was
 untouched, so the tablet then listed the book twice: the stored copy on its author shelf,
-with the highlights, and the cloud copy on the `jtd` shelf, whose progress now moves on its
+with the highlights, and the cloud copy on the account shelf, whose progress now moves on its
 own. The server does not re-retire such a record: the reader has just opened it, and the
 account would revive it again on its next visit. Removing the cloud copy on the tablet, or
 simply reading from the stored copy, is enough.
 
 Which record's reading data a new book inherits is decided once, at upload: the most
-recently read one. That is not always the furthest: *Fourth Wing* had 652/661 on a record
+recently read one. That is not always the furthest: *Book D* had 652/661 on a record
 last read in March 2025 and 9/488 on one opened in July, and inherited 9/488. The
 Refresh Reading Data page therefore lists a stored book's **earlier copies** (other
 cloud-account records with its fingerprint that have a position) and can move the book
 to one of them. It queues the existing `restore_reader_fields` publication with the
 copy's `progress`, `readingStatus` and `current_page_position_v2/v3`, keeping the book's
-identity and its other `extraAttributes`. On the Mini C, *Fourth Wing* and *Glow of the
-Everflame* opened at the copies' chapters after accepting the reader's sync prompt; the
+identity and its other `extraAttributes`. On the Mini C, *Book D* and *Book E* opened at the copies' chapters after accepting the reader's sync prompt; the
 Library list changed only then, in the tablet's own pagination.
 
 ## Server implementation

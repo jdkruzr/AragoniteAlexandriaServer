@@ -88,7 +88,7 @@ func newBook(t *testing.T, s Service, g *managementGateway, name string) map[str
 func adoptFixture(t *testing.T, raw []byte, records map[string]map[string]any) (Service, *managementGateway) {
 	t.Helper()
 	s, g := libraryFixture(t)
-	libraryRecord(s, g, 3, "cloudshelf", map[string]any{"name": "jtd", "description": "WEBDAV-acct", "fetchSource": 0})
+	libraryRecord(s, g, 3, "cloudshelf", map[string]any{"name": "owner", "description": "WEBDAV-acct", "fetchSource": 0})
 	libraryRecord(s, g, 3, "author", map[string]any{"name": "Author"})
 	for id, f := range records {
 		fields := map[string]any{"name": "Book.pdf", "title": "Book", "type": "pdf", "hashTag": bookFingerprint(raw), "size": len(raw), "fileOriginSize": len(raw), "fetchSource": 19, "cloudId": "c1", "nativeAbsolutePath": adoptPath, "idString": adoptPath, "location": adoptPath, "extraAttributes": "{\"backend\":{}}", "readingStatus": 0}

@@ -61,10 +61,10 @@ Firmware facts are from the decompiled Notes app in `~/booxreverse`.
 - Tags reach the server when the note is saved (closed) on the device. Tagging
   rewrites the tagged shapes, so the page is re-recognized after each tagged save.
 - Keyword matching is exact (case-insensitive) on purpose: in the first live run
-  the model kept "Seed Savers" (a review channel) beside the tag NAS, which the
-  owner judged correct. Tags also act as a spelling list for names: with a
-  Greenline tag, the next run corrected the recognized "Greenlime" throughout and
-  reused four of the note's tags as keywords.
+  the model kept a more specific phrase beside a matching tag, which the
+  owner judged correct. Tags also act as a spelling list for names: once a
+  product name was added as a tag, the next run corrected its misrecognized
+  spelling throughout and reused four of the note's tags as keywords.
 - Shape `tagIdList` is still not kept (it would let the viewer highlight the
   tagged ink).
 

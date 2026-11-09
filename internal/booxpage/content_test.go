@@ -158,7 +158,7 @@ func inked(dc *gg.Context, x0, y0, x1, y1 int) int {
 
 func TestTextBoxesGrowAndVerticalText(t *testing.T) {
 	// Two lines in a box one line tall: the second line is drawn below it.
-	tall := &Shape{ShapeType: 16, Color: -16777216, Text: "Tenant WiFi", BoundingRect: &Rect{Left: 10, Top: 10, Right: 90, Bottom: 30}, TextStyle: textStyle{TextSize: 16, TextSpacing: 1}}
+	tall := &Shape{ShapeType: 16, Color: -16777216, Text: "Garden shed", BoundingRect: &Rect{Left: 10, Top: 10, Right: 90, Bottom: 30}, TextStyle: textStyle{TextSize: 16, TextSpacing: 1}}
 	dc := gg.NewContext(200, 200)
 	if e := drawTextShape(dc, tall); e != nil || inked(dc, 10, 32, 90, 60) == 0 {
 		t.Fatal("second line clipped", e)

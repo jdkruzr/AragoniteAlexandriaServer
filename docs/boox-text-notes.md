@@ -53,7 +53,7 @@ operations do. A missing or deleted folder is rejected.
 
 ## Device experiment, 2026-10-13
 
-The owner submitted "Oh hey there" (notebook root) from the test form at 22:29
+The owner submitted a short test note (notebook root) from the test form at 22:29
 CDT. Operation `f6a7c30f…` reached `published` in 1.8 s.
 
 - **Delivery:** both tablets' native provider listed `00e22405-…` with the
@@ -80,7 +80,7 @@ CDT. Operation `f6a7c30f…` reached `published` in 1.8 s.
 ## Device saves and the current text (2026-10-25)
 
 Opening a note and moving the cursor is enough for a device to save it, and a
-save writes more than the page model ("20261023 Singh Lab_Minutes", opened on a
+save writes more than the page model (a sent _Minutes note, opened on a
 Tab 8 and then a Go 10.3):
 
 - a **new** `resource/data/<uuid>.html`, identical apart from `currentPos`;

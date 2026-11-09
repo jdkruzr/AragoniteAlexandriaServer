@@ -310,8 +310,8 @@ Previous deployment (2026-10-27): **`reader-copy-0c463e54b153`**, app-only on
 schema **39**, image `sha256:6270368d851249142b32406c09e3ec584291ea07a9be12e865ae19643ba3487f`.
 The Refresh Reading Data page lists a stored book's earlier copies (cloud-account
 records with its fingerprint that have a reading position) and moves the book to one
-through the qualified `restore_reader_fields` publication. Used for *Fourth Wing*
-(9/488 → 652/661) and *Glow of the Everflame* (1/410 → 16/645): both published, and the
+through the qualified `restore_reader_fields` publication. Used for two books
+(one from 9/488 to 652/661, the other from 1/410 to 16/645): both published, and the
 Note Mini C opened them at those chapters after accepting the reader's sync prompt.
 Rollback: `private/reader-copy-0c463e54b153/rollback.sh` returns to
 `books128-299dcdee001d`.
@@ -323,7 +323,7 @@ download from; tablet uploads stay at 64 MiB. EPUBs whose `mimetype` ends with a
 line break are accepted, as NeoReader accepts them. Refused uploads say why: a
 different file than the cloud-account copy the tablets know, a book a tablet has from
 its own storage, the same bytes under another name, or another file with the same
-BOOX fingerprint. The re-copy of jtd's Nextcloud eBooks then adopted the last two
+BOOX fingerprint. The re-copy of the owner's Nextcloud eBooks then adopted the last two
 books (a 77 MiB comic PDF and an EPUB with a CRLF `mimetype`); the 77 MiB PDF
 downloaded to the Note Mini C byte-identical in about 70 s and opened in NeoReader.
 Across the whole re-copy, 63 uploads published, 61 cloud-account records were
@@ -406,9 +406,8 @@ from the live `note/*/point/<same name>` blob (migration 0039 indexes the name;
 enrolling the Note Mini C: a Wi-Fi change interrupted three notebooks' pulls, ksync's V2
 fallback asked for the flat key, got 404 and recorded the points as done. Live checks: the
 Mini C's 14 affected point records were reset to pending through ksync's record provider,
-and after the next note-tree push all three notebooks ("20241104 SciComp Team" 19/19,
-"20241102 Canvassing" 4/4, "20241004 Research IT" 22/22) hold point files byte-identical
-to the server; the tablet's own thumbnail of SciComp Team shows its ink. Fresh required
+and after the next note-tree push all three notebooks (19/19, 4/4 and 22/22 point files) hold point files byte-identical
+to the server; the tablet's own thumbnail of the first shows its ink. Fresh required
 PostgreSQL/S3 `go test -race -count=1 ./...` and `go vet` passed. A migration needs the
 app stopped first (the running server holds the schema lock shared): `stop` →
 `run --rm --no-deps -T migrate` → `up -d --no-deps --no-build --force-recreate`; the first
@@ -424,10 +423,10 @@ top of the checkpoint below (schema still **38**), image
 Text notebooks now show only their current typed text, as generated HTML; server
 text notes ship without a thumbnail; opening a sent minutes note on a device no
 longer marks it edited ([details](boox-text-notes.md#device-saves-and-the-current-text-2026-10-25)).
-Live checks: "20261023 Singh Lab_Minutes" shows one copy (it showed three); its
+Live checks: a sent _Minutes note shows one copy (it showed three); its
 minutes card reads "On your BOOX"; search lists the note once. Four text-notebook
 index rows with duplicated typed text were re-queued with `QueuePage`'s update
-(no model call; Singh Lab 5,194 → 1,730 characters). Fresh required
+(no model call; one note went from 5,194 to 1,730 characters). Fresh required
 PostgreSQL/S3 `go test -race -count=1 ./...` (52 packages, no skips) and `go vet`
 passed. Rollback: `sudo /opt/aragonite-alexandria-server/deploy/compose/private/typed-text-b274aa0dbb7d/rollback.sh`
 restores the previous image and source without touching stored data.
