@@ -22,12 +22,18 @@ import (
 	"time"
 )
 
-// maxObject bounds what tablets upload; maxBook bounds uploaded books, which
-// tablets also download through this endpoint.
+// maxObject bounds what tablets upload; maxBook bounds books, uploaded here or
+// from a tablet's Library, which tablets also download through this endpoint.
 const (
 	maxObject = 64 << 20
 	maxBook   = 128 << 20
 )
+
+// bookObjectKey reports a book's source file, <uid>/reader/<book>/book/<file>.
+func bookObjectKey(key string) bool {
+	parts := strings.Split(key, "/")
+	return len(parts) == 5 && parts[1] == "reader" && parts[3] == "book"
+}
 
 func ossCanonical(method, resource string, h http.Header) string {
 	selected := map[string]string{"content-md5": "", "content-type": "", "date": ""}
@@ -111,8 +117,12 @@ func (s Service) oss(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Oss-Request-Id", "alexandria")
 	switch r.Method {
 	case "PUT":
-		raw, e := io.ReadAll(io.LimitReader(r.Body, maxObject+1))
-		if e != nil || len(raw) > maxObject || r.ContentLength >= 0 && int64(len(raw)) != r.ContentLength {
+		limit := maxObject
+		if bookObjectKey(key) {
+			limit = maxBook
+		}
+		raw, e := io.ReadAll(io.LimitReader(r.Body, int64(limit)+1))
+		if e != nil || len(raw) > limit || r.ContentLength >= 0 && int64(len(raw)) != r.ContentLength {
 			ossError(w, 400, "InvalidArgument")
 			return
 		}

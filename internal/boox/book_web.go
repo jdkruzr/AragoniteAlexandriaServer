@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"html/template"
-	"mime"
 	"net/http"
 	"net/url"
-	"path"
 	"sort"
 	"strings"
 	"time"
@@ -366,13 +364,7 @@ func (s Service) bookDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	name := bookFileName(b)
 	attachment(w, name)
-	ct := b.ContentType
-	if ct == "" {
-		if ct = mime.TypeByExtension(path.Ext(name)); ct == "" {
-			ct = "application/octet-stream"
-		}
-	}
-	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Content-Type", bookServeType(b.ContentType, name))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("ETag", `"`+b.SHA+`"`)
 	http.ServeContent(w, r, "", time.UnixMilli(b.Modified), bytes.NewReader(raw))

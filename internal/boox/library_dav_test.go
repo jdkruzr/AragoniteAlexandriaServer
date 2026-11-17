@@ -117,9 +117,9 @@ func TestLibraryDAVWritesThroughTheJournal(t *testing.T) {
 	davExpect(t, davDo(t, s, "PUT", "/dav/books/Locked.pdf", syntheticPDF("locked")), http.StatusCreated, http.StatusNoContent)
 	davExpect(t, davDo(t, s, "UNLOCK", "/dav/books/Locked.pdf", ""), http.StatusNoContent)
 
-	w = davDo(t, s, "PUT", "/dav/books/notes.txt", "plain text")
+	w = davDo(t, s, "PUT", "/dav/books/notes.exe", "not a book")
 	davExpect(t, w, http.StatusUnsupportedMediaType)
-	if !strings.Contains(w.Body.String(), "EPUB, PDF, MOBI and AZW3") {
+	if !strings.Contains(w.Body.String(), "can't be uploaded") {
 		t.Fatal("refusal must say why", w.Body.String())
 	}
 	davExpect(t, davDo(t, s, "PUT", "/dav/books/fake.pdf", "not a pdf"), http.StatusUnsupportedMediaType)

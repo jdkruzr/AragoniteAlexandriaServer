@@ -1,15 +1,11 @@
 package boox
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"crypto/md5"
 	"database/sql"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/xml"
 	"errors"
 	"html/template"
 	"io"
@@ -18,7 +14,6 @@ import (
 	"path"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/google/uuid"
 )
@@ -63,138 +58,6 @@ func bookFingerprint(raw []byte) string {
 	}
 	digest := md5.Sum(sample)
 	return hex.EncodeToString(digest[:])
-}
-
-// bookFormats are the upload formats NeoReader opens; validateBook checks each.
-var bookFormats = map[string]struct{ Kind, ContentType string }{
-	".pdf":  {"pdf", "application/pdf"},
-	".epub": {"epub", "application/epub+zip"},
-	".mobi": {"mobi", "application/x-mobipocket-ebook"},
-	".azw3": {"azw3", "application/x-mobi8-ebook"},
-}
-
-const errBookFormat = "Only EPUB, PDF, MOBI and AZW3 books can be uploaded."
-const errBookFile = "Choose an EPUB, PDF, MOBI or AZW3 book up to 128 MiB with a plain filename."
-
-func bookContentType(kind string) string {
-	for _, f := range bookFormats {
-		if f.Kind == kind {
-			return f.ContentType
-		}
-	}
-	return ""
-}
-
-// validMobi checks a PalmDB "BOOKMOBI" container (MOBI, and AZW3/KF8 alike):
-// a record table, the MOBI header in record 0 and no encryption.
-func validMobi(raw []byte) error {
-	invalid := errors.New("The file is not a valid MOBI or AZW3 book.")
-	if len(raw) < 86 || string(raw[60:68]) != "BOOKMOBI" {
-		return invalid
-	}
-	records := int(binary.BigEndian.Uint16(raw[76:78]))
-	if records < 1 || 78+8*records > len(raw) {
-		return invalid
-	}
-	first := int(binary.BigEndian.Uint32(raw[78:82]))
-	if first < 78+8*records || first+32 > len(raw) || string(raw[first+16:first+20]) != "MOBI" {
-		return invalid
-	}
-	if binary.BigEndian.Uint16(raw[first+12:first+14]) != 0 {
-		return errors.New("This MOBI or AZW3 book is DRM-protected, so BOOX cannot open it.")
-	}
-	return nil
-}
-
-func validateBook(name string, raw []byte) (string, error) {
-	if len(raw) == 0 || len(raw) > maxBook || len(name) > 240 || strings.ContainsAny(name, "/\\") || strings.IndexFunc(name, unicode.IsControl) >= 0 {
-		return "", errors.New(errBookFile)
-	}
-	switch strings.ToLower(path.Ext(name)) {
-	case ".pdf":
-		if !bytes.HasPrefix(raw, []byte("%PDF-")) || !bytes.Contains(raw[max(0, len(raw)-1024):], []byte("%%EOF")) {
-			return "", errors.New("The file does not have a valid PDF header and trailer.")
-		}
-		return "pdf", nil
-	case ".epub":
-		z, e := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
-		if e != nil || len(z.File) > 20000 {
-			return "", errors.New("The EPUB archive is invalid.")
-		}
-		files := map[string]*zip.File{}
-		var total uint64
-		for _, f := range z.File {
-			if _, exists := files[f.Name]; exists {
-				return "", errors.New("The EPUB has duplicate archive paths.")
-			}
-			if strings.HasPrefix(f.Name, "/") || strings.Contains(f.Name, "\\") || path.Clean(f.Name) == ".." || strings.HasPrefix(path.Clean(f.Name), "../") {
-				return "", errors.New("The EPUB contains an invalid archive path.")
-			}
-			if f.UncompressedSize64 > 256<<20 || total+f.UncompressedSize64 > 512<<20 {
-				return "", errors.New("The EPUB expands beyond supported limits.")
-			}
-			total += f.UncompressedSize64
-			files[f.Name] = f
-		}
-		read := func(name string, limit int64) ([]byte, error) {
-			f := files[name]
-			if f == nil || f.UncompressedSize64 > uint64(limit) {
-				return nil, errors.New("missing or oversized EPUB metadata")
-			}
-			r, e := f.Open()
-			if e != nil {
-				return nil, e
-			}
-			defer r.Close()
-			return io.ReadAll(io.LimitReader(r, limit+1))
-		}
-		mime, e := read("mimetype", 64)
-		// Some publishers end the mimetype file with a line break; NeoReader accepts it.
-		if e != nil || strings.TrimSpace(string(mime)) != "application/epub+zip" {
-			return "", errors.New("The archive is not an EPUB.")
-		}
-		container, e := read("META-INF/container.xml", 1<<20)
-		var declaration struct {
-			Roots []struct {
-				Path string `xml:"full-path,attr"`
-			} `xml:"rootfiles>rootfile"`
-		}
-		if e != nil || xml.Unmarshal(container, &declaration) != nil || len(declaration.Roots) == 0 {
-			return "", errors.New("The EPUB has no package declaration.")
-		}
-		pkg, e := read(declaration.Roots[0].Path, 4<<20)
-		var opf struct {
-			XMLName  xml.Name `xml:"package"`
-			Manifest []struct {
-				ID   string `xml:"id,attr"`
-				Href string `xml:"href,attr"`
-			} `xml:"manifest>item"`
-			Spine []struct {
-				ID string `xml:"idref,attr"`
-			} `xml:"spine>itemref"`
-		}
-		if e != nil || xml.Unmarshal(pkg, &opf) != nil || len(opf.Spine) == 0 {
-			return "", errors.New("The EPUB package or reading order is invalid.")
-		}
-		items := map[string]string{}
-		for _, item := range opf.Manifest {
-			items[item.ID] = item.Href
-		}
-		for _, item := range opf.Spine {
-			href, ok := items[item.ID]
-			u, err := url.Parse(href)
-			if !ok || err != nil || u.IsAbs() || u.Host != "" || files[path.Join(path.Dir(declaration.Roots[0].Path), u.Path)] == nil {
-				return "", errors.New("An EPUB reading-order resource is missing.")
-			}
-		}
-		return "epub", nil
-	case ".mobi", ".azw3":
-		if e := validMobi(raw); e != nil {
-			return "", e
-		}
-		return bookFormats[strings.ToLower(path.Ext(name))].Kind, nil
-	}
-	return "", errors.New(errBookFormat)
 }
 
 // QueueBook stores immutable bytes before atomically publishing their native
@@ -345,6 +208,12 @@ var uploadBookTemplate = template.Must(template.New("upload-book.html").Funcs(vi
 type uploadBookView struct {
 	Error, State, Name, ID, Folder string
 	Folders                        []readingFolder
+}
+
+// Accept is the file picker's filter; Formats is the same list for reading.
+func (uploadBookView) Accept() string { return strings.Join(bookExtensions(), ",") }
+func (uploadBookView) Formats() string {
+	return strings.ToUpper(strings.ReplaceAll(strings.Join(bookExtensions(), ", "), ".", ""))
 }
 
 // uploadToShelf publishes one book onto a shelf, as a one-file import, so

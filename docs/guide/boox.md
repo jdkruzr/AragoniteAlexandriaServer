@@ -9,7 +9,7 @@ Alexandria Server can stand in for the Onyx cloud. A companion app called **Powe
 - **Notebooks and folders**, browsable on the web with read-only page previews drawn from the ink the server has received.
 - **Reading records** from NeoReader: books, highlights, bookmarks and notes.
 - **Tags** you add on the tablet with the lasso's Tag action. They're read-only here, but searching for a tag finds its pages even when the handwriting doesn't say it.
-- **Book upload**: send EPUB, PDF, MOBI and AZW3 books, or folders of them, to your tablets' native libraries.
+- **Book upload**: send books, comics and documents (EPUB, PDF, MOBI, CBZ, CBR and [more](#supported-formats)), or folders of them, to your tablets' native libraries. Tablets can [send their own books](#upload-from-a-tablet) to the server too.
 - **Things sent to the tablet**: [Audio Note Minutes](minutes.md) and text notes arrive as ordinary BOOX text notebooks.
 - **Handwriting recognition, search and note actions** on BOOX pages. See [Recognize Handwriting](recognition.md), [Search and Tags](search-and-tags.md) and [Note Actions](note-actions.md).
 
@@ -188,7 +188,8 @@ filters, folders, breadcrumbs, and pagination help narrow a larger library.
 
 1. Open **Library → Books → Upload books…**.
 2. Choose a destination, then **Choose files…** or **Choose folder…**. Select up
-   to 1,000 files, with a maximum of 128 MiB per EPUB, PDF, MOBI or AZW3 book.
+   to 1,000 files of a [supported format](#supported-formats), with a maximum of
+   128 MiB each.
    You can also drop files or folders onto the box.
 3. Review the selection: each file with its format, size and status. The
    selected top-level folder and its subfolders become native BOOX shelves.
@@ -221,6 +222,47 @@ A book a tablet imported from its own storage is still refused. Opening the same
 again from the tablet's cloud-account view brings its old entry back beside the stored
 book, with its own progress; read from the stored copy, or remove the cloud one on the
 tablet.
+
+#### Supported Formats
+
+The upload page, the folder importer and WebDAV accept the files the tablet's own
+Library lists as books. Each is checked before it is stored, and a file that fails
+is refused with a reason.
+
+| Kind | Extensions | Checked for |
+|---|---|---|
+| Books | `epub`, `pdf`, `mobi`, `azw3`, `azw`, `prc`, `pdb`, `djvu`, `fb2`, `fbz`, `fb3`, `chm` | The format's own structure. Kindle DRM-protected books are refused, since BOOX cannot open them. |
+| Comics | `cbz`, `cbr` | `cbz`: a zip with at least one page image. `cbr`: a RAR archive, or a zip with page images. A RAR archive named `.cbz` is refused, because the tablet would not open it; rename it to `.cbr`. |
+| Documents | `doc`, `docx`, `rtf`, `odt`, `sxw`, `ppt`, `pps`, `pot`, `ppa`, `pptx`, `ppsx`, `pptm`, `ppsm`, `potx`, `potm`, `ppam` | The container each format uses. |
+| Text and web pages | `txt`, `md`, `html`, `htm`, `xhtml`, `xml` | That the file is text. Web pages are always handed back as downloads, never shown as pages by this server. |
+| Archives | `zip` | A zip of images opens as a comic on the tablet; other zips open in its text reader. |
+
+Because text files, web pages and zips count as books, a readme or notes file
+sitting beside your books in an imported folder is uploaded too. Check the
+selection list before importing a mixed folder.
+
+Comics and the formats beyond EPUB, PDF, MOBI and AZW3 were added from the
+tablet software's own format list and have not yet been opened on a tablet from
+this server. Whether NeoReader opens the newer RAR 5 kind of `cbr` is not known.
+
+#### Upload from a Tablet
+
+A tablet can send a book from its own storage to the server, so your other tablets
+and the web Library get the file as well as the reading record:
+
+- **One book**: in the tablet's Library, press and hold the book, open the **Sync**
+  tab and tap **Upload source file**. The first tap only shows an explanation; tap
+  again to upload.
+- **Several books**: Library → **⋮** → **Bulk Management**, select the books, then
+  **Upload**.
+
+The tablet must be on Wi-Fi, with reading sync on for the tablet and for that book.
+Books from the BOOX shop or a cloud-storage account can't be sent this way. Files
+can be up to 128 MiB. The tablet has no format filter of its own, so anything its
+Library shows can be sent. Once it arrives, the book shows **File here** in
+Library → Books. This is the tablets' own feature (it works the same against
+Onyx's cloud); the steps come from the tablet software and have not yet been
+walked through on a tablet against this server.
 
 Identical bytes reuse an existing upload, even under a different filename. A book
 already on one shelf is not added to another: tablets keep each book on a single
@@ -287,7 +329,7 @@ the tablets' native library, the same way the Library app would make it.
 
 | In the file manager | On the tablets |
 |---|---|
-| Copy an EPUB, PDF, MOBI or AZW3 book into a folder | Uploads the book onto that shelf |
+| Copy a book of a [supported format](#supported-formats) into a folder | Uploads the book onto that shelf |
 | New folder, rename a folder, move a folder | Creates, renames, or moves the shelf |
 | Delete a folder | Removes the shelf. Its books and non-empty subfolders move up one level, as on the tablet; no book is deleted. Books in a top-level folder become unshelved. Many file managers (pcmanfm and other GIO-based ones among them) delete a folder's contents first, though, which trashes those books; they can be restored from `.Trash`. |
 | Move a book to another folder | Moves it to that shelf |
@@ -301,7 +343,7 @@ the tablets' native library, the same way the Library app would make it.
   it appears at the top level. Copying a book to another folder is refused: move it
   instead. Two items with the same name in one folder are shown as *Name (2)*; the
   suffix is only for display.
-- **Uploads accept EPUB, PDF, MOBI and AZW3 up to 128 MiB**, checked the same way as the upload page. Kindle DRM-protected MOBI/AZW3 files are refused, since BOOX cannot open them.
+- **Uploads accept the [supported formats](#supported-formats) up to 128 MiB**, checked the same way as the upload page.
   Anything else is refused with a reason. Files your computer adds on its own
   (`._*`, `.DS_Store`, `Thumbs.db`, `desktop.ini`) are quietly discarded. Existing
   books are never overwritten. Bytes already in the library are refused under another

@@ -18,7 +18,7 @@ Deployment chosen 2026-10-09 for `alexandria-host`:
 - Object storage: `/mnt/alexandria/objects` (CephFS).
 - Backups: `/mnt/alexandria/backups` (CephFS).
 
-Nginx must forward WebSocket Upgrade/Connection headers, allow at least 64 MiB request bodies, and use long read timeouts for native BLIP sessions. TLS terminates at the existing proxy. Couchbase administration and Sync Gateway must not be published through it.
+Nginx must forward WebSocket Upgrade/Connection headers, allow at least 129 MiB request bodies (books go up to 128 MiB), and use long read timeouts for native BLIP sessions. TLS terminates at the existing proxy. Couchbase administration and Sync Gateway must not be published through it.
 
 The existing `backup.sh` saves PostgreSQL and objects only. It is **not a complete native BOOX backup**: Couchbase and private Gateway/configuration secrets must also be captured consistently. Do not use the generic restore script as native disaster recovery. Backups on the same CephFS as assets also need a separate off-host copy.
 

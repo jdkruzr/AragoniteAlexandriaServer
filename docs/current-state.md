@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-11-08. Work continues on `main`. The Server port resumed on
+Updated 2026-11-16. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -11,6 +11,25 @@ are published on `origin/main`, along with their deployment and device evidence.
 No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
+
+**Committed, not yet deployed (2026-11-16): more upload formats.** App-only, no migration; the
+workstation was off the server's network, so no kit exists yet. Uploads (page, importer, WebDAV)
+accept the files the tablet Library lists as books (`BookFileType.defaultFileTypes`) except the
+store-bound ones: comics (`cbz`, `cbr`), `azw`, `prc`, `pdb`, `djvu`, `fb2`/`fbz`/`fb3`, `chm`,
+Word, RTF, OpenDocument and PowerPoint files, `txt`, `md`, `html`/`htm`/`xhtml`/`xml` and `zip`
+([list and checks](guide/boox.md#supported-formats)). A `cbr` is checked by its RAR 4 or RAR 5
+signature only (or as a zip of images); a RAR named `.cbz` is refused. Web pages, XML and FB2 are
+stored and served as plain bytes, never as a page. So `.txt`, web and zip files beside books in an
+imported folder are now uploaded instead of skipped. Tablets may upload book files
+(`<uid>/reader/<book>/book/…`) up to 128 MiB; other tablet objects stay at 64 MiB. The upload
+page and Help describe the tablets' own upload (Library → press and hold a book → Sync → Upload
+source file; ⋮ → Bulk Management → Upload), found by reading the decompiled Library app
+([guide](guide/boox.md#upload-from-a-tablet)). Fresh required PostgreSQL/S3
+`go test -race -count=1 ./...` (55 packages, no skips), `go vet` and the packaging tests passed;
+the upload page and Help were checked as previews (desktop, 390 px, dark). **Not yet checked on
+a tablet:** that NeoReader opens books of the new formats sent from this server (RAR 5 `cbr`
+especially: its unrar library is not in our firmware copies), where Upload source file sits on
+screen, and a tablet upload over 64 MiB arriving as "File here".
 
 Latest recorded deployment (2026-11-09): **`folderlist-73ba8e7331b8`**, app-only on schema **43**,
 image `sha256:42596ffd02a01f261d12e72d818968a072b84345ed4e959dbb84c7d9264c675e`, on top of

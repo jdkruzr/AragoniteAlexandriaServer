@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -172,14 +171,10 @@ func (f *libraryFS) info(p string, e libraryEntry) *webdav.FileInfo {
 		return &webdav.FileInfo{Path: strings.TrimSuffix(href, "/") + "/", IsDir: true}
 	}
 	if e.Placeholder {
-		return &webdav.FileInfo{Path: href, MIMEType: mime.TypeByExtension(path.Ext(p)), ETag: "placeholder"}
+		return &webdav.FileInfo{Path: href, MIMEType: bookServeType("", p), ETag: "placeholder"}
 	}
 	b := e.Book
-	ct := b.ContentType
-	if ct == "" {
-		ct = mime.TypeByExtension(path.Ext(e.Name))
-	}
-	return &webdav.FileInfo{Path: href, Size: b.Size, ModTime: time.UnixMilli(b.Modified), MIMEType: ct, ETag: b.SHA}
+	return &webdav.FileInfo{Path: href, Size: b.Size, ModTime: time.UnixMilli(b.Modified), MIMEType: bookServeType(b.ContentType, e.Name), ETag: b.SHA}
 }
 
 func (f *libraryFS) Stat(ctx context.Context, name string) (*webdav.FileInfo, error) {
@@ -296,7 +291,7 @@ func (f *libraryFS) Create(ctx context.Context, name string, body io.ReadCloser,
 	}
 	f.setPlaceholder(folder.Key, leaf, false)
 	f.index = nil
-	return &webdav.FileInfo{Path: DAVPrefix + p, Size: int64(len(raw)), MIMEType: mime.TypeByExtension(path.Ext(leaf)), ETag: hash(raw)}, true, nil
+	return &webdav.FileInfo{Path: DAVPrefix + p, Size: int64(len(raw)), MIMEType: bookServeType("", leaf), ETag: hash(raw)}, true, nil
 }
 
 func (f *libraryFS) RemoveAll(ctx context.Context, name string, opts *webdav.RemoveAllOptions) error {

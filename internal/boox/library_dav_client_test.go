@@ -61,14 +61,14 @@ func TestLibraryDAVWithRclone(t *testing.T) {
 	if e = os.WriteFile(local, []byte(syntheticPDF("rclone")), 0o600); e != nil {
 		t.Fatal(e)
 	}
-	if e = os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("plain"), 0o600); e != nil {
+	if e = os.WriteFile(filepath.Join(dir, "notes.exe"), []byte("plain"), 0o600); e != nil {
 		t.Fatal(e)
 	}
 	if root := names(""); !has(root, ".Trash") || !has(root, "Alpha") {
 		t.Fatal(root)
 	}
 	run(true, "copyto", local, remote+"Alpha/Fresh.pdf")
-	run(false, "copyto", filepath.Join(dir, "notes.txt"), remote+"Alpha/notes.txt")
+	run(false, "copyto", filepath.Join(dir, "notes.exe"), remote+"Alpha/notes.exe")
 	run(true, "mkdir", remote+"Alpha/New")
 	run(true, "moveto", remote+"Alpha/Fresh.pdf", remote+"Alpha/New/Fresh.pdf")
 	if got := run(true, "cat", remote+"Alpha/New/Fresh.pdf"); got != syntheticPDF("rclone") {
@@ -80,7 +80,7 @@ func TestLibraryDAVWithRclone(t *testing.T) {
 		t.Fatal(trash)
 	}
 	run(true, "rmdir", remote+"Alpha/New")
-	if alpha := names("Alpha"); !has(alpha, "One renamed.epub") || has(alpha, "New") || has(alpha, "notes.txt") {
+	if alpha := names("Alpha"); !has(alpha, "One renamed.epub") || has(alpha, "New") || has(alpha, "notes.exe") {
 		t.Fatal(alpha)
 	}
 	libraryDrain(t, s)

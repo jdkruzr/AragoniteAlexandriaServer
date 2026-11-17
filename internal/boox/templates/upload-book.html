@@ -1,14 +1,16 @@
 {{define "content"}}{{$d := .Data}}<div class="upload">
 <p class="crumbs"><a href="/library">{{t "Library"}}</a> / <a href="/boox/reading">{{t "Books"}}</a> /</p>
 <h1>{{t "Upload Books"}} {{template "help" "boox.upload"}}</h1>
-<p class="upload-lede">{{t "EPUB, PDF, MOBI or AZW3 files, or a whole folder: up to 128 MiB each and 1,000 files at a time. Folders keep their nested shelves on the server and your BOOX tablets. Existing books are never replaced."}}</p>
+<p class="upload-lede">{{t "Books, comics and documents, or a whole folder: up to 128 MiB each and 1,000 files at a time. Folders keep their nested shelves on the server and your BOOX tablets. Existing books are never replaced."}}</p>
+<details class="upload-formats small"><summary>{{t "Supported Formats"}}</summary><p class="muted">{{$d.Formats}}</p></details>
+<p class="small muted">{{t "You can also upload from a tablet. In its Library, press and hold a book, open the Sync tab and tap Upload source file. For several books, use ⋮ → Bulk Management → Upload. The tablet needs Wi-Fi and sync turned on; files can be up to 128 MiB."}}</p>
 {{if $d.Error}}<p class="callout danger" role="alert">{{t $d.Error}}</p>{{end}}
 <section id="book-import" hidden>
 <p><a id="import-resume" hidden>{{t "Continue your last import"}}</a></p>
 <p class="field upload-destination"><label for="import-destination">{{t "Destination"}}</label><select class="input" id="import-destination"><option value="">{{t "Library root"}}</option>{{range $d.Folders}}{{if .Writable}}<option value="{{.ID}}" {{if eq $d.Folder .ID}}selected{{end}}>{{.Path}}</option>{{end}}{{end}}</select></p>
 <div id="import-drop" class="drop-zone">{{icon "books"}}
 <p class="drop-title">{{t "Drop files or folders here"}}</p>
-<div class="drop-actions"><label class="btn btn-secondary">{{icon "file-plus"}} {{t "Choose files…"}}<input id="import-files" class="import-file-input" type="file" multiple accept=".epub,.pdf,.mobi,.azw3"></label><label class="btn btn-secondary">{{icon "folder-plus"}} {{t "Choose folder…"}}<input id="import-folder" class="import-file-input" type="file" multiple webkitdirectory></label></div>
+<div class="drop-actions"><label class="btn btn-secondary">{{icon "file-plus"}} {{t "Choose files…"}}<input id="import-files" class="import-file-input" type="file" multiple accept="{{$d.Accept}}"></label><label class="btn btn-secondary">{{icon "folder-plus"}} {{t "Choose folder…"}}<input id="import-folder" class="import-file-input" type="file" multiple webkitdirectory></label></div>
 <p class="small muted">{{t "Empty folders and unsupported files are skipped."}}</p></div>
 <div id="import-selection" hidden>
 <div class="upload-selection-head"><h2>{{t "Selection"}}</h2><span id="import-summary" class="small muted"></span><button id="import-preview" class="btn btn-ghost" type="button">{{t "Preview selection"}}</button><a class="btn btn-ghost" href="/boox/books/upload">{{t "Start another import"}}</a></div>
@@ -25,6 +27,6 @@
 </div></section>
 <details id="import-fallback" open><summary>{{t "Single-file upload"}}</summary><form method="post" enctype="multipart/form-data" action="/boox/books/upload">
 <p class="field upload-destination"><label for="upload-folder">{{t "Destination"}}</label><select class="input" id="upload-folder" name="folder"><option value="">{{t "Library root"}}</option>{{range $d.Folders}}{{if .Writable}}<option value="{{.ID}}" {{if eq $d.Folder .ID}}selected{{end}}>{{.Path}}</option>{{end}}{{end}}</select></p>
-<p class="field"><label for="upload-book">{{t "Book file"}}</label><input id="upload-book" type="file" name="book" accept=".epub,.pdf,.mobi,.azw3" required></p><p><button class="btn btn-primary">{{t "Upload book"}}</button></p></form></details>
+<p class="field"><label for="upload-book">{{t "Book file"}}</label><input id="upload-book" type="file" name="book" accept="{{$d.Accept}}" required></p><p><button class="btn btn-primary">{{t "Upload book"}}</button></p></form></details>
 {{if $d.State}}<section class="upload-status"><h2>{{$d.Name}}</h2><p>{{t "Server publication:"}} <strong>{{if eq $d.State "published"}}{{t "Published"}}{{else if eq $d.State "blocked" "cancelled" "superseded"}}{{t "Needs attention"}}{{else}}{{t "Accepted · publishing"}}{{end}}</strong></p><p>{{t "Device download: not verified. Open the book in the BOOX library to download it."}}</p><a href="/boox/books/upload?operation={{$d.ID}}">{{t "Refresh status"}}</a></section>{{end}}
 </div><script src="/static/book-import.js?v={{version}}" defer></script>{{end}}
