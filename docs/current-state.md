@@ -12,11 +12,12 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-**Committed, not yet deployed (2026-11-16): more upload formats.** App-only, no migration; the
-workstation was off the server's network, so no kit exists yet. Uploads (page, importer, WebDAV)
-accept the files the tablet Library lists as books (`BookFileType.defaultFileTypes`) except the
-store-bound ones: comics (`cbz`, `cbr`), `azw`, `prc`, `pdb`, `djvu`, `fb2`/`fbz`/`fb3`, `chm`,
-Word, RTF, OpenDocument and PowerPoint files, `txt`, `md`, `html`/`htm`/`xhtml`/`xml` and `zip`
+Latest recorded deployment (2026-11-16): **`formats-8a98d7cafc3e`**, app-only on schema **43**,
+image `sha256:a4df8c323f9345d1ea1ca3c5ed7007dbc2d7c2351fb1700fee2711316d62fc2b`, on top of
+**`folderlist-73ba8e7331b8`**. Uploads (page, importer, WebDAV) accept the files the tablet Library
+lists as books (`BookFileType.defaultFileTypes`) except the store-bound ones: comics (`cbz`,
+`cbr`), `azw`, `prc`, `pdb`, `djvu`, `fb2`/`fbz`/`fb3`, `chm`, Word, RTF, OpenDocument and
+PowerPoint files, `txt`, `md`, `html`/`htm`/`xhtml`/`xml` and `zip`
 ([list and checks](guide/boox.md#supported-formats)). A `cbr` is checked by its RAR 4 or RAR 5
 signature only (or as a zip of images); a RAR named `.cbz` is refused. Web pages, XML and FB2 are
 stored and served as plain bytes, never as a page. So `.txt`, web and zip files beside books in an
@@ -25,13 +26,19 @@ imported folder are now uploaded instead of skipped. Tablets may upload book fil
 page and Help describe the tablets' own upload (Library → press and hold a book → Sync → Upload
 source file; ⋮ → Bulk Management → Upload), found by reading the decompiled Library app
 ([guide](guide/boox.md#upload-from-a-tablet)). Fresh required PostgreSQL/S3
-`go test -race -count=1 ./...` (55 packages, no skips), `go vet` and the packaging tests passed;
-the upload page and Help were checked as previews (desktop, 390 px, dark). **Not yet checked on
-a tablet:** that NeoReader opens books of the new formats sent from this server (RAR 5 `cbr`
-especially: its unrar library is not in our firmware copies), where Upload source file sits on
-screen, and a tablet upload over 64 MiB arriving as "File here".
+`go test -race -count=1 ./...` (55 packages, no skips), `go vet` and the packaging tests passed.
+Live check through the owner's browser session: the upload page shows the new wording and the 37
+formats; synthetic `cbz`, `cbr` (RAR 4 signature), `djvu`, `fb2`, `rtf`, `docx` and `html` files
+put over WebDAV came back byte-identical, with `fb2` and `html` served as
+`application/octet-stream`; a RAR named `.cbz` and an `.exe` were refused (415); all seven were
+listed in the Library, then moved to Book Trash, where they remain ("Alexandria format check
+20261116"). readyz 200, no restarts, no panics. **Not yet checked on a tablet:** that NeoReader
+opens books of the new formats sent from this server (RAR 5 `cbr` especially: its unrar library
+is not in our firmware copies), where Upload source file sits on screen, and a tablet upload over
+64 MiB arriving as "File here". The folder importer and the upload form were not exercised live
+with the new formats. Rollback: `private/formats-8a98d7cafc3e/rollback.sh`.
 
-Latest recorded deployment (2026-11-09): **`folderlist-73ba8e7331b8`**, app-only on schema **43**,
+Previous deployment (2026-11-09): **`folderlist-73ba8e7331b8`**, app-only on schema **43**,
 image `sha256:42596ffd02a01f261d12e72d818968a072b84345ed4e959dbb84c7d9264c675e`, on top of
 **`foldersearch-369036c34153`**: MCP `list_notebooks` takes a folder by path or id (as `search` does) and
 refuses an unknown one; the first page of a flat listing lists every folder with its path and folder_id,
