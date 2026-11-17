@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-11-16. Work continues on `main`. The Server port resumed on
+Updated 2026-11-17. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -12,7 +12,18 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-16): **`formats-8a98d7cafc3e`**, app-only on schema **43**,
+Latest recorded deployment (2026-11-17): **`removedcopy-df2f14a1a63a`**, app-only on schema **43**,
+image `sha256:dfc3ad2d88c21e02da688d4bfa2e7ee3d46892f490db55c66c15f8bb7a4ccdec`, on top of
+**`formats-8a98d7cafc3e`**. An upload was refused ("A tablet already has this book from its own
+storage") when the only matching tablet record was one the tablet had removed from its library
+(`status=1`, kept by the tablets); the owner's first comic upload hit this. Removed tablet-local
+records no longer count and are left unchanged; a copy still in a tablet's library is refused as
+before. Fresh required PostgreSQL/S3 `go test -race -count=1 ./...` (55 packages, no skips) and
+`go vet` passed; readyz 200, no restarts, no panics. Not checked live: the refused upload has not
+been retried yet, and how a tablet shows the stored book beside its removed record is unseen.
+Rollback: `private/removedcopy-df2f14a1a63a/rollback.sh`.
+
+Previous deployment (2026-11-16): **`formats-8a98d7cafc3e`**, app-only on schema **43**,
 image `sha256:a4df8c323f9345d1ea1ca3c5ed7007dbc2d7c2351fb1700fee2711316d62fc2b`, on top of
 **`folderlist-73ba8e7331b8`**. Uploads (page, importer, WebDAV) accept the files the tablet Library
 lists as books (`BookFileType.defaultFileTypes`) except the store-bound ones: comics (`cbz`,
