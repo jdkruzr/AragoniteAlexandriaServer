@@ -179,6 +179,29 @@ func TestUploadAdoptionMergesTwoLiveRecords(t *testing.T) {
 	}
 }
 
+// A tablet's own copy blocks an upload only while it is in the library: once
+// the tablet has removed it, the same file can be uploaded, and the removed
+// record is left as it is.
+func TestUploadAfterATabletRemovedItsOwnCopy(t *testing.T) {
+	raw := []byte(syntheticPDF("tablet copy"))
+	s, g := adoptFixture(t, raw, map[string]map[string]any{"local": {"fetchSource": 0, "cloudId": nil, "nativeAbsolutePath": "/storage/emulated/0/Download/Book.pdf"}})
+	managementObserve(t, s)
+	davExpect(t, davDo(t, s, "PUT", "/dav/books/Book.pdf", string(raw)), http.StatusConflict)
+	g.mu.Lock()
+	g.docs[s.uid()+"#local"]["status"] = 1
+	g.docs[s.uid()+"#local"]["_rev"] = "2-removed"
+	g.mu.Unlock()
+	managementObserve(t, s)
+	davExpect(t, davDo(t, s, "PUT", "/dav/books/Book.pdf", string(raw)), http.StatusCreated)
+	libraryDrain(t, s)
+	if b := newBook(t, s, g, "Book.pdf"); fmt.Sprint(b["status"]) != "0" || b["uniqueId"] == "local" {
+		t.Fatal(b)
+	}
+	if old := g.record(s, "local"); fmt.Sprint(old["status"]) != "1" || old["_rev"] != "2-removed" {
+		t.Fatal("the removed tablet record was changed", old)
+	}
+}
+
 // A record left stored by the earlier in-place adoption (tablets hide it) is
 // replaced like a cloud record, and its binding released.
 func TestUploadRehomesAnInPlaceAdoptedRecord(t *testing.T) {

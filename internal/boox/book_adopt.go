@@ -133,6 +133,11 @@ func (s Service) adoptionCandidates(ctx context.Context, tx *sql.Tx, fingerprint
 		if e = nativeJSON(raw, &c.Body); e != nil {
 			return nil, e
 		}
+		// A book a tablet had from its own storage and has since removed from
+		// its library is no longer a book the tablets have.
+		if !cloudRecord(c.Body) && !c.Converted && numberField(c.Body, "status") == 1 {
+			continue
+		}
 		out = append(out, c)
 	}
 	return out, rows.Err()
