@@ -82,7 +82,7 @@ func TestReadingMarksOutrankWhatTabletsReport(t *testing.T) {
 	}
 
 	// The tablet opens the book again and reports In Progress: the mark holds.
-	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET revision='2-test',body=body||'{"readingStatus":1,"progress":"2/3","lastAccess":1770000000000}' WHERE document_id=$1`, s.uid()+"#stored"); e != nil {
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET revision='2-test',body=body||'{"readingStatus":1,"progress":"2/3","lastAccess":4102444800000}' WHERE document_id=$1`, s.uid()+"#stored"); e != nil {
 		t.Fatal(e)
 	}
 	b, e := s.Book(ctx, s.uid()+"#stored")
@@ -97,6 +97,21 @@ func TestReadingMarksOutrankWhatTabletsReport(t *testing.T) {
 	s.DB.QueryRowContext(ctx, `SELECT marked_at::text FROM boox_reading_mark WHERE book_id='stored'`).Scan(&after)
 	if before == "" || before != after {
 		t.Fatal("marked_at moved", before, after)
+	}
+	// Not Reading lapses once a tablet opens the book after the mark, and
+	// counts again when marked afresh.
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_reading_mark SET marked_at=now()-interval '1 day' WHERE book_id='elsewhere'`); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := s.DB.ExecContext(ctx, `UPDATE boox_projection SET body=body||jsonb_build_object('lastAccess',(extract(epoch FROM now()-interval '1 hour')*1000)::bigint) WHERE document_id=$1`, s.uid()+"#elsewhere"); e != nil {
+		t.Fatal(e)
+	}
+	if got := counts(); got != "1 0 2 0" {
+		t.Fatal("picked up again", got)
+	}
+	mark("not_reading", "elsewhere")
+	if got := counts(); got != "1 0 1 1" {
+		t.Fatal("set aside again", got)
 	}
 	mark("none", "stored", "elsewhere")
 	if got := counts(); got != "1 1 1 0" {

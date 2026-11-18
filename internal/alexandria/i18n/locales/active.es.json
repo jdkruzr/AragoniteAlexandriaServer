@@ -1747,7 +1747,7 @@
   "Not Reading": "Apartados",
   "A tablet counts a book as Finished only while its last page is showing, and as In Progress once it has been opened. Mark a book as finished or not reading here to count it your way; tablets keep showing their own status.": "Una tableta cuenta un libro como Terminado solo mientras muestra su última página, y como En curso desde que se abre. Marca aquí un libro como terminado o apartado para contarlo a tu manera; las tabletas siguen mostrando su propio estado.",
   "Mark…": "Marcar…",
-  "Marks are kept by Alexandria. Tablets keep showing their own status.": "Alexandria guarda las marcas. Las tabletas siguen mostrando su propio estado.",
+  "Marks are kept by Alexandria; tablets keep showing their own status. Not reading lasts until a tablet opens the book again.": "Alexandria guarda las marcas; las tabletas siguen mostrando su propio estado. Apartado dura hasta que una tableta vuelva a abrir el libro.",
   "Mark as finished": "Marcar como terminado",
   "Mark as not reading": "Marcar como apartado",
   "Remove mark": "Quitar marca",

@@ -11,14 +11,16 @@ import (
 
 // A tablet recomputes readingStatus whenever its reader saves: Finished only
 // while the last page is showing, In Progress otherwise. A mark is what the
-// reader says instead, and it holds until removed.
+// reader says instead. Finished holds until removed; Not Reading holds until
+// a tablet opens the book again.
 const (
 	markFinished   = "finished"
 	markNotReading = "not_reading"
 )
 
 // readingMarkJoin adds a book's mark (alias k) to a query over projection p.
-const readingMarkJoin = ` LEFT JOIN boox_reading_mark k ON k.native_uid=p.native_uid AND k.book_id=p.body->>'uniqueId' `
+// A Not Reading mark older than the book's last opening no longer counts.
+const readingMarkJoin = ` LEFT JOIN boox_reading_mark k ON k.native_uid=p.native_uid AND k.book_id=p.body->>'uniqueId' AND NOT (k.mark='not_reading' AND CASE WHEN p.body->>'lastAccess' ~ '^[0-9]{1,15}$' THEN (p.body->>'lastAccess')::bigint ELSE 0 END > extract(epoch FROM k.marked_at)*1000) `
 
 // readingStatusSQL is a book's status: its mark ("2" finished, "3" not
 // reading) or else what the tablets last reported.
@@ -35,9 +37,10 @@ func (s Service) setReadingMarks(ctx context.Context, books []string, mark strin
 		_, e := s.DB.ExecContext(ctx, `DELETE FROM boox_reading_mark WHERE native_uid=$1 AND book_id IN (SELECT jsonb_array_elements_text($2::jsonb))`, s.uid(), string(ids))
 		return e
 	}
-	// Marking again keeps the date of the first time.
+	// Marking Finished again keeps the date of the first time; Not Reading
+	// counts from the latest.
 	_, e := s.DB.ExecContext(ctx, `INSERT INTO boox_reading_mark(native_uid,book_id,mark) SELECT DISTINCT p.native_uid,p.body->>'uniqueId',$3 FROM boox_projection p WHERE p.native_uid=$1 AND p.body->>'modeType'='4' AND `+booxvisibility.Reading("p")+` AND p.body->>'uniqueId' IN (SELECT jsonb_array_elements_text($2::jsonb))
- ON CONFLICT(native_uid,book_id) DO UPDATE SET mark=excluded.mark,marked_at=now() WHERE boox_reading_mark.mark<>excluded.mark`, s.uid(), string(ids), mark)
+ ON CONFLICT(native_uid,book_id) DO UPDATE SET mark=excluded.mark,marked_at=now() WHERE boox_reading_mark.mark<>excluded.mark OR excluded.mark='not_reading'`, s.uid(), string(ids), mark)
 	return e
 }
 

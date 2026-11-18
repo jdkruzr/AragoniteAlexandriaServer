@@ -1665,7 +1665,7 @@
   "Not Reading": "Not Reading",
   "A tablet counts a book as Finished only while its last page is showing, and as In Progress once it has been opened. Mark a book as finished or not reading here to count it your way; tablets keep showing their own status.": "A tablet counts a book as Finished only while its last page is showing, and as In Progress once it has been opened. Mark a book as finished or not reading here to count it your way; tablets keep showing their own status.",
   "Mark…": "Mark…",
-  "Marks are kept by Alexandria. Tablets keep showing their own status.": "Marks are kept by Alexandria. Tablets keep showing their own status.",
+  "Marks are kept by Alexandria; tablets keep showing their own status. Not reading lasts until a tablet opens the book again.": "Marks are kept by Alexandria; tablets keep showing their own status. Not reading lasts until a tablet opens the book again.",
   "Mark as finished": "Mark as finished",
   "Mark as not reading": "Mark as not reading",
   "Remove mark": "Remove mark",

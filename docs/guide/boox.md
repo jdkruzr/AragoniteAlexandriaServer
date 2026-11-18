@@ -282,7 +282,8 @@ the last page is showing, **In Progress** otherwise. So a book you opened once s
 Progress, and a book you finished but later flipped back through drops out of Finished.
 To count books your way, select one or more on the Reading page and choose **Mark as
 finished** or **Mark as not reading** (for books you set aside or only glanced at);
-**Remove mark** undoes it. A mark holds even if a tablet opens the book again, works for
+**Remove mark** undoes it. A Finished mark holds even if a tablet opens the book again; a
+Not Reading mark lapses as soon as one does, so a book you pick back up counts again. Marks work for
 books whose file isn't stored here, and records the date you made it. Marks are kept by
 Alexandria: tablets keep showing their own status.
 
