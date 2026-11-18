@@ -51,7 +51,7 @@ func TestReadingPageBookActions(t *testing.T) {
 		}
 	}
 	// The selected book's preview changes it in place.
-	if strings.Count(page, `<input type="hidden" name="id" value="b1">`) != 3 || !strings.Contains(page, `name="action" value="rename"`) || !strings.Contains(page, `name="action" value="trash"`) || !strings.Contains(page, `value="One.epub"`) {
+	if strings.Count(page, `<input type="hidden" name="id" value="b1">`) != 4 || !strings.Contains(page, `action="/boox/reading/mark"`) || !strings.Contains(page, `name="action" value="rename"`) || !strings.Contains(page, `name="action" value="trash"`) || !strings.Contains(page, `value="One.epub"`) {
 		t.Fatal("preview lacks book actions")
 	}
 	// Its old address opens it selected.

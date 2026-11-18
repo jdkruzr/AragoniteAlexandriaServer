@@ -277,6 +277,15 @@ the native reading records already received by Alexandria. BOOX's separate timed
 statistics database/service is not imported, so this view does not invent daily
 minutes, streaks, or completion dates.
 
+A tablet works out a book's status each time its reader saves: **Finished** only while
+the last page is showing, **In Progress** otherwise. So a book you opened once stays In
+Progress, and a book you finished but later flipped back through drops out of Finished.
+To count books your way, select one or more on the Reading page and choose **Mark as
+finished** or **Mark as not reading** (for books you set aside or only glanced at);
+**Remove mark** undoes it. A mark holds even if a tablet opens the book again, works for
+books whose file isn't stored here, and records the date you made it. Marks are kept by
+Alexandria: tablets keep showing their own status.
+
 If a book's ink or annotations look stale on a tablet, open the book's **Reading Details** and choose **Refresh received reading data**, then **Request refresh**. Then open the book on each tablet and accept Sync if prompted.
 
 When an upload replaced a cloud-account entry (see above), the same page lists that

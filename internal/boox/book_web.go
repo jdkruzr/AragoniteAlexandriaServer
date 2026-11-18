@@ -52,6 +52,8 @@ func libraryMessage(e error) (string, bool) {
 		return i18n.M("An item with this name already exists there."), true
 	case errors.Is(e, errLibraryTooLarge):
 		return i18n.M("Choose fewer books in one change."), true
+	case errors.Is(e, errLibraryNoFile):
+		return i18n.M("Only books whose file is stored here can be moved or put in Trash. Deselect the others and try again; nothing was queued."), true
 	case errors.Is(e, errLibraryChanged), errors.Is(e, errLibraryCycle):
 		return i18n.M("The books or shelves changed. Review them again; nothing was queued."), true
 	}
@@ -157,7 +159,7 @@ func (s Service) bookManageHTTP(w http.ResponseWriter, r *http.Request) {
 			for _, id := range ids {
 				b := v.Books[id]
 				if b == nil {
-					return nil, errLibraryChanged
+					return nil, errLibraryNoFile
 				}
 				var step []libraryOp
 				var err error

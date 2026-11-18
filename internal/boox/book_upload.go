@@ -167,6 +167,9 @@ func (s Service) queueBookTx(ctx context.Context, tx *sql.Tx, generation, name, 
 	}
 	if e == nil && len(adopted.Replaced) > 0 {
 		e = s.queueReplacements(ctx, tx, generation, sha, book, adopted)
+		if e == nil {
+			e = s.carryReadingMark(ctx, tx, book, adopted.Replaced)
+		}
 	}
 	return queuedBook{Operation: id, Book: book, Name: name}, e
 }

@@ -32,12 +32,16 @@ type readingItem struct {
 	FileName string
 	// InkPages counts a stored PDF's pages with handwriting.
 	InkPages int
+	// Marked is the reader's own mark ("finished", "not_reading" or ""), which
+	// Status then follows; MarkedAt is when it was set.
+	Marked   string
+	MarkedAt int64
 }
 type readingFolder struct {
 	ID, Parent, Name, Path, Revision string
 	Writable                         bool
 }
-type readingCounts struct{ New, Reading, Finished, Highlights, Bookmarks int }
+type readingCounts struct{ New, Reading, Finished, NotReading, Highlights, Bookmarks int }
 type readingView struct {
 	Listing                                     listview.State
 	Items                                       []readingItem
@@ -220,7 +224,7 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	if len(v.Query) > 200 {
 		v.Query = v.Query[:200]
 	}
-	if v.Status != "0" && v.Status != "1" && v.Status != "2" {
+	if v.Status != "0" && v.Status != "1" && v.Status != "2" && v.Status != "3" {
 		v.Status = ""
 	}
 	var e error
@@ -311,7 +315,8 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if v.View == "stats" && v.Record == "" {
-		e = s.DB.QueryRowContext(r.Context(), `SELECT count(*) FILTER(WHERE body->>'modeType'='4' AND body->>'readingStatus'='0'),count(*) FILTER(WHERE body->>'modeType'='4' AND body->>'readingStatus'='1'),count(*) FILTER(WHERE body->>'modeType'='4' AND body->>'readingStatus'='2'),count(*) FILTER(WHERE body->>'modeType'='1'),count(*) FILTER(WHERE body->>'modeType'='2') FROM boox_projection p WHERE native_uid=$1 AND `+booxvisibility.Reading("p"), s.uid()).Scan(&v.Counts.New, &v.Counts.Reading, &v.Counts.Finished, &v.Counts.Highlights, &v.Counts.Bookmarks)
+		book := `count(*) FILTER(WHERE p.body->>'modeType'='4' AND ` + readingStatusSQL
+		e = s.DB.QueryRowContext(r.Context(), `SELECT `+book+`='0'),`+book+`='1'),`+book+`='2'),`+book+`='3'),count(*) FILTER(WHERE p.body->>'modeType'='1'),count(*) FILTER(WHERE p.body->>'modeType'='2') FROM boox_projection p`+readingMarkJoin+`WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p"), s.uid()).Scan(&v.Counts.New, &v.Counts.Reading, &v.Counts.Finished, &v.Counts.NotReading, &v.Counts.Highlights, &v.Counts.Bookmarks)
 		if e != nil {
 			s.failure(w, "readingCounts", e)
 			return
@@ -374,7 +379,7 @@ const readingMembership = `EXISTS(SELECT 1 FROM boox_projection m JOIN boox_proj
 // readingListQuery selects reading records: one by document ID (Record), or
 // books in a view ("stored", "metadata", "all" or "stats"), on a shelf
 // ("unfiled" for none), matching Query, with a reading Status ("0" new, "1"
-// reading, "2" finished), in Order (SQL), paged.
+// reading, "2" finished, "3" not reading; marks count), in Order (SQL), paged.
 type readingListQuery struct {
 	Record, View, Folder, Query, Status, Order string
 	Limit, Offset                              int
@@ -382,7 +387,7 @@ type readingListQuery struct {
 
 // readingRows lists the reading records a query selects, with the total.
 func (s Service) readingRows(ctx context.Context, q readingListQuery, paths map[string]string) ([]readingItem, int, error) {
-	rows, e := s.DB.QueryContext(ctx, readingAssets+`SELECT p.document_id,p.body,coalesce(a.stored,false),coalesce(a.cover,''),'',count(*) OVER() FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId' WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p")+` AND ($2<>'' AND p.document_id=$2 OR $2='' AND p.body->>'modeType'='4' AND ($3 NOT IN ('stored','metadata') OR $3='stored' AND coalesce(a.stored,false) OR $3='metadata' AND NOT coalesce(a.stored,false)) AND ($4='' OR $4='unfiled' AND NOT `+readingMembership+` OR $4<>'unfiled' AND `+readingMembership+`) AND ($5='' OR strpos(lower(coalesce(p.body->>'title',p.body->>'name','')||' '||coalesce(p.body->>'authors','')),lower($5))>0) AND ($6='' OR p.body->>'readingStatus'=$6) AND ($3<>'stats' OR (p.body->>'lastAccess' ~ '^[0-9]{1,15}$' AND p.body->>'lastAccess'<>'0'))) ORDER BY `+q.Order+` LIMIT $7 OFFSET $8`, s.uid(), q.Record, q.View, q.Folder, q.Query, q.Status, q.Limit, q.Offset)
+	rows, e := s.DB.QueryContext(ctx, readingAssets+`SELECT p.document_id,p.body,coalesce(a.stored,false),coalesce(a.cover,''),'',`+readingMarkColumns+`,count(*) OVER() FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId'`+readingMarkJoin+`WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p")+` AND ($2<>'' AND p.document_id=$2 OR $2='' AND p.body->>'modeType'='4' AND ($3 NOT IN ('stored','metadata') OR $3='stored' AND coalesce(a.stored,false) OR $3='metadata' AND NOT coalesce(a.stored,false)) AND ($4='' OR $4='unfiled' AND NOT `+readingMembership+` OR $4<>'unfiled' AND `+readingMembership+`) AND ($5='' OR strpos(lower(coalesce(p.body->>'title',p.body->>'name','')||' '||coalesce(p.body->>'authors','')),lower($5))>0) AND ($6='' OR `+readingStatusSQL+`=$6) AND ($3<>'stats' OR (p.body->>'lastAccess' ~ '^[0-9]{1,15}$' AND p.body->>'lastAccess'<>'0'))) ORDER BY `+q.Order+` LIMIT $7 OFFSET $8`, s.uid(), q.Record, q.View, q.Folder, q.Query, q.Status, q.Limit, q.Offset)
 	if e != nil {
 		return nil, 0, e
 	}
@@ -391,12 +396,13 @@ func (s Service) readingRows(ctx context.Context, q readingListQuery, paths map[
 	total := 0
 	for rows.Next() {
 		var raw []byte
-		var id, cover, shelf string
+		var id, cover, shelf, mark string
 		var stored bool
-		if e = rows.Scan(&id, &raw, &stored, &cover, &shelf, &total); e != nil {
+		var marked int64
+		if e = rows.Scan(&id, &raw, &stored, &cover, &shelf, &mark, &marked, &total); e != nil {
 			return nil, 0, e
 		}
-		out = append(out, readingRow(id, raw, stored, cover, shelf, paths))
+		out = append(out, readingRow(id, raw, stored, cover, shelf, paths).marked(mark, marked))
 	}
 	return out, total, rows.Err()
 }
@@ -446,20 +452,29 @@ func readingRow(id string, raw []byte, stored bool, cover, shelf string, paths m
 	return item
 }
 
+// marked applies the reader's own mark, which outranks the native status.
+func (v readingItem) marked(mark string, at int64) readingItem {
+	if status := map[string]string{markFinished: "Finished", markNotReading: "Not Reading"}[mark]; status != "" {
+		v.Status, v.Marked, v.MarkedAt = status, mark, at
+	}
+	return v
+}
+
 // readingBook returns one visible book with its highlights and bookmarks,
 // or nil when id isn't a book.
 func (s Service) readingBook(ctx context.Context, id string, paths map[string]string) (*readingItem, error) {
 	var raw []byte
-	var cover, shelf string
+	var cover, shelf, mark string
 	var stored bool
-	e := s.DB.QueryRowContext(ctx, readingAssets+`SELECT p.body,coalesce(a.stored,false),coalesce(a.cover,''),`+bookShelf+` FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId' WHERE p.native_uid=$1 AND p.document_id=$2 AND p.body->>'modeType'='4' AND `+booxvisibility.Reading("p"), s.uid(), id).Scan(&raw, &stored, &cover, &shelf)
+	var marked int64
+	e := s.DB.QueryRowContext(ctx, readingAssets+`SELECT p.body,coalesce(a.stored,false),coalesce(a.cover,''),`+bookShelf+`,`+readingMarkColumns+` FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId'`+readingMarkJoin+`WHERE p.native_uid=$1 AND p.document_id=$2 AND p.body->>'modeType'='4' AND `+booxvisibility.Reading("p"), s.uid(), id).Scan(&raw, &stored, &cover, &shelf, &mark, &marked)
 	if errors.Is(e, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if e != nil {
 		return nil, e
 	}
-	b := readingRow(id, raw, stored, cover, shelf, paths)
+	b := readingRow(id, raw, stored, cover, shelf, paths).marked(mark, marked)
 	rows, e := s.DB.QueryContext(ctx, `SELECT document_id,body FROM boox_projection p WHERE native_uid=$1 AND body->>'documentId'=$2 AND body->>'modeType' IN ('1','2') AND `+booxvisibility.Reading("p")+` ORDER BY `+listview.State{Sort: "created", Order: "asc"}.NativeOrder(), s.uid(), b.NativeID)
 	if e != nil {
 		return nil, e

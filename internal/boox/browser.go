@@ -129,6 +129,8 @@ func (s Service) browser(w http.ResponseWriter, r *http.Request) {
 		s.audioRecoveryHTTP(w, r)
 	case "/boox/reading/refresh":
 		s.readerRefreshHTTP(w, r)
+	case "/boox/reading/mark":
+		s.readingMarkHTTP(w, r)
 	case "/boox/books/imports", "/boox/books/imports/preview", "/boox/books/imports/file", "/boox/books/imports/retry":
 		s.bookImportHTTP(w, r)
 	case "/boox/books/upload":

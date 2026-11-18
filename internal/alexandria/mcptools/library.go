@@ -52,7 +52,7 @@ type listBooksInput struct {
 	Source string `json:"source,omitempty" jsonschema:"boox or client; default boox when this library has BOOX"`
 	Stored bool   `json:"stored_only,omitempty" jsonschema:"BOOX only: books whose file is stored here, not reading records alone"`
 	Shelf  string `json:"shelf,omitempty" jsonschema:"BOOX only: a shelf name or path such as Work / Papers, or unfiled"`
-	Status string `json:"status,omitempty" jsonschema:"BOOX only: new, reading or finished"`
+	Status string `json:"status,omitempty" jsonschema:"BOOX only: new, reading, finished or not_reading"`
 	Query  string `json:"query,omitempty" jsonschema:"title or author contains this"`
 	Sort   string `json:"sort,omitempty" jsonschema:"modified (default), created or title"`
 	Order  string `json:"order,omitempty" jsonschema:"desc (default, title: asc) or asc"`

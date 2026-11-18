@@ -340,7 +340,8 @@ func (s Service) TaggedPages(ctx context.Context, tag string) (TagCount, []Tagge
 }
 
 // Book is a BOOX book, with its highlights and bookmarks when read alone.
-// Status is New, In Progress or Finished; Percent is reading progress.
+// Status is New, In Progress, Finished or Not Reading (a mark made in
+// Alexandria outranks what the tablets report); Percent is reading progress.
 type Book struct {
 	// ID is the reading record; NativeID the book itself (downloads use it).
 	NativeID                                             string
@@ -359,7 +360,7 @@ type BookNote struct {
 
 // BookFilter selects books: stored here only or every one, on a shelf (ID,
 // or path such as "Work / Papers"; "unfiled" for none), by title or author,
-// by status (new, reading, finished), sorted by modified, created or name.
+// by status (new, reading, finished, not_reading), sorted by modified, created or name.
 type BookFilter struct {
 	StoredOnly                        bool
 	Shelf, Query, Status, Sort, Order string
@@ -380,10 +381,10 @@ func (s Service) Books(ctx context.Context, f BookFilter) ([]Book, int, error) {
 			shelf = fo.ID
 		}
 	}
-	status := map[string]string{"": "", "new": "0", "reading": "1", "finished": "2"}
+	status := map[string]string{"": "", "new": "0", "reading": "1", "finished": "2", "not_reading": "3"}
 	st, ok := status[strings.ToLower(f.Status)]
 	if !ok {
-		return nil, 0, errors.New("status must be new, reading or finished")
+		return nil, 0, errors.New("status must be new, reading, finished or not_reading")
 	}
 	view := "all"
 	if f.StoredOnly {

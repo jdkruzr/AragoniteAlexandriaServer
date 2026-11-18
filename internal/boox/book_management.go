@@ -29,6 +29,7 @@ import (
 // ever gives a book a second shelf.
 var (
 	errLibraryChanged  = errors.New("the library changed; nothing was queued")
+	errLibraryNoFile   = errors.New("a selected book has no file stored here")
 	errLibraryName     = errors.New("enter a name of 1–240 bytes without slashes or control characters")
 	errLibraryConflict = errors.New("an item with this name already exists here")
 	errLibraryShelves  = errors.New("BOOX keeps each book on one shelf; move it instead")
