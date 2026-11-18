@@ -400,7 +400,6 @@ a.lib-title:hover, .folder-row a:hover .lib-title { color:var(--color-accent); }
 .lib-upload .icon, .shelf-chips .icon { width:16px; height:16px; }
 .tag.lib-badge { font-size:12px; border-radius:var(--radius-md); padding:2px 8px; white-space:nowrap; }
 .lib-status { width:120px; flex:none; }
-.lib-nobox { width:18px; flex:none; }
 .shelf-chips { display:flex; flex-wrap:wrap; gap:var(--space-1); margin:0 0 var(--space-2); }
 .tag.lib-tag { font-size:14px; border-radius:var(--radius-md); padding:3px 9px; text-decoration:none; justify-self:start; }
 .tag.lib-tag-big { font-size:20px; border-radius:var(--radius-md); padding:4px 12px; }
@@ -417,6 +416,11 @@ a.lib-title:hover, .folder-row a:hover .lib-title { color:var(--color-accent); }
 .figures > * { display:grid; gap:2px; color:var(--muted); font-size:14px; text-decoration:none; }
 .figures strong { font:600 38px/1.1 var(--font-heading); color:var(--ink); }
 .figures a:hover strong { color:var(--color-accent); }
+.figures-filter { gap:8px 28px; margin:16px 0; }
+.figures-filter > * { padding:4px 0; border-bottom:2px solid transparent; }
+.figures-filter strong { font-size:24px; }
+.figures-filter a[aria-current] { border-bottom-color:var(--color-accent); color:var(--ink); }
+.figures-filter a[aria-current] strong { color:var(--color-accent); }
 .book-head { display:flex; gap:var(--space-4); align-items:flex-start; margin-bottom:var(--space-2); }
 .book-head h2 { font-size:28px; margin:var(--space-1) 0; }
 .book-cover { width:120px; flex:none; aspect-ratio:2/3; object-fit:cover; box-shadow:var(--shadow-sm); background:var(--color-surface); }

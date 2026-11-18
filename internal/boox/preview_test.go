@@ -62,7 +62,7 @@ func TestBOOXViewsRender(t *testing.T) {
 		{"boox-reading-shelf", "/boox/reading", "Reading", readingTemplate, syntheticReading("shelf", false)},
 		{"boox-reading-stats", "/boox/reading", "Reading", readingTemplate, func() readingView {
 			v := syntheticReading("list", false)
-			v.View, v.Counts = "stats", readingCounts{New: 188, Reading: 41, Finished: 12, Highlights: 25, Bookmarks: 19}
+			v.Status, v.Counts = "1", readingCounts{New: 188, Reading: 41, Finished: 12, Highlights: 25, Bookmarks: 19}
 			return v
 		}()},
 		{"boox-reading-record", "/boox/reading", "Reading", readingTemplate, readingView{Record: "h", View: "all", Items: []readingItem{{ID: "h", Title: "Synthetic book", Kind: "Annotation", Quote: "A quoted passage.", Page: "12"}}}},

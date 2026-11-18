@@ -128,7 +128,7 @@ These are two different things:
 | Tab | What it's for |
 |---|---|
 | **Notebooks** | Every notebook and folder. Switch between **All notebooks** and **Folders**, filter by **Type** (handwritten, text, reading or other notes), sort, and find by title. Click a notebook to preview it beside the list; double-click it, or choose **Open**, to read it. **Deleted (n)** lists notebooks in the tablets' Trash. The Library's **More** menu has **Recognize this library…**, **Clean up numbered notebooks…**, **Notebook operations**, **Devices** and **+ Add source**. |
-| **Books** | Your NeoReader library: **All books**, **Stored here**, **Metadata only** and **Your reading**, as a list or a bookshelf. Click a book to see its highlights and bookmarks beside the list; page and progress values remain as recorded by the tablet. **Book trash (n)** lists removed stored books. |
+| **Books** | Your NeoReader library: **All books**, **Stored here** and **Metadata only**, as a selectable list or a bookshelf of covers, under figures that count and filter by reading status. Click a book to see its highlights and bookmarks beside the list; page and progress values remain as recorded by the tablet. **Book trash (n)** lists removed stored books. |
 | **Tags** | Every lasso tag, with how many pages and notebooks use it. Click a tag to list its pages beside the list, or choose **Search for it**. |
 
 Tablets are listed in **Settings → Devices** with their last upload; *Authorized* means the tablet may connect, not that everything has finished uploading. Revoked tablets are kept under **Revoked devices**. Maintenance and diagnostics are in **Settings → Operator tools**.
@@ -271,9 +271,11 @@ rename, restore, or automatically attach bytes to a metadata-only book with a
 matching native fingerprint. A destination changed or removed during publication
 blocks that file so it can be reviewed safely.
 
-**Your reading** shows current New / In Progress / Finished counts, highlights,
-bookmarks, and recently accessed books across all active books. These come from
-the native reading records already received by Alexandria. BOOX's separate timed
+The figures above the list show New / In Progress / Finished / Not Reading counts for
+the books the current tab, shelf and search select, plus your highlights and bookmarks.
+Click a figure to list just those books; click it again to clear it. Sort by **Recently
+opened** to see what you read last. The counts come from the native reading records
+already received by Alexandria. BOOX's separate timed
 statistics database/service is not imported, so this view does not invent daily
 minutes, streaks, or completion dates.
 

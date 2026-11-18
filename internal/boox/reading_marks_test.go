@@ -64,10 +64,10 @@ func TestReadingMarksOutrankWhatTabletsReport(t *testing.T) {
 	if got := counts(); got != "1 0 1 1" {
 		t.Fatal("marked", got)
 	}
-	stats := page("/boox/reading?view=stats")
-	for _, want := range []string{`status=1"><strong>0</strong>`, `status=2"><strong>1</strong>`, `status=3"><strong>1</strong>`} {
+	stats := page("/boox/reading?view=all")
+	for _, want := range []string{`<strong>0</strong>In Progress`, `<strong>1</strong>Finished`, `<strong>1</strong>Not Reading`} {
 		if !strings.Contains(stats, want) {
-			t.Fatal("Your Reading figures", want)
+			t.Fatal("figures", want)
 		}
 	}
 	if html := page("/boox/reading?view=all&status=2"); !strings.Contains(html, ">Needle title stored<") || strings.Contains(html, ">Needle title elsewhere<") {

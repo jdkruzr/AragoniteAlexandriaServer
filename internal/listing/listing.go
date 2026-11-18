@@ -19,7 +19,7 @@ type State struct {
 func Parse(q url.Values) State {
 	s := State{Sort: q.Get("sort"), Order: q.Get("order")}
 	switch s.Sort {
-	case "name", "created", "modified", "pages":
+	case "name", "created", "modified", "pages", "opened":
 	default:
 		s.Sort = "modified"
 	}
@@ -84,6 +84,9 @@ func (s State) NativeOrder() string {
 		expr = "lower(coalesce(body->>'title',body->>'name',''))"
 	case "created":
 		expr = DateSQL("createdAt")
+	case "opened":
+		// When a tablet last opened a book.
+		expr = `(CASE WHEN body->>'lastAccess' ~ '^[0-9]{1,15}$' THEN NULLIF((body->>'lastAccess')::bigint,0) END)`
 	case "pages":
 		expr = "jsonb_array_length(boox_search_page_ids(body->'pageNameList'))"
 	}

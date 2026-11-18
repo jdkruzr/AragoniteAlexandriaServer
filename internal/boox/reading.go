@@ -220,12 +220,17 @@ const readingAssets = `WITH assets AS MATERIALIZED (
 
 func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	v := readingView{View: readingPreference(w, r, "view", "stored", "stored", "all", "metadata", "stats"), Layout: readingPreference(w, r, "layout", "shelf", "shelf", "list"), Query: q.Get("q"), Folder: q.Get("folder"), Status: q.Get("status"), Record: q.Get("record"), Listing: listview.Parse(q)}
+	v := readingView{View: readingPreference(w, r, "view", "stored", "stored", "all", "metadata"), Layout: readingPreference(w, r, "layout", "shelf", "shelf", "list"), Query: q.Get("q"), Folder: q.Get("folder"), Status: q.Get("status"), Record: q.Get("record"), Listing: listview.Parse(q)}
 	if len(v.Query) > 200 {
 		v.Query = v.Query[:200]
 	}
 	if v.Status != "0" && v.Status != "1" && v.Status != "2" && v.Status != "3" {
 		v.Status = ""
+	}
+	// Your Reading was a view of its own; its figures now head every view.
+	if q.Get("view") == "stats" {
+		http.Redirect(w, r, "/boox/reading?view=all&sort=opened", http.StatusSeeOther)
+		return
 	}
 	var e error
 	v.Folders, e = s.readingFolders(r.Context())
@@ -314,23 +319,14 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if v.View == "stats" && v.Record == "" {
-		book := `count(*) FILTER(WHERE p.body->>'modeType'='4' AND ` + readingStatusSQL
-		e = s.DB.QueryRowContext(r.Context(), `SELECT `+book+`='0'),`+book+`='1'),`+book+`='2'),`+book+`='3'),count(*) FILTER(WHERE p.body->>'modeType'='1'),count(*) FILTER(WHERE p.body->>'modeType'='2') FROM boox_projection p`+readingMarkJoin+`WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p"), s.uid()).Scan(&v.Counts.New, &v.Counts.Reading, &v.Counts.Finished, &v.Counts.NotReading, &v.Counts.Highlights, &v.Counts.Bookmarks)
-		if e != nil {
+	if v.Record == "" {
+		if v.Counts, e = s.readingCounts(ctx, v.View, v.Folder, v.Query); e != nil {
 			s.failure(w, "readingCounts", e)
 			return
 		}
 	}
-	order := v.Listing.NativeOrder()
-	limit := 60
-	if v.View == "stats" && v.Record == "" {
-		order = `CASE WHEN body->>'lastAccess' ~ '^[0-9]{1,15}$' THEN NULLIF((body->>'lastAccess')::bigint,0) END DESC NULLS LAST,p.document_id`
-		limit = 12
-		v.Listing.Offset = 0
-	}
 	v.Items, v.Listing.Total, e = s.readingRows(ctx, readingListQuery{Record: v.Record, View: v.View, Folder: v.Folder, Query: v.Query, Status: v.Status,
-		Order: order, Limit: limit, Offset: v.Listing.Offset}, paths)
+		Order: v.Listing.NativeOrder(), Limit: 60, Offset: v.Listing.Offset}, paths)
 	if e != nil {
 		s.failure(w, "reading", e)
 		return
@@ -376,8 +372,25 @@ func (s Service) reading(w http.ResponseWriter, r *http.Request) {
 // readingMembership is true when a book is on shelf $4 ("unfiled" for any).
 const readingMembership = `EXISTS(SELECT 1 FROM boox_projection m JOIN boox_projection f ON f.document_id=m.native_uid||'#'||(m.body->>'libraryUniqueId') WHERE m.native_uid=p.native_uid AND m.domain='reading' AND m.body->>'modeType'='5' AND coalesce(m.body->>'status','0')='0' AND m.body->>'documentUniqueId'=p.body->>'uniqueId' AND f.domain='reading' AND f.native_uid=p.native_uid AND f.body->>'modeType'='3' AND coalesce(f.body->>'status','0')='0' AND ($4='unfiled' OR m.body->>'libraryUniqueId'=$4))`
 
+// readingBookFilter selects books in view $3 ("stored", "metadata" or any), on
+// shelf $4 ("unfiled" for none, "" for any), matching title or author $5.
+const readingBookFilter = `p.body->>'modeType'='4' AND ($3 NOT IN ('stored','metadata') OR $3='stored' AND coalesce(a.stored,false) OR $3='metadata' AND NOT coalesce(a.stored,false)) AND ($4='' OR $4='unfiled' AND NOT ` + readingMembership + ` OR $4<>'unfiled' AND ` + readingMembership + `) AND ($5='' OR strpos(lower(coalesce(p.body->>'title',p.body->>'name','')||' '||coalesce(p.body->>'authors','')),lower($5))>0)`
+
+// readingCounts counts the books a view, shelf and search select by status
+// (marks count), and every highlight and bookmark.
+func (s Service) readingCounts(ctx context.Context, view, folder, query string) (readingCounts, error) {
+	var c readingCounts
+	status := `count(*) FILTER(WHERE ` + readingStatusSQL
+	e := s.DB.QueryRowContext(ctx, readingAssets+`SELECT `+status+`='0'),`+status+`='1'),`+status+`='2'),`+status+`='3') FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId'`+readingMarkJoin+`WHERE p.native_uid=$1 AND $2='' AND `+booxvisibility.Reading("p")+` AND `+readingBookFilter, s.uid(), "", view, folder, query).Scan(&c.New, &c.Reading, &c.Finished, &c.NotReading)
+	if e != nil {
+		return c, e
+	}
+	e = s.DB.QueryRowContext(ctx, `SELECT count(*) FILTER(WHERE p.body->>'modeType'='1'),count(*) FILTER(WHERE p.body->>'modeType'='2') FROM boox_projection p WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p"), s.uid()).Scan(&c.Highlights, &c.Bookmarks)
+	return c, e
+}
+
 // readingListQuery selects reading records: one by document ID (Record), or
-// books in a view ("stored", "metadata", "all" or "stats"), on a shelf
+// books in a view ("stored", "metadata" or "all"), on a shelf
 // ("unfiled" for none), matching Query, with a reading Status ("0" new, "1"
 // reading, "2" finished, "3" not reading; marks count), in Order (SQL), paged.
 type readingListQuery struct {
@@ -387,7 +400,7 @@ type readingListQuery struct {
 
 // readingRows lists the reading records a query selects, with the total.
 func (s Service) readingRows(ctx context.Context, q readingListQuery, paths map[string]string) ([]readingItem, int, error) {
-	rows, e := s.DB.QueryContext(ctx, readingAssets+`SELECT p.document_id,p.body,coalesce(a.stored,false),coalesce(a.cover,''),'',`+readingMarkColumns+`,count(*) OVER() FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId'`+readingMarkJoin+`WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p")+` AND ($2<>'' AND p.document_id=$2 OR $2='' AND p.body->>'modeType'='4' AND ($3 NOT IN ('stored','metadata') OR $3='stored' AND coalesce(a.stored,false) OR $3='metadata' AND NOT coalesce(a.stored,false)) AND ($4='' OR $4='unfiled' AND NOT `+readingMembership+` OR $4<>'unfiled' AND `+readingMembership+`) AND ($5='' OR strpos(lower(coalesce(p.body->>'title',p.body->>'name','')||' '||coalesce(p.body->>'authors','')),lower($5))>0) AND ($6='' OR `+readingStatusSQL+`=$6) AND ($3<>'stats' OR (p.body->>'lastAccess' ~ '^[0-9]{1,15}$' AND p.body->>'lastAccess'<>'0'))) ORDER BY `+q.Order+` LIMIT $7 OFFSET $8`, s.uid(), q.Record, q.View, q.Folder, q.Query, q.Status, q.Limit, q.Offset)
+	rows, e := s.DB.QueryContext(ctx, readingAssets+`SELECT p.document_id,p.body,coalesce(a.stored,false),coalesce(a.cover,''),'',`+readingMarkColumns+`,count(*) OVER() FROM boox_projection p LEFT JOIN assets a ON a.book=p.body->>'uniqueId'`+readingMarkJoin+`WHERE p.native_uid=$1 AND `+booxvisibility.Reading("p")+` AND ($2<>'' AND p.document_id=$2 OR $2='' AND `+readingBookFilter+` AND ($6='' OR `+readingStatusSQL+`=$6)) ORDER BY `+q.Order+` LIMIT $7 OFFSET $8`, s.uid(), q.Record, q.View, q.Folder, q.Query, q.Status, q.Limit, q.Offset)
 	if e != nil {
 		return nil, 0, e
 	}

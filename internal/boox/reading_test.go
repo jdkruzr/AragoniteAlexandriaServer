@@ -82,9 +82,25 @@ func TestReadingBookshelfAvailabilityAndDetails(t *testing.T) {
 	if strings.Contains(html, ">Needle title stored<") || !strings.Contains(html, ">Needle title elsewhere<") {
 		t.Fatal("unfiled filter")
 	}
-	html = get("/boox/reading?view=stats").Body.String()
-	if strings.Contains(html, ">Needle title removed<") || !strings.Contains(html, "timed reading history has not been imported.") || strings.Count(html, "<strong>1</strong>") != 5 {
-		t.Fatal("stats counts or visibility")
+	// The figures head every view and count what it lists: one book of each
+	// status in all, none Finished among the stored two.
+	html = get("/boox/reading?view=all").Body.String()
+	if strings.Contains(html, ">Needle title removed<") || strings.Count(html, "<strong>1</strong>") != 5 || !strings.Contains(html, `value="opened"`) {
+		t.Fatal("figures or visibility")
+	}
+	html = get("/boox/reading?view=stored").Body.String()
+	if strings.Count(html, "<strong>1</strong>") != 4 || strings.Count(html, "<strong>0</strong>") != 2 {
+		t.Fatal("figures follow the view")
+	}
+	html = get("/boox/reading?view=all&layout=list&status=2&sort=opened").Body.String()
+	if !strings.Contains(html, `status=&amp;`) || !strings.Contains(html, `aria-current="true"><strong>1</strong>`) || !strings.Contains(html, "opened ") {
+		t.Fatal("the active figure clears its filter; opened sort shows the date")
+	}
+	// The former Your Reading address lands on the whole library, last opened first.
+	old := httptest.NewRecorder()
+	s.Admin(old, httptest.NewRequest("GET", "/boox/reading?view=stats", nil))
+	if old.Code != http.StatusSeeOther || old.Header().Get("Location") != "/boox/reading?view=all&sort=opened" {
+		t.Fatal("stats address", old.Code, old.Header().Get("Location"))
 	}
 	html = get("/boox/reading?view=all&selected=" + s.uid() + "%23stored").Body.String()
 	if !strings.Contains(html, "Highlights &amp; bookmarks") || strings.Count(html, "class=\"note-item\"") != 2 {
