@@ -36,8 +36,11 @@ the 390 px layout, and marking a real book (the owner's to do).
 **Not built — tablets showing Finished.** The same code reading says a pushed `readingStatus` is
 ignored by the background library sync and recomputed from the page position on open, so it
 needs a last-page position (`extraAttributes.backend.current_page_position_v2/v3`), whose format
-is not established. Next step is a read-only survey of records the tablets left Finished, then a
-device check with synthetic books.
+was surveyed read-only in the live projection (shapes only): PDFs and comics (`cbr`, `zip`) keep
+a page-indexed position (`{"pageReferenceId":"pdf-N-N"}` or a bare number), so a last-page
+position looks derivable from `progress`; reflowable books (EPUB, MOBI, DOCX, text) keep a
+chapter/node/text-offset position that the server cannot compute. A push would therefore cover
+PDFs and comics at most, and needs a device check with synthetic books first.
 Rollback: `private/marklapse-54e60ca4a4ef/rollback.sh` returns to the first marks build; to leave
 marks entirely, then run `private/readingmarks-abed4ab96a63/rollback-schema.sh` (drops the table
 and every mark) followed by that kit's `rollback.sh`.
