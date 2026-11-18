@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-11-17. Work continues on `main`. The Server port resumed on
+Updated 2026-11-18. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -12,7 +12,24 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-17): **`marklapse-54e60ca4a4ef`**, app-only on schema **44**,
+Latest recorded deployment (2026-11-18): **`libraryview-29c7417441c4`**, app-only on schema **44**,
+image `sha256:3b2ddc8079bad0df09017ab930b4f9b1cabee2b314425b05a19b05d9f73333ce`, on top of
+**`marklapse-54e60ca4a4ef`**. The Books page no longer has a **Your reading** tab, which listed
+only the twelve most recently opened books without selection and, because the page remembers the
+last tab, became where Books kept opening. Its figures (New / In Progress / Finished / Not
+Reading, highlights, bookmarks) now head **All books**, **Stored here** and **Metadata only**;
+the status figures count what the tab, shelf and search select, filter the list when clicked
+(again to clear) and replace the status menu. **Recently opened** is a sort order, showing the
+date in the list layout. `view=stats` redirects to all books, last opened first. Fresh required
+PostgreSQL/S3 `go test -race -count=1 ./...` (55 packages, no skips) and `go vet` passed. Checked
+in a browser against the synthetic fixture (list and bookshelf). Checked live, read-only: readyz
+200, anonymous 401, no restarts, no errors logged; the old address redirects; the In Progress
+figure lists the same number of books it shows, each selectable. Not checked: Spanish rendering,
+the 390 px layout. `internal/boox/preview_test.go` on the VM differed from git before this
+deploy and was left as it was (tests are not built into the image).
+Rollback: `private/libraryview-29c7417441c4/rollback.sh`.
+
+Previous deployment (2026-11-17): **`marklapse-54e60ca4a4ef`**, app-only on schema **44**,
 image `sha256:d524071c21076d3c282df82298ddf1bb163e39ccd1a277de4834d983652d5efe`, on top of
 **`readingmarks-abed4ab96a63`** (migration **0044**, image
 `sha256:e5e746d22dc209741ca8ba6d6b958c594d23888b15736f47bf014070771a3bb9`). Reading gains marks:
