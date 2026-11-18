@@ -12,7 +12,37 @@ No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
 
-Latest recorded deployment (2026-11-17): **`removedcopy-df2f14a1a63a`**, app-only on schema **43**,
+Latest recorded deployment (2026-11-17): **`marklapse-54e60ca4a4ef`**, app-only on schema **44**,
+image `sha256:d524071c21076d3c282df82298ddf1bb163e39ccd1a277de4834d983652d5efe`, on top of
+**`readingmarks-abed4ab96a63`** (migration **0044**, image
+`sha256:e5e746d22dc209741ca8ba6d6b958c594d23888b15736f47bf014070771a3bb9`). Reading gains marks:
+**Mark as finished** and **Mark as not reading**, for one book or a selection, with **Remove mark**.
+Your Reading's New / In Progress / Finished counts were, and without marks still are, the
+`readingStatus` each tablet last synced. Read in the decompiled NeoReader (38686, not seen on a
+screen): every reader save sets Finished only while the last page is showing and In Progress
+otherwise, and the reader's own Mark as Read is overwritten the same way. Marks are kept by
+Alexandria in `boox_reading_mark`, beside the native record: they outrank the reported status in
+lists, the status filter (new **Not Reading**), the counts and the MCP book tools
+(`status=not_reading`), work for books with no file here, and move to the new book when an upload
+replaces a cloud-account record. Finished holds until removed; Not Reading lapses when a tablet's
+`lastAccess` passes the mark. Nothing is sent to tablets. Every book on the Reading page now has a
+checkbox; Move and Move to Trash refuse a selection that includes a book with no file here.
+Fresh required PostgreSQL/S3 `go test -race -count=1 ./...` (55 packages, no skips) and `go vet`
+passed for both commits. Checked in a browser against the synthetic fixture: mark from the
+preview, mark a selection, Your Reading figures. Checked live, read-only: readyz 200, anonymous
+401, no restarts, no errors logged, schema at 0044 with runtime grants, Your Reading renders with
+the counts unchanged and no marks made. Not checked: Spanish rendering (catalog parity test only),
+the 390 px layout, and marking a real book (the owner's to do).
+**Not built — tablets showing Finished.** The same code reading says a pushed `readingStatus` is
+ignored by the background library sync and recomputed from the page position on open, so it
+needs a last-page position (`extraAttributes.backend.current_page_position_v2/v3`), whose format
+is not established. Next step is a read-only survey of records the tablets left Finished, then a
+device check with synthetic books.
+Rollback: `private/marklapse-54e60ca4a4ef/rollback.sh` returns to the first marks build; to leave
+marks entirely, then run `private/readingmarks-abed4ab96a63/rollback-schema.sh` (drops the table
+and every mark) followed by that kit's `rollback.sh`.
+
+Previous deployment (2026-11-17): **`removedcopy-df2f14a1a63a`**, app-only on schema **43**,
 image `sha256:dfc3ad2d88c21e02da688d4bfa2e7ee3d46892f490db55c66c15f8bb7a4ccdec`, on top of
 **`formats-8a98d7cafc3e`**. An upload was refused ("A tablet already has this book from its own
 storage") when the only matching tablet record was one the tablet had removed from its library
