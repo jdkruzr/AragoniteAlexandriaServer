@@ -20,10 +20,21 @@ const (
 	recognizePagesCap = 50 // pages one recognize call may queue
 	dailyNotesCap     = 10 // create_boox_note per day
 	dailyMinutesCap   = 10 // request_minutes per day
+	dailyBooksCap     = 20 // books added per day, by either tool
 )
 
 // dailyCaps are the tools limited per day, by name.
-var dailyCaps = map[string]int{"create_boox_note": dailyNotesCap, "request_minutes": dailyMinutesCap}
+var dailyCaps = map[string]int{"create_boox_note": dailyNotesCap, "request_minutes": dailyMinutesCap,
+	"upload_book": dailyBooksCap, "add_book_from_url": dailyBooksCap, "request_book_upload": dailyBooksCap}
+
+// sharedCaps are the tools that draw on one allowance between them.
+var sharedCaps = map[string][]string{"upload_book": bookTools, "add_book_from_url": bookTools, "request_book_upload": bookTools}
+
+var bookTools = []string{"add_book_from_url", "request_book_upload", "upload_book"}
+
+// recorded is an input that says what the record keeps of it, when that
+// isn't the arguments as sent (a file's bytes, say).
+type recorded interface{ recorded() any }
 
 // Change is one recorded change.
 type Change struct {
@@ -34,6 +45,9 @@ type Change struct {
 // record notes a change. Arguments and the reply's first line are kept,
 // shortened; a failure to record is reported with the result.
 func record(ctx context.Context, db pg.Querier, client, tool string, in any, result string) error {
+	if r, ok := in.(recorded); ok {
+		in = r.recorded()
+	}
 	args, _ := json.Marshal(in)
 	if first, _, _ := strings.Cut(result, "\n"); first != "" {
 		result = first
@@ -49,12 +63,20 @@ func allowed(ctx context.Context, db pg.Querier, tool string) error {
 	if !ok {
 		return nil
 	}
-	var n int
-	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM alexandria_mcp_change WHERE tool=$1 AND at > now()-interval '1 day'`, tool).Scan(&n); err != nil {
-		return err
+	tools, what := []string{tool}, tool+" is"
+	if shared := sharedCaps[tool]; len(shared) > 0 {
+		tools, what = shared, strings.Join(shared[:len(shared)-1], ", ")+" and "+shared[len(shared)-1]+" are together"
+	}
+	n := 0
+	for _, name := range tools {
+		var used int
+		if err := db.QueryRowContext(ctx, `SELECT count(*) FROM alexandria_mcp_change WHERE tool=$1 AND at > now()-interval '1 day'`, name).Scan(&used); err != nil {
+			return err
+		}
+		n += used
 	}
 	if n >= limit {
-		return fmt.Errorf("%s is limited to %d a day over MCP, and that's used up; the owner can do more from the web app", tool, limit)
+		return fmt.Errorf("%s limited to %d a day over MCP, and that's used up; the owner can do more from the web app", what, limit)
 	}
 	return nil
 }

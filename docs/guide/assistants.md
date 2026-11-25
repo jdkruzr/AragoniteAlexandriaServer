@@ -33,7 +33,7 @@ Either way you choose how much the assistant may do:
 | Access | The assistant can |
 |---|---|
 | **Read only** | Search and read your notebooks, books, minutes, tasks and calendar. Tools that change anything aren't offered to it at all, and the token can't change anything through CalDAV or the REST API either. |
-| **Read and change** | Also create, change, complete and delete tasks and events, edit Alexandria Client text boxes, queue recognition and Audio Note Minutes, and add new text notes to your BOOX. |
+| **Read and change** | Also create, change, complete and delete tasks and events, edit Alexandria Client text boxes, queue recognition and Audio Note Minutes, and add new text notes and books to your BOOX. |
 
 MCP takes tokens only. Your account password works for the web app and
 CalDAV, but not at the MCP address, so it never ends up in an assistant's
@@ -140,12 +140,17 @@ its interface. A few conventions make them work together:
 | `request_minutes` | Asks for a BOOX notebook's Audio Note Minutes, or fresh ones: recordings are transcribed, pages without text recognized (unless told not to), then the minutes written. |
 | `cancel_minutes` | Stops a minutes request that is waiting or running. |
 | `create_boox_note` | Adds a new text note to your BOOX, in a folder or at the top level. Lines starting `# ` become headings and `- ` bullets. It reaches the tablets on their next sync. |
+| `add_book_from_url` | Adds a book or document to your BOOX from a public `https` address: the server downloads the file (up to 128 MiB) and files it on the shelf you name, or on none. The address has to work without signing in. |
+| `upload_book` | Adds a document from content the assistant sends: text it wrote (`.md`, `.txt`, `.html`), or a small file of at most 1 MiB. Anything bigger goes by address, by a one-time upload address, or through **Upload** on the web. |
+| `request_book_upload` | Gives the assistant a one-time address it can send one named file to (up to 128 MiB) within 15 minutes, without signing in. It suits an assistant running on your own computer, such as Claude Code; a chat assistant whose sandbox can't reach your server can't use it. |
 
 Recognition and minutes send page pictures, recordings and text to the
 providers set up in **Settings → AI models**, exactly as when you start them
-on the web. Nothing permanently erases anything, and the only change a tool
-makes on your BOOX is adding a new note; it never alters or removes an
-existing notebook.
+on the web. Nothing permanently erases anything, and the only changes a tool
+makes on your BOOX are adding a new note or a new book; it never alters or
+removes an existing notebook or book. A book added by address is downloaded by
+your server from wherever the assistant pointed it, so the file is only as
+trustworthy as that address.
 Tasks and events the assistant creates appear in the web app and reach your
 CalDAV apps on their next sync. See [Tasks and Calendar](tasks-and-calendar.md).
 
@@ -168,9 +173,10 @@ assistant that reads. Alexandria keeps the risk small:
   assistants** lists what each app changed and when, for 90 days.
 - **Costly or device-facing actions are capped.** `recognize` takes at most 50
   pages per call; `request_minutes` and `create_boox_note` run at most 10 times
-  a day each. Bigger jobs stay on the web.
+  a day each, and the three book tools add at most 20 books a day between them.
+  Bigger jobs stay on the web.
 - **Nothing is erased for good,** and on your BOOX an assistant can only add a
-  note, never change or remove one.
+  note or a book, never change or remove one.
 
 What helps most is on your side: give an assistant you don't watch closely
 **Read only** access, and leave your assistant's "ask before changing"

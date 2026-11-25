@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"slices"
 	"strings"
@@ -45,6 +46,7 @@ func (ocr) Model() string                                             { return "
 type fakeBOOX struct {
 	notebooks int
 	notes     *[]string // notes CreateTextNote was asked for
+	books     *[]string // books AddBook was given
 }
 
 func (f fakeBOOX) Notebooks(_ context.Context, nf boox.NotebookFilter) ([]boox.NotebookInfo, int, error) {
@@ -122,9 +124,36 @@ func (f fakeBOOX) CreateTextNote(_ context.Context, folder, title, text string) 
 	}
 	return "00000000-0000-0000-0000-00000000000a", nil
 }
+func (fakeBOOX) Shelves(context.Context) ([]boox.Shelf, error) {
+	return []boox.Shelf{{ID: "s1", Name: "Papers", Path: "Work / Papers"}, {ID: "s2", Name: "Fiction", Path: "Fiction"}}, nil
+}
+func (fakeBOOX) ResolveShelf(_ context.Context, shelf string) (boox.Shelf, error) {
+	switch shelf {
+	case "":
+		return boox.Shelf{}, nil
+	case "Papers", "s1":
+		return boox.Shelf{ID: "s1", Name: "Papers", Path: "Work / Papers"}, nil
+	}
+	return boox.Shelf{}, fmt.Errorf("%w: %s.", boox.ErrNoShelf, shelf)
+}
+func (f fakeBOOX) AddBook(_ context.Context, shelf, name string, raw []byte) (boox.BookAdded, error) {
+	path := map[string]string{"": "", "Papers": "Work / Papers", "s1": "Work / Papers"}
+	if _, ok := path[shelf]; !ok {
+		return boox.BookAdded{}, fmt.Errorf("%w: %s.", boox.ErrNoShelf, shelf)
+	}
+	if !strings.Contains(name, ".") {
+		return boox.BookAdded{}, boox.BookRefused("This file type can't be uploaded.")
+	}
+	if f.books != nil {
+		*f.books = append(*f.books, shelf+"|"+name+"|"+string(raw))
+	}
+	return boox.BookAdded{ID: "ps_x#b1", Name: name, Shelf: path[shelf]}, nil
+}
 
 type options struct {
 	booxLibrary BOOXLibrary
+	fetch       *http.Client
+	deps        *Deps // set to the server's Deps, for handlers beside it
 	readOnly    bool
 	catalog     recognition.Catalog
 	recognizer  string
@@ -185,8 +214,12 @@ func setup(t *testing.T, opts ...options) (*sql.DB, *mcp.ClientSession) {
 		}
 	}
 	conn := testenv.Request(t, db) // one connection, as production gives a request
-	server := NewServer(Deps{DB: conn, Search: notes.Searcher{DB: conn}, PublicURL: "https://library.example", Version: "test-1",
-		Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil), BOOX: o.booxLibrary, ReadOnly: o.readOnly, Catalog: o.catalog, Recognizer: o.recognizer, Client: "Test app"})
+	deps := Deps{DB: conn, Search: notes.Searcher{DB: conn}, PublicURL: "https://library.example", Version: "test-1", UploadSecret: "synthetic upload secret, long enough",
+		Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil), BOOX: o.booxLibrary, Fetch: o.fetch, ReadOnly: o.readOnly, Catalog: o.catalog, Recognizer: o.recognizer, Client: "Test app"}
+	if o.deps != nil {
+		*o.deps = deps
+	}
+	server := NewServer(deps)
 	st, ct := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(ctx, st, nil); err != nil {
 		t.Fatal(err)
@@ -253,7 +286,7 @@ var (
 	readTools  = []string{"get_book", "get_event", "get_notebook", "get_page_image", "get_task", "list_books", "list_events", "list_notebooks", "list_tasks", "read_pages", "recognition_status", "search"}
 	booxTools  = []string{"get_minutes", "get_tag", "list_minutes", "list_tags"}
 	writeTools = []string{"clear_completed_tasks", "complete_task", "create_event", "create_task", "delete_event", "delete_task", "edit_text_box", "update_event", "update_task"}
-	booxWrites = []string{"cancel_minutes", "create_boox_note", "request_minutes"}
+	booxWrites = []string{"add_book_from_url", "cancel_minutes", "create_boox_note", "request_book_upload", "request_minutes", "upload_book"}
 )
 
 // clientCatalog describes the fixture's Client notebook for recognition.
@@ -303,7 +336,7 @@ func TestToolsByScopeAndSource(t *testing.T) {
 			}
 			for _, tl := range tools {
 				a := tl.Annotations
-				if tl.Title == "" || a == nil || a.Title == "" || a.OpenWorldHint == nil || *a.OpenWorldHint || tl.OutputSchema == nil || tl.Description == "" {
+				if tl.Title == "" || a == nil || a.Title == "" || a.OpenWorldHint == nil || *a.OpenWorldHint != (tl.Name == "add_book_from_url") || tl.OutputSchema == nil || tl.Description == "" {
 					t.Fatalf("%s lacks a title, annotations, description or output schema: %+v", tl.Name, tl)
 				}
 				write := slices.Contains(writeTools, tl.Name) || slices.Contains(booxWrites, tl.Name) || tl.Name == "recognize"

@@ -90,3 +90,40 @@ func TestHTTPStatusCodes(t *testing.T) {
 		t.Fatal("unnumbered problem text")
 	}
 }
+
+func TestDownloadNamesAndBounds(t *testing.T) {
+	c := testFeed(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/papers/Field Guide.pdf":
+			w.Header().Set("Content-Type", "application/pdf")
+			fmt.Fprint(w, "%PDF")
+		case "/get":
+			w.Header().Set("Content-Disposition", `attachment; filename="../Named.epub"`)
+			fmt.Fprint(w, "epub")
+		case "/big":
+			fmt.Fprint(w, strings.Repeat("x", 65))
+		case "/stream":
+			w.(http.Flusher).Flush() // no Content-Length
+			fmt.Fprint(w, strings.Repeat("x", 65))
+		case "/":
+			fmt.Fprint(w, "x")
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	for _, tc := range []struct{ url, name, body, code string }{
+		{"https://files.example/papers/Field%20Guide.pdf?v=2", "Field Guide.pdf", "%PDF", ""},
+		{"https://files.example/get", "Named.epub", "epub", ""},
+		{"https://files.example/", "", "x", ""},
+		{"https://files.example/big", "", "", "too_large"},
+		{"https://files.example/stream", "", "", "too_large"},
+		{"https://files.example/missing", "", "", "http_404"},
+		{"http://files.example/get", "", "", "invalid_url"},
+		{"https://10.0.0.8/get", "", "", "invalid_url"},
+	} {
+		f, code := Download(context.Background(), c, tc.url, 64)
+		if code != tc.code || f.Name != tc.name || string(f.Raw) != tc.body {
+			t.Fatal(tc.url, code, f.Name, string(f.Raw))
+		}
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -580,4 +581,94 @@ func (s Service) CreateTextNote(ctx context.Context, folder, title, text string)
 		return "", errors.New("the text is too long for one note (at most 200 KB)")
 	}
 	return s.QueueTextNote(ctx, TextNote{Parent: folder, Title: title, Blocks: textBlocks(text), Request: uuid.NewString()})
+}
+
+// Shelf is a shelf a book can be added to, named by its path.
+type Shelf struct{ ID, Name, Path string }
+
+// Shelves lists the shelves books can be added to, by path.
+func (s Service) Shelves(ctx context.Context) ([]Shelf, error) {
+	folders, e := s.readingFolders(ctx)
+	out := make([]Shelf, 0, len(folders))
+	for _, f := range folders {
+		if f.Writable {
+			out = append(out, Shelf{ID: f.ID, Name: f.Name, Path: f.Path})
+		}
+	}
+	return out, e
+}
+
+// ResolveShelf finds the shelf a book is to go on, by its ID, its path or,
+// when only one shelf has it, its name. "" is no shelf, the zero Shelf. An
+// unknown shelf is ErrNoShelf; a name several shelves share is a BookRefused.
+func (s Service) ResolveShelf(ctx context.Context, shelf string) (Shelf, error) {
+	shelf = strings.TrimSpace(shelf)
+	if shelf == "" {
+		return Shelf{}, nil
+	}
+	shelves, e := s.Shelves(ctx)
+	if e != nil {
+		return Shelf{}, e
+	}
+	var named []Shelf
+	for _, f := range shelves {
+		if f.ID == shelf || strings.EqualFold(f.Path, shelf) {
+			return f, nil
+		}
+		if strings.EqualFold(f.Name, shelf) {
+			named = append(named, f)
+		}
+	}
+	switch len(named) {
+	case 1:
+		return named[0], nil
+	case 0:
+		return Shelf{}, fmt.Errorf("%w: %s.", ErrNoShelf, shelf)
+	}
+	return Shelf{}, BookRefused("More than one shelf is named " + shelf + "; give its full path.")
+}
+
+// BookAdded is a book queued for the tablets: ID is its reading record,
+// Shelf the path it was filed under ("" for none).
+type BookAdded struct{ ID, Name, Shelf string }
+
+// ErrNoShelf means the shelf asked for isn't one books can be added to.
+var ErrNoShelf = errors.New("There is no shelf by that name that books can be added to")
+
+// BookRefused is why a book wasn't added, in words for the person asking.
+type BookRefused string
+
+func (r BookRefused) Error() string { return string(r) }
+
+// AddBook stores a book and queues it for the tablets, on a shelf (its ID,
+// path or, when only one shelf has it, name; "" for none). It is the web
+// upload's path: the file is checked by its extension, nothing existing is
+// replaced, and sending the same file again to the same place changes
+// nothing. A BookRefused error says why a book was turned down.
+func (s Service) AddBook(ctx context.Context, shelf, name string, raw []byte) (BookAdded, error) {
+	name = strings.TrimSpace(name)
+	if _, e := validateBook(name, raw); e != nil {
+		return BookAdded{}, BookRefused(e.Error())
+	}
+	on, e := s.ResolveShelf(ctx, shelf)
+	if e != nil {
+		return BookAdded{}, e
+	}
+	shelf, path := on.ID, on.Path
+	// The same file to the same place is one request, however often it's sent.
+	token := uuid.NewSHA1(uuid.NameSpaceOID, []byte("add-book:"+hash(raw)+":"+name+":"+shelf)).String()
+	q, e := s.uploadedBook(ctx, token, name, raw, shelf)
+	switch {
+	case e == nil:
+		return BookAdded{ID: s.uid() + "#" + q.Book, Name: name, Shelf: path}, nil
+	case errors.Is(e, errBookConflict):
+		return BookAdded{}, BookRefused(bookConflictMessage(e))
+	case errors.Is(e, errBookRemoved), errors.Is(e, errBookEnrollment):
+		return BookAdded{}, BookRefused(e.Error())
+	case errors.Is(e, errLibraryShelves):
+		return BookAdded{}, BookRefused("This book is already in the library on another shelf. It wasn't moved.")
+	case errors.Is(e, errLibraryChanged):
+		return BookAdded{}, BookRefused("The library changed while this book was being added. Nothing was added; try again.")
+	}
+	return BookAdded{}, e
 }

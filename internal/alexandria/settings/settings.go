@@ -19,6 +19,8 @@ const (
 	CalDAVCollectionName = "caldav_collection_name"
 	DueTimeMode          = "due_time_mode"
 	TaskAttachSecret     = "task_attach_secret"
+	// BookUploadSecret signs the one-time addresses assistants upload books to.
+	BookUploadSecret = "book_upload_secret"
 	// CalDAVEventsName is the events calendar's display name.
 	CalDAVEventsName = "caldav_events_collection_name"
 	// TimeZone is the owner's IANA time zone, for dates typed or written

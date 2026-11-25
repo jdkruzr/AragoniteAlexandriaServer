@@ -504,7 +504,14 @@ tool uses `calendarview`, as the web calendar and Today do. Action tools reuse
 the web's own paths: `recognize` queues through the recognition catalog and
 `Store.Queue`, `request_minutes`/`cancel_minutes` through `RequestMinutes` and
 `ControlMinutes`, and `create_boox_note` through `QueueTextNote`, which only
-ever adds a notebook. A read-scoped token is offered only the tools that read.
+ever adds a notebook. Books arrive three ways, all ending in `boox.Service.AddBook`
+(the WebDAV upload's path, which never replaces a book): `add_book_from_url`
+downloads through the guarded public client (`subscriptions.Download`),
+`upload_book` takes text or at most 1 MiB of base64 in the call, and
+`request_book_upload` returns a signed address under `/upload/book/` that takes
+one file without a sign-in for 15 minutes (`mcptools.UploadHandler`; the record
+of changes is what makes it single-use). A read-scoped token is offered only
+the tools that read.
 
 The upgrade backfills only already available text. It neither enables embeddings
 nor enqueues handwriting recognition. Existing active/building generations receive

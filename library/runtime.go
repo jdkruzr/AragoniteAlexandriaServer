@@ -103,7 +103,9 @@ type Runtime struct {
 	objects BlobStore
 	sync    *host.Host
 	// attachSecret signs public task-attachment URLs; stable across restarts.
-	attachSecret  string
+	attachSecret string
+	// uploadSecret signs one-time book upload addresses.
+	uploadSecret  string
 	mu            sync.Mutex
 	closed        bool
 	nativeContext context.Context
@@ -196,6 +198,10 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	uploadSecret, err := settings.EnsureSecret(ctx, db, settings.BookUploadSecret)
+	if err != nil {
+		return nil, err
+	}
 	if cfg.ProviderSettings != nil {
 		if err := (providers.Store{DB: db, Bootstrap: *cfg.ProviderSettings, LibraryID: cfg.ID}).Ensure(ctx); err != nil {
 			return nil, err
@@ -203,7 +209,7 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	}
 	nativeContext, nativeCancel := context.WithCancel(context.Background())
 	failed = false
-	return &Runtime{nativeContext: nativeContext, nativeCancel: nativeCancel, cfg: cfg, db: db, objects: objects, sync: protocol, attachSecret: secret}, nil
+	return &Runtime{nativeContext: nativeContext, nativeCancel: nativeCancel, cfg: cfg, db: db, objects: objects, sync: protocol, attachSecret: secret, uploadSecret: uploadSecret}, nil
 }
 
 func (r *Runtime) Close() error {
@@ -384,6 +390,16 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		taskhost.Attachments(taskDeps).ServeHTTP(w, req)
 		return
 	}
+	if mcptools.OwnsUpload(req.URL.Path) {
+		// Public by design: an assistant with a full token asked for this
+		// address, and the address carries its own signature.
+		d := mcptools.Deps{DB: conn, PublicURL: r.cfg.PublicURL, UploadSecret: r.uploadSecret}
+		if native != nil {
+			d.BOOX = *native
+		}
+		mcptools.UploadHandler(d).ServeHTTP(w, req)
+		return
+	}
 	if !loadPages() {
 		return
 	}
@@ -398,7 +414,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	mux.Handle("GET /api/v1/search", searcher.Handler())
 	mcp := admittedHandler(func() http.Handler {
-		d := mcptools.Deps{DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Version: web.Version,
+		d := mcptools.Deps{DB: conn, Objects: r.objects, Search: searcher, PublicURL: r.cfg.PublicURL, Version: web.Version, UploadSecret: r.uploadSecret,
 			Tasks: tasksvc.NewTaskService(taskdb.NewStore(conn), nil)}
 		if native != nil {
 			library := *native

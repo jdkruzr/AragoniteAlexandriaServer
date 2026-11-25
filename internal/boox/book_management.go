@@ -695,7 +695,13 @@ func (v *librarySnapshot) planRemove(book, from string) ([]libraryOp, error) {
 // succeeds as a retry; identical bytes under another name, or bound for
 // another shelf, are the existing book and are refused.
 func (s Service) uploadBook(ctx context.Context, token, name string, raw []byte, shelf string) error {
-	_, e := s.queueBook(ctx, name, raw, func(tx *sql.Tx, generation string, q queuedBook) error {
+	_, e := s.uploadedBook(ctx, token, name, raw, shelf)
+	return e
+}
+
+// uploadedBook is uploadBook that also says which book it queued.
+func (s Service) uploadedBook(ctx context.Context, token, name string, raw []byte, shelf string) (queuedBook, error) {
+	return s.queueBook(ctx, name, raw, func(tx *sql.Tx, generation string, q queuedBook) error {
 		book := q.Book
 		if q.Name != name {
 			return errBookOtherName
@@ -707,7 +713,6 @@ func (s Service) uploadBook(ctx context.Context, token, name string, raw []byte,
 			return v.onlyShelf(s.uid(), token, book, shelf, now)
 		})
 	})
-	return e
 }
 
 // restoreBook brings a trashed stored book back, optionally onto a shelf. A

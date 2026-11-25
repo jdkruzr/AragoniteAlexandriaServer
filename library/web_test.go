@@ -416,6 +416,23 @@ func TestBOOXBookWebDAVRequiresTheOwnerAccount(t *testing.T) {
 	}
 }
 
+// One-time book upload addresses are answered without a sign-in: the address
+// is the permission, so a forged one is refused rather than challenged.
+func TestBookUploadAddressesArePublicAndSigned(t *testing.T) {
+	r, _, _ := fixture(t)
+	r.cfg.NativeBOOX = &NativeBOOXConfig{PublicURL: "http://library.test", Database: "neocloud"}
+	b := browser{t, r}
+	for _, path := range []string{"/upload/book/forged", "/upload/book/e30.AAAA", "/upload/book/"} {
+		w := b.do("PUT", path, "%PDF-1.4\n%%EOF\n", nil, false)
+		if w.Code != 403 || w.Header().Get("WWW-Authenticate") != "" || !strings.Contains(w.Body.String(), "request_book_upload") {
+			t.Fatalf("%s: %d %s", path, w.Code, w.Body.String())
+		}
+	}
+	if r.uploadSecret == "" || r.uploadSecret == r.attachSecret {
+		t.Fatal("upload addresses need a signing secret of their own")
+	}
+}
+
 // The Tasks home page: bulk actions, restore, and a permanent delete that a
 // stale CalDAV client can't undo.
 func TestTasksBulkActionsAndPermanentDelete(t *testing.T) {

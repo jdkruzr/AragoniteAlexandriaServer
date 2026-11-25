@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 )
@@ -48,7 +49,12 @@ func publicIP(a netip.Addr) bool {
 // PublicClient resolves and validates at each connection, then dials the checked
 // numeric address: DNS rebinding and redirects cannot bypass destination checks.
 // Proxy environment variables are deliberately not inherited for untrusted URLs.
-func PublicClient() *http.Client {
+func PublicClient() *http.Client { return publicClient(25 * time.Second) }
+
+// DownloadClient is PublicClient with time for a file rather than a feed.
+func DownloadClient() *http.Client { return publicClient(3 * time.Minute) }
+
+func publicClient(timeout time.Duration) *http.Client {
 	tr := &http.Transport{TLSHandshakeTimeout: 8 * time.Second, ResponseHeaderTimeout: 10 * time.Second, MaxResponseHeaderBytes: 64 << 10, DisableKeepAlives: true}
 	tr.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(address)
@@ -73,7 +79,7 @@ func PublicClient() *http.Client {
 		}
 		return nil, errors.New("fetch_failed")
 	}
-	return &http.Client{Transport: tr, Timeout: 25 * time.Second, CheckRedirect: func(r *http.Request, via []*http.Request) error {
+	return &http.Client{Transport: tr, Timeout: timeout, CheckRedirect: func(r *http.Request, via []*http.Request) error {
 		if len(via) >= 4 {
 			return errors.New("fetch_failed")
 		}
@@ -154,6 +160,55 @@ func fetchDocument(ctx context.Context, client *http.Client, s Subscription, all
 	f.etag, f.modified = resp.Header.Get("ETag"), resp.Header.Get("Last-Modified")
 	if len(f.etag) > 1024 || len(f.modified) > 1024 {
 		return fetched{}, "invalid_feed"
+	}
+	return f, ""
+}
+
+// File is a downloaded file: its bytes and the name its address gave it
+// (from Content-Disposition, else the last part of the final address).
+type File struct {
+	Raw  []byte
+	Name string
+}
+
+// Download fetches a public https file of at most max bytes, whatever its
+// type. Failures are the fetch codes: invalid_url, fetch_failed, http_<status>
+// or too_large.
+func Download(ctx context.Context, client *http.Client, raw string, max int64) (File, string) {
+	if ValidateURL(raw) != nil {
+		return File{}, "invalid_url"
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", raw, nil)
+	if err != nil {
+		return File{}, "invalid_url"
+	}
+	req.Header.Set("User-Agent", "Alexandria/1.0")
+	resp, err := client.Do(req)
+	if err != nil {
+		return File{}, "fetch_failed"
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return File{}, httpCode(resp.StatusCode)
+	}
+	if resp.ContentLength > max {
+		return File{}, "too_large"
+	}
+	var f File
+	if f.Raw, err = io.ReadAll(io.LimitReader(resp.Body, max+1)); err != nil {
+		return File{}, "fetch_failed"
+	}
+	if int64(len(f.Raw)) > max {
+		return File{}, "too_large"
+	}
+	if _, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition")); err == nil {
+		f.Name = path.Base(strings.ReplaceAll(params["filename"], "\\", "/"))
+	}
+	if f.Name == "" || f.Name == "." || f.Name == "/" {
+		f.Name = path.Base(resp.Request.URL.Path)
+	}
+	if f.Name == "." || f.Name == "/" {
+		f.Name = ""
 	}
 	return f, ""
 }
