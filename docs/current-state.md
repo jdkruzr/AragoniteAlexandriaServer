@@ -1,6 +1,6 @@
 # Alexandria Server — current handoff
 
-Updated 2026-11-18. Work continues on `main`. The Server port resumed on
+Updated 2026-11-25. Work continues on `main`. The Server port resumed on
 2026-10-06 and is deployed; the September pause is historical.
 
 ## Source and publication
@@ -11,6 +11,27 @@ are published on `origin/main`, along with their deployment and device evidence.
 No version tag or GitHub Release was created.
 
 ## Deployed checkpoint
+
+**Committed and gated, not deployed (2026-11-25): `5b323dafd339`, app-only, no migration.**
+Assistants can add books to the BOOX shelves over MCP, three ways that all end in
+`boox.Service.AddBook` (the WebDAV upload's path; nothing is replaced): `add_book_from_url`
+(the server downloads a public https file through the guarded public client, up to 128 MiB),
+`upload_book` (text the assistant wrote, or at most 1 MiB of base64, with an optional SHA-256
+check) and `request_book_upload` (a signed `/upload/book/…` address that takes one named file
+without a sign-in for 15 minutes; the record of changes makes it single-use). The three are
+hidden from read-only tokens, share 20 books a day, and are recorded without file content
+(`upload_by_link` is the record of a file arriving at an address). Tokens already approved as
+Read and change gain these tools; the consent page and the record's description now say
+"notes and books". First start writes one new secret setting, `book_upload_secret`. Fresh
+required PostgreSQL/S3 `go test -race -count=1 ./...` (55 packages, exit 0, none cached or
+skipped), `go vet`, `gofmt` and the compose tests passed. The deploy was started and stopped at
+its first copy step: the VM (192.168.9.90) was unreachable from the development machine's
+network, so nothing on the VM changed. To do: deploy with
+`deploy.sh 29c7417 agentbooks-5b323dafd339 agentbooks-5b323dafd339`, then check live: the three
+tools listed for a full token and absent for a read one, a small `upload_book`, an
+`add_book_from_url` of a public PDF, a `curl -T` to an upload address, the Recent changes list,
+and a tablet sync. Not checked anywhere yet: whether claude.ai's sandbox can reach an upload
+address, and the upload address behind Hosting's authentication.
 
 Latest recorded deployment (2026-11-18): **`libraryview-29c7417441c4`**, app-only on schema **44**,
 image `sha256:3b2ddc8079bad0df09017ab930b4f9b1cabee2b314425b05a19b05d9f73333ce`, on top of
